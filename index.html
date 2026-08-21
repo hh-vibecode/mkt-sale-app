@@ -279,6 +279,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
         <div class="nav-item" onclick="switchPage('sale-onl')" id="nav-sale-onl" style="padding-left:30px"><span class="nav-icon" style="font-size:14px">📊</span><span class="nav-label">Tổng Quan</span></div>
         <div class="nav-item" onclick="switchPage('sale-onl-data')" id="nav-sale-onl-data" style="padding-left:30px"><span class="nav-icon" style="font-size:14px">👤</span><span class="nav-label">Chi Tiết</span></div>
       </div>
+      <div class="nav-item" onclick="switchPage('crm')" id="nav-crm"><span class="nav-icon">🗂</span><span class="nav-label">CRM (Khách/Lead/Đơn)</span></div>
     </nav>
   </div>
 
@@ -293,6 +294,9 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
     <div class="tab-page" id="page-sale-onl-data">
+      <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
+    </div>
+    <div class="tab-page" id="page-crm">
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
   </div>
@@ -358,7 +362,7 @@ function doLogin(){
 // Phân quyền: role => danh sách trang được xem (null = xem hết).
 // admin liệt kê tường minh (KHÔNG null) để loại trừ trang 'danhgia' — trang đánh giá tuần chỉ dành riêng cho role 'review'.
 // Thêm trang mới cho admin thì nhớ bổ sung id vào mảng dưới đây.
-const ROLE_PAGES={admin:['overview','detail','sale-onl','sale-onl-data'],'sale-onl':['sale-onl','sale-onl-data'],mkt:['overview','detail']};
+const ROLE_PAGES={admin:['overview','detail','sale-onl','sale-onl-data','crm'],'sale-onl':['sale-onl','sale-onl-data','crm'],mkt:['overview','detail']};
 function applyRole(){
   const role=localStorage.getItem('dashRole')||'admin';
   const allowed=ROLE_PAGES[role]!==undefined?ROLE_PAGES[role]:null;
@@ -387,7 +391,7 @@ function initAuth(){
 }
 
 function switchPage(p){
-  ['overview','detail','sale-onl','sale-onl-data'].forEach(x=>{
+  ['overview','detail','sale-onl','sale-onl-data','crm'].forEach(x=>{
     const el=document.getElementById('page-'+x);if(el)el.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);if(nav)nav.classList.toggle('active',x===p);
   });
@@ -411,11 +415,14 @@ async function loadData(){
     if(mktOk)setStatus(`Parse xong MKT (Supabase): ${allRows.length} chiến dịch/ngày`);
     const saonlOk=await loadSaleOnlFromSupabase().then(()=>true).catch(e=>{setStatus('⚠️ Sale Online (Supabase) lỗi: '+e.message);return false;});
     if(saonlOk)setStatus(`Parse xong Sale Online (Supabase): ${saleOnlRows.length} khách, ${saleOnlCrmRows.length} lượt CS`);
+    const crmOk=await loadCrmFromSupabase().then(()=>true).catch(e=>{setStatus('⚠️ CRM v2 (Supabase) lỗi: '+e.message);return false;});
+    if(crmOk)setStatus(`Parse xong CRM v2: ${crmCustomers.length} khách, ${crmActivities.length} hoạt động, ${crmOrders.length} đơn`);
     document.getElementById('btnLoad').disabled=false;
     setStatus('Đang render...');
     if(mktOk)applyFilter();
     renderSaleOnl();
     renderSaleOnlData();
+    if(crmOk)renderCrm();
     stopThinking();
   }catch(e){stopThinking();showErr('Không tải được: '+e.message);document.getElementById('btnLoad').disabled=false;}
 }
@@ -5377,6 +5384,319 @@ function vndNum(v){const n=parseInt(String(v==null?'':v).replace(/[^0-9-]/g,''),
 function vnd(n){return new Intl.NumberFormat('vi-VN').format(Math.round(n))+' ₫';}
 function num(n){return new Intl.NumberFormat('vi-VN').format(Math.round(n));}
 function pct(n){return n>0?n.toFixed(2)+'%':'—';}
+
+// =========================================================================================
+// ── CRM v2: Customer → Lead → Activity, tách riêng Order — thay cho mô hình "1 sheet phẳng"
+// saonl_customers/saonl_care_log ở trên. Theo spec DATAHUB+CRM+SALES APP (21/8/2026):
+// 1 khách hàng chỉ tồn tại 1 lần (dedupe theo SĐT lúc migrate), 1 khách có thể nhiều Lead,
+// 1 Lead có thể nhiều Activity (KHÔNG BAO GIỜ ghi đè, luôn tạo dòng mới), Order tách riêng
+// khỏi Activity. total_revenue/last_contact_date/lead_status/current_potential_value đều
+// tự tính bằng trigger DB (xem supabase-schema-v2.sql + patch1) — App không bao giờ nhập tay.
+// =========================================================================================
+let crmCustomers=[],crmLeads=[],crmActivities=[],crmOrders=[],crmSalesUsers=[],crmConfig={};
+function crmConfigOptions(cat){return(crmConfig[cat]||[]).map(o=>o.value);}
+async function loadCrmFromSupabase(){
+  const[customers,leads,activities,orders,salesUsers,config]=await Promise.all([
+    sbFetchAll('customers','select=*'),
+    sbFetchAll('leads','select=*'),
+    sbFetchAll('crm_activities','select=*&order=activity_date.desc,activity_id.desc'),
+    sbFetchAll('orders','select=*&order=order_date.desc'),
+    sbFetchAll('sales_users','select=*&status=eq.active&order=name.asc'),
+    sbFetchAll('config_options','select=*&active=eq.true&order=sort_order.asc'),
+  ]);
+  crmCustomers=customers;crmLeads=leads;crmActivities=activities;crmOrders=orders;crmSalesUsers=salesUsers;
+  crmConfig={};
+  config.forEach(o=>{(crmConfig[o.category]=crmConfig[o.category]||[]).push(o);});
+  window._crmLeadByCustomer={};leads.forEach(l=>{(window._crmLeadByCustomer[l.customer_id]=window._crmLeadByCustomer[l.customer_id]||[]).push(l);});
+  window._crmActByCustomer={};activities.forEach(a=>{(window._crmActByCustomer[a.customer_id]=window._crmActByCustomer[a.customer_id]||[]).push(a);});
+  window._crmOrdByCustomer={};orders.forEach(o=>{(window._crmOrdByCustomer[o.customer_id]=window._crmOrdByCustomer[o.customer_id]||[]).push(o);});
+  console.log('[CRM v2] customers:',customers.length,'leads:',leads.length,'activities:',activities.length,'orders:',orders.length);
+}
+const CRM_STATUS_COLOR={'Đang chăm sóc':'#f59e0b','Chốt đơn':'#10b981','Mất lead':'#ef4444','Chăm sóc dài hạn':'#6366f1'};
+function crmStatusBadge(s){
+  if(!s)return`<span style="color:var(--muted);font-size:11.5px">Khách mới</span>`;
+  const c=CRM_STATUS_COLOR[s]||'#64748b';
+  return`<span style="display:inline-block;padding:2px 9px;border-radius:20px;background:${c}20;color:${c};font-size:11px;font-weight:800">${s}</span>`;
+}
+function crmFilteredCustomers(){
+  const q=(document.getElementById('crmSearch')?.value||'').trim().toLowerCase();
+  const statusF=document.getElementById('crmStatusFilter')?.value||'all';
+  return crmCustomers.filter(c=>{
+    if(q){
+      const leads=window._crmLeadByCustomer[c.customer_id]||[];
+      const hay=[c.name,c.phone,c.customer_id,...leads.map(l=>l.lead_id)].join(' ').toLowerCase();
+      if(!hay.includes(q))return false;
+    }
+    if(statusF!=='all'){
+      const leads=window._crmLeadByCustomer[c.customer_id]||[];
+      const st=leads[0]?leads[0].lead_status:null;
+      if(statusF==='new'){if(st)return false;}
+      else if(st!==statusF)return false;
+    }
+    return true;
+  });
+}
+function setCrmPage(p){window._crmPage=p;renderCrm();}
+function renderCrm(){
+  const el=document.getElementById('page-crm');
+  if(!crmCustomers.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu CRM...</div>';return;}
+  const list=crmFilteredCustomers();
+  const totalRevenue=crmCustomers.reduce((s,c)=>s+Number(c.total_revenue||0),0);
+  const pageSize=30,page=window._crmPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
+  const pageItems=list.slice((page-1)*pageSize,page*pageSize);
+  const rows=pageItems.map(c=>{
+    const lead=(window._crmLeadByCustomer[c.customer_id]||[])[0]||{};
+    return`<tr style="cursor:pointer" onclick="openCrmDetail('${c.customer_id}')">
+      <td class="name">${c.name||'—'}</td>
+      <td>${c.phone||'—'}</td>
+      <td>${lead.source||'—'}${lead.channel?' · '+lead.channel:''}</td>
+      <td>${(crmSalesUsers.find(s=>s.user_id===lead.assigned_sales)||{}).name||'—'}</td>
+      <td>${crmStatusBadge(lead.lead_status)}</td>
+      <td class="num">${lead.current_potential_value?vnd(lead.current_potential_value):'—'}</td>
+      <td>${c.last_contact_date||'—'}</td>
+      <td class="num" style="font-weight:800;color:var(--green)">${c.total_revenue>0?vnd(c.total_revenue):'—'}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML=`
+    <div class="page-title">CRM — Khách hàng / Lead / Đơn hàng</div>
+    <div class="page-sub">1 khách hàng = 1 dòng (dedupe theo SĐT) · mỗi lần chăm sóc là 1 Activity, không ghi đè · doanh thu &amp; ngày liên hệ cuối tự tính</div>
+    <div class="period-bar">
+      <span class="stat-chip">👤 ${crmCustomers.length} khách</span>
+      <span class="stat-chip">💰 ${vnd(totalRevenue)}</span>
+      <input id="crmSearch" placeholder="🔎 Tìm tên / SĐT / Lead ID…" oninput="setCrmPage(1)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:220px;outline:none">
+      <select id="crmStatusFilter" class="top-select" onchange="setCrmPage(1)" style="height:30px;font-size:11px;padding:3px 10px;font-weight:600">
+        <option value="all">Tất cả trạng thái</option>
+        <option value="new">Khách mới (chưa CS)</option>
+        ${crmConfigOptions('status').map(s=>`<option value="${s}">${s}</option>`).join('')}
+      </select>
+      <button class="refresh-btn" onclick="openCrmAddCustomer()">➕ Thêm khách mới</button>
+      <button class="refresh-btn" onclick="loadData()">↺ Refresh</button>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-head"><div class="tbl-title">Danh sách khách hàng</div><div class="tbl-count">${list.length}</div></div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Tên</th><th>SĐT</th><th>Nguồn / Kênh</th><th>Sales</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Liên hệ cuối</th><th>Tổng doanh thu</th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
+      </table></div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
+        <button class="refresh-btn" ${page<=1?'disabled':''} onclick="setCrmPage(${page-1})">‹ Trước</button>
+        <span style="font-size:12px;font-weight:700;color:var(--muted)">Trang ${page}/${totalPages}</span>
+        <button class="refresh-btn" ${page>=totalPages?'disabled':''} onclick="setCrmPage(${page+1})">Sau ›</button>
+      </div>
+    </div>`;
+}
+
+function crmModalShell(id,title,gradient,bodyHtml,maxWidth){
+  let modal=document.getElementById(id);if(!modal){modal=document.createElement('div');modal.id=id;document.body.appendChild(modal);}
+  modal.innerHTML=`<div onclick="document.getElementById('${id}').style.display='none'" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:2100;display:flex;align-items:flex-start;justify-content:center;padding:36px 18px;overflow:auto">
+    <div onclick="event.stopPropagation()" style="background:var(--surface);border-radius:18px;max-width:${maxWidth||560}px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.35);overflow:hidden">
+      <div style="background:${gradient};padding:18px 24px;display:flex;align-items:center;gap:12px;color:#fff">
+        <div style="flex:1;font-size:17px;font-weight:800">${title}</div>
+        <span onclick="document.getElementById('${id}').style.display='none'" style="cursor:pointer;font-size:20px;line-height:1;padding:4px 8px;opacity:.85">✕</span>
+      </div>
+      <div style="padding:20px 24px;max-height:76vh;overflow:auto">${bodyHtml}</div>
+    </div></div>`;
+  modal.style.display='flex';
+}
+
+// ---- Customer Detail: info + lead + CRM status + activity timeline + orders ----
+function openCrmDetail(customerId){
+  const c=crmCustomers.find(x=>x.customer_id===customerId);if(!c)return;
+  const lead=(window._crmLeadByCustomer[customerId]||[])[0]||{};
+  const acts=window._crmActByCustomer[customerId]||[];
+  const ords=window._crmOrdByCustomer[customerId]||[];
+  const salesName=(crmSalesUsers.find(s=>s.user_id===lead.assigned_sales)||{}).name||'—';
+  const timeline=acts.length?acts.map(a=>`
+    <div style="border-left:3px solid ${CRM_STATUS_COLOR[a.status_after_activity]||'var(--border)'};padding:10px 14px;margin-bottom:10px;background:var(--bg2);border-radius:0 10px 10px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-weight:800;font-size:12.5px">${a.activity_date} · ${a.contact_method||'—'}</span>
+        ${crmStatusBadge(a.status_after_activity)}
+      </div>
+      <div style="font-size:12.5px;color:var(--text2);white-space:pre-wrap">${(a.conversation_content||'').replace(/</g,'&lt;')||'(không có nội dung)'}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">
+        ${a.potential_value?'Giá trị tiềm năng: '+vnd(a.potential_value):''}
+        ${a.lost_group?' · Nhóm mất lead: '+a.lost_group:''}${a.lost_reason?' — '+a.lost_reason:''}
+      </div>
+    </div>`).join(''):'<div style="color:var(--muted);font-size:12.5px;padding:12px 0">Chưa có lần chăm sóc nào.</div>';
+  const ordersHtml=ords.length?`<table style="width:100%;font-size:12.5px"><thead><tr style="color:var(--muted);text-align:left"><th style="padding:4px 0">Ngày</th><th>Sản phẩm</th><th style="text-align:right">Doanh thu</th></tr></thead><tbody>
+    ${ords.map(o=>`<tr><td style="padding:4px 0">${o.order_date}</td><td>${o.product||'—'}</td><td style="text-align:right;font-weight:800;color:var(--green)">${vnd(o.revenue)}</td></tr>`).join('')}
+  </tbody></table>`:'<div style="color:var(--muted);font-size:12.5px">Chưa có đơn hàng nào.</div>';
+  const body=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Thông tin khách</div>
+        <div style="font-size:13px;line-height:1.9">
+          <b>${c.name}</b><br>📞 ${c.phone||'—'}<br>📍 ${[c.address,c.district,c.province].filter(Boolean).join(', ')||'—'}<br>
+          Mã khách: <code>${c.customer_id}</code>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Lead hiện tại</div>
+        <div style="font-size:13px;line-height:1.9">
+          Nguồn/Kênh: ${lead.source||'—'} / ${lead.channel||'—'}<br>
+          Sales phụ trách: <b>${salesName}</b><br>
+          Trạng thái: ${crmStatusBadge(lead.lead_status)}<br>
+          Giá trị tiềm năng: ${lead.current_potential_value?vnd(lead.current_potential_value):'—'}
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn" style="flex:1;padding:9px" onclick="openCrmAddActivity('${customerId}')">+ Thêm hoạt động</button>
+      <button class="btn" style="flex:1;padding:9px;background:linear-gradient(135deg,#10b981,#0891b2)" onclick="openCrmAddOrder('${customerId}')">+ Thêm đơn hàng</button>
+    </div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Lịch sử chăm sóc (${acts.length})</div>
+    <div style="margin-bottom:16px">${timeline}</div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Đơn hàng (${ords.length}) — Tổng: ${vnd(c.total_revenue||0)}</div>
+    ${ordersHtml}`;
+  crmModalShell('crmDetailModal','👤 '+c.name,'linear-gradient(135deg,#4f46e5,#7c3aed)',body,760);
+}
+
+// ---- + Thêm hoạt động (Activity) ----
+function openCrmAddActivity(customerId){
+  const methods=crmConfigOptions('contact_method');
+  const statuses=crmConfigOptions('status');
+  const lostGroups=crmConfigOptions('lost_group');
+  const body=`
+    <form id="crmActForm" onsubmit="event.preventDefault();submitCrmAddActivity('${customerId}');">
+      ${saonlField('Ngày chăm sóc *',`<input required type="date" name="activity_date" value="${todayISO()}" style="${saonlInputStyle}">`)}
+      ${saonlField('Hình thức chăm sóc',`<select name="contact_method" style="${saonlInputStyle}"><option value="">-- chọn --</option>${methods.map(m=>`<option>${m}</option>`).join('')}</select>`)}
+      ${saonlField('Nội dung trao đổi',`<textarea name="conversation_content" rows="3" style="${saonlInputStyle};resize:vertical" placeholder="Khách quan tâm gì, đã tư vấn gì..."></textarea>`)}
+      ${saonlField('Giá trị tiềm năng (đ)',`<input name="potential_value" inputmode="numeric" style="${saonlInputStyle}" placeholder="VD: 25000000">`)}
+      ${saonlField('Trạng thái sau lần này *',`<select required name="status_after_activity" id="crmActStatus" onchange="crmToggleLostFields()" style="${saonlInputStyle}"><option value="">-- chọn --</option>${statuses.map(s=>`<option>${s}</option>`).join('')}</select>`)}
+      <div id="crmLostFields" style="display:none">
+        ${saonlField('Nhóm nguyên nhân mất lead',`<select name="lost_group" style="${saonlInputStyle}"><option value="">-- chọn --</option>${lostGroups.map(g=>`<option>${g}</option>`).join('')}</select>`)}
+        ${saonlField('Nguyên nhân cụ thể',`<input name="lost_reason" style="${saonlInputStyle}">`)}
+      </div>
+      <div id="crmActErr" style="color:var(--red);font-size:12px;font-weight:600;margin-bottom:8px;display:none"></div>
+      <button type="submit" class="btn" style="width:100%;padding:10px;font-size:13px">Lưu hoạt động</button>
+    </form>`;
+  crmModalShell('crmActModal','📋 Thêm Hoạt Động Chăm Sóc','linear-gradient(135deg,#4f46e5,#7c3aed)',body);
+}
+function crmToggleLostFields(){
+  const st=document.getElementById('crmActStatus')?.value;
+  const box=document.getElementById('crmLostFields');
+  if(box)box.style.display=st==='Mất lead'?'':'none';
+}
+async function submitCrmAddActivity(customerId){
+  const f=document.getElementById('crmActForm');
+  const errEl=document.getElementById('crmActErr');errEl.style.display='none';
+  const fd=new FormData(f);
+  const lead=(window._crmLeadByCustomer[customerId]||[])[0];
+  const btn=f.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Đang lưu...';
+  try{
+    const row={
+      customer_id:customerId,
+      lead_id:lead?lead.lead_id:null,
+      sales_id:lead?lead.assigned_sales:null,
+      activity_date:(fd.get('activity_date')||todayISO()).toString(),
+      contact_method:(fd.get('contact_method')||'').toString()||null,
+      conversation_content:(fd.get('conversation_content')||'').toString().trim()||null,
+      potential_value:vndNum(fd.get('potential_value'))||null,
+      status_after_activity:(fd.get('status_after_activity')||'').toString()||null,
+      lost_group:(fd.get('lost_group')||'').toString()||null,
+      lost_reason:(fd.get('lost_reason')||'').toString().trim()||null,
+    };
+    await sbInsert('crm_activities',row);
+    document.getElementById('crmActModal').style.display='none';
+    await loadCrmFromSupabase();
+    renderCrm();
+    openCrmDetail(customerId);
+  }catch(e){errEl.textContent='Lỗi: '+e.message;errEl.style.display='block';}
+  finally{btn.disabled=false;btn.textContent='Lưu hoạt động';}
+}
+
+// ---- + Thêm đơn hàng (Order) — tách riêng khỏi Activity, không nhập tay "doanh thu cộng dồn" ----
+function openCrmAddOrder(customerId){
+  const body=`
+    <form id="crmOrdForm" onsubmit="event.preventDefault();submitCrmAddOrder('${customerId}');">
+      ${saonlField('Ngày chốt *',`<input required type="date" name="order_date" value="${todayISO()}" style="${saonlInputStyle}">`)}
+      ${saonlField('Doanh thu (đ) *',`<input required name="revenue" inputmode="numeric" style="${saonlInputStyle}" placeholder="VD: 27000000">`)}
+      ${saonlField('Sản phẩm',`<input name="product" style="${saonlInputStyle}" placeholder="VD: Bộ bàn thờ 40cm">`)}
+      <div id="crmOrdErr" style="color:var(--red);font-size:12px;font-weight:600;margin-bottom:8px;display:none"></div>
+      <button type="submit" class="btn" style="width:100%;padding:10px;font-size:13px;background:linear-gradient(135deg,#10b981,#0891b2)">Lưu đơn hàng</button>
+    </form>`;
+  crmModalShell('crmOrdModal','🧾 Thêm Đơn Hàng','linear-gradient(135deg,#10b981,#0891b2)',body);
+}
+async function submitCrmAddOrder(customerId){
+  const f=document.getElementById('crmOrdForm');
+  const errEl=document.getElementById('crmOrdErr');errEl.style.display='none';
+  const fd=new FormData(f);
+  const lead=(window._crmLeadByCustomer[customerId]||[])[0];
+  const revenue=vndNum(fd.get('revenue'));
+  if(!revenue){errEl.textContent='Thiếu doanh thu';errEl.style.display='block';return;}
+  const btn=f.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Đang lưu...';
+  try{
+    const row={
+      customer_id:customerId,lead_id:lead?lead.lead_id:null,
+      order_date:(fd.get('order_date')||todayISO()).toString(),
+      revenue,product:(fd.get('product')||'').toString().trim()||null,
+      sales_id:lead?lead.assigned_sales:null,status:'confirmed',
+    };
+    await sbInsert('orders',row);
+    document.getElementById('crmOrdModal').style.display='none';
+    await loadCrmFromSupabase();
+    renderCrm();
+    openCrmDetail(customerId);
+  }catch(e){errEl.textContent='Lỗi: '+e.message;errEl.style.display='block';}
+  finally{btn.disabled=false;btn.textContent='Lưu đơn hàng';}
+}
+
+// ---- + Thêm khách mới (tạo Customer + Lead cùng lúc) ----
+function openCrmAddCustomer(){
+  const channels=crmConfigOptions('channel');
+  const body=`
+    <form id="crmAddCustForm" onsubmit="event.preventDefault();submitCrmAddCustomer();">
+      ${saonlField('Họ tên khách *',`<input required name="name" style="${saonlInputStyle}">`)}
+      ${saonlField('SĐT',`<input name="phone" style="${saonlInputStyle}" placeholder="09xxxxxxxx">`,'Dùng để phát hiện khách trùng (dedupe theo SĐT)')}
+      ${saonlField('Nguồn *',`<select required name="source" style="${saonlInputStyle}"><option value="Offline">Offline</option><option value="Online">Online</option></select>`)}
+      ${saonlField('Kênh *',`<input required name="channel" list="crmChannelList" style="${saonlInputStyle}">
+        <datalist id="crmChannelList">${channels.map(c=>`<option value="${c.replace(/"/g,'&quot;')}">`).join('')}</datalist>`)}
+      ${saonlField('Sales phụ trách *',`<select required name="sales_id" style="${saonlInputStyle}"><option value="">-- chọn --</option>${crmSalesUsers.map(s=>`<option value="${s.user_id}">${s.name}</option>`).join('')}</select>`)}
+      ${saonlField('Địa chỉ',`<textarea name="address" rows="2" style="${saonlInputStyle};resize:vertical"></textarea>`)}
+      ${saonlField('Ad ID',`<input name="ad_id" style="${saonlInputStyle}" placeholder="Chỉ có nếu Nguồn = Online">`)}
+      <div id="crmAddCustErr" style="color:var(--red);font-size:12px;font-weight:600;margin-bottom:8px;display:none"></div>
+      <button type="submit" class="btn" style="width:100%;padding:10px;font-size:13px">Lưu khách mới</button>
+    </form>`;
+  crmModalShell('crmAddCustModal','➕ Thêm Khách Mới','linear-gradient(135deg,#0abf7a,#0891b2)',body);
+}
+async function submitCrmAddCustomer(){
+  const f=document.getElementById('crmAddCustForm');
+  const errEl=document.getElementById('crmAddCustErr');errEl.style.display='none';
+  const fd=new FormData(f);
+  const name=(fd.get('name')||'').toString().trim();
+  if(!name){errEl.textContent='Thiếu họ tên khách';errEl.style.display='block';return;}
+  const phone=(fd.get('phone')||'').toString().trim();
+  const btn=f.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Đang lưu...';
+  try{
+    // Dedupe theo SĐT (chuẩn hoá 9 số cuối, giống logic lúc migrate) -- nếu đã có khách trùng SĐT thì
+    // gắn Lead mới vào khách đó thay vì tạo Customer mới, đúng nguyên tắc "1 khách chỉ tồn tại 1 lần".
+    const normPhone=p=>{const d=(p||'').replace(/\D/g,'');return d.length>=9?d.slice(-9):null;};
+    const np=normPhone(phone);
+    let existing=np?crmCustomers.find(c=>normPhone(c.phone)===np):null;
+    let customerId;
+    if(existing){
+      customerId=existing.customer_id;
+    }else{
+      customerId='CUS'+Date.now().toString(36).toUpperCase();
+      await sbInsert('customers',{customer_id:customerId,name,phone:phone||null,address:(fd.get('address')||'').toString().trim()||null});
+    }
+    const leadId='MANUAL'+Date.now().toString(36).toUpperCase();
+    await sbInsert('leads',{
+      lead_id:leadId,customer_id:customerId,
+      source:(fd.get('source')||'Offline').toString(),
+      channel:(fd.get('channel')||'').toString().trim(),
+      source_external_id:leadId,
+      ad_id:(fd.get('ad_id')||'').toString().trim()||null,
+      department:'Sale Online (Lẻ)',
+      assigned_sales:(fd.get('sales_id')||'').toString()||null,
+    });
+    document.getElementById('crmAddCustModal').style.display='none';
+    await loadCrmFromSupabase();
+    renderCrm();
+    alert((existing?'Đã thêm Lead mới cho khách trùng SĐT "':'Đã thêm khách "')+name+'"');
+  }catch(e){errEl.textContent='Lỗi: '+e.message;errEl.style.display='block';}
+  finally{btn.disabled=false;btn.textContent='Lưu khách mới';}
+}
 
 window.onload=function(){
   initAuth();
