@@ -277,9 +277,8 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
       <div class="nav-item" onclick="toggleOnlGroup()" id="nav-onl-group"><span class="nav-icon">🌐</span><span class="nav-label" style="flex:1;display:flex;justify-content:space-between;align-items:center">Báo Cáo KH Lẻ<span id="onl-group-arrow" style="font-size:9px;color:var(--muted);margin-left:6px">▼</span></span></div>
       <div id="onl-subnav">
         <div class="nav-item" onclick="switchPage('sale-onl')" id="nav-sale-onl" style="padding-left:30px"><span class="nav-icon" style="font-size:14px">📊</span><span class="nav-label">Tổng Quan</span></div>
-        <div class="nav-item" onclick="switchPage('sale-onl-data')" id="nav-sale-onl-data" style="padding-left:30px"><span class="nav-icon" style="font-size:14px">👤</span><span class="nav-label">Chi Tiết</span></div>
+        <div class="nav-item" onclick="switchPage('crm')" id="nav-crm" style="padding-left:30px"><span class="nav-icon" style="font-size:14px">👤</span><span class="nav-label">CRM</span></div>
       </div>
-      <div class="nav-item" onclick="switchPage('crm')" id="nav-crm"><span class="nav-icon">🗂</span><span class="nav-label">CRM (Khách/Lead/Đơn)</span></div>
     </nav>
   </div>
 
@@ -291,9 +290,6 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
       <div class="loading"><div class="spin"></div><br><span style="font-size:13px;font-weight:700;color:var(--text2)">Đang tải dữ liệu…</span></div>
     </div>
     <div class="tab-page" id="page-sale-onl">
-      <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
-    </div>
-    <div class="tab-page" id="page-sale-onl-data">
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
     <div class="tab-page" id="page-crm">
@@ -5469,7 +5465,6 @@ function renderCrm(){
         <option value="new">Khách mới (chưa CS)</option>
         ${crmConfigOptions('status').map(s=>`<option value="${s}">${s}</option>`).join('')}
       </select>
-      <button class="refresh-btn" onclick="openCrmAddCustomer()">➕ Thêm khách mới</button>
       <button class="refresh-btn" onclick="loadData()">↺ Refresh</button>
     </div>
     <div class="tbl-card">
@@ -5521,22 +5516,33 @@ function openCrmDetail(customerId){
   const ordersHtml=ords.length?`<table style="width:100%;font-size:12.5px"><thead><tr style="color:var(--muted);text-align:left"><th style="padding:4px 0">Ngày</th><th>Sản phẩm</th><th style="text-align:right">Doanh thu</th></tr></thead><tbody>
     ${ords.map(o=>`<tr><td style="padding:4px 0">${o.order_date}</td><td>${o.product||'—'}</td><td style="text-align:right;font-weight:800;color:var(--green)">${vnd(o.revenue)}</td></tr>`).join('')}
   </tbody></table>`:'<div style="color:var(--muted);font-size:12.5px">Chưa có đơn hàng nào.</div>';
+  const ce=(field,value,ph)=>crmEditableSpan(field,value,'customers','customer_id',c.customer_id,ph);
+  const le=(field,value,ph)=>crmEditableSpan(field,value,'leads','lead_id',lead.lead_id,ph);
+  const salesOptions=crmSalesUsers.map(s=>`<option value="${s.user_id}" ${s.user_id===lead.assigned_sales?'selected':''}>${s.name}</option>`).join('');
   const body=`
+    <div style="font-size:10.5px;color:var(--muted);margin-bottom:10px">✎ Click trực tiếp vào giá trị để sửa, Enter hoặc click ra ngoài để lưu ngay</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div>
         <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Thông tin khách</div>
-        <div style="font-size:13px;line-height:1.9">
-          <b>${c.name}</b><br>📞 ${c.phone||'—'}<br>📍 ${[c.address,c.district,c.province].filter(Boolean).join(', ')||'—'}<br>
-          Mã khách: <code>${c.customer_id}</code>
+        <div style="font-size:13px;line-height:2.1">
+          Tên: <b>${ce('name',c.name)}</b><br>
+          📞 ${ce('phone',c.phone,'Chưa có SĐT')}<br>
+          Địa chỉ: ${ce('address',c.address,'Chưa có địa chỉ')}<br>
+          Tỉnh/TP: ${ce('province',c.province,'—')} · Quận/Huyện: ${ce('district',c.district,'—')}<br>
+          Nhóm KH: ${ce('customer_group',c.customer_group,'—')} · Loại KH: ${ce('customer_type',c.customer_type,'—')}<br>
+          Mã khách hệ thống: <code>${c.customer_id}</code>${c.legacy_ma_kh?' · Mã KH gốc: <code>'+c.legacy_ma_kh+'</code>':''}
         </div>
       </div>
       <div>
         <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Lead hiện tại</div>
-        <div style="font-size:13px;line-height:1.9">
-          Nguồn/Kênh: ${lead.source||'—'} / ${lead.channel||'—'}<br>
-          Sales phụ trách: <b>${salesName}</b><br>
-          Trạng thái: ${crmStatusBadge(lead.lead_status)}<br>
-          Giá trị tiềm năng: ${lead.current_potential_value?vnd(lead.current_potential_value):'—'}
+        <div style="font-size:13px;line-height:2.1">
+          Nguồn/Kênh: ${lead.source||'—'} / ${lead.channel||'—'} <span style="color:var(--muted);font-size:10.5px">(từ nguồn data, không sửa tay)</span><br>
+          Sales phụ trách: <select onchange="crmInlineSave(this)" data-field="assigned_sales" data-table="leads" data-keyfield="lead_id" data-keyvalue="${lead.lead_id}" style="font-size:12.5px;padding:2px 6px;border-radius:6px;border:1.5px solid var(--border);background:var(--bg);color:var(--text)"><option value="">-- chưa gán --</option>${salesOptions}</select><br>
+          Trạng thái: ${crmStatusBadge(lead.lead_status)} <span style="color:var(--muted);font-size:10.5px">(đổi qua "+ Thêm hoạt động")</span><br>
+          Giá trị tiềm năng: ${lead.current_potential_value?vnd(lead.current_potential_value):'—'}<br>
+          Nhu cầu ban đầu: ${le('product_need',lead.product_need,'Chưa ghi nhận')}<br>
+          ${lead.ad_id?'Ad ID: <code>'+lead.ad_id+'</code><br>':''}
+          Lead ID: <code>${lead.lead_id||'—'}</code> · Tạo lúc: ${lead.created_at?lead.created_at.slice(0,10):'—'}
         </div>
       </div>
     </div>
@@ -5641,61 +5647,32 @@ async function submitCrmAddOrder(customerId){
   finally{btn.disabled=false;btn.textContent='Lưu đơn hàng';}
 }
 
-// ---- + Thêm khách mới (tạo Customer + Lead cùng lúc) ----
-function openCrmAddCustomer(){
-  const channels=crmConfigOptions('channel');
-  const body=`
-    <form id="crmAddCustForm" onsubmit="event.preventDefault();submitCrmAddCustomer();">
-      ${saonlField('Họ tên khách *',`<input required name="name" style="${saonlInputStyle}">`)}
-      ${saonlField('SĐT',`<input name="phone" style="${saonlInputStyle}" placeholder="09xxxxxxxx">`,'Dùng để phát hiện khách trùng (dedupe theo SĐT)')}
-      ${saonlField('Nguồn *',`<select required name="source" style="${saonlInputStyle}"><option value="Offline">Offline</option><option value="Online">Online</option></select>`)}
-      ${saonlField('Kênh *',`<input required name="channel" list="crmChannelList" style="${saonlInputStyle}">
-        <datalist id="crmChannelList">${channels.map(c=>`<option value="${c.replace(/"/g,'&quot;')}">`).join('')}</datalist>`)}
-      ${saonlField('Sales phụ trách *',`<select required name="sales_id" style="${saonlInputStyle}"><option value="">-- chọn --</option>${crmSalesUsers.map(s=>`<option value="${s.user_id}">${s.name}</option>`).join('')}</select>`)}
-      ${saonlField('Địa chỉ',`<textarea name="address" rows="2" style="${saonlInputStyle};resize:vertical"></textarea>`)}
-      ${saonlField('Ad ID',`<input name="ad_id" style="${saonlInputStyle}" placeholder="Chỉ có nếu Nguồn = Online">`)}
-      <div id="crmAddCustErr" style="color:var(--red);font-size:12px;font-weight:600;margin-bottom:8px;display:none"></div>
-      <button type="submit" class="btn" style="width:100%;padding:10px;font-size:13px">Lưu khách mới</button>
-    </form>`;
-  crmModalShell('crmAddCustModal','➕ Thêm Khách Mới','linear-gradient(135deg,#0abf7a,#0891b2)',body);
+// ---- Sửa trực tiếp trên data (click vào giá trị để sửa, không qua form/nút) ----
+// Chỉ áp dụng cho CRM DATA (Sale được sửa): thông tin khách, nhu cầu, sales phụ trách.
+// KHÔNG áp dụng cho SOURCE DATA (nguồn/kênh/ad_id) -- những field đó đến từ DataHub, sync sau này sẽ ghi đè.
+function crmEditableSpan(field,value,table,keyField,keyValue,placeholder){
+  const v=(value==null?'':value).toString();
+  const esc=v.replace(/</g,'&lt;');
+  return`<span contenteditable="true" spellcheck="false" data-field="${field}" data-table="${table}" data-keyfield="${keyField}" data-keyvalue="${keyValue}" onblur="crmInlineSave(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" style="display:inline-block;min-width:50px;padding:1px 5px;border-radius:4px;cursor:text;border-bottom:1.5px dashed var(--border)" title="Click để sửa, Enter để lưu">${v?esc:`<span style="color:var(--muted)">${placeholder||'—'}</span>`}</span>`;
 }
-async function submitCrmAddCustomer(){
-  const f=document.getElementById('crmAddCustForm');
-  const errEl=document.getElementById('crmAddCustErr');errEl.style.display='none';
-  const fd=new FormData(f);
-  const name=(fd.get('name')||'').toString().trim();
-  if(!name){errEl.textContent='Thiếu họ tên khách';errEl.style.display='block';return;}
-  const phone=(fd.get('phone')||'').toString().trim();
-  const btn=f.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Đang lưu...';
+async function crmInlineSave(el){
+  const field=el.dataset.field,table=el.dataset.table,keyField=el.dataset.keyfield,keyValue=el.dataset.keyvalue;
+  const value=(el.tagName==='SELECT'?el.value:el.textContent).toString().trim();
   try{
-    // Dedupe theo SĐT (chuẩn hoá 9 số cuối, giống logic lúc migrate) -- nếu đã có khách trùng SĐT thì
-    // gắn Lead mới vào khách đó thay vì tạo Customer mới, đúng nguyên tắc "1 khách chỉ tồn tại 1 lần".
-    const normPhone=p=>{const d=(p||'').replace(/\D/g,'');return d.length>=9?d.slice(-9):null;};
-    const np=normPhone(phone);
-    let existing=np?crmCustomers.find(c=>normPhone(c.phone)===np):null;
-    let customerId;
-    if(existing){
-      customerId=existing.customer_id;
-    }else{
-      customerId='CUS'+Date.now().toString(36).toUpperCase();
-      await sbInsert('customers',{customer_id:customerId,name,phone:phone||null,address:(fd.get('address')||'').toString().trim()||null});
-    }
-    const leadId='MANUAL'+Date.now().toString(36).toUpperCase();
-    await sbInsert('leads',{
-      lead_id:leadId,customer_id:customerId,
-      source:(fd.get('source')||'Offline').toString(),
-      channel:(fd.get('channel')||'').toString().trim(),
-      source_external_id:leadId,
-      ad_id:(fd.get('ad_id')||'').toString().trim()||null,
-      department:'Sale Online (Lẻ)',
-      assigned_sales:(fd.get('sales_id')||'').toString()||null,
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/${table}?${keyField}=eq.${encodeURIComponent(keyValue)}`,{
+      method:'PATCH',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify({[field]:value||null})
     });
-    document.getElementById('crmAddCustModal').style.display='none';
-    await loadCrmFromSupabase();
-    renderCrm();
-    alert((existing?'Đã thêm Lead mới cho khách trùng SĐT "':'Đã thêm khách "')+name+'"');
-  }catch(e){errEl.textContent='Lỗi: '+e.message;errEl.style.display='block';}
-  finally{btn.disabled=false;btn.textContent='Lưu khách mới';}
+    if(!res.ok){const t=await res.text();throw new Error(t.slice(0,200));}
+    if(table==='customers'){const c=crmCustomers.find(x=>x.customer_id===keyValue);if(c)c[field]=value||null;}
+    if(table==='leads'){const l=crmLeads.find(x=>x.lead_id===keyValue);if(l)l[field]=value||null;}
+    el.style.transition='background .15s';el.style.background='#10b98130';
+    setTimeout(()=>{el.style.background='';},700);
+  }catch(e){
+    el.style.background='#ef444430';
+    alert('Lưu lỗi: '+e.message);
+  }
 }
 
 window.onload=function(){
