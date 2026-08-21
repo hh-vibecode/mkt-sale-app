@@ -161,6 +161,8 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .tov-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
 .tov-head{padding:14px 18px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--surface2),var(--bg2));flex-wrap:wrap}
 .tov-title{font-size:14px;font-weight:800}
+.crm-editable:empty::before{content:attr(data-placeholder);color:var(--muted)}
+.crm-editable:focus{outline:2px solid var(--accent);outline-offset:1px}
 .tov-scroll{overflow-x:auto}
 .grp-table{width:100%;border-collapse:collapse;font-size:12px}
 .grp-table thead tr{background:var(--surface2)}
@@ -5751,9 +5753,11 @@ async function submitCrmAddOrder(customerId){
 // Chỉ áp dụng cho CRM DATA (Sale được sửa): thông tin khách, nhu cầu, sales phụ trách.
 // KHÔNG áp dụng cho SOURCE DATA (nguồn/kênh/ad_id) -- những field đó đến từ DataHub, sync sau này sẽ ghi đè.
 function crmEditableSpan(field,value,table,keyField,keyValue,placeholder){
+  // Placeholder hiện qua CSS (:empty::before), KHÔNG chèn markup con vào trong contenteditable --
+  // chèn markup con từng gây bug: gõ chữ mới bị dính lẫn với text placeholder cũ khi field đang trống.
   const v=(value==null?'':value).toString();
-  const esc=v.replace(/</g,'&lt;');
-  return`<span contenteditable="true" spellcheck="false" data-field="${field}" data-table="${table}" data-keyfield="${keyField}" data-keyvalue="${keyValue}" onblur="crmInlineSave(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" style="display:inline-block;min-width:50px;padding:1px 5px;border-radius:4px;cursor:text;border-bottom:1.5px dashed var(--border)" title="Click để sửa, Enter để lưu">${v?esc:`<span style="color:var(--muted)">${placeholder||'—'}</span>`}</span>`;
+  const esc=v.replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  return`<span class="crm-editable" contenteditable="true" spellcheck="false" data-field="${field}" data-table="${table}" data-keyfield="${keyField}" data-keyvalue="${keyValue}" data-placeholder="${(placeholder||'—').replace(/"/g,'&quot;')}" onblur="crmInlineSave(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" style="display:inline-block;min-width:50px;padding:1px 5px;border-radius:4px;cursor:text;border-bottom:1.5px dashed var(--border)" title="Click để sửa, Enter để lưu">${esc}</span>`;
 }
 async function crmInlineSave(el){
   const field=el.dataset.field,table=el.dataset.table,keyField=el.dataset.keyfield,keyValue=el.dataset.keyvalue;
