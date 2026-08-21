@@ -3,7 +3,8 @@
 //
 // Cần 3 secret (đặt trong GitHub repo Settings -> Secrets and variables -> Actions):
 //   META_ACCESS_TOKEN   -- System User token, quyền ads_read, xem project_deploy.md/reference cho cách tạo
-//   META_AD_ACCOUNT_ID  -- dạng "act_1234567890" (thêm "act_" nếu người dùng chỉ đưa số)
+//   META_AD_ACCOUNT_ID  -- dạng "act_1234567890", hỗ trợ nhiều account cách nhau bởi dấu phẩy
+//     (VD: "act_1165848552382524,act_2424101351383388" -- tài khoản chính + tài khoản phụ 1)
 //   SUPABASE_SERVICE_ROLE_KEY -- lấy trong Supabase dashboard > Settings > API (KHÔNG phải anon key -- key
 //     này bỏ qua RLS nên phải giữ bí mật tuyệt đối, không bao giờ được nhúng vào code client-side)
 //
@@ -89,11 +90,16 @@ async function upsertMktSpend(rows) {
     console.error('Thiếu secret: cần đủ META_ACCESS_TOKEN, META_AD_ACCOUNT_ID, SUPABASE_SERVICE_ROLE_KEY');
     process.exit(1);
   }
-  const adAccountId = AD_ACCOUNT_ID_RAW.startsWith('act_') ? AD_ACCOUNT_ID_RAW : `act_${AD_ACCOUNT_ID_RAW}`;
-  console.log(`Đang kéo báo cáo Meta Ads cho ngày ${TARGET_DATE}, account ${adAccountId}...`);
+  const adAccountIds = AD_ACCOUNT_ID_RAW.split(',').map(s => s.trim()).filter(Boolean)
+    .map(id => id.startsWith('act_') ? id : `act_${id}`);
+  console.log(`Đang kéo báo cáo Meta Ads cho ngày ${TARGET_DATE}, ${adAccountIds.length} account: ${adAccountIds.join(', ')}...`);
 
-  const raw = await fetchInsights(adAccountId);
-  console.log(`Meta trả về ${raw.length} dòng (cấp Ad).`);
+  let raw = [];
+  for (const adAccountId of adAccountIds) {
+    const rowsForAccount = await fetchInsights(adAccountId);
+    console.log(`  ${adAccountId}: ${rowsForAccount.length} dòng (cấp Ad).`);
+    raw = raw.concat(rowsForAccount);
+  }
   if (raw[0]) console.log('Mẫu 1 dòng thô (để đối chiếu field actions nếu cần chỉnh):', JSON.stringify(raw[0], null, 2));
 
   const rows = raw.filter(r => r.ad_id).map(r => {
