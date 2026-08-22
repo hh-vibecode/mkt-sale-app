@@ -5500,7 +5500,7 @@ function crmDeleteSavedView(name){
 }
 function crmToggleAdvanced(){
   const box=document.getElementById('crmAdvancedFilters');
-  if(box)box.style.display=box.style.display==='none'?'':'none';
+  if(box)box.style.display=box.style.display==='none'?'flex':'none';
 }
 // Status/Giá trị tiềm năng đều DERIVED từ Activity mới nhất (trigger DB) -- sửa nhanh trên bảng vẫn phải
 // đi qua 1 Activity nhẹ (giữ nguyên lịch sử, không overwrite trực tiếp), khác với Sales phụ trách (field
@@ -5561,7 +5561,7 @@ function renderCrm(){
       <button class="refresh-btn" onclick="crmSaveCurrentView()">💾 Lưu view</button>
       <button class="refresh-btn" onclick="loadData()">↺ Refresh</button>
     </div>
-    <div id="crmAdvancedFilters" style="display:none;background:var(--bg2);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    <div id="crmAdvancedFilters" style="display:none;background:var(--bg2);border-radius:10px;padding:10px 14px;margin-bottom:12px;flex-wrap:wrap;gap:8px;align-items:center">
       <select id="crmDeptFilter" class="top-select" onchange="setCrmPage(1)" style="height:30px;font-size:11px;padding:3px 10px;font-weight:600">
         <option value="all">Tất cả bộ phận</option>
         ${crmDeptOptions().map(d=>`<option value="${d}">${d}</option>`).join('')}
