@@ -9,31 +9,34 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
+/* Token màu lấy thật từ TailAdmin (github.com/TailAdmin/tailadmin-free-tailwind-dashboard-template,
+   src/css/style.css @theme) -- brand #465fff, gray/success/error/warning scale đúng bản gốc.
+   Chỉ đổi giá trị token + card KPI, KHÔNG đổi tên biến/class nên toàn bộ JS/HTML phía dưới không cần sửa gì. */
 :root{
-  --bg:#f0f2f8;--bg2:#e8ebf5;--surface:#fff;--surface2:#f7f8fc;
-  --border:#e2e6f0;--border2:#d0d5e8;--text:#0f1629;--text2:#4a5580;--muted:#8892b0;
-  --accent:#4361ee;--accent-l:#eef0fd;
-  --green:#0abf7a;--green-l:#e6faf3;
-  --yellow:#f5a623;--yellow-l:#fff8ec;
-  --red:#e84545;--red-l:#fef0f0;
-  --purple:#7c3aed;--purple-l:#f3eeff;
-  --teal:#0891b2;--teal-l:#e0f7fa;
-  --orange:#f97316;--orange-l:#fff4ed;
-  --shadow:0 2px 12px rgba(67,97,238,.08);
-  --shadow-md:0 4px 24px rgba(67,97,238,.13);
+  --bg:#f9fafb;--bg2:#f2f4f7;--surface:#fff;--surface2:#f2f4f7;
+  --border:#e4e7ec;--border2:#d0d5dd;--text:#101828;--text2:#344054;--muted:#667085;
+  --accent:#465fff;--accent-l:#ecf3ff;
+  --green:#12b76a;--green-l:#ecfdf3;
+  --yellow:#f79009;--yellow-l:#fffaeb;
+  --red:#f04438;--red-l:#fef3f2;
+  --purple:#7a5af8;--purple-l:#f4f2fe;
+  --teal:#0ba5ec;--teal-l:#f0f9ff;
+  --orange:#fb6514;--orange-l:#fff6ed;
+  --shadow:0 1px 3px rgba(16,24,40,.08);
+  --shadow-md:0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06);
   --sidebar-w:220px;--sidebar-w-col:56px;
   --font:'Inter',sans-serif;
 }
 [data-theme="dark"]{
-  --bg:#0d0f14;--bg2:#141720;--surface:#1a1d2e;--surface2:#1e2235;
-  --border:#252a3a;--border2:#2e3450;--text:#e8eaf0;--text2:#8892b0;--muted:#4a5580;
-  --accent:#4f7dff;--accent-l:#1a2040;
-  --green:#34d399;--green-l:#0f2d1f;
-  --yellow:#fbbf24;--yellow-l:#2a1f05;
-  --red:#f87171;--red-l:#2d1515;
-  --purple:#a78bfa;--purple-l:#1e1040;
-  --teal:#22d3ee;--teal-l:#0a2030;
-  --orange:#fb923c;--orange-l:#2a1505;
+  --bg:#0c111d;--bg2:#101828;--surface:#101828;--surface2:#1d2939;
+  --border:#1d2939;--border2:#344054;--text:#f0f2f5;--text2:#98a2b3;--muted:#667085;
+  --accent:#7592ff;--accent-l:rgba(70,95,255,.12);
+  --green:#32d583;--green-l:rgba(18,183,106,.15);
+  --yellow:#fdb022;--yellow-l:rgba(247,144,9,.15);
+  --red:#f97066;--red-l:rgba(240,68,56,.15);
+  --purple:#9c8bfa;--purple-l:rgba(122,90,248,.15);
+  --teal:#36bffa;--teal-l:rgba(11,165,236,.15);
+  --orange:#fd853a;--orange-l:rgba(251,101,20,.15);
   --shadow:0 2px 12px rgba(0,0,0,.3);--shadow-md:0 4px 24px rgba(0,0,0,.4);
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -108,29 +111,26 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .sec-label{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:22px 0 12px;display:flex;align-items:center;gap:8px}
 .sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
 
-/* KPI */
-.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}
-.kpi{border-radius:14px;padding:18px 20px;color:#fff;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.13);transition:transform .2s,box-shadow .2s}
-.kpi:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.18)}
-.kpi::after{content:'';position:absolute;right:-18px;bottom:-18px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.1)}
-.kpi::before{content:'';position:absolute;left:-10px;top:-10px;width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.06)}
-.kpi-icon{font-size:22px;margin-bottom:10px;position:relative;z-index:1}
-.kpi-lbl{font-size:10px;font-weight:600;opacity:.85;margin-bottom:6px;position:relative;z-index:1;letter-spacing:.04em;text-transform:uppercase}
-.kpi-val{font-size:22px;font-weight:900;font-family:var(--font);letter-spacing:-.03em;line-height:1.1;position:relative;z-index:1}
-.kpi-sub{font-size:10px;opacity:.72;margin-top:5px;position:relative;z-index:1;font-weight:500}
-.g-blue{background:linear-gradient(135deg,#4361ee,#7c3aed)}
-.g-green{background:linear-gradient(135deg,#0abf7a,#0891b2)}
-.g-yellow{background:linear-gradient(135deg,#f59e0b,#f97316)}
-.g-purple{background:linear-gradient(135deg,#7c3aed,#4361ee)}
-.g-teal{background:linear-gradient(135deg,#0891b2,#0abf7a)}
-.g-orange{background:linear-gradient(135deg,#f97316,#f59e0b)}
-.g-pink{background:linear-gradient(135deg,#ec4899,#e84545)}
-.g-red{background:linear-gradient(135deg,#e84545,#ec4899)}
-[data-theme="dark"] .kpi{color:#fff!important}
-[data-theme="dark"] .kpi .kpi-lbl{color:rgba(255,255,255,.85)!important}
-[data-theme="dark"] .kpi .kpi-val{color:#fff!important}
-[data-theme="dark"] .kpi .kpi-sub{color:rgba(255,255,255,.7)!important}
-[data-theme="dark"] .kpi .kpi-icon{color:#fff!important}
+/* KPI -- kiểu card TailAdmin thật: nền trắng/surface + viền mảnh, icon nằm trong ô bo góc màu nhạt
+   (thay vì phủ gradient kín cả thẻ như trước). Class .g-* giữ nguyên tên (JS mkKpi() không đổi gì) nhưng
+   giờ chỉ set 2 biến màu cho ô icon, không set background của cả thẻ nữa. */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+.kpi{border-radius:16px;padding:20px;background:var(--surface);border:1.5px solid var(--border);position:relative;overflow:hidden;transition:box-shadow .2s,transform .2s}
+.kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.kpi::after{content:none}
+.kpi::before{content:none}
+.kpi-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px;background:var(--kpi-tint,var(--accent-l));color:var(--kpi-color,var(--accent))}
+.kpi-lbl{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;letter-spacing:0;text-transform:none}
+.kpi-val{font-size:23px;font-weight:800;font-family:var(--font);letter-spacing:-.02em;line-height:1.15;color:var(--text)}
+.kpi-sub{font-size:11.5px;color:var(--muted);margin-top:5px;font-weight:500}
+.g-blue{--kpi-tint:var(--accent-l);--kpi-color:var(--accent)}
+.g-green{--kpi-tint:var(--green-l);--kpi-color:var(--green)}
+.g-yellow{--kpi-tint:var(--yellow-l);--kpi-color:var(--yellow)}
+.g-purple{--kpi-tint:var(--purple-l);--kpi-color:var(--purple)}
+.g-teal{--kpi-tint:var(--teal-l);--kpi-color:var(--teal)}
+.g-orange{--kpi-tint:var(--orange-l);--kpi-color:var(--orange)}
+.g-pink{--kpi-tint:var(--red-l);--kpi-color:var(--red)}
+.g-red{--kpi-tint:var(--red-l);--kpi-color:var(--red)}
 
 /* QC CARDS (đối soát) */
 .qc-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px 17px;position:relative;overflow:hidden;min-height:152px;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(15,23,42,.06)}
@@ -177,7 +177,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .row-product td:first-child{padding-left:36px;color:var(--text2);font-size:11.5px;font-weight:600}
 .num-cell{font-family:var(--font);font-weight:700;font-size:12px}
 .tbl-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
-.tbl-head{padding:14px 18px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--surface2),var(--bg2))}
+.tbl-head{padding:14px 18px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2)}
 .tbl-title{font-size:14px;font-weight:800}
 .tbl-count{font-size:11px;font-weight:700;background:var(--accent-l);color:var(--accent);padding:3px 10px;border-radius:20px;border:1px solid rgba(67,97,238,.2)}
 .tbl-scroll{overflow-x:auto}
@@ -211,21 +211,21 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
 </head>
 <body>
 
-<div id="loginGate" style="position:fixed;inset:0;z-index:6000;background:linear-gradient(135deg,#1e293b 0%,#4361ee 100%);display:none;align-items:center;justify-content:center;font-family:Inter,sans-serif">
-  <div style="background:#fff;border-radius:20px;padding:32px 32px 28px;width:350px;box-shadow:0 24px 70px rgba(0,0,0,.45)">
+<div id="loginGate" style="position:fixed;inset:0;z-index:6000;background:#f2f4f7;display:none;align-items:center;justify-content:center;font-family:Inter,sans-serif">
+  <div style="background:#fff;border:1.5px solid #e4e7ec;border-radius:16px;padding:32px 32px 28px;width:350px;box-shadow:0 12px 16px -4px rgba(16,24,40,.08),0 4px 6px -2px rgba(16,24,40,.03)">
     <div style="text-align:center;margin-bottom:20px">
       <img src="logo.png" style="width:56px;height:56px;object-fit:contain" onerror="this.style.display='none'">
-      <div style="font-size:19px;font-weight:800;color:#1e293b;margin-top:6px">Dashboard MKT</div>
-      <div style="font-size:12px;color:#64748b">Đăng nhập để tiếp tục</div>
+      <div style="font-size:19px;font-weight:800;color:#101828;margin-top:6px">Dashboard MKT</div>
+      <div style="font-size:12px;color:#667085">Đăng nhập để tiếp tục</div>
     </div>
-    <input id="loginUser" placeholder="Tên đăng nhập" autocomplete="username" style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:10px;outline:none" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+    <input id="loginUser" placeholder="Tên đăng nhập" autocomplete="username" style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid #e4e7ec;border-radius:10px;font-size:14px;margin-bottom:10px;outline:none" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
     <div style="position:relative">
-      <input id="loginPass" type="password" placeholder="Mật khẩu" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:11px 42px 11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none" onkeydown="if(event.key==='Enter')doLogin()">
-      <button type="button" id="loginEye" onclick="togglePass()" title="Hiện/ẩn mật khẩu" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;padding:4px 6px;line-height:1;color:#94a3b8">👁</button>
+      <input id="loginPass" type="password" placeholder="Mật khẩu" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:11px 42px 11px 14px;border:1.5px solid #e4e7ec;border-radius:10px;font-size:14px;outline:none" onkeydown="if(event.key==='Enter')doLogin()">
+      <button type="button" id="loginEye" onclick="togglePass()" title="Hiện/ẩn mật khẩu" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;padding:4px 6px;line-height:1;color:#98a2b3">👁</button>
     </div>
-    <div id="loginErr" style="color:#dc2626;font-size:12px;min-height:16px;margin:6px 2px"></div>
-    <button onclick="doLogin()" style="width:100%;padding:12px;background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Đăng nhập</button>
-    <div id="loginIp" style="font-size:10px;color:#94a3b8;text-align:center;margin-top:14px"></div>
+    <div id="loginErr" style="color:#f04438;font-size:12px;min-height:16px;margin:6px 2px"></div>
+    <button onclick="doLogin()" style="width:100%;padding:12px;background:#465fff;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Đăng nhập</button>
+    <div id="loginIp" style="font-size:10px;color:#98a2b3;text-align:center;margin-top:14px"></div>
   </div>
 </div>
 
