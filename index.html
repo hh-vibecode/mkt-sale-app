@@ -2656,23 +2656,45 @@ function renderSaleOnl(){
       ${clk('closed',mkKpi(ic('check'),'Tổng Doanh Thu Đã Chốt',vnd(closedRev),num(closed)+' đơn · doanh số thực','g-green'))}
       ${clk('pot',mkKpi(ic('diamond'),'Giá Trị Tiềm Năng',vnd(totalPot),'toàn bộ leads','g-yellow'))}
     </div>
-    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-top:12px">
-      ${clk('ct',mkKpi('🏮','Chánh Tâm',vnd(revCT),'đã chốt','g-blue'))}
-      ${clk('ht',mkKpi('🌊','Hiền Thuỷ',vnd(revHT),'đã chốt','g-yellow'))}
-      ${clk('sd',mkKpi('🐉','Shidai',vnd(revSD),'đã chốt','g-blue'))}
-      ${clk('ttv',mkKpi('🕯️','Tự Tại Viên',vnd(revTTV),'đã chốt','g-purple'))}
+    <div class="chart-card" style="margin-top:12px;padding:15px 17px">
+      <div class="chart-head" style="margin-bottom:10px"><div class="chart-title" style="font-size:12px">Theo Brand — cộng lại = Tổng Doanh Thu ở trên</div></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        ${[['🏮','Chánh Tâm',revCT,'#3b82f6','ct'],['🌊','Hiền Thuỷ',revHT,'#f59e0b','ht'],['🐉','Shidai',revSD,'#3b82f6','sd'],['🕯️','Tự Tại Viên',revTTV,'#0abf7a','ttv']].map(([em,label,val,color,key])=>`
+          <div onclick="saonlShow('${key}')" title="Bấm để xem chi tiết" style="cursor:pointer;background:var(--bg2);border-radius:12px;padding:12px 14px;border-left:4px solid ${color}">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:5px">${em} ${label}</div>
+            <div style="font-size:16px;font-weight:800;margin:3px 0 2px">${vnd(val)}</div>
+            <div style="font-size:10px;color:var(--muted)">${closedRev>0?pct(val/closedRev*100):'—'} tổng DT</div>
+          </div>`).join('')}
+      </div>
     </div>
 
     <div class="sec-label" style="margin-top:16px">II. Tổng Quan Lead <span style="font-weight:400;font-size:11px;color:var(--muted);text-transform:none">(bấm ô số để xem chi tiết)</span></div>
-    <div class="kpi-grid">
+    <div class="kpi-grid" style="grid-template-columns:1fr 1fr">
       ${clk('total',mkKpi(ic('users'),'Tổng Lead Tiềm Năng',num(total),'tất cả lead','g-blue'))}
       ${mkKpi(ic('target'),'Tỉ Lệ Chốt',pct(closeRate),num(closed)+'/'+num(total)+' lead','g-yellow')}
-      ${clk('caring',mkKpi(ic('chat'),'Đang Chăm Sóc',num(caring),'đang xử lý','g-blue'))}
-      ${clk('longCare',mkKpi(ic('clock'),'CS Dài Hạn',num(longCare),'theo dõi lâu','g-yellow'))}
-      ${clk('closed',mkKpi(ic('check'),'Đã Chốt',num(closed),'đã ra đơn','g-green'))}
-      ${clk('lost',mkKpi(ic('xcircle'),'Mất Lead',num(lost),'không thành','g-red'))}
-      ${clk('online',mkKpi(ic('globe'),'Data Online',num(dataOnl),'nguồn online','g-teal'))}
-      ${clk('offline',mkKpi(ic('store'),'Data Offline',num(dataOff),'nguồn offline','g-purple'))}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <div class="chart-card" style="padding:15px 17px">
+        <div class="chart-head" style="margin-bottom:10px"><div class="chart-title" style="font-size:12px">Theo trạng thái — cộng lại = Tổng Lead</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          ${[['Đang CS',caring,'#3b82f6','caring'],['CS Dài Hạn',longCare,'#f59e0b','longCare'],['Đã Chốt',closed,'#10b981','closed'],['Mất Lead',lost,'#ef4444','lost']].map(([label,val,color,key])=>`
+            <div onclick="saonlShow('${key}')" title="Bấm để xem chi tiết" style="cursor:pointer;background:var(--bg2);border-radius:10px;padding:10px 12px;border-left:4px solid ${color}">
+              <div style="font-size:10.5px;font-weight:700;color:var(--muted)">${label}</div>
+              <div style="font-size:17px;font-weight:800">${num(val)}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="chart-card" style="padding:15px 17px">
+        <div class="chart-head" style="margin-bottom:10px"><div class="chart-title" style="font-size:12px">Theo nguồn — cộng lại = Tổng Lead</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          ${[['Data Online',dataOnl,'#0891b2','online'],['Data Offline',dataOff,'#7c3aed','offline']].map(([label,val,color,key])=>`
+            <div onclick="saonlShow('${key}')" title="Bấm để xem chi tiết" style="cursor:pointer;background:var(--bg2);border-radius:10px;padding:10px 12px;border-left:4px solid ${color}">
+              <div style="font-size:10.5px;font-weight:700;color:var(--muted)">${label}</div>
+              <div style="font-size:17px;font-weight:800">${num(val)}</div>
+              <div style="font-size:10px;color:var(--muted)">${total>0?pct(val/total*100):'—'} tổng</div>
+            </div>`).join('')}
+        </div>
+      </div>
     </div>
 
     <div class="sec-label">III. Lead Theo Kênh <span style="font-weight:400;text-transform:none;color:var(--muted)">(nguồn Online)</span></div>
