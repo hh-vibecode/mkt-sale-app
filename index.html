@@ -281,6 +281,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
       <div class="nav-item" onclick="switchPage('orders')" id="nav-orders"><span class="nav-icon">🧾</span><span class="nav-label">Orders</span></div>
       <div class="nav-item" onclick="switchPage('sale-onl')" id="nav-sale-onl"><span class="nav-icon">📊</span><span class="nav-label">Reports</span></div>
       <div class="nav-item" onclick="switchPage('datahub')" id="nav-datahub"><span class="nav-icon">🗄</span><span class="nav-label">Data Hub</span></div>
+      <div class="nav-item" onclick="switchPage('settings')" id="nav-settings"><span class="nav-icon">⚙️</span><span class="nav-label">Cài đặt</span></div>
     </nav>
   </div>
 
@@ -304,6 +305,9 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
     <div class="tab-page" id="page-datahub">
+      <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
+    </div>
+    <div class="tab-page" id="page-settings">
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
   </div>
@@ -359,20 +363,43 @@ function toggleSidebar(){
 const AUTH_USERS={admin:{pass:'admin@2026',role:'admin'},admin2:{pass:'admin2@2026',role:'admin'},'ngoc.onl':{pass:'ngoc.onl@2026',role:'sale-onl'},mkt:{pass:'mkt@2026',role:'mkt'}};
 const AUTH_ALLOWED_IPS=[]; // thêm IP máy bạn vào đây (vd '113.161.x.x') để vào thẳng khỏi đăng nhập
 function togglePass(){const p=document.getElementById('loginPass'),e=document.getElementById('loginEye');if(!p)return;if(p.type==='password'){p.type='text';e.textContent='🙈';e.style.color='#4361ee';}else{p.type='password';e.textContent='👁';e.style.color='#94a3b8';}}
-function doLogin(){
+async function doLogin(){
   const u=(document.getElementById('loginUser').value||'').trim().toLowerCase();
   const p=document.getElementById('loginPass').value||'';
   const acc=AUTH_USERS[u];
-  if(acc&&acc.pass===p){localStorage.setItem('dashRole',acc.role);localStorage.setItem('dashUser',u);document.getElementById('loginGate').style.display='none';applyRole();}
-  else document.getElementById('loginErr').textContent='Sai tên đăng nhập hoặc mật khẩu';
+  if(acc&&acc.pass===p){
+    localStorage.setItem('dashRole',acc.role);localStorage.setItem('dashUser',u);
+    localStorage.removeItem('dashPermissions');localStorage.removeItem('dashUserId');
+    document.getElementById('loginGate').style.display='none';applyRole();return;
+  }
+  // Tài khoản tạo qua Admin > Cài đặt (bảng sales_users/sales_user_credentials, xem app_login() trong Supabase)
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_login`,{
+      method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({p_username:u,p_password:p})
+    });
+    const account=await res.json();
+    if(account){
+      localStorage.setItem('dashRole','account');
+      localStorage.setItem('dashUser',account.name);
+      localStorage.setItem('dashUserId',account.user_id);
+      localStorage.setItem('dashPermissions',JSON.stringify(account.permissions||[]));
+      document.getElementById('loginGate').style.display='none';applyRole();return;
+    }
+  }catch(e){console.warn('app_login lỗi:',e.message);}
+  document.getElementById('loginErr').textContent='Sai tên đăng nhập hoặc mật khẩu';
 }
 // Phân quyền: role => danh sách trang được xem (null = xem hết).
 // admin liệt kê tường minh (KHÔNG null) để loại trừ trang 'danhgia' — trang đánh giá tuần chỉ dành riêng cho role 'review'.
 // Thêm trang mới cho admin thì nhớ bổ sung id vào mảng dưới đây.
-const ROLE_PAGES={admin:['overview','detail','workspace','sale-onl','crm','orders','datahub'],'sale-onl':['workspace','sale-onl','crm','orders'],mkt:['overview','detail']};
+const ROLE_PAGES={admin:['overview','detail','workspace','sale-onl','crm','orders','datahub','settings'],'sale-onl':['workspace','sale-onl','crm','orders'],mkt:['overview','detail']};
 function applyRole(){
   const role=localStorage.getItem('dashRole')||'admin';
-  const allowed=ROLE_PAGES[role]!==undefined?ROLE_PAGES[role]:null;
+  // role='account' = tài khoản tạo qua Admin > Cài đặt (bảng sales_users) -- quyền động lấy từ localStorage
+  // (permissions do Admin chọn lúc tạo tài khoản), không tra ROLE_PAGES tĩnh như 4 tài khoản cũ.
+  let allowed;
+  if(role==='account'){try{allowed=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){allowed=[];}}
+  else allowed=ROLE_PAGES[role]!==undefined?ROLE_PAGES[role]:null;
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el=>{
     const id=el.id.replace('nav-','');
     el.style.display=(allowed&&allowed.indexOf(id)<0)?'none':'';
@@ -384,7 +411,7 @@ function applyRole(){
   });
   if(allowed&&allowed.length)switchPage(allowed[0]);
 }
-function logout(){localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');document.getElementById('loginGate').style.display='flex';}
+function logout(){localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');document.getElementById('loginGate').style.display='flex';}
 function initAuth(){
   const gate=document.getElementById('loginGate');if(!gate)return;
   if(localStorage.getItem('dashRole')){gate.style.display='none';applyRole();return;}
@@ -396,10 +423,11 @@ function initAuth(){
 }
 
 function switchPage(p){
-  ['overview','detail','workspace','sale-onl','crm','orders','datahub'].forEach(x=>{
+  ['overview','detail','workspace','sale-onl','crm','orders','datahub','settings'].forEach(x=>{
     const el=document.getElementById('page-'+x);if(el)el.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);if(nav)nav.classList.toggle('active',x===p);
   });
+  if(p==='settings')renderSettings();
   if(!crmCustomers.length)return;
   if(p==='datahub')renderDataHub();
   if(p==='workspace')renderWorkspace();
@@ -5404,7 +5432,7 @@ async function loadCrmFromSupabase(){
     sbFetchAll('leads','select=*'),
     sbFetchAll('crm_activities','select=*&order=activity_date.desc,activity_id.desc'),
     sbFetchAll('orders','select=*&order=order_date.desc'),
-    sbFetchAll('sales_users','select=*&status=eq.active&order=name.asc'),
+    sbFetchAll('sales_users','select=*&has_login=eq.true&status=eq.active&order=name.asc'), // chỉ tài khoản THẬT (tạo qua Cài đặt) -- 40 tên lịch sử lúc migrate không hiện ở đây nữa
     sbFetchAll('config_options','select=*&active=eq.true&order=sort_order.asc'),
     sbFetchAll('audit_log','select=*&object_type=eq.customer&order=created_at.desc'),
   ]);
@@ -5764,6 +5792,104 @@ function renderOrders(){
         <tbody>${rows||'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Chưa có đơn hàng nào</td></tr>'}</tbody>
       </table></div>
     </div>`;
+}
+
+// ── Cài đặt (Admin): quản lý tài khoản -- Vị trí + Quyền truy cập. Thay cho "Sales phụ trách" lấy tràn từ
+// 40 tên lịch sử trong data cũ -- giờ dropdown Sales phụ trách CHỈ hiện tài khoản thật tạo ở đây (has_login=true).
+const CRM_PERMISSION_PAGES=[['workspace','Sales Workspace'],['crm','Customers'],['orders','Orders'],['sale-onl','Reports'],['datahub','Data Hub'],['settings','Cài đặt']];
+const CRM_POSITION_DEFAULTS={admin:['workspace','crm','orders','sale-onl','datahub','settings'],manager:['workspace','crm','orders','sale-onl','datahub'],sales:['workspace','crm','orders'],mkt:['overview','detail']};
+const CRM_POSITION_LABEL={admin:'Admin',manager:'Quản lý',sales:'Sales',mkt:'Marketing'};
+async function renderSettings(){
+  const el=document.getElementById('page-settings');
+  if(!el)return;
+  el.innerHTML='<div style="padding:60px;text-align:center;color:var(--muted)">Đang tải danh sách tài khoản...</div>';
+  let accounts=[];
+  try{accounts=await sbFetchAll('sales_users','select=*&has_login=eq.true&order=created_at.desc');}
+  catch(e){el.innerHTML='<div style="padding:40px;color:var(--red)">Lỗi tải: '+e.message+'</div>';return;}
+  const rows=accounts.map(a=>`
+    <tr>
+      <td class="name">${a.name}</td>
+      <td><code>${a.username||'—'}</code></td>
+      <td>${CRM_POSITION_LABEL[a.position_title]||a.position_title||'—'}</td>
+      <td>${a.department||'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${(a.permissions||[]).map(p=>(CRM_PERMISSION_PAGES.find(x=>x[0]===p)||[,p])[1]).join(', ')||'—'}</td>
+      <td>${a.status==='active'?'<span style="color:var(--green);font-weight:700">Đang hoạt động</span>':'<span style="color:var(--muted)">Đã khoá</span>'}</td>
+      <td>${a.status==='active'?`<button class="btn-ghost" style="padding:4px 10px;font-size:11px" onclick="crmDeactivateAccount('${a.user_id}')">Khoá</button>`:''}</td>
+    </tr>`).join('');
+  el.innerHTML=`
+    <div class="page-title">Cài đặt — Quản lý tài khoản</div>
+    <div class="page-sub">Tạo tài khoản cho từng Sale/Quản lý — có tài khoản thì mới hiện trong dropdown "Sales phụ trách" (không còn lấy tràn từ data lịch sử)</div>
+    <div class="period-bar">
+      <span class="stat-chip">👥 ${accounts.filter(a=>a.status==='active').length} tài khoản đang hoạt động</span>
+      <button class="refresh-btn" onclick="openCrmAddAccount()">➕ Tạo tài khoản</button>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-head"><div class="tbl-title">Danh sách tài khoản</div><div class="tbl-count">${accounts.length}</div></div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Họ tên</th><th>Username</th><th>Vị trí</th><th>Bộ phận</th><th>Quyền truy cập</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Chưa có tài khoản nào — bấm "Tạo tài khoản" để thêm Sale đầu tiên</td></tr>'}</tbody>
+      </table></div>
+    </div>`;
+}
+function openCrmAddAccount(){
+  const body=`
+    <form id="crmAddAcctForm" onsubmit="event.preventDefault();submitCrmAddAccount();">
+      ${saonlField('Họ tên *',`<input required name="name" style="${saonlInputStyle}">`)}
+      ${saonlField('Username *',`<input required name="username" style="${saonlInputStyle}" placeholder="vd: minh.sale" autocomplete="off">`)}
+      ${saonlField('Mật khẩu *',`<input required type="password" name="password" style="${saonlInputStyle}" placeholder="tối thiểu 4 ký tự" autocomplete="new-password">`)}
+      ${saonlField('Vị trí *',`<select required name="position" id="crmAcctPosition" onchange="crmAcctApplyDefaults()" style="${saonlInputStyle}">
+        <option value="">-- chọn --</option>
+        <option value="sales">Sales</option>
+        <option value="manager">Quản lý</option>
+        <option value="admin">Admin</option>
+        <option value="mkt">Marketing</option>
+      </select>`)}
+      ${saonlField('Bộ phận',`<input name="department" style="${saonlInputStyle}" value="Sale Online (Lẻ)">`)}
+      ${saonlField('Quyền truy cập',`<div id="crmAcctPerms" style="display:flex;flex-wrap:wrap;gap:10px">${CRM_PERMISSION_PAGES.map(([id,label])=>`<label style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600"><input type="checkbox" name="perm" value="${id}"> ${label}</label>`).join('')}</div>`,'Chọn Vị trí ở trên để tự gợi ý, vẫn có thể tick thêm/bớt tay')}
+      <div id="crmAddAcctErr" style="color:var(--red);font-size:12px;font-weight:600;margin-bottom:8px;display:none"></div>
+      <button type="submit" class="btn" style="width:100%;padding:10px;font-size:13px">Tạo tài khoản</button>
+    </form>`;
+  crmModalShell('crmAddAcctModal','⚙️ Tạo Tài Khoản','linear-gradient(135deg,#334155,#0f172a)',body);
+}
+function crmAcctApplyDefaults(){
+  const pos=document.getElementById('crmAcctPosition')?.value;
+  const defaults=CRM_POSITION_DEFAULTS[pos]||[];
+  document.querySelectorAll('#crmAcctPerms input[name="perm"]').forEach(cb=>{cb.checked=defaults.includes(cb.value);});
+}
+async function submitCrmAddAccount(){
+  const f=document.getElementById('crmAddAcctForm');
+  const errEl=document.getElementById('crmAddAcctErr');errEl.style.display='none';
+  const fd=new FormData(f);
+  const perms=[...f.querySelectorAll('input[name="perm"]:checked')].map(cb=>cb.value);
+  const btn=f.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Đang tạo...';
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_create_account`,{
+      method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        p_name:(fd.get('name')||'').toString().trim(),
+        p_username:(fd.get('username')||'').toString().trim(),
+        p_password:(fd.get('password')||'').toString(),
+        p_position:(fd.get('position')||'').toString(),
+        p_department:(fd.get('department')||'').toString().trim()||null,
+        p_permissions:perms,
+      })
+    });
+    if(!res.ok){const t=await res.json().catch(()=>({}));throw new Error(t.message||('Lỗi '+res.status));}
+    document.getElementById('crmAddAcctModal').style.display='none';
+    await loadCrmFromSupabase();
+    renderSettings();
+    alert('Đã tạo tài khoản. Nhắc người dùng đăng nhập bằng username/mật khẩu vừa tạo.');
+  }catch(e){errEl.textContent='Lỗi: '+e.message;errEl.style.display='block';}
+  finally{btn.disabled=false;btn.textContent='Tạo tài khoản';}
+}
+async function crmDeactivateAccount(userId){
+  if(!confirm('Khoá tài khoản này? (không xoá, chỉ tạm khoá đăng nhập)'))return;
+  await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_deactivate_account`,{
+    method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({p_user_id:userId})
+  });
+  await loadCrmFromSupabase();
+  renderSettings();
 }
 
 function crmModalShell(id,title,gradient,bodyHtml,maxWidth){
