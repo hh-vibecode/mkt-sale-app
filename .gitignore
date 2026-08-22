@@ -2,3 +2,9 @@
 .env.*
 supabase-keys.local.txt
 .DS_Store
+node_modules/
+package-lock.json
+test_*.mjs
+t_*.mjs
+*.png
+!logo.png
