@@ -5595,10 +5595,10 @@ function crmToggleAdvanced(){
 // Status/Giá trị tiềm năng đều DERIVED từ Activity mới nhất (trigger DB) -- sửa nhanh trên bảng vẫn phải
 // đi qua 1 Activity nhẹ (giữ nguyên lịch sử, không overwrite trực tiếp), khác với Sales phụ trách (field
 // thật trên Lead, PATCH thẳng qua crmInlineSave là đúng).
-async function crmQuickStatusChange(customerId,newStatus){
+async function crmQuickStatusChange(customerId,newStatus,sourceLabel){
   const lead=(window._crmLeadByCustomer[customerId]||[])[0];if(!lead)return;
   await sbInsert('crm_activities',{customer_id:customerId,lead_id:lead.lead_id,sales_id:lead.assigned_sales,
-    activity_date:todayISO(),conversation_content:'(Đổi trạng thái nhanh từ danh sách)',
+    activity_date:todayISO(),conversation_content:sourceLabel||'(Đổi trạng thái nhanh từ danh sách)',
     status_after_activity:newStatus,potential_value:lead.current_potential_value||null,
     next_followup_date:lead.next_followup_date||null});
   await crmAudit('Đổi trạng thái nhanh → '+newStatus,customerId,lead.lead_status,newStatus);
@@ -5770,7 +5770,7 @@ async function crmDropOnStage(ev,stageKey){
   const lead=(window._crmLeadByCustomer[cid]||[])[0];if(!lead)return;
   if((lead.lead_status||'')===stageKey)return;
   if(!stageKey){alert('Không thể kéo ngược về "Khách mới" — trạng thái này nghĩa là khách chưa được chăm sóc lần nào.');return;}
-  await crmQuickStatusChange(cid,stageKey);
+  await crmQuickStatusChange(cid,stageKey,'(Kéo thả trên Pipeline: '+(lead.lead_status||'Khách mới')+' → '+stageKey+')');
 }
 function renderCrmPipeline(list){
   const stages=crmPipelineStages();
