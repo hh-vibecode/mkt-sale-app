@@ -1,0 +1,10 @@
+import { chromium } from 'playwright-core';
+const browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
+const page = await browser.newPage();
+await page.goto('https://hh-vibecode.github.io/mkt-sale-app/?cb=' + Date.now(), { waitUntil: 'networkidle' });
+await page.evaluate(() => localStorage.setItem('dashRole', 'admin'));
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForTimeout(4000);
+const names = await page.evaluate(() => new Function('return crmSalesUsers.map(s=>s.name)')());
+console.log('crmSalesUsers (should include new test account, NOT the 40 historical names):', names);
+await browser.close();

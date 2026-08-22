@@ -424,6 +424,11 @@ function applyRole(){
 }
 function logout(){localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
 function canReassign(){return['admin','manager'].includes(localStorage.getItem('dashPosition')||'admin');}
+// Tài khoản vị trí "Sales" chỉ được xem khách được gán cho mình (chuẩn CRM: Sale không thấy data cả công ty).
+// Admin/Manager xem tất cả. 4 tài khoản cũ (admin/admin2/ngoc.onl/mkt) không có user_id thật trong bảng
+// sales_users nên KHÔNG bị lọc -- giữ nguyên luồng đang dùng, tránh làm trắng màn hình của người đang xài.
+function crmMyUserId(){return localStorage.getItem('dashUserId')||'';}
+function crmScopedToMe(){return(localStorage.getItem('dashPosition')||'admin')==='sales'&&!!crmMyUserId();}
 function initAuth(){
   const gate=document.getElementById('loginGate');if(!gate)return;
   if(localStorage.getItem('dashRole')){gate.style.display='none';applyRole();return;}
@@ -5534,9 +5539,11 @@ function crmFilteredCustomers(){
   const dateFrom=document.getElementById('crmDateFrom')?.value||'';
   const dateTo=document.getElementById('crmDateTo')?.value||'';
   const today=todayISO();
+  const scoped=crmScopedToMe(),myId=crmMyUserId();
   return crmCustomers.filter(c=>{
     const leads=window._crmLeadByCustomer[c.customer_id]||[];
     const lead=leads[0]||{};
+    if(scoped&&!leads.some(l=>l.assigned_sales===myId))return false;
     if(q){
       const hay=[c.name,c.phone,c.customer_id,...leads.map(l=>l.lead_id)].join(' ').toLowerCase();
       if(!hay.includes(q))return false;
@@ -5841,12 +5848,13 @@ function renderCrm(){
         <button onclick="crmSetViewMode('list')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${viewMode==='list'?'var(--accent)':'var(--surface)'};color:${viewMode==='list'?'#fff':'var(--text2)'}">☰ List</button>
         <button onclick="crmSetViewMode('pipeline')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${viewMode==='pipeline'?'var(--accent)':'var(--surface)'};color:${viewMode==='pipeline'?'#fff':'var(--text2)'}">▦ Pipeline</button>
       </span>
-      <span class="stat-chip">👤 ${crmCustomers.length} khách</span>
+      <span class="stat-chip">👤 ${num(list.length)}${list.length!==crmCustomers.length?'/'+num(crmCustomers.length):''}</span>
       <span class="stat-chip">💰 ${vnd(totalRevenue)}</span>
-      <input id="crmSearch" placeholder="🔎 Tìm tên / SĐT / Lead ID…" oninput="setCrmPage(1)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:220px;outline:none">
-      <button class="refresh-btn" onclick="crmToggleAdvanced()">🔧 Advanced filters</button>
+      ${crmScopedToMe()?`<span class="stat-chip">Khách của ${localStorage.getItem('dashUser')||'tôi'}</span>`:''}
+      <input id="crmSearch" placeholder="🔎 Tìm tên / SĐT / Lead ID…" oninput="setCrmPage(1)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:210px;outline:none">
+      <button class="refresh-btn" onclick="crmToggleAdvanced()" title="Bộ lọc nâng cao">🔧 Lọc</button>
       <span style="position:relative">
-        <button class="refresh-btn" onclick="crmToggleColumnChooser()">☰ Cột hiển thị</button>
+        <button class="refresh-btn" onclick="crmToggleColumnChooser()" title="Chọn cột hiển thị">☰ Cột</button>
         <div id="crmColumnChooser" style="display:none;position:absolute;top:36px;right:0;z-index:50;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;box-shadow:var(--shadow-md);padding:12px;min-width:220px">
           <div style="display:flex;gap:6px;margin-bottom:8px">
             <button class="btn-ghost" style="flex:1;font-size:11px" onclick="crmApplyColumnPreset('sale')">Preset Sale</button>
@@ -5855,8 +5863,8 @@ function renderCrm(){
           ${CRM_COLUMN_DEFS.map(([key,label])=>`<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 2px;cursor:pointer"><input type="checkbox" ${crmVisibleColumns().includes(key)?'checked':''} onchange="crmToggleColumn('${key}')"> ${label}</label>`).join('')}
         </div>
       </span>
-      <button class="refresh-btn" onclick="crmSaveCurrentView()">💾 Lưu view</button>
-      <button class="refresh-btn" onclick="loadData()">↺ Refresh</button>
+      <button class="refresh-btn" onclick="crmSaveCurrentView()" title="Lưu bộ lọc hiện tại thành view">💾 Lưu view</button>
+      <button class="refresh-btn" onclick="loadData()" title="Tải lại dữ liệu">↺</button>
     </div>
     <div id="crmAdvancedFilters" style="display:none;background:var(--bg2);border-radius:10px;padding:10px 14px;margin-bottom:12px;flex-wrap:wrap;gap:8px;align-items:center">
       <select id="crmDeptFilter" class="top-select" onchange="setCrmPage(1)" style="height:30px;font-size:11px;padding:3px 10px;font-weight:600">
@@ -6030,7 +6038,10 @@ async function renderDataHub(){
 // doanh thu. Lưu ý: hệ thống login hiện dùng 1 tài khoản CHUNG cho mọi Sale ('ngoc.onl'), không phải
 // 1 login/người, nên "My Workspace" cá nhân hoá thật sự chưa làm được -- thay vào đó cho chọn "Xem theo Sale"
 // để 1 người vẫn lọc ra đúng việc của mình. Sẽ cá nhân hoá thật khi có tài khoản riêng từng Sale.
-function crmWsSalesFilter(){return document.getElementById('wsSalesFilter')?.value||'all';}
+function crmWsSalesFilter(){
+  if(crmScopedToMe())return crmMyUserId(); // Sale bị khoá vào khách của mình, không cho chọn Sale khác
+  return document.getElementById('wsSalesFilter')?.value||'all';
+}
 function setWsSales(){renderWorkspace();}
 function crmGoToFiltered(quickF){window._crmQuickFilter=quickF;window._crmPage=1;switchPage('crm');}
 function renderWorkspace(){
@@ -6074,10 +6085,12 @@ function renderWorkspace(){
     <div class="page-title">Sales Workspace</div>
     <div class="page-sub">Việc cần làm hôm nay</div>
     <div class="period-bar">
-      <select id="wsSalesFilter" class="top-select" onchange="setWsSales()" style="height:30px;font-size:11px;padding:3px 10px;font-weight:600">
-        <option value="all" ${salesF==='all'?'selected':''}>Xem theo Sale: Tất cả</option>
+      ${crmScopedToMe()
+        ?`<span class="stat-chip">👤 Khách của ${localStorage.getItem('dashUser')||'tôi'}</span>`
+        :`<select id="wsSalesFilter" class="top-select" onchange="setWsSales()" style="height:30px;font-size:11px;padding:3px 10px;font-weight:600">
+        <option value="all" ${salesF==='all'?'selected':''}>Tất cả Sale</option>
         ${crmSalesUsers.map(s=>`<option value="${s.user_id}" ${salesF===s.user_id?'selected':''}>${s.name}</option>`).join('')}
-      </select>
+      </select>`}
     </div>
     <div class="kpi-grid">
       ${mkKpi(ic('clipboard'),'Leads đang xử lý',num(activeLeads),'chưa chốt/mất','g-blue')}
@@ -6106,9 +6119,11 @@ function renderOrders(){
   if(!el)return;
   if(!crmCustomers.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>';return;}
   const custById={};crmCustomers.forEach(c=>{custById[c.customer_id]=c;});
-  const totalRevenue=crmOrders.reduce((s,o)=>s+Number(o.revenue||0),0);
-  const avgOrder=crmOrders.length?totalRevenue/crmOrders.length:0;
-  const rows=crmOrders.map(o=>{
+  const myId=crmMyUserId();
+  const orders=crmScopedToMe()?crmOrders.filter(o=>o.sales_id===myId):crmOrders;
+  const totalRevenue=orders.reduce((s,o)=>s+Number(o.revenue||0),0);
+  const avgOrder=orders.length?totalRevenue/orders.length:0;
+  const rows=orders.map(o=>{
     const cust=custById[o.customer_id]||{};
     const salesName=(crmSalesUsers.find(s=>s.user_id===o.sales_id)||{}).name||'—';
     return`<tr style="cursor:pointer" onclick="openCrmDetail('${o.customer_id}')">
@@ -6122,12 +6137,12 @@ function renderOrders(){
     <div class="page-title">Orders</div>
     <div class="page-sub">Danh sách đơn hàng</div>
     <div class="period-bar">
-      <span class="stat-chip">🧾 ${crmOrders.length} đơn</span>
+      <span class="stat-chip">🧾 ${orders.length} đơn</span>
       <span class="stat-chip">💰 ${vnd(totalRevenue)}</span>
       <span class="stat-chip">📊 TB/đơn: ${vnd(avgOrder)}</span>
     </div>
     <div class="tbl-card">
-      <div class="tbl-head"><div class="tbl-title">Danh sách đơn hàng</div><div class="tbl-count">${crmOrders.length}</div></div>
+      <div class="tbl-head"><div class="tbl-title">Danh sách đơn hàng</div><div class="tbl-count">${orders.length}</div></div>
       <div class="tbl-scroll"><table>
         <thead><tr><th>Order ID</th><th>Ngày</th><th>Khách hàng</th><th>Lead</th><th>Sales</th><th>Sản phẩm</th><th>SL</th><th>Doanh thu</th><th>Trạng thái</th></tr></thead>
         <tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted)">Chưa có đơn hàng nào</td></tr>'}</tbody>
@@ -6361,15 +6376,27 @@ function openCrmAddActivity(customerId,presetMethod){
         ${saonlField('Nhóm nguyên nhân mất lead',`<select name="lost_group" style="${saonlInputStyle}"><option value="">-- chọn --</option>${lostGroups.map(g=>`<option>${g}</option>`).join('')}</select>`)}
         ${saonlField('Nguyên nhân cụ thể',`<input name="lost_reason" style="${saonlInputStyle}">`)}
       </div>
+      <div id="crmWonFields" style="display:none;background:var(--green-l);border:1.5px solid var(--green);border-radius:10px;padding:12px 14px;margin-bottom:13px">
+        <div style="font-size:11px;font-weight:800;color:var(--green);text-transform:uppercase;margin-bottom:9px">Thông tin đơn hàng</div>
+        ${saonlField('Ngày chốt *',`<input type="date" name="order_date" value="${todayISO()}" style="${saonlInputStyle}">`)}
+        ${saonlField('Doanh thu (đ) *',`<input name="order_revenue" inputmode="numeric" style="${saonlInputStyle}" placeholder="VD: 27000000">`)}
+        ${saonlField('Sản phẩm',`<input name="order_product" style="${saonlInputStyle}" placeholder="VD: Bộ bàn thờ 40cm">`)}
+        ${saonlField('Số lượng',`<input type="number" name="order_quantity" min="1" value="1" style="${saonlInputStyle}">`)}
+      </div>
       <div id="crmActErr" style="color:var(--red);font-size:12px;font-weight:600;margin-bottom:8px;display:none"></div>
-      <button type="submit" class="btn" style="width:100%;padding:10px;font-size:13px">Lưu hoạt động</button>
+      <button type="submit" class="btn" style="width:100%;padding:10px;font-size:13px">Lưu</button>
     </form>`;
-  crmModalShell('crmActModal','📋 Thêm Hoạt Động Chăm Sóc','linear-gradient(135deg,#4f46e5,#7c3aed)',body);
+  crmModalShell('crmActModal','Ghi nhận chăm sóc','linear-gradient(135deg,#4f46e5,#7c3aed)',body);
 }
+// Chọn "Chốt đơn" → hiện luôn ô nhập đơn hàng ngay trong form chăm sóc, lưu 1 lần ra CẢ Activity lẫn Order.
+// Trước đây Sale phải bấm thêm nút "Tạo đơn" riêng, rất dễ quên -> đánh dấu chốt đơn mà doanh thu vẫn = 0
+// (doanh thu chỉ tính từ bảng orders). Đây là chỗ đứt gãy nặng nhất của luồng trước khi sửa.
 function crmToggleLostFields(){
   const st=document.getElementById('crmActStatus')?.value;
-  const box=document.getElementById('crmLostFields');
-  if(box)box.style.display=st==='Mất lead'?'':'none';
+  const lostBox=document.getElementById('crmLostFields');
+  const wonBox=document.getElementById('crmWonFields');
+  if(lostBox)lostBox.style.display=st==='Mất lead'?'':'none';
+  if(wonBox)wonBox.style.display=st==='Chốt đơn'?'':'none';
 }
 async function submitCrmAddActivity(customerId){
   const f=document.getElementById('crmActForm');
@@ -6377,6 +6404,13 @@ async function submitCrmAddActivity(customerId){
   const fd=new FormData(f);
   const lead=(window._crmLeadByCustomer[customerId]||[])[0];
   const btn=f.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Đang lưu...';
+  const status=(fd.get('status_after_activity')||'').toString();
+  const orderRevenue=vndNum(fd.get('order_revenue'));
+  // Chốt đơn thì BẮT BUỘC có doanh thu -- chặn ngay tại form, tránh tình trạng đánh dấu chốt mà doanh thu = 0
+  if(status==='Chốt đơn'&&!orderRevenue){
+    errEl.textContent='Chốt đơn thì phải nhập Doanh thu của đơn hàng.';errEl.style.display='block';
+    btn.disabled=false;btn.textContent='Lưu';return;
+  }
   try{
     const row={
       customer_id:customerId,
@@ -6386,19 +6420,31 @@ async function submitCrmAddActivity(customerId){
       contact_method:(fd.get('contact_method')||'').toString()||null,
       conversation_content:(fd.get('conversation_content')||'').toString().trim()||null,
       potential_value:vndNum(fd.get('potential_value'))||null,
-      status_after_activity:(fd.get('status_after_activity')||'').toString()||null,
+      status_after_activity:status||null,
       next_followup_date:(fd.get('next_followup_date')||'').toString()||null,
       lost_group:(fd.get('lost_group')||'').toString()||null,
       lost_reason:(fd.get('lost_reason')||'').toString().trim()||null,
     };
     await sbInsert('crm_activities',row);
     await crmAudit('Thêm hoạt động chăm sóc',customerId,null,row);
+    if(status==='Chốt đơn'){
+      const ord={
+        customer_id:customerId,lead_id:lead?lead.lead_id:null,
+        order_date:(fd.get('order_date')||todayISO()).toString(),
+        revenue:orderRevenue,
+        product:(fd.get('order_product')||'').toString().trim()||null,
+        quantity:parseInt(fd.get('order_quantity'),10)||1,
+        sales_id:lead?lead.assigned_sales:null,status:'confirmed',
+      };
+      await sbInsert('orders',ord);
+      await crmAudit('Tạo đơn hàng khi chốt',customerId,null,ord);
+    }
     document.getElementById('crmActModal').style.display='none';
     await loadCrmFromSupabase();
     renderCrm();
     openCrmDetail(customerId);
   }catch(e){errEl.textContent='Lỗi: '+e.message;errEl.style.display='block';}
-  finally{btn.disabled=false;btn.textContent='Lưu hoạt động';}
+  finally{btn.disabled=false;btn.textContent='Lưu';}
 }
 
 // ---- + Thêm đơn hàng (Order) — tách riêng khỏi Activity, không nhập tay "doanh thu cộng dồn" ----
