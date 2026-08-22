@@ -373,7 +373,12 @@ async function doLogin(){
   const p=document.getElementById('loginPass').value||'';
   const acc=AUTH_USERS[u];
   if(acc&&acc.pass===p){
+    // 4 tài khoản cũ không có position_title thật trong DB -- suy ra tương đương để chặn/mở quyền reassignment
+    // nhất quán với tài khoản mới: admin/admin2=admin, ngoc.onl=manager (tài khoản chung nhiều người dùng
+    // trước đây, giữ quyền rộng để không phá luồng đang dùng), mkt=mkt.
+    const impliedPosition={admin:'admin','sale-onl':'manager',mkt:'mkt'}[acc.role]||'sales';
     localStorage.setItem('dashRole',acc.role);localStorage.setItem('dashUser',u);
+    localStorage.setItem('dashPosition',impliedPosition);
     localStorage.removeItem('dashPermissions');localStorage.removeItem('dashUserId');
     document.getElementById('loginGate').style.display='none';applyRole();return;
   }
@@ -388,6 +393,7 @@ async function doLogin(){
       localStorage.setItem('dashRole','account');
       localStorage.setItem('dashUser',account.name);
       localStorage.setItem('dashUserId',account.user_id);
+      localStorage.setItem('dashPosition',account.position_title||'sales');
       localStorage.setItem('dashPermissions',JSON.stringify(account.permissions||[]));
       document.getElementById('loginGate').style.display='none';applyRole();return;
     }
@@ -416,7 +422,8 @@ function applyRole(){
   });
   if(allowed&&allowed.length)switchPage(allowed[0]);
 }
-function logout(){localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');document.getElementById('loginGate').style.display='flex';}
+function logout(){localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
+function canReassign(){return['admin','manager'].includes(localStorage.getItem('dashPosition')||'admin');}
 function initAuth(){
   const gate=document.getElementById('loginGate');if(!gate)return;
   if(localStorage.getItem('dashRole')){gate.style.display='none';applyRole();return;}
@@ -5535,6 +5542,7 @@ function crmFilteredCustomers(){
     }
     if(quickF==='new'){if(lead.lead_status)return false;}
     else if(quickF==='overdue'){if(!lead.next_followup_date||lead.next_followup_date>=today)return false;}
+    else if(quickF==='duetoday'){if(lead.next_followup_date!==today)return false;}
     else if(quickF!=='all'){if(lead.lead_status!==quickF)return false;}
     if(deptF!=='all'&&!leads.some(l=>l.department===deptF))return false;
     if(typeF!=='all'&&c.customer_type!==typeF)return false;
@@ -5620,7 +5628,7 @@ function renderCrm(){
       <td class="name" style="cursor:pointer" onclick="openCrmDetail('${c.customer_id}')">${c.name||'—'}</td>
       <td>${c.phone||'—'}</td>
       <td>${lead.source||'—'}${lead.channel?' · '+lead.channel:''}</td>
-      <td onclick="event.stopPropagation()"><select onchange="crmInlineSave(this)" data-field="assigned_sales" data-table="leads" data-keyfield="lead_id" data-keyvalue="${lead.lead_id}" style="font-size:11.5px;padding:2px 4px;border-radius:5px;border:1px solid var(--border);background:var(--bg);color:var(--text)"><option value="">—</option>${crmSalesUsers.map(s=>`<option value="${s.user_id}" ${s.user_id===lead.assigned_sales?'selected':''}>${s.name}</option>`).join('')}</select></td>
+      <td onclick="event.stopPropagation()">${canReassign()?`<select onchange="crmInlineSave(this)" data-field="assigned_sales" data-table="leads" data-keyfield="lead_id" data-keyvalue="${lead.lead_id}" style="font-size:11.5px;padding:2px 4px;border-radius:5px;border:1px solid var(--border);background:var(--bg);color:var(--text)"><option value="">—</option>${crmSalesUsers.map(s=>`<option value="${s.user_id}" ${s.user_id===lead.assigned_sales?'selected':''}>${s.name}</option>`).join('')}</select>`:((crmSalesUsers.find(s=>s.user_id===lead.assigned_sales)||{}).name||'—')}</td>
       <td onclick="event.stopPropagation()"><select onchange="crmQuickStatusChange('${c.customer_id}',this.value)" style="font-size:11.5px;padding:2px 4px;border-radius:5px;border:1px solid var(--border);background:var(--bg);color:var(--text)"><option value="">Khách mới</option>${statusOpts.map(s=>`<option value="${s}" ${s===lead.lead_status?'selected':''}>${s}</option>`).join('')}</select></td>
       <td class="num" onclick="event.stopPropagation()"><span class="crm-editable" contenteditable="true" data-customer="${c.customer_id}" onblur="crmQuickPotentialChange(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}" data-placeholder="—" style="padding:1px 4px;border-radius:4px;border-bottom:1.5px dashed var(--border)">${lead.current_potential_value?vndNum(lead.current_potential_value):''}</span></td>
       <td style="${lead.next_followup_date&&lead.next_followup_date<todayISO()?'color:var(--red);font-weight:700':''}">${lead.next_followup_date||'—'}</td>
@@ -5704,6 +5712,21 @@ async function renderDataHub(){
     const mktCount=(await sbFetchAll('mkt_spend','select=id')).length;
     mktInfo=`<b>${num(mktCount)}</b> dòng, mới nhất <b>${mktRows[0]?mktRows[0].ad_date:'—'}</b>`;
   }catch(e){mktInfo='<span style="color:var(--red)">Lỗi tải: '+e.message+'</span>';}
+  let syncHistRows='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Chưa có lịch sử — job MKT chạy tự động lần tới sẽ ghi vào đây</td></tr>';
+  try{
+    const hist=await sbFetchAll('sync_log','select=*&order=started_at.desc&limit=20');
+    if(hist.length)syncHistRows=hist.map(h=>`<tr>
+      <td>${new Date(h.started_at).toLocaleString('vi-VN')}</td><td>${h.source}</td>
+      <td class="num">${num(h.records_created||0)}</td><td class="num">${num(h.records_updated||0)}</td>
+      <td>${h.status==='success'?'<span style="color:var(--green);font-weight:700">✓ Thành công</span>':h.status==='failed'?'<span style="color:var(--red);font-weight:700">✗ Lỗi</span>':'<span style="color:var(--yellow);font-weight:700">⏳ Đang chạy</span>'}</td>
+      <td style="font-size:11px;color:var(--red)">${h.error_message||'—'}</td>
+    </tr>`).join('');
+  }catch(e){syncHistRows=`<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--red)">Lỗi tải: ${e.message}</td></tr>`;}
+  let rawPreviewHtml='<div style="color:var(--muted);font-size:12.5px;padding:12px">Đang tải...</div>';
+  try{
+    const rawSample=await sbFetchAll('leads','select=lead_id,source,channel,source_external_id,ad_id,department,created_at&order=created_at.desc&limit=5');
+    rawPreviewHtml=`<pre style="font-size:11px;background:var(--bg2);border-radius:8px;padding:12px;overflow-x:auto;margin:0">${JSON.stringify(rawSample,null,2).replace(/</g,'&lt;')}</pre>`;
+  }catch(e){rawPreviewHtml=`<div style="color:var(--red);font-size:12px;padding:12px">Lỗi tải: ${e.message}</div>`;}
   const today=todayISO();
   const newToday=crmLeads.filter(l=>l.created_at&&l.created_at.slice(0,10)===today).length;
   const updatedToday=crmCustomers.filter(c=>c.updated_at&&c.updated_at.slice(0,10)===today).length;
@@ -5741,6 +5764,38 @@ async function renderDataHub(){
       <div style="padding:12px 16px">
         <button class="refresh-btn" disabled title="Chưa có API key Pancake">🔄 Sync Now (chưa khả dụng)</button>
       </div>
+    </div>
+
+    <div class="tbl-card" style="margin-top:16px">
+      <div class="tbl-head"><div class="tbl-title">Sync History</div></div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Thời gian</th><th>Nguồn</th><th>Tạo mới</th><th>Cập nhật</th><th>Trạng thái</th><th>Lỗi</th></tr></thead>
+        <tbody>${syncHistRows}</tbody>
+      </table></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+      <div class="tbl-card">
+        <div class="tbl-head"><div class="tbl-title">Raw Data Preview</div><div class="tbl-count">leads</div></div>
+        <div style="padding:12px">${rawPreviewHtml}</div>
+      </div>
+      <div class="tbl-card">
+        <div class="tbl-head"><div class="tbl-title">Mapping — Source → System → CRM</div></div>
+        <div class="tbl-scroll"><table style="font-size:11.5px">
+          <thead><tr><th>Source field</th><th>System field</th><th>Bảng</th></tr></thead>
+          <tbody>
+            <tr><td>Họ tên</td><td><code>name</code></td><td>customers</td></tr>
+            <tr><td>SĐT</td><td><code>phone</code></td><td>customers</td></tr>
+            <tr><td>Lead ID</td><td><code>lead_id</code> / <code>source_external_id</code></td><td>leads</td></tr>
+            <tr><td>Nguồn</td><td><code>source</code></td><td>leads</td></tr>
+            <tr><td>Kênh</td><td><code>channel</code></td><td>leads</td></tr>
+            <tr><td>Ads ID</td><td><code>ad_id</code></td><td>leads</td></tr>
+            <tr><td>Bộ phận</td><td><code>department</code></td><td>leads</td></tr>
+            <tr><td>Mã KH gốc</td><td><code>legacy_ma_kh</code></td><td>customers</td></tr>
+          </tbody>
+        </table></div>
+        <div style="padding:10px 16px;font-size:11px;color:var(--muted);border-top:1px solid var(--border)">Thêm nguồn mới (Pancake...) chỉ cần map field vào đúng bảng này, không sửa CRM.</div>
+      </div>
     </div>`;
 }
 
@@ -5750,6 +5805,7 @@ async function renderDataHub(){
 // để 1 người vẫn lọc ra đúng việc của mình. Sẽ cá nhân hoá thật khi có tài khoản riêng từng Sale.
 function crmWsSalesFilter(){return document.getElementById('wsSalesFilter')?.value||'all';}
 function setWsSales(){renderWorkspace();}
+function crmGoToFiltered(quickF){window._crmQuickFilter=quickF;window._crmPage=1;switchPage('crm');}
 function renderWorkspace(){
   const el=document.getElementById('page-workspace');
   if(!el)return;
@@ -5771,9 +5827,9 @@ function renderWorkspace(){
   const revenueMonth=ordersThisMonth.reduce((s,o)=>s+Number(o.revenue||0),0);
   const closedToday=crmOrders.filter(o=>o.order_date===today&&(salesF==='all'||o.sales_id===salesF)).length;
   const pipelineValue=rows.filter(r=>!['Chốt đơn','Mất lead'].includes(r.lead.lead_status)).reduce((s,r)=>s+Number(r.lead.current_potential_value||0),0);
-  const listBlock=(title,icon,items,emptyMsg,showDate)=>`
+  const listBlock=(title,icon,items,emptyMsg,showDate,quickF)=>`
     <div class="tbl-card" style="margin-bottom:16px">
-      <div class="tbl-head"><div class="tbl-title">${icon} ${title}</div><div class="tbl-count">${items.length}</div></div>
+      <div class="tbl-head" ${quickF?`style="cursor:pointer" onclick="crmGoToFiltered('${quickF}')" title="Xem danh sách đầy đủ trong Customers"`:''}><div class="tbl-title">${icon} ${title}</div><div class="tbl-count">${items.length}</div></div>
       <div style="padding:${items.length?'0':'20px'};max-height:320px;overflow:auto">
         ${items.length?items.map(r=>`
           <div onclick="openCrmDetail('${r.c.customer_id}')" style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border);cursor:pointer">
@@ -5802,12 +5858,12 @@ function renderWorkspace(){
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div>
-        ${listBlock('Follow-up quá hạn','🔴',overdue,'Không có follow-up quá hạn 🎉',true)}
-        ${listBlock('Đến hạn hôm nay','🟡',dueToday,'Không có follow-up hôm nay',true)}
-        ${listBlock('Chờ phản hồi','⏳',waiting,'Không có khách nào đang chờ phản hồi')}
+        ${listBlock('Follow-up quá hạn','🔴',overdue,'Không có follow-up quá hạn 🎉',true,'overdue')}
+        ${listBlock('Đến hạn hôm nay','🟡',dueToday,'Không có follow-up hôm nay',true,'duetoday')}
+        ${listBlock('Chờ phản hồi','⏳',waiting,'Không có khách nào đang chờ phản hồi',false,'Chờ phản hồi')}
       </div>
       <div>
-        ${listBlock('Lead mới / Chưa chăm sóc','🆕',newLeads.slice(0,20),'Không có lead mới chưa xử lý')}
+        ${listBlock('Lead mới / Chưa chăm sóc','🆕',newLeads.slice(0,20),'Không có lead mới chưa xử lý',false,'new')}
         ${listBlock('Tiềm năng cao','💎',hotDeals,'Chưa có deal nào',false)}
       </div>
     </div>`;
@@ -5825,8 +5881,9 @@ function renderOrders(){
     const cust=custById[o.customer_id]||{};
     const salesName=(crmSalesUsers.find(s=>s.user_id===o.sales_id)||{}).name||'—';
     return`<tr style="cursor:pointer" onclick="openCrmDetail('${o.customer_id}')">
-      <td>${o.order_date}</td><td class="name">${cust.name||o.customer_id}</td><td>${salesName}</td>
-      <td>${o.product||'—'}</td><td class="num" style="font-weight:800;color:var(--green)">${vnd(o.revenue)}</td>
+      <td><code>ORD${String(o.order_id).padStart(6,'0')}</code></td>
+      <td>${o.order_date}</td><td class="name">${cust.name||o.customer_id}</td><td style="font-size:11px;color:var(--muted)">${o.lead_id||'—'}</td><td>${salesName}</td>
+      <td>${o.product||'—'}</td><td class="num">${o.quantity||1}</td><td class="num" style="font-weight:800;color:var(--green)">${vnd(o.revenue)}</td>
       <td>${o.status==='confirmed'?'<span style="color:var(--green);font-weight:700">Đã xác nhận</span>':o.status}</td>
     </tr>`;
   }).join('');
@@ -5841,8 +5898,8 @@ function renderOrders(){
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">Danh sách đơn hàng</div><div class="tbl-count">${crmOrders.length}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày</th><th>Khách hàng</th><th>Sales</th><th>Sản phẩm</th><th>Doanh thu</th><th>Trạng thái</th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Chưa có đơn hàng nào</td></tr>'}</tbody>
+        <thead><tr><th>Order ID</th><th>Ngày</th><th>Khách hàng</th><th>Lead</th><th>Sales</th><th>Sản phẩm</th><th>SL</th><th>Doanh thu</th><th>Trạng thái</th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted)">Chưa có đơn hàng nào</td></tr>'}</tbody>
       </table></div>
     </div>`;
 }
@@ -5977,8 +6034,8 @@ function openCrmDetail(customerId){
         ${a.lost_group?' · Nhóm mất lead: '+a.lost_group:''}${a.lost_reason?' — '+a.lost_reason:''}
       </div>
     </div>`).join(''):'<div style="color:var(--muted);font-size:12.5px;padding:12px 0">Chưa có lần chăm sóc nào.</div>';
-  const ordersHtml=ords.length?`<table style="width:100%;font-size:12.5px"><thead><tr style="color:var(--muted);text-align:left"><th style="padding:4px 0">Ngày</th><th>Sản phẩm</th><th style="text-align:right">Doanh thu</th></tr></thead><tbody>
-    ${ords.map(o=>`<tr><td style="padding:4px 0">${o.order_date}</td><td>${o.product||'—'}</td><td style="text-align:right;font-weight:800;color:var(--green)">${vnd(o.revenue)}</td></tr>`).join('')}
+  const ordersHtml=ords.length?`<table style="width:100%;font-size:12.5px"><thead><tr style="color:var(--muted);text-align:left"><th style="padding:4px 0">Ngày</th><th>Sản phẩm</th><th>SL</th><th style="text-align:right">Doanh thu</th></tr></thead><tbody>
+    ${ords.map(o=>`<tr><td style="padding:4px 0">${o.order_date}</td><td>${o.product||'—'}</td><td>${o.quantity||1}</td><td style="text-align:right;font-weight:800;color:var(--green)">${vnd(o.revenue)}</td></tr>`).join('')}
   </tbody></table>`:'<div style="color:var(--muted);font-size:12.5px">Chưa có đơn hàng nào.</div>';
   // Data Source fields (Ngày tạo/Lead ID/Họ tên/SĐT/Nguồn/Kênh/Loại KH/Sales phụ trách/Ad ID/Mã KH/Địa chỉ/Tỉnh/Quận)
   // đến từ DataHub -- Sale KHÔNG được sửa tay, chỉ hiển thị. Chỉ "Phân loại KH" (customer_group) và mọi field
@@ -6120,6 +6177,7 @@ function openCrmAddOrder(customerId){
       ${saonlField('Ngày chốt *',`<input required type="date" name="order_date" value="${todayISO()}" style="${saonlInputStyle}">`)}
       ${saonlField('Doanh thu (đ) *',`<input required name="revenue" inputmode="numeric" style="${saonlInputStyle}" placeholder="VD: 27000000">`)}
       ${saonlField('Sản phẩm',`<input name="product" style="${saonlInputStyle}" placeholder="VD: Bộ bàn thờ 40cm">`)}
+      ${saonlField('Số lượng',`<input type="number" name="quantity" min="1" value="1" style="${saonlInputStyle}">`)}
       <div id="crmOrdErr" style="color:var(--red);font-size:12px;font-weight:600;margin-bottom:8px;display:none"></div>
       <button type="submit" class="btn" style="width:100%;padding:10px;font-size:13px;background:linear-gradient(135deg,#10b981,#0891b2)">Lưu đơn hàng</button>
     </form>`;
@@ -6138,6 +6196,7 @@ async function submitCrmAddOrder(customerId){
       customer_id:customerId,lead_id:lead?lead.lead_id:null,
       order_date:(fd.get('order_date')||todayISO()).toString(),
       revenue,product:(fd.get('product')||'').toString().trim()||null,
+      quantity:parseInt(fd.get('quantity'),10)||1,
       sales_id:lead?lead.assigned_sales:null,status:'confirmed',
     };
     await sbInsert('orders',row);

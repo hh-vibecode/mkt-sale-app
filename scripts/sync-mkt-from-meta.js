@@ -85,42 +85,69 @@ async function upsertMktSpend(rows) {
   console.log(`Đã upsert ${rows.length} dòng vào mkt_spend cho ngày ${TARGET_DATE}.`);
 }
 
+// Ghi lịch sử vào sync_log để Data Hub (Admin) thấy được job này thực sự chạy khi nào, lấy/tạo/lỗi bao nhiêu --
+// không có bảng này thì "Sync History" trên Data Hub chỉ là khung rỗng mãi mãi dù MKT vẫn tự chạy thật mỗi ngày.
+async function logSyncStart() {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/sync_log`, {
+    method: 'POST',
+    headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify({ source: 'MKT - Meta Ads', status: 'running' }),
+  });
+  const data = await res.json().catch(() => null);
+  return data && data[0] ? data[0].id : null;
+}
+async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
+  if (!id) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/sync_log?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ finished_at: new Date().toISOString(), status, records_created: recordsCreated || 0, records_updated: 0, error_message: errorMessage || null }),
+  }).catch(e => console.warn('Ghi sync_log lỗi (bỏ qua, không chặn job chính):', e.message));
+}
+
 (async () => {
   if (!ACCESS_TOKEN || !AD_ACCOUNT_ID_RAW || !SERVICE_ROLE_KEY) {
     console.error('Thiếu secret: cần đủ META_ACCESS_TOKEN, META_AD_ACCOUNT_ID, SUPABASE_SERVICE_ROLE_KEY');
     process.exit(1);
   }
-  const adAccountIds = AD_ACCOUNT_ID_RAW.split(',').map(s => s.trim()).filter(Boolean)
-    .map(id => id.startsWith('act_') ? id : `act_${id}`);
-  console.log(`Đang kéo báo cáo Meta Ads cho ngày ${TARGET_DATE}, ${adAccountIds.length} account: ${adAccountIds.join(', ')}...`);
+  const logId = await logSyncStart().catch(() => null);
+  try {
+    const adAccountIds = AD_ACCOUNT_ID_RAW.split(',').map(s => s.trim()).filter(Boolean)
+      .map(id => id.startsWith('act_') ? id : `act_${id}`);
+    console.log(`Đang kéo báo cáo Meta Ads cho ngày ${TARGET_DATE}, ${adAccountIds.length} account: ${adAccountIds.join(', ')}...`);
 
-  let raw = [];
-  for (const adAccountId of adAccountIds) {
-    const rowsForAccount = await fetchInsights(adAccountId);
-    console.log(`  ${adAccountId}: ${rowsForAccount.length} dòng (cấp Ad).`);
-    raw = raw.concat(rowsForAccount);
+    let raw = [];
+    for (const adAccountId of adAccountIds) {
+      const rowsForAccount = await fetchInsights(adAccountId);
+      console.log(`  ${adAccountId}: ${rowsForAccount.length} dòng (cấp Ad).`);
+      raw = raw.concat(rowsForAccount);
+    }
+    if (raw[0]) console.log('Mẫu 1 dòng thô (để đối chiếu field actions nếu cần chỉnh):', JSON.stringify(raw[0], null, 2));
+
+    const rows = raw.filter(r => r.ad_id).map(r => {
+      const campaign = r.campaign_name || '';
+      return {
+        ad_id: r.ad_id,
+        ad_date: TARGET_DATE,
+        campaign_name: campaign,
+        adset_name: r.adset_name || null,
+        ad_name: r.ad_name || null,
+        brand: detectBrand(campaign),
+        product: detectProduct(campaign),
+        reach: Math.round(Number(r.reach) || 0),
+        impressions: Math.round(Number(r.impressions) || 0),
+        spend: Number(r.spend) || 0,
+        messages: Math.round(actionValue(r.actions, ['onsite_conversion.messaging_conversation_started_7d', 'messaging_conversation_started_7d'])),
+        ctr: Number(r.ctr) || 0,
+        cpc: Number(r.cpc) || 0,
+        comments: Math.round(actionValue(r.actions, ['comment', 'post_comment'])),
+      };
+    });
+
+    await upsertMktSpend(rows);
+    await logSyncEnd(logId, { status: 'success', recordsCreated: rows.length });
+  } catch (e) {
+    await logSyncEnd(logId, { status: 'failed', errorMessage: e.message });
+    throw e;
   }
-  if (raw[0]) console.log('Mẫu 1 dòng thô (để đối chiếu field actions nếu cần chỉnh):', JSON.stringify(raw[0], null, 2));
-
-  const rows = raw.filter(r => r.ad_id).map(r => {
-    const campaign = r.campaign_name || '';
-    return {
-      ad_id: r.ad_id,
-      ad_date: TARGET_DATE,
-      campaign_name: campaign,
-      adset_name: r.adset_name || null,
-      ad_name: r.ad_name || null,
-      brand: detectBrand(campaign),
-      product: detectProduct(campaign),
-      reach: Math.round(Number(r.reach) || 0),
-      impressions: Math.round(Number(r.impressions) || 0),
-      spend: Number(r.spend) || 0,
-      messages: Math.round(actionValue(r.actions, ['onsite_conversion.messaging_conversation_started_7d', 'messaging_conversation_started_7d'])),
-      ctr: Number(r.ctr) || 0,
-      cpc: Number(r.cpc) || 0,
-      comments: Math.round(actionValue(r.actions, ['comment', 'post_comment'])),
-    };
-  });
-
-  await upsertMktSpend(rows);
 })().catch(e => { console.error('SYNC_ERROR:', e.message); process.exit(1); });
