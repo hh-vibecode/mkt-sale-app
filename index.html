@@ -5630,7 +5630,7 @@ function renderCrm(){
   const savedViews=crmSavedViews();
   el.innerHTML=`
     <div class="page-title">Customers</div>
-    <div class="page-sub">1 khách hàng = 1 dòng (dedupe theo SĐT) · mỗi lần chăm sóc là 1 Activity, không ghi đè · doanh thu &amp; ngày liên hệ cuối tự tính</div>
+    <div class="page-sub">Quản lý khách hàng &amp; lead</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
       ${CRM_QUICK_FILTERS.map(([v,label])=>`<span onclick="setCrmQuick('${v}')" style="cursor:pointer;padding:5px 13px;border-radius:20px;font-size:11.5px;font-weight:700;background:${quickF===v?'var(--accent)':'var(--bg2)'};color:${quickF===v?'#fff':'var(--text2)'}">${label}</span>`).join('')}
     </div>
@@ -5710,7 +5710,7 @@ async function renderDataHub(){
   const unassigned=crmLeads.filter(l=>!l.assigned_sales).length;
   el.innerHTML=`
     <div class="page-title">Data Hub</div>
-    <div class="page-sub">Nơi Admin theo dõi dữ liệu đầu vào: từ đâu → vào bao nhiêu → cập nhật/lỗi gì → đi vào CRM thế nào</div>
+    <div class="page-sub">Nguồn dữ liệu &amp; trạng thái đồng bộ</div>
     <div class="kpi-grid" style="margin-bottom:16px">
       ${mkKpi(ic('box'),'Total records',num(crmCustomers.length),'khách trong hệ thống','g-blue')}
       ${mkKpi(ic('sparkle'),'New today',num(newToday),'lead tạo hôm nay','g-teal')}
@@ -5732,7 +5732,7 @@ async function renderDataHub(){
         <div class="tbl-count">${crmLeads.length} lead</div>
       </div>
       <div style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border)">
-        ⚠️ Chưa kết nối API Pancake — data hiện tại là <b>nạp 1 lần thủ công</b> lúc migrate (21/8/2026), không tự cập nhật. "Sync Now" sẽ mở khi có API key Pancake.
+        ⚠️ Chưa kết nối Pancake — data nạp thủ công, chưa tự động cập nhật
       </div>
       <div class="tbl-scroll"><table>
         <thead><tr><th>Nguồn</th><th>Kênh</th><th>Số Lead</th><th>Khoảng ngày tạo</th><th>Trạng thái đồng bộ</th></tr></thead>
@@ -5786,7 +5786,7 @@ function renderWorkspace(){
     </div>`;
   el.innerHTML=`
     <div class="page-title">Sales Workspace</div>
-    <div class="page-sub">Hôm nay bạn cần xử lý những khách này</div>
+    <div class="page-sub">Việc cần làm hôm nay</div>
     <div class="period-bar">
       <select id="wsSalesFilter" class="top-select" onchange="setWsSales()" style="height:30px;font-size:11px;padding:3px 10px;font-weight:600">
         <option value="all" ${salesF==='all'?'selected':''}>Xem theo Sale: Tất cả</option>
@@ -5832,7 +5832,7 @@ function renderOrders(){
   }).join('');
   el.innerHTML=`
     <div class="page-title">Orders</div>
-    <div class="page-sub">Tất cả đơn hàng — mỗi khách có thể có nhiều đơn, tổng doanh thu luôn = tổng các đơn hợp lệ</div>
+    <div class="page-sub">Danh sách đơn hàng</div>
     <div class="period-bar">
       <span class="stat-chip">🧾 ${crmOrders.length} đơn</span>
       <span class="stat-chip">💰 ${vnd(totalRevenue)}</span>
@@ -5871,7 +5871,7 @@ async function renderSettings(){
     </tr>`).join('');
   el.innerHTML=`
     <div class="page-title">Phân quyền — Quản lý tài khoản</div>
-    <div class="page-sub">Tạo tài khoản cho từng Sale/Quản lý — có tài khoản thì mới hiện trong dropdown "Sales phụ trách" (không còn lấy tràn từ data lịch sử)</div>
+    <div class="page-sub">Quản lý tài khoản &amp; quyền truy cập</div>
     <div class="period-bar">
       <span class="stat-chip">👥 ${accounts.filter(a=>a.status==='active').length} tài khoản đang hoạt động</span>
       <button class="refresh-btn" onclick="openCrmAddAccount()">➕ Tạo tài khoản</button>
