@@ -121,6 +121,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .kpi::after{content:none}
 .kpi::before{content:none}
 .kpi-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px;background:var(--kpi-tint,var(--accent-l));color:var(--kpi-color,var(--accent))}
+.kpi-icon svg{width:22px;height:22px}
 .kpi-lbl{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;letter-spacing:0;text-transform:none}
 .kpi-val{font-size:23px;font-weight:800;font-family:var(--font);letter-spacing:-.02em;line-height:1.15;color:var(--text)}
 .kpi-sub{font-size:11.5px;color:var(--muted);margin-top:5px;font-weight:500}
@@ -1663,17 +1664,17 @@ function renderOverview(rows,kpi,saleStats,camps,period,htSpend,sdSpend,ctSpend,
 
     <div class="sec-label">Ads Performance</div>
     <div class="kpi-grid">
-      ${mkKpi('💰','Tổng Chi Phí',vnd(kpi.totalSpend),'ngân sách đã tiêu','g-blue')}
-      ${mkKpi('💬','Tổng Mess',num(kpi.totalMess),'lượt trò chuyện','g-green')}
-      ${mkKpi('📌','CP / Mess',vnd(kpi.costPerMess),'trung bình / mess','g-yellow')}
-      ${mkKpi('📊','ADS/DS',combRevenue>0?pct(kpi.totalSpend/combRevenue*100):'—','chi phí / doanh số (Sỉ+Lẻ)','g-purple')}
+      ${mkKpi(ic('cash'),'Tổng Chi Phí',vnd(kpi.totalSpend),'ngân sách đã tiêu','g-blue')}
+      ${mkKpi(ic('chat'),'Tổng Mess',num(kpi.totalMess),'lượt trò chuyện','g-green')}
+      ${mkKpi(ic('pin'),'CP / Mess',vnd(kpi.costPerMess),'trung bình / mess','g-yellow')}
+      ${mkKpi(ic('chart'),'ADS/DS',combRevenue>0?pct(kpi.totalSpend/combRevenue*100):'—','chi phí / doanh số (Sỉ+Lẻ)','g-purple')}
     </div>
     <div class="sec-label">Sale Performance</div>
     <div class="kpi-grid">
-      <div onclick="mktShowDoanhSo()" title="Bấm để xem chi tiết Sỉ / Lẻ" style="cursor:pointer">${mkKpi('💵','Doanh Số',combRevenue>0?vnd(combRevenue):'—',combOrders+' đơn đã chốt (Sỉ+Lẻ) · 👆 xem chi tiết','g-teal')}</div>
-      <div onclick="mktShowDetail('chot')" title="Bấm để xem chi tiết" style="cursor:pointer">${mkKpi('🛍️','Số Đơn Chốt',combOrders>0?num(combOrders):'—',(saleStats?'từ '+num(saleStats.totalLeads)+' lead tiềm năng':'chưa có dữ liệu')+' · 👆 xem chi tiết','g-orange')}</div>
-      ${mkKpi('📦','DS TB / Đơn',combOrders>0?vnd(combRevenue/combOrders):'—','trung bình / đơn chốt','g-pink')}
-      ${mkKpi('🎯','Tỷ Lệ Chốt',combOrders>0&&kpi.totalMess>0?pct(combOrders/kpi.totalMess*100):'—',combOrders>0?'đơn chốt / tổng mess':'chưa có dữ liệu','g-red')}
+      <div onclick="mktShowDoanhSo()" title="Bấm để xem chi tiết Sỉ / Lẻ" style="cursor:pointer">${mkKpi(ic('cash'),'Doanh Số',combRevenue>0?vnd(combRevenue):'—',combOrders+' đơn đã chốt (Sỉ+Lẻ) · 👆 xem chi tiết','g-teal')}</div>
+      <div onclick="mktShowDetail('chot')" title="Bấm để xem chi tiết" style="cursor:pointer">${mkKpi(ic('box'),'Số Đơn Chốt',combOrders>0?num(combOrders):'—',(saleStats?'từ '+num(saleStats.totalLeads)+' lead tiềm năng':'chưa có dữ liệu')+' · 👆 xem chi tiết','g-orange')}</div>
+      ${mkKpi(ic('box'),'DS TB / Đơn',combOrders>0?vnd(combRevenue/combOrders):'—','trung bình / đơn chốt','g-pink')}
+      ${mkKpi(ic('target'),'Tỷ Lệ Chốt',combOrders>0&&kpi.totalMess>0?pct(combOrders/kpi.totalMess*100):'—',combOrders>0?'đơn chốt / tổng mess':'chưa có dữ liệu','g-red')}
     </div>
     <div class="sec-label">Phân Tích</div>
     <div class="charts-2col-grid">
@@ -2051,10 +2052,10 @@ function renderSaleSi(){
       ${formChips}
     </div>
     <div class="kpi-grid">
-      ${mkKpi('📋','Tổng Lượt CS',num(totalCS),'toàn bộ lịch sử','g-blue')}
-      ${mkKpi('✅','Đã Xong',num(done),pct(totalCS?done/totalCS*100:0)+' lượt','g-green')}
-      ${mkKpi('⏳','Còn Tồn Đọng',num(pending.length),'cần theo dõi tiếp','g-yellow')}
-      ${mkKpi('👥','KH Được CS',num(new Set(crm.map(r=>(r[activeCOL_SICRM.LEAD_ID]||'').trim()).filter(Boolean)).size),'khách riêng biệt','g-blue')}
+      ${mkKpi(ic('clipboard'),'Tổng Lượt CS',num(totalCS),'toàn bộ lịch sử','g-blue')}
+      ${mkKpi(ic('check'),'Đã Xong',num(done),pct(totalCS?done/totalCS*100:0)+' lượt','g-green')}
+      ${mkKpi(ic('clock'),'Còn Tồn Đọng',num(pending.length),'cần theo dõi tiếp','g-yellow')}
+      ${mkKpi(ic('users'),'KH Được CS',num(new Set(crm.map(r=>(r[activeCOL_SICRM.LEAD_ID]||'').trim()).filter(Boolean)).size),'khách riêng biệt','g-blue')}
     </div>
     <div class="sec-label">IX. Danh Sách Khách Cần Theo Dõi <span style="font-weight:400;font-size:11px;color:var(--muted)">(còn tồn đọng · ${pending.length} khách)</span></div>
     <div class="tov-card"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
@@ -2090,33 +2091,33 @@ function renderSaleSi(){
     <div style="border:1.5px solid var(--border);border-radius:14px;padding:11px 12px;margin-bottom:8px">
       <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 2px 8px">Nguồn khách <span style="font-weight:400;text-transform:none">(Online + Offline = Tổng khách mới · chỉ tính khách đã phân loại nguồn${noSrcCount>0?', bỏ qua '+num(noSrcCount)+' khách thiếu Nguồn':''})</span></div>
       <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:0">
-        ${siClk('new',mkKpi('✨','Tổng Khách Mới',num(newInPeriod),'tạo trong kỳ','g-teal'))}
-        <div onclick="siShowOnlineQuality()" title="Bấm để xem phân loại" style="cursor:pointer">${mkKpi('🌐','Từ Online',num(fromOnl),pct(newInPeriod?fromOnl/newInPeriod*100:0)+' khách mới','g-green')}</div>
-        ${siClk('offline',mkKpi('🤝','Tự Khai Thác',num(selfSource),pct(newInPeriod?selfSource/newInPeriod*100:0)+' khách mới','g-yellow'))}
+        ${siClk('new',mkKpi(ic('sparkle'),'Tổng Khách Mới',num(newInPeriod),'tạo trong kỳ','g-teal'))}
+        <div onclick="siShowOnlineQuality()" title="Bấm để xem phân loại" style="cursor:pointer">${mkKpi(ic('globe'),'Từ Online',num(fromOnl),pct(newInPeriod?fromOnl/newInPeriod*100:0)+' khách mới','g-green')}</div>
+        ${siClk('offline',mkKpi(ic('users'),'Tự Khai Thác',num(selfSource),pct(newInPeriod?selfSource/newInPeriod*100:0)+' khách mới','g-yellow'))}
       </div>
     </div>
     <div style="border:1.5px solid var(--border);border-radius:14px;padding:11px 12px;margin-bottom:8px">
       <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 2px 8px">Trạng thái KH</div>
       <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:0">
-        ${siClk('closed',mkKpi('✅','Đã Ra Đơn',num(closed),pct(total?closed/total*100:0)+' tổng KH','g-green'))}
-        <div onclick="siShowNotYet()" title="Bấm để xem phân loại" style="cursor:pointer">${mkKpi('⏳','Chưa Ra Đơn',num(notYet),'tiềm năng + không tiềm năng + mất kết nối + chưa cập nhật','g-yellow')}</div>
-        ${siClk('nost',mkKpi('🏷️','Chưa Phân Loại Data',num(noStatusRows.length),'chưa gắn trạng thái ở cột Phân loại KH','g-blue'))}
+        ${siClk('closed',mkKpi(ic('check'),'Đã Ra Đơn',num(closed),pct(total?closed/total*100:0)+' tổng KH','g-green'))}
+        <div onclick="siShowNotYet()" title="Bấm để xem phân loại" style="cursor:pointer">${mkKpi(ic('clock'),'Chưa Ra Đơn',num(notYet),'tiềm năng + không tiềm năng + mất kết nối + chưa cập nhật','g-yellow')}</div>
+        ${siClk('nost',mkKpi(ic('tag'),'Chưa Phân Loại Data',num(noStatusRows.length),'chưa gắn trạng thái ở cột Phân loại KH','g-blue'))}
       </div>
     </div>
     <div style="border:1.5px solid var(--border);border-radius:14px;padding:11px 12px;margin-bottom:8px">
       <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 2px 8px">Doanh thu (theo ngày chốt đơn)</div>
       <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:0">
-        ${siClk('closes',mkKpi('💰','Tổng Doanh Thu',vnd(totalRev),'theo ngày chốt','g-green'))}
-        ${siClk('closesOnl',mkKpi('🌐','Doanh Thu Online',vnd(onlRev),pct(totalRev?onlRev/totalRev*100:0)+' tổng DT','g-blue'))}
-        ${siClk('closesOff',mkKpi('🤝','Doanh Thu Offline',vnd(selfRev),pct(totalRev?selfRev/totalRev*100:0)+' tổng DT','g-yellow'))}
+        ${siClk('closes',mkKpi(ic('cash'),'Tổng Doanh Thu',vnd(totalRev),'theo ngày chốt','g-green'))}
+        ${siClk('closesOnl',mkKpi(ic('globe'),'Doanh Thu Online',vnd(onlRev),pct(totalRev?onlRev/totalRev*100:0)+' tổng DT','g-blue'))}
+        ${siClk('closesOff',mkKpi(ic('users'),'Doanh Thu Offline',vnd(selfRev),pct(totalRev?selfRev/totalRev*100:0)+' tổng DT','g-yellow'))}
       </div>
     </div>
     <div style="border:1.5px solid var(--border);border-radius:14px;padding:11px 12px;margin-bottom:8px">
       <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 2px 8px">Doanh thu tiềm năng (dự kiến · khách chưa ra đơn)</div>
       <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:0">
-        ${siClk('expAll',mkKpi('💎','Giá Trị Tiềm Năng',vnd(expTotalRev),expList.length+' khách có dự kiến','g-purple'))}
-        ${siClk('expOnl',mkKpi('🌐','Giá Trị Tiềm Năng Online',vnd(expOnlRev),pct(expTotalRev?expOnlRev/expTotalRev*100:0)+' tổng GT','g-blue'))}
-        ${siClk('expOff',mkKpi('🤝','Giá Trị Tiềm Năng Offline',vnd(expSelfRev),pct(expTotalRev?expSelfRev/expTotalRev*100:0)+' tổng GT','g-yellow'))}
+        ${siClk('expAll',mkKpi(ic('diamond'),'Giá Trị Tiềm Năng',vnd(expTotalRev),expList.length+' khách có dự kiến','g-purple'))}
+        ${siClk('expOnl',mkKpi(ic('globe'),'Giá Trị Tiềm Năng Online',vnd(expOnlRev),pct(expTotalRev?expOnlRev/expTotalRev*100:0)+' tổng GT','g-blue'))}
+        ${siClk('expOff',mkKpi(ic('users'),'Giá Trị Tiềm Năng Offline',vnd(expSelfRev),pct(expTotalRev?expSelfRev/expTotalRev*100:0)+' tổng GT','g-yellow'))}
       </div>
     </div>
 
@@ -2652,8 +2653,8 @@ function renderSaleOnl(){
 
     <div class="sec-label">I. Tổng Doanh Thu</div>
     <div class="kpi-grid" style="grid-template-columns:1fr 1fr">
-      ${clk('closed',mkKpi('✅','Tổng Doanh Thu Đã Chốt',vnd(closedRev),num(closed)+' đơn · doanh số thực','g-green'))}
-      ${clk('pot',mkKpi('💎','Giá Trị Tiềm Năng',vnd(totalPot),'toàn bộ leads','g-yellow'))}
+      ${clk('closed',mkKpi(ic('check'),'Tổng Doanh Thu Đã Chốt',vnd(closedRev),num(closed)+' đơn · doanh số thực','g-green'))}
+      ${clk('pot',mkKpi(ic('diamond'),'Giá Trị Tiềm Năng',vnd(totalPot),'toàn bộ leads','g-yellow'))}
     </div>
     <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-top:12px">
       ${clk('ct',mkKpi('🏮','Chánh Tâm',vnd(revCT),'đã chốt','g-blue'))}
@@ -2664,14 +2665,14 @@ function renderSaleOnl(){
 
     <div class="sec-label" style="margin-top:16px">II. Tổng Quan Lead <span style="font-weight:400;font-size:11px;color:var(--muted);text-transform:none">(bấm ô số để xem chi tiết)</span></div>
     <div class="kpi-grid">
-      ${clk('total',mkKpi('👥','Tổng Lead Tiềm Năng',num(total),'tất cả lead','g-blue'))}
-      ${mkKpi('🎯','Tỉ Lệ Chốt',pct(closeRate),num(closed)+'/'+num(total)+' lead','g-yellow')}
-      ${clk('caring',mkKpi('💬','Đang Chăm Sóc',num(caring),'đang xử lý','g-blue'))}
-      ${clk('longCare',mkKpi('⏳','CS Dài Hạn',num(longCare),'theo dõi lâu','g-yellow'))}
-      ${clk('closed',mkKpi('✅','Đã Chốt',num(closed),'đã ra đơn','g-green'))}
-      ${clk('lost',mkKpi('❌','Mất Lead',num(lost),'không thành','g-red'))}
-      ${clk('online',mkKpi('🌐','Data Online',num(dataOnl),'nguồn online','g-teal'))}
-      ${clk('offline',mkKpi('🏪','Data Offline',num(dataOff),'nguồn offline','g-purple'))}
+      ${clk('total',mkKpi(ic('users'),'Tổng Lead Tiềm Năng',num(total),'tất cả lead','g-blue'))}
+      ${mkKpi(ic('target'),'Tỉ Lệ Chốt',pct(closeRate),num(closed)+'/'+num(total)+' lead','g-yellow')}
+      ${clk('caring',mkKpi(ic('chat'),'Đang Chăm Sóc',num(caring),'đang xử lý','g-blue'))}
+      ${clk('longCare',mkKpi(ic('clock'),'CS Dài Hạn',num(longCare),'theo dõi lâu','g-yellow'))}
+      ${clk('closed',mkKpi(ic('check'),'Đã Chốt',num(closed),'đã ra đơn','g-green'))}
+      ${clk('lost',mkKpi(ic('xcircle'),'Mất Lead',num(lost),'không thành','g-red'))}
+      ${clk('online',mkKpi(ic('globe'),'Data Online',num(dataOnl),'nguồn online','g-teal'))}
+      ${clk('offline',mkKpi(ic('store'),'Data Offline',num(dataOff),'nguồn offline','g-purple'))}
     </div>
 
     <div class="sec-label">III. Lead Theo Kênh <span style="font-weight:400;text-transform:none;color:var(--muted)">(nguồn Online)</span></div>
@@ -3149,10 +3150,10 @@ function renderSaleOverview(){
     </div>
     <div class="sec-label">Pipeline Overview</div>
     <div class="kpi-grid">
-      ${mkKpi('👥','Tổng Leads',num(total),'toàn bộ nguồn','g-blue')}
-      ${mkKpi('🌐','Online',num(online.length),pct(online.length/total*100)+' tổng leads','g-green')}
-      ${mkKpi('🏪','Offline',num(offline.length),pct(offline.length/total*100)+' tổng leads','g-yellow')}
-      ${mkKpi('⚠️','Chưa Phân Công',num(unassigned.length),'leads thiếu sales','g-red')}
+      ${mkKpi(ic('users'),'Tổng Leads',num(total),'toàn bộ nguồn','g-blue')}
+      ${mkKpi(ic('globe'),'Online',num(online.length),pct(online.length/total*100)+' tổng leads','g-green')}
+      ${mkKpi(ic('store'),'Offline',num(offline.length),pct(offline.length/total*100)+' tổng leads','g-yellow')}
+      ${mkKpi(ic('alert'),'Chưa Phân Công',num(unassigned.length),'leads thiếu sales','g-red')}
     </div>
     <div class="sec-label">Phân Tích</div>
     <div class="charts-2col-grid">
@@ -3995,8 +3996,8 @@ function renderQcInvoice(){
 
     <div class="sec-label">I. Dữ Liệu Tổng Hợp</div>
     <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
-      <div onclick="qcInvShow('recAll')" title="Bấm để xem chi tiết" style="cursor:pointer">${mkKpi('💰','Doanh Số Báo Cáo',vnd(recognizedTotal),'🌐 Khách Lẻ '+vnd(onlRecTotal)+' · 🏪 Sỉ '+vnd(siRecTotal),'g-teal')}</div>
-      <div onclick="qcInvShow('invAll')" title="Bấm để xem chi tiết" style="cursor:pointer">${mkKpi('🧾','Doanh Số Trên KiotViet',vnd(totalInvoiced),(recognizedTotal?pct(totalInvoiced/recognizedTotal*100):'—')+' so với báo cáo · '+num(invoices.length)+' hoá đơn','g-blue')}</div>
+      <div onclick="qcInvShow('recAll')" title="Bấm để xem chi tiết" style="cursor:pointer">${mkKpi(ic('cash'),'Doanh Số Báo Cáo',vnd(recognizedTotal),'🌐 Khách Lẻ '+vnd(onlRecTotal)+' · 🏪 Sỉ '+vnd(siRecTotal),'g-teal')}</div>
+      <div onclick="qcInvShow('invAll')" title="Bấm để xem chi tiết" style="cursor:pointer">${mkKpi(ic('cash'),'Doanh Số Trên KiotViet',vnd(totalInvoiced),(recognizedTotal?pct(totalInvoiced/recognizedTotal*100):'—')+' so với báo cáo · '+num(invoices.length)+' hoá đơn','g-blue')}</div>
       <div onclick="qcInvShow('notInvoiced')" title="Bấm để xem chi tiết" style="cursor:pointer">${mkKpi(diff<0?'⚠️':'✅','Chưa Đi Đơn',diff<0?vnd(-diff):'0 đ',diff<0?'giá trị đơn hàng chưa đi so với báo cáo':'khớp hoàn toàn',diff<0?'g-red':'g-green')}</div>
     </div>
 
@@ -5373,6 +5374,32 @@ function groupByCamp(rows){
 
 // ── Helpers ──
 function mkKpi(icon,label,val,sub,grad){return`<div class="kpi ${grad}"><div class="kpi-icon">${icon}</div><div class="kpi-lbl">${label}</div><div class="kpi-val">${val}</div><div class="kpi-sub">${sub}</div></div>`;}
+// Icon SVG thật (họ Heroicons outline, cùng style với sidebar) dùng cho .kpi-icon thay emoji -- giữ lại
+// emoji riêng cho 4 brand (🕯️🐉🏮🌊) vì đó là tín hiệu nhận diện màu sắc theo từng brand, đổi sang icon
+// đơn sắc sẽ mất tác dụng phân biệt nhanh bằng mắt.
+const ICONS={
+  cash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M6 10h.01M18 14h.01"/></svg>',
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M11 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm10 14v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.5a8.4 8.4 0 0 1-8.5 8.4 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 12.5 3h.5a8 8 0 0 1 8 8v.5Z"/></svg>',
+  box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8 12 3 3 8l9 5 9-5Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M3 8v8l9 5 9-5V8M12 13v8"/></svg>',
+  clipboard:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="4" width="12" height="17" rx="2"/><path stroke-linecap="round" d="M9 4V2h6v2M9 10h6M9 14h6"/></svg>',
+  diamond:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linejoin="round" d="M6 3h12l4 6-10 12L2 9Z"/><path stroke-linecap="round" d="M2 9h20M9 3l-2 6 5 12 5-12-2-6"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="m8 12 3 3 5-6"/></svg>',
+  alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linejoin="round" d="M12 3 2 20h20L12 3Z"/><path stroke-linecap="round" d="M12 10v4M12 17h.01"/></svg>',
+  sparkle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8v8M8 12h8"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 3"/></svg>',
+  xcircle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="m9 9 6 6M15 9l-6 6"/></svg>',
+  pencil:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  question:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 9a2.5 2.5 0 0 1 4.8 1c0 1.5-2.3 1.8-2.3 3.5"/><path stroke-linecap="round" d="M12 17h.01"/></svg>',
+  duplicate:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M17 2 21 6l-4 4M21 6H9a4 4 0 0 0-4 4v1M7 22 3 18l4-4M3 18h12a4 4 0 0 0 4-4v-1"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linejoin="round" d="M12 2a6 6 0 0 0-6 6c0 4.5 6 12 6 12s6-7.5 6-12a6 6 0 0 0-6-6Z"/><circle cx="12" cy="8" r="2"/></svg>',
+  tag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linejoin="round" d="M20.6 12.3 12 20.9a2 2 0 0 1-2.8 0l-7-7a2 2 0 0 1 0-2.9L10.8 2.4A2 2 0 0 1 12.2 2H19a2 2 0 0 1 2 2v6.8a2 2 0 0 1-.4 1.5Z"/><path stroke-linecap="round" d="M16 7h.01"/></svg>',
+  globe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z"/></svg>',
+  store:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9 5 3h14l2 6M3 9h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1ZM9 21v-6h6v6"/></svg>',
+  chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg>',
+};
+function ic(key){return ICONS[key]||'';}
 const THINK_PHRASES=['🔌 Đang kết nối dữ liệu...','🧮 Đang tạo công thức...','🧠 Đang suy đoán logic...','🔍 Đang dò quét mẫu hình ẩn...','⚙️ Đang tối ưu hoá thuật toán...','📡 Đang đồng bộ hoá đa nguồn...','🧬 Đang phân tích tương quan...','🎯 Đang tính toán xác suất...','🗺️ Đang mô phỏng kịch bản...','💾 Đang truy xuất bộ nhớ...','🔗 Đang biên dịch chuỗi suy luận...','📊 Đang dựng mô hình dự đoán...'];
 function showLoading(){
   const l='<div class="loading"><div class="spin"></div><br><span style="font-size:13px;font-weight:700;color:var(--text2)">🤔 Thinking…</span><br><span id="loadStatus" style="font-size:11px;color:var(--muted);margin-top:6px;display:block"></span></div>';
@@ -5663,12 +5690,12 @@ async function renderDataHub(){
     <div class="page-title">Data Hub</div>
     <div class="page-sub">Nơi Admin theo dõi dữ liệu đầu vào: từ đâu → vào bao nhiêu → cập nhật/lỗi gì → đi vào CRM thế nào</div>
     <div class="kpi-grid" style="margin-bottom:16px">
-      ${mkKpi('📦','Total records',num(crmCustomers.length),'khách trong hệ thống','g-blue')}
-      ${mkKpi('🆕','New today',num(newToday),'lead tạo hôm nay','g-teal')}
-      ${mkKpi('✏️','Updated today',num(updatedToday),'khách có thay đổi hôm nay','g-green')}
-      ${mkKpi('❓','Unassigned',num(unassigned),'lead chưa gán Sale','g-orange')}
-      ${mkKpi('🔁','Duplicate','0','đã dedupe theo SĐT lúc migrate','g-purple')}
-      ${mkKpi('⚠️','Sync errors','0','chưa có sync tự động để lỗi','g-red')}
+      ${mkKpi(ic('box'),'Total records',num(crmCustomers.length),'khách trong hệ thống','g-blue')}
+      ${mkKpi(ic('sparkle'),'New today',num(newToday),'lead tạo hôm nay','g-teal')}
+      ${mkKpi(ic('pencil'),'Updated today',num(updatedToday),'khách có thay đổi hôm nay','g-green')}
+      ${mkKpi(ic('question'),'Unassigned',num(unassigned),'lead chưa gán Sale','g-orange')}
+      ${mkKpi(ic('duplicate'),'Duplicate','0','đã dedupe theo SĐT lúc migrate','g-purple')}
+      ${mkKpi(ic('alert'),'Sync errors','0','chưa có sync tự động để lỗi','g-red')}
     </div>
     <div class="tbl-card" style="margin-bottom:16px">
       <div class="tbl-head"><div class="tbl-title">🟢 MKT — Meta Ads (tự động thật)</div></div>
@@ -5745,11 +5772,11 @@ function renderWorkspace(){
       </select>
     </div>
     <div class="kpi-grid">
-      ${mkKpi('📋','Leads đang xử lý',num(activeLeads),'chưa chốt/mất','g-blue')}
-      ${mkKpi('✅','Đã CS hôm nay',num(csToday),'hoạt động mới','g-teal')}
-      ${mkKpi('🛍️','Chốt đơn hôm nay',num(closedToday),'đơn hôm nay','g-green')}
-      ${mkKpi('💰','Doanh thu tháng',vnd(revenueMonth),ordersThisMonth.length+' đơn tháng này','g-orange')}
-      ${mkKpi('💎','Pipeline value',vnd(pipelineValue),'tiềm năng chưa chốt','g-purple')}
+      ${mkKpi(ic('clipboard'),'Leads đang xử lý',num(activeLeads),'chưa chốt/mất','g-blue')}
+      ${mkKpi(ic('check'),'Đã CS hôm nay',num(csToday),'hoạt động mới','g-teal')}
+      ${mkKpi(ic('box'),'Chốt đơn hôm nay',num(closedToday),'đơn hôm nay','g-green')}
+      ${mkKpi(ic('cash'),'Doanh thu tháng',vnd(revenueMonth),ordersThisMonth.length+' đơn tháng này','g-orange')}
+      ${mkKpi(ic('diamond'),'Pipeline value',vnd(pipelineValue),'tiềm năng chưa chốt','g-purple')}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div>
