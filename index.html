@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
 <title>APP MKT/SALE</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -25,7 +25,7 @@
   --shadow:0 1px 3px rgba(16,24,40,.08);
   --shadow-md:0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06);
   --sidebar-w:220px;--sidebar-w-col:56px;
-  --font:'Inter',sans-serif;
+  --font:'Outfit','Inter',sans-serif;
 }
 [data-theme="dark"]{
   --bg:#0c111d;--bg2:#101828;--surface:#101828;--surface2:#1d2939;
@@ -89,7 +89,8 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .nav-item{display:flex;align-items:center;gap:11px;padding:9px 13px;margin:2px 8px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);transition:all .18s;white-space:nowrap;overflow:hidden;border:1.5px solid transparent}
 .nav-item:hover{background:var(--bg2);color:var(--text)}
 .nav-item.active{background:var(--accent-l);color:var(--accent);border-color:rgba(67,97,238,.15)}
-.nav-icon{font-size:17px;flex-shrink:0;width:22px;text-align:center}
+.nav-icon{font-size:17px;flex-shrink:0;width:22px;text-align:center;display:inline-flex;align-items:center;justify-content:center}
+.nav-icon svg{width:18px;height:18px}
 .nav-label{transition:opacity .2s,width .2s;overflow:hidden}
 .sidebar.collapsed .nav-label{opacity:0;width:0}
 .nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;flex-shrink:0;transition:opacity .2s}
@@ -211,7 +212,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
 </head>
 <body>
 
-<div id="loginGate" style="position:fixed;inset:0;z-index:6000;background:#f2f4f7;display:none;align-items:center;justify-content:center;font-family:Inter,sans-serif">
+<div id="loginGate" style="position:fixed;inset:0;z-index:6000;background:#f2f4f7;display:none;align-items:center;justify-content:center;font-family:'Outfit','Inter',sans-serif">
   <div style="background:#fff;border:1.5px solid #e4e7ec;border-radius:16px;padding:32px 32px 28px;width:350px;box-shadow:0 12px 16px -4px rgba(16,24,40,.08),0 4px 6px -2px rgba(16,24,40,.03)">
     <div style="text-align:center;margin-bottom:20px">
       <img src="logo.png" style="width:56px;height:56px;object-fit:contain" onerror="this.style.display='none'">
@@ -230,7 +231,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
 </div>
 
 <div class="topbar">
-  <button class="sb-toggle" onclick="toggleSidebar()">☰</button>
+  <button class="sb-toggle" onclick="toggleSidebar()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg></button>
   <div class="top-logo">
     <img src="logo.png" style="width:60px;height:60px;object-fit:contain" id="logoImg">
     <span class="top-logo-text">APP <span>MKT/SALE</span></span>
@@ -260,8 +261,8 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     <div class="toggle-track"><div class="toggle-thumb"></div></div>
     <span id="themeLabel">Tối</span>
   </button>
-  <button class="settings-btn" id="settingsBtn" onclick="loadData()" title="Tải lại dữ liệu">↺</button>
-  <button class="settings-btn" onclick="logout()" title="Đăng xuất">⎋</button>
+  <button class="settings-btn" id="settingsBtn" onclick="loadData()" title="Tải lại dữ liệu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4.5 9a8 8 0 0 1 14.1-3.4M19.5 15a8 8 0 0 1-14.1 3.4"/></svg></button>
+  <button class="settings-btn" onclick="logout()" title="Đăng xuất"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
   </div>
 </div>
 <button id="btnLoad" style="display:none"></button>
@@ -271,17 +272,20 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     <div class="sb-strip"></div>
     <div class="sb-section" id="sec-marketing-label">Marketing</div>
     <nav id="sec-marketing">
-      <div class="nav-item active" onclick="switchPage('overview')" id="nav-overview"><span class="nav-icon">📊</span><span class="nav-label">Tổng Quan</span></div>
-      <div class="nav-item" onclick="switchPage('detail')" id="nav-detail"><span class="nav-icon">📋</span><span class="nav-label">Chi Tiết</span></div>
+      <div class="nav-item active" onclick="switchPage('overview')" id="nav-overview"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg></span><span class="nav-label">Tổng Quan</span></div>
+      <div class="nav-item" onclick="switchPage('detail')" id="nav-detail"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/></svg></span><span class="nav-label">Chi Tiết</span></div>
     </nav>
     <div class="sb-section" id="sec-sale-label" style="margin-top:12px">Sale</div>
     <nav id="sec-sale">
-      <div class="nav-item" onclick="switchPage('workspace')" id="nav-workspace"><span class="nav-icon">☀️</span><span class="nav-label">Sales Workspace</span></div>
-      <div class="nav-item" onclick="switchPage('crm')" id="nav-crm"><span class="nav-icon">👤</span><span class="nav-label">Customers</span></div>
-      <div class="nav-item" onclick="switchPage('orders')" id="nav-orders"><span class="nav-icon">🧾</span><span class="nav-label">Orders</span></div>
-      <div class="nav-item" onclick="switchPage('sale-onl')" id="nav-sale-onl"><span class="nav-icon">📊</span><span class="nav-label">Reports</span></div>
-      <div class="nav-item" onclick="switchPage('datahub')" id="nav-datahub"><span class="nav-icon">🗄</span><span class="nav-label">Data Hub</span></div>
-      <div class="nav-item" onclick="switchPage('settings')" id="nav-settings"><span class="nav-icon">⚙️</span><span class="nav-label">Cài đặt</span></div>
+      <div class="nav-item" onclick="switchPage('workspace')" id="nav-workspace"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg></span><span class="nav-label">Sales Workspace</span></div>
+      <div class="nav-item" onclick="switchPage('crm')" id="nav-crm"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M11 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm10 14v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="nav-label">Customers</span></div>
+      <div class="nav-item" onclick="switchPage('orders')" id="nav-orders"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></span><span class="nav-label">Orders</span></div>
+      <div class="nav-item" onclick="switchPage('sale-onl')" id="nav-sale-onl"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M21.2 8a10 10 0 1 0 .7 5.2M13 3v9h9"/></svg></span><span class="nav-label">Reports</span></div>
+      <div class="nav-item" onclick="switchPage('datahub')" id="nav-datahub"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="5" rx="8" ry="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg></span><span class="nav-label">Data Hub</span></div>
+    </nav>
+    <div class="sb-section" id="sec-admin-label" style="margin-top:12px">Cài đặt</div>
+    <nav id="sec-admin">
+      <div class="nav-item" onclick="switchPage('settings')" id="nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9.5 12 1.8 1.8L15 10"/></svg></span><span class="nav-label">Phân quyền</span></div>
     </nav>
   </div>
 
@@ -404,7 +408,7 @@ function applyRole(){
     const id=el.id.replace('nav-','');
     el.style.display=(allowed&&allowed.indexOf(id)<0)?'none':'';
   });
-  [['sec-marketing-label','sec-marketing'],['sec-sale-label','sec-sale']].forEach(([lab,nav])=>{
+  [['sec-marketing-label','sec-marketing'],['sec-sale-label','sec-sale'],['sec-admin-label','sec-admin']].forEach(([lab,nav])=>{
     const n=document.getElementById(nav);if(!n)return;
     const vis=[...n.querySelectorAll('.nav-item')].some(it=>it.style.display!=='none');
     const l=document.getElementById(lab);if(l)l.style.display=vis?'':'none';n.style.display=vis?'':'none';
@@ -5817,7 +5821,7 @@ async function renderSettings(){
       <td>${a.status==='active'?`<button class="btn-ghost" style="padding:4px 10px;font-size:11px" onclick="crmDeactivateAccount('${a.user_id}')">Khoá</button>`:''}</td>
     </tr>`).join('');
   el.innerHTML=`
-    <div class="page-title">Cài đặt — Quản lý tài khoản</div>
+    <div class="page-title">Phân quyền — Quản lý tài khoản</div>
     <div class="page-sub">Tạo tài khoản cho từng Sale/Quản lý — có tài khoản thì mới hiện trong dropdown "Sales phụ trách" (không còn lấy tràn từ data lịch sử)</div>
     <div class="period-bar">
       <span class="stat-chip">👥 ${accounts.filter(a=>a.status==='active').length} tài khoản đang hoạt động</span>
