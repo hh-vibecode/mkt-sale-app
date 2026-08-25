@@ -1,0 +1,42 @@
+name: Crawl Pancake + chấm tự động phần không cần AI
+
+on:
+  schedule:
+    # 00:00 UTC = 07:00 giờ Việt Nam (UTC+7) mỗi ngày — cùng giờ với job sync MKT
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      from:
+        description: 'Từ ngày (YYYY-MM-DD) — để trống = hôm qua'
+        required: false
+      to:
+        description: 'Đến ngày (YYYY-MM-DD) — để trống = hôm qua'
+        required: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Crawl hội thoại Pancake
+        env:
+          PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
+          FROM: ${{ github.event.inputs.from }}
+          TO: ${{ github.event.inputs.to }}
+        run: node scripts/crawl-pancake.js
+
+      - name: Tách lượt hỏi - đáp
+        env:
+          FROM: ${{ github.event.inputs.from }}
+          TO: ${{ github.event.inputs.to }}
+        run: python3 scripts/extract-sale-pairs.py
+
+      - name: Đẩy lên Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python3 scripts/push-sale-review.py
