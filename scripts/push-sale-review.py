@@ -12,7 +12,8 @@ Chống trùng: khoá (conv_id, conv_date, 160 ký tự đầu của câu hỏi)
 """
 import json, os, sys, urllib.request, urllib.error
 
-URL = os.environ['SUPABASE_URL'].rstrip('/')
+# Hardcode giống scripts/sync-mkt-from-meta.js để khỏi phải thêm secret trùng lặp
+URL = (os.environ.get('SUPABASE_URL') or 'https://bcrpxfvvjsjpvbksqzls.supabase.co').rstrip('/')
 KEY = os.environ['SUPABASE_SERVICE_ROLE_KEY']
 PAIRS = os.environ.get('OUT_PAIRS', 'pairs.json')
 

@@ -37,6 +37,5 @@ jobs:
 
       - name: Đẩy lên Supabase
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python3 scripts/push-sale-review.py
