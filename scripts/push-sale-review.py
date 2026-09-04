@@ -40,9 +40,13 @@ if not pairs:
     raise SystemExit(0)
 
 dates = sorted({p['date'] for p in pairs})
-existing = req('GET', 'sale_response_review?select=conv_id,conv_date,customer_ask'
+existing = req('GET', 'sale_response_review?select=id,conv_id,conv_date,customer_ask,full_thread'
                       f'&conv_date=in.({",".join(dates)})&limit=5000')
 seen = {(r['conv_id'], r['conv_date'], (r['customer_ask'] or '')[:160]) for r in existing}
+# Dòng cũ đã có (chấm rồi hay chưa cũng vậy) nhưng thiếu full_thread (dữ liệu thêm vào sau, 4/9/2026) —
+# vá thêm conv_at/full_thread cho các dòng đó, KHÔNG đụng verdict/issue/suggestion đã chấm.
+id_by_key = {(r['conv_id'], r['conv_date'], (r['customer_ask'] or '')[:160]): r['id']
+             for r in existing if not r.get('full_thread')}
 
 AUTO = {
     'khong_tra_loi': dict(
@@ -60,9 +64,12 @@ AUTO = {
 }
 
 rows = []
+backfills = []
 for p in pairs:
     key = (p['conv_id'], p['date'], (p['ask'] or '')[:160])
     if key in seen:
+        if key in id_by_key:
+            backfills.append((id_by_key[key], {'conv_at': p.get('at'), 'full_thread': p.get('thread')}))
         continue
     seen.add(key)
     if p.get('answered_in_inbox'):
@@ -75,25 +82,29 @@ for p in pairs:
         v = 'chua_cham'
     meta = AUTO.get(v, dict(severity=None, issue=None, suggestion=None))
     rows.append({
-        'conv_date': p['date'], 'page_name': p['page'], 'conv_id': p['conv_id'],
+        'conv_date': p['date'], 'conv_at': p.get('at'), 'page_name': p['page'], 'conv_id': p['conv_id'],
         'customer_name': p['customer'], 'phone': p.get('phone'),
         'sale_name': p.get('sale'), 'customer_ask': p['ask'],
-        'sale_reply': p.get('reply'), 'verdict': v, 'source_faq': None, **meta,
+        'sale_reply': p.get('reply'), 'verdict': v, 'source_faq': None, 'full_thread': p.get('thread'), **meta,
     })
 
-if not rows:
-    print(f'{len(pairs)} lượt — đã có đủ trong bảng, không thêm dòng nào.')
+if not rows and not backfills:
+    print(f'{len(pairs)} lượt — đã có đủ trong bảng, không thêm/vá dòng nào.')
     raise SystemExit(0)
 
 if os.environ.get('DRY_RUN'):
-    print('[DRY_RUN] không ghi gì lên Supabase.')
+    print(f'[DRY_RUN] sẽ thêm {len(rows)} dòng mới, vá full_thread cho {len(backfills)} dòng cũ — không ghi gì.')
 else:
     for i in range(0, len(rows), 100):
         req('POST', 'sale_response_review', rows[i:i + 100])
+    for rid, body in backfills:
+        req('PATCH', f'sale_response_review?id=eq.{rid}', body)
 
 from collections import Counter
 c = Counter(r['verdict'] for r in rows)
-print(f'Đã thêm {len(rows)} lượt ({dates[0]}..{dates[-1]}):')
+print(f'Đã thêm {len(rows)} lượt mới ({dates[0]}..{dates[-1]}):')
 for k, n in c.most_common():
     print(f'   {k}: {n}')
+if backfills:
+    print(f'Đã vá full_thread/conv_at cho {len(backfills)} dòng cũ (không đụng verdict đã chấm).')
 print(f'→ {c.get("chua_cham", 0)} lượt CHỜ CHẤM (mở Claude Code bảo chấm khi rảnh).')

@@ -53,36 +53,62 @@ def _sale_reply_times(c):
     return out
 
 inbox_by_fb, inbox_by_name, inbox_any_page = {}, {}, {}
+inbox_conv_by_fb, inbox_conv_by_name, inbox_conv_any = {}, {}, {}
 for c in d:
     if c.get('type')!='INBOX': continue
     ts=_sale_reply_times(c)
     if not ts: continue
     pid=str(c.get('page_id') or '')
     fb=str(c.get('fb_id') or '') or (c['conv_id'].split('_',1)[1] if '_' in c['conv_id'] else '')
-    if fb: inbox_by_fb.setdefault((pid,fb),[]).extend(ts)
+    if fb:
+        inbox_by_fb.setdefault((pid,fb),[]).extend(ts)
+        inbox_conv_by_fb.setdefault((pid,fb),c)
     nm=(c.get('customer') or '').strip().lower()
     if nm:
         inbox_by_name.setdefault((pid,nm),[]).extend(ts)
         inbox_any_page.setdefault(nm,[]).extend(ts)
+        inbox_conv_by_name.setdefault((pid,nm),c)
+        inbox_conv_any.setdefault(nm,c)
 
 def answered_in_inbox(c, after_at):
-    # Khách của hội thoại `c` có được sale trả lời trong INBOX kể từ mốc `after_at` không
+    # Khách của hội thoại `c` có được sale trả lời trong INBOX kể từ mốc `after_at` không.
+    # Trả về conv INBOX thật đã khớp (để ghép full_thread), hoặc None nếu không tìm thấy.
     pid=str(c.get('page_id') or '')
-    buckets=[]
     fb=str(c.get('fb_id') or '')
-    if fb: buckets.append(inbox_by_fb.get((pid,fb)))
     nm=(c.get('customer') or '').strip().lower()
-    if nm: buckets.append(inbox_by_name.get((pid,nm)))
-    for ts in buckets:
-        if ts and any(t>=after_at for t in ts): return True
+    for ts,conv in [(inbox_by_fb.get((pid,fb)),inbox_conv_by_fb.get((pid,fb))),
+                    (inbox_by_name.get((pid,nm)),inbox_conv_by_name.get((pid,nm)))]:
+        if ts and any(t>=after_at for t in ts): return conv
     # Cùng thương hiệu nhưng KHÁC page: 1 brand có nhiều fanpage (VD "Đồ Thờ Nhập Khẩu Chánh Tâm"
     # và "Chánh Tâm - Không Gian Tâm Linh"), khách bình luận page này lại được rep inbox page kia.
     # Chỉ khớp theo tên + trong vòng 6 GIỜ để không vơ nhầm người trùng tên ở thời điểm khác.
     ts = inbox_any_page.get(nm)
     if ts:
         lim = _plus_hours(after_at, 6)
-        if any(after_at <= t <= lim for t in ts): return True
-    return False
+        if any(after_at <= t <= lim for t in ts): return inbox_conv_any.get(nm)
+    return None
+
+
+WHO_LABEL = {'cust': 'Khách', 'auto': 'Bot', 'sale': None}  # sale dùng luôn tên nhân sự nếu có
+def _fmt_line(m):
+    ts = (m['at'] or '')[:16].replace('T', ' ')
+    who = WHO_LABEL.get(m['_k'])
+    if who is None:
+        who = f"Sale ({m['admin']})" if m.get('admin') else 'Sale'
+    txt = clean(m['text']) or ('(gửi ảnh/tệp)' if m.get('has_attach') else '')
+    return f"[{ts}] {who}: {txt}"
+
+def build_thread(*convs):
+    """Ghép nguyên đoạn hội thoại từ 1 hoặc nhiều conv (VD bình luận + tin nhắn), sắp theo thời gian thật."""
+    lines = []
+    for c in convs:
+        if not c: continue
+        msgs = [m for m in c['messages'] if clean(m['text']) or m.get('has_attach')]
+        for m in msgs:
+            m['_k'] = kind(m)
+        lines.extend(msgs)
+    lines.sort(key=lambda m: m['at'] or '')
+    return '\n'.join(_fmt_line(m) for m in lines)[:4000]
 
 pairs=[]
 for c in d:
@@ -110,15 +136,17 @@ for c in d:
         # có bot/hệ thống trả lời sau lượt này không?
         bot_after=any(m['_k']=='auto' and m['at']>last_at for m in msgs)
         # Bình luận chưa ai rep TẠI CHỖ nhưng khách đã được sale tư vấn trong inbox → KHÔNG tính lỗi
-        in_inbox = (not reply) and c.get('type')=='COMMENT' and answered_in_inbox(c, last_at)
+        inbox_conv = (None if reply or c.get('type')!='COMMENT' else answered_in_inbox(c, last_at))
+        in_inbox = inbox_conv is not None
         pairs.append({
             'page':c['page_name'],'conv_id':c['conv_id'],'type':c['type'],
             'customer':c['customer'],'phone':c['phone'],
             'sale': sale or (c['assignees'][0] if c['assignees'] else None),
-            'date':first_at[:10],'ask':ask[:700],
+            'date':first_at[:10],'at':first_at,'ask':ask[:700],
             'reply':(reply[:1000] if reply else None),
             'bot_only': (not reply) and bot_after and not in_inbox,
             'answered_in_inbox': in_inbox,
+            'thread': build_thread(c, inbox_conv),
         })
 json.dump(pairs, open(OUT,'w',encoding='utf-8'), ensure_ascii=False, indent=1)
 
