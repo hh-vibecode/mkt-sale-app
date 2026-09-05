@@ -2,8 +2,9 @@ name: Sync MKT report from Meta Ads
 
 on:
   schedule:
-    # 00:00 UTC = 07:00 giờ Việt Nam (UTC+7) mỗi ngày
-    - cron: '0 0 * * *'
+    # 01:07 UTC = 08:07 giờ Việt Nam (UTC+7) mỗi ngày. Lệch phút khỏi giờ tròn vì GitHub Actions hay
+    # bị dồn/rớt cron đúng đầu giờ (đã tái diễn 2 lần trong 2 ngày 4/9, 5/9 ở đúng phút :00 UTC).
+    - cron: '7 1 * * *'
   workflow_dispatch: {} # cho phép bấm chạy tay từ tab Actions trên GitHub, tiện để test/chạy bù
 
 jobs:

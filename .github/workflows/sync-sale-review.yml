@@ -2,8 +2,9 @@ name: Crawl Pancake + chấm tự động phần không cần AI
 
 on:
   schedule:
-    # 00:00 UTC = 07:00 giờ Việt Nam (UTC+7) mỗi ngày — cùng giờ với job sync MKT
-    - cron: '0 0 * * *'
+    # 01:12 UTC = 08:12 giờ Việt Nam (UTC+7) mỗi ngày. Lệch phút khỏi giờ tròn (xem giải thích ở
+    # sync-mkt.yml) — cũng lệch với job sync-mkt (08:07) để 2 job không tranh runner cùng lúc.
+    - cron: '12 1 * * *'
   workflow_dispatch:
     inputs:
       from:

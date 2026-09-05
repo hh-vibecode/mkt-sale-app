@@ -40,13 +40,13 @@ if not pairs:
     raise SystemExit(0)
 
 dates = sorted({p['date'] for p in pairs})
-existing = req('GET', 'sale_response_review?select=id,conv_id,conv_date,customer_ask,full_thread'
+existing = req('GET', 'sale_response_review?select=id,conv_id,conv_date,customer_ask,full_thread,pancake_url'
                       f'&conv_date=in.({",".join(dates)})&limit=5000')
 seen = {(r['conv_id'], r['conv_date'], (r['customer_ask'] or '')[:160]) for r in existing}
-# Dòng cũ đã có (chấm rồi hay chưa cũng vậy) nhưng thiếu full_thread (dữ liệu thêm vào sau, 4/9/2026) —
-# vá thêm conv_at/full_thread cho các dòng đó, KHÔNG đụng verdict/issue/suggestion đã chấm.
+# Dòng cũ đã có (chấm rồi hay chưa cũng vậy) nhưng thiếu full_thread/pancake_url (2 cột thêm vào sau,
+# 4-5/9/2026) — vá thêm cho các dòng đó, KHÔNG đụng verdict/issue/suggestion đã chấm.
 id_by_key = {(r['conv_id'], r['conv_date'], (r['customer_ask'] or '')[:160]): r['id']
-             for r in existing if not r.get('full_thread')}
+             for r in existing if not r.get('full_thread') or not r.get('pancake_url')}
 
 AUTO = {
     'khong_tra_loi': dict(
@@ -69,7 +69,7 @@ for p in pairs:
     key = (p['conv_id'], p['date'], (p['ask'] or '')[:160])
     if key in seen:
         if key in id_by_key:
-            backfills.append((id_by_key[key], {'conv_at': p.get('at'), 'full_thread': p.get('thread')}))
+            backfills.append((id_by_key[key], {'conv_at': p.get('at'), 'full_thread': p.get('thread'), 'pancake_url': p.get('url')}))
         continue
     seen.add(key)
     if p.get('answered_in_inbox'):
@@ -85,7 +85,8 @@ for p in pairs:
         'conv_date': p['date'], 'conv_at': p.get('at'), 'page_name': p['page'], 'conv_id': p['conv_id'],
         'customer_name': p['customer'], 'phone': p.get('phone'),
         'sale_name': p.get('sale'), 'customer_ask': p['ask'],
-        'sale_reply': p.get('reply'), 'verdict': v, 'source_faq': None, 'full_thread': p.get('thread'), **meta,
+        'sale_reply': p.get('reply'), 'verdict': v, 'source_faq': None, 'full_thread': p.get('thread'),
+        'pancake_url': p.get('url'), **meta,
     })
 
 if not rows and not backfills:

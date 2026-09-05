@@ -138,6 +138,11 @@ for c in d:
         # Bình luận chưa ai rep TẠI CHỖ nhưng khách đã được sale tư vấn trong inbox → KHÔNG tính lỗi
         inbox_conv = (None if reply or c.get('type')!='COMMENT' else answered_in_inbox(c, last_at))
         in_inbox = inbox_conv is not None
+        # Link mở thẳng hội thoại trên Pancake để đối chiếu chéo — pattern xác nhận thật (user cung cấp
+        # 4/9/2026): https://pancake.vn/{page_id}?c_id={conv_id}. Ưu tiên trỏ tới conv INBOX khi bị chuyển
+        # kênh (đó mới là nơi có câu trả lời thật), không thì trỏ conv gốc.
+        link_conv = inbox_conv or c
+        pancake_url = f"https://pancake.vn/{link_conv.get('page_id')}?c_id={link_conv.get('conv_id')}"
         pairs.append({
             'page':c['page_name'],'conv_id':c['conv_id'],'type':c['type'],
             'customer':c['customer'],'phone':c['phone'],
@@ -147,6 +152,7 @@ for c in d:
             'bot_only': (not reply) and bot_after and not in_inbox,
             'answered_in_inbox': in_inbox,
             'thread': build_thread(c, inbox_conv),
+            'url': pancake_url,
         })
 json.dump(pairs, open(OUT,'w',encoding='utf-8'), ensure_ascii=False, indent=1)
 
