@@ -5918,11 +5918,96 @@ function renderCrm(){
 }
 
 // ── Data Hub: nơi Admin thấy dữ liệu đầu vào từ đâu, vào bao nhiêu, cập nhật bao nhiêu, lỗi gì ──
-// Hiện KHÔNG có sync tự động từ Pancake (user chủ động hoãn 21/8: "tạm thời cứ cào data từ datahub lên để
-// sử dụng trước, sau xong form này mình làm cái auto API từ Pancake sau") -- vì vậy trang này hiển thị ĐÚNG
-// trạng thái thật: MKT (Meta Ads) là nguồn DUY NHẤT đang tự động thật (xem project_mkt-meta-api-sync), còn
-// Sale Online (Lẻ) mới chỉ nạp 1 lần thủ công lúc migrate (21/8), Sync Now để disabled thay vì giả vờ hoạt động.
+// 11/9/2026: đã nối thật job crawl Pancake POS API -> bảng datahub_orders (scripts/sync-datahub-pancake.js,
+// cron 30 phút/lần, log chung bảng sync_log với source='Data Hub - Pancake POS'). Đây là danh sách ĐƠN HÀNG
+// thô từ Pancake (thay cho sheet "DataHub" cũ Sale từng copy tay) -- khác với bảng `leads` bên dưới (lead
+// CRM Sale Online, vẫn nạp thủ công, CHƯA nối Pancake). Tạm thời chỉ lấy đơn từ 1/6/2026 trở đi (yêu cầu user).
+// MKT (Meta Ads) vẫn là nguồn tự động khác, xem project_mkt-meta-api-sync.
+const DH_BRAND_LABEL={CT:'Chánh Tâm',HT:'Hiền Thuỷ',Shidai:'Shidai',TTV:'Tự Tại Viên',Other:'Khác'};
+let dhOrders=[],dhLoaded=false;
+async function dhLoadOrders(force){
+  if(dhLoaded&&!force)return;
+  dhOrders=await sbFetchAll('datahub_orders','select=*&order=order_date.desc,system_id.desc');
+  dhLoaded=true;
+}
+function dhFilteredOrders(){
+  const brand=document.getElementById('dhBrandFilter')?.value||'all';
+  const from=document.getElementById('dhDateFrom')?.value||'';
+  const to=document.getElementById('dhDateTo')?.value||'';
+  const q=(document.getElementById('dhSearch')?.value||'').trim().toLowerCase();
+  return dhOrders.filter(o=>{
+    if(brand!=='all'&&o.brand!==brand)return false;
+    if(from&&o.order_date<from)return false;
+    if(to&&o.order_date>to)return false;
+    if(q&&!(String(o.system_id).includes(q)||(o.customer_name||'').toLowerCase().includes(q)||(o.phone||'').includes(q)||(o.ad_id||'').toLowerCase().includes(q)))return false;
+    return true;
+  });
+}
+function dhSetPage(p){window._dhPage=p;dhRenderTable();}
+function dhFilterChange(){window._dhPage=1;dhRenderTable();}
+async function dhRefresh(){await dhLoadOrders(true);await renderDataHub();}
+function dhRenderTable(){
+  const wrap=document.getElementById('dhTableWrap');
+  if(!wrap)return;
+  const list=dhFilteredOrders();
+  const pageSize=50,page=window._dhPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
+  const pageItems=list.slice((page-1)*pageSize,page*pageSize);
+  const rows=pageItems.map(o=>`<tr>
+    <td>${o.order_date||'—'}</td><td><code>${o.system_id}</code></td>
+    <td>${o.customer_status==='Mới'?'<span style="color:var(--green);font-weight:700">Mới</span>':'<span style="color:var(--muted)">Cũ</span>'}</td>
+    <td style="font-size:11px;color:var(--muted)">${o.customer_tags||'—'}</td>
+    <td class="name">${o.customer_name||'—'}</td><td>${o.phone||'—'}</td>
+    <td style="font-size:11.5px">${[o.address,o.ward,o.district,o.province].filter(Boolean).join(', ')||'—'}</td>
+    <td style="font-size:11px">${o.source||'—'}</td>
+    <td style="font-size:11px;color:var(--muted)">${o.internal_note||'—'}</td>
+    <td>${o.staff_name||'—'}</td><td style="font-size:11px">${o.ad_id||'—'}</td>
+    <td><span style="display:inline-block;padding:2px 9px;border-radius:20px;background:var(--accent-l);color:var(--accent);font-size:11px;font-weight:800">${DH_BRAND_LABEL[o.brand]||o.brand||'—'}</span></td>
+  </tr>`).join('');
+  wrap.innerHTML=`
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>Ngày tạo đơn</th><th>Mã đơn</th><th>Mới/Cũ</th><th>Thẻ KH</th><th>Khách hàng</th><th>SĐT</th><th>Địa chỉ</th><th>Nguồn đơn</th><th>Ghi chú</th><th>NV cập nhật</th><th>Ad ID</th><th>Brand</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--muted)">Không có đơn nào khớp bộ lọc</td></tr>'}</tbody>
+    </table></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
+      <button class="refresh-btn" ${page<=1?'disabled':''} onclick="dhSetPage(${page-1})">‹ Trước</button>
+      <span style="font-size:12px;font-weight:700;color:var(--muted)">Trang ${page}/${totalPages} (${num(list.length)} đơn)</span>
+      <button class="refresh-btn" ${page>=totalPages?'disabled':''} onclick="dhSetPage(${page+1})">Sau ›</button>
+    </div>`;
+}
 async function renderDataHub(){
+  await dhLoadOrders();
+  const today=todayISO();
+  const dhToday=dhOrders.filter(o=>o.order_date===today).length;
+  const dhNew=dhOrders.filter(o=>o.customer_status==='Mới').length;
+  const dhOld=dhOrders.filter(o=>o.customer_status==='Cũ').length;
+  const dhLastSync=dhOrders.reduce((m,o)=>o.pancake_updated_at&&o.pancake_updated_at>m?o.pancake_updated_at:m,'');
+  const pancakeOrdersHtml=`
+    <div class="tbl-card" style="margin-bottom:16px">
+      <div class="tbl-head"><div class="tbl-title">🟢 Pancake POS — Đơn hàng (tự động thật)</div></div>
+      <div style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border)">
+        Đồng bộ tự động mỗi 30 phút qua GitHub Actions (repo <code>mkt-sale-app</code>, 10 shop Pancake, 4 brand CT/HT/Shidai/TTV) — thay cho sheet "DataHub" cũ Sale từng copy tay. Tạm thời chỉ lấy đơn từ 1/6/2026 trở đi.
+      </div>
+      <div class="kpi-grid" style="padding:16px">
+        ${mkKpi(ic('box'),'Tổng đơn',num(dhOrders.length),'từ 1/6/2026','g-blue')}
+        ${mkKpi(ic('sparkle'),'Hôm nay',num(dhToday),'đơn tạo hôm nay','g-teal')}
+        ${mkKpi(ic('users'),'Khách mới',num(dhNew),'lần đầu mua','g-green')}
+        ${mkKpi(ic('check'),'Khách cũ',num(dhOld),'đã mua trước đó','g-purple')}
+      </div>
+      <div style="padding:0 16px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <select id="dhBrandFilter" class="top-select" onchange="dhFilterChange()" style="height:30px;font-size:11px;padding:3px 10px;font-weight:600">
+          <option value="all">Tất cả brand</option>
+          ${Object.keys(DH_BRAND_LABEL).map(b=>`<option value="${b}">${DH_BRAND_LABEL[b]}</option>`).join('')}
+        </select>
+        <span style="font-size:11px;color:var(--muted)">Ngày:</span>
+        <input id="dhDateFrom" type="date" onchange="dhFilterChange()" style="height:30px;padding:3px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px">
+        <span style="font-size:11px;color:var(--muted)">→</span>
+        <input id="dhDateTo" type="date" onchange="dhFilterChange()" style="height:30px;padding:3px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px">
+        <input id="dhSearch" placeholder="🔎 Mã đơn / Tên / SĐT / Ad ID…" oninput="dhFilterChange()" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:210px;outline:none">
+        <button class="refresh-btn" onclick="dhRefresh()" title="Tải lại từ Supabase">↺ Tải lại</button>
+        <span style="font-size:11px;color:var(--muted);margin-left:auto">Đơn Pancake cập nhật gần nhất: ${dhLastSync?new Date(dhLastSync).toLocaleString('vi-VN'):'—'}</span>
+      </div>
+      <div id="dhTableWrap"></div>
+    </div>`;
   const el=document.getElementById('page-datahub');
   if(!el)return;
   const bySrc={};
@@ -5958,13 +6043,13 @@ async function renderDataHub(){
     const rawSample=await sbFetchAll('leads','select=lead_id,source,channel,source_external_id,ad_id,department,created_at&order=created_at.desc&limit=5');
     rawPreviewHtml=`<pre style="font-size:11px;background:var(--bg2);border-radius:8px;padding:12px;overflow-x:auto;margin:0">${JSON.stringify(rawSample,null,2).replace(/</g,'&lt;')}</pre>`;
   }catch(e){rawPreviewHtml=`<div style="color:var(--red);font-size:12px;padding:12px">Lỗi tải: ${e.message}</div>`;}
-  const today=todayISO();
   const newToday=crmLeads.filter(l=>l.created_at&&l.created_at.slice(0,10)===today).length;
   const updatedToday=crmCustomers.filter(c=>c.updated_at&&c.updated_at.slice(0,10)===today).length;
   const unassigned=crmLeads.filter(l=>!l.assigned_sales).length;
   el.innerHTML=`
     <div class="page-title">Data Hub</div>
     <div class="page-sub">Nguồn dữ liệu &amp; trạng thái đồng bộ</div>
+    ${pancakeOrdersHtml}
     <div class="kpi-grid" style="margin-bottom:16px">
       ${mkKpi(ic('box'),'Total records',num(crmCustomers.length),'khách trong hệ thống','g-blue')}
       ${mkKpi(ic('sparkle'),'New today',num(newToday),'lead tạo hôm nay','g-teal')}
@@ -6028,6 +6113,7 @@ async function renderDataHub(){
         <div style="padding:10px 16px;font-size:11px;color:var(--muted);border-top:1px solid var(--border)">Thêm nguồn mới (Pancake...) chỉ cần map field vào đúng bảng này, không sửa CRM.</div>
       </div>
     </div>`;
+  dhRenderTable();
 }
 
 // ── Sales Workspace: "Hôm nay tôi phải xử lý khách nào?" -- màn hình chính của Sale, thay vì mở bảng
