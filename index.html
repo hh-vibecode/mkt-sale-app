@@ -6029,18 +6029,6 @@ async function renderDataHub(){
     </div>`;
   const el=document.getElementById('page-datahub');
   if(!el)return;
-  const bySrc={};
-  crmLeads.forEach(l=>{
-    const key=(l.source||'(chưa rõ)')+' · '+(l.channel||'(chưa rõ)');
-    const g=bySrc[key]||(bySrc[key]={source:l.source||'(chưa rõ)',channel:l.channel||'(chưa rõ)',count:0,minDate:null,maxDate:null});
-    g.count++;
-    const d=l.created_at?l.created_at.slice(0,10):null;
-    if(d&&(!g.minDate||d<g.minDate))g.minDate=d;
-    if(d&&(!g.maxDate||d>g.maxDate))g.maxDate=d;
-  });
-  const sourceRows=Object.values(bySrc).sort((a,b)=>b.count-a.count).map(g=>`
-    <tr><td>${g.source}</td><td>${g.channel}</td><td class="num">${num(g.count)}</td><td>${g.minDate||'—'} → ${g.maxDate||'—'}</td>
-      <td><span style="display:inline-block;padding:2px 9px;border-radius:20px;background:#64748b20;color:#64748b;font-size:11px;font-weight:800">Nạp thủ công (migrate)</span></td></tr>`).join('');
   let mktInfo='<div style="color:var(--muted);font-size:12.5px">Đang tải...</div>';
   try{
     const mktRows=await sbFetchAll('mkt_spend','select=ad_date&order=ad_date.desc&limit=1');
@@ -6085,23 +6073,6 @@ async function renderDataHub(){
       </div>
     </div>
     <div class="tbl-card">
-      <div class="tbl-head">
-        <div class="tbl-title">⚪ Sale Online (Lẻ) — theo Nguồn / Kênh</div>
-        <div class="tbl-count">${crmLeads.length} lead</div>
-      </div>
-      <div style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border)">
-        ⚠️ Chưa kết nối Pancake — data nạp thủ công, chưa tự động cập nhật
-      </div>
-      <div class="tbl-scroll"><table>
-        <thead><tr><th>Nguồn</th><th>Kênh</th><th>Số Lead</th><th>Khoảng ngày tạo</th><th>Trạng thái đồng bộ</th></tr></thead>
-        <tbody>${sourceRows}</tbody>
-      </table></div>
-      <div style="padding:12px 16px">
-        <button class="refresh-btn" disabled title="Chưa có API key Pancake">🔄 Sync Now (chưa khả dụng)</button>
-      </div>
-    </div>
-
-    <div class="tbl-card" style="margin-top:16px">
       <div class="tbl-head"><div class="tbl-title">Sync History</div></div>
       <div class="tbl-scroll"><table>
         <thead><tr><th>Thời gian</th><th>Nguồn</th><th>Tạo mới</th><th>Cập nhật</th><th>Trạng thái</th><th>Lỗi</th></tr></thead>
