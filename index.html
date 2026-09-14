@@ -5984,13 +5984,17 @@ async function renderDataHub(){
   const dhToday=dhOrders.filter(o=>o.order_date===today).length;
   const dhNew=dhOrders.filter(o=>o.customer_status==='Mới').length;
   const dhOld=dhOrders.filter(o=>o.customer_status==='Cũ').length;
-  const dhLastSync=dhOrders.reduce((m,o)=>o.pancake_updated_at&&o.pancake_updated_at>m?o.pancake_updated_at:m,'');
+  let dhSyncLabel='—';
+  try{
+    const dhHist=await sbFetchAll('sync_log',`select=started_at,status&source=eq.${encodeURIComponent('Data Hub - Pancake POS')}&order=started_at.desc&limit=1`);
+    if(dhHist[0]){
+      const st=dhHist[0].status;
+      dhSyncLabel=new Date(dhHist[0].started_at).toLocaleString('vi-VN')+(st==='success'?' · OK':st==='failed'?' · Lỗi':' · Đang chạy');
+    }
+  }catch(e){}
   const pancakeOrdersHtml=`
     <div class="tbl-card" style="margin-bottom:16px">
-      <div class="tbl-head"><div class="tbl-title">🟢 Pancake POS — Đơn hàng (tự động thật)</div></div>
-      <div style="padding:12px 16px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border)">
-        Đồng bộ tự động mỗi 30 phút qua GitHub Actions (repo <code>mkt-sale-app</code>, 10 shop Pancake, 4 brand CT/HT/Shidai/TTV) — thay cho sheet "DataHub" cũ Sale từng copy tay. Tạm thời chỉ lấy đơn từ 1/6/2026 trở đi.
-      </div>
+      <div class="tbl-head"><div class="tbl-title">🟢 Pancake POS — Đơn hàng (tự động thật)</div><span class="tbl-count" style="margin-left:auto">Đồng bộ lần cuối: ${dhSyncLabel}</span></div>
       <div class="kpi-grid" style="padding:16px">
         ${mkKpi(ic('box'),'Tổng đơn',num(dhOrders.length),'từ 1/6/2026','g-blue')}
         ${mkKpi(ic('sparkle'),'Hôm nay',num(dhToday),'đơn tạo hôm nay','g-teal')}
@@ -6008,7 +6012,6 @@ async function renderDataHub(){
         <input id="dhDateTo" type="date" onchange="dhFilterChange()" style="height:30px;padding:3px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px">
         <input id="dhSearch" placeholder="🔎 Mã đơn / Tên / SĐT / Ad ID…" oninput="dhFilterChange()" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:210px;outline:none">
         <button class="refresh-btn" onclick="dhRefresh()" title="Tải lại từ Supabase">↺ Tải lại</button>
-        <span style="font-size:11px;color:var(--muted);margin-left:auto">Đơn Pancake cập nhật gần nhất: ${dhLastSync?new Date(dhLastSync).toLocaleString('vi-VN'):'—'}</span>
       </div>
       <div id="dhTableWrap"></div>
     </div>`;
