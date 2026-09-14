@@ -5928,6 +5928,9 @@ function renderCrm(){
 // CRM Sale Online, vẫn nạp thủ công, CHƯA nối Pancake). Tạm thời chỉ lấy đơn từ 1/6/2026 trở đi (yêu cầu user).
 // MKT (Meta Ads) vẫn là nguồn tự động khác, xem project_mkt-meta-api-sync.
 const DH_BRAND_LABEL={CT:'Chánh Tâm',HT:'Hiền Thuỷ',Shidai:'Shidai',TTV:'Tự Tại Viên',Other:'Khác'};
+// Pancake gắn nhiều tag/dòng (LEAD ĐẶT, KH Lẻ, KH Sỉ, LEAD TIỀM NĂNG...) -- chỉ dòng có tag CHỐT ĐƠN
+// mới là đơn hàng thật, còn lại là data thô (lead/khách chưa chốt), không được tính vào KPI "đơn".
+function dhIsOrder(o){return(o.customer_tags||'').toUpperCase().includes('CHỐT ĐƠN');}
 let dhOrders=[],dhLoaded=false;
 async function dhLoadOrders(force){
   if(dhLoaded&&!force)return;
@@ -5957,6 +5960,7 @@ function dhRenderTable(){
   const pageSize=50,page=window._dhPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   const pageItems=list.slice((page-1)*pageSize,page*pageSize);
   const rows=pageItems.map(o=>`<tr>
+    <td>${dhIsOrder(o)?'<span style="display:inline-block;padding:2px 9px;border-radius:20px;background:var(--green-l);color:var(--green);font-size:11px;font-weight:800">✓ Đơn</span>':'<span style="display:inline-block;padding:2px 9px;border-radius:20px;background:var(--bg2);color:var(--muted);font-size:11px;font-weight:700">Data</span>'}</td>
     <td>${o.order_date||'—'}</td><td><code>${o.system_id}</code></td>
     <td>${o.customer_status==='Mới'?'<span style="color:var(--green);font-weight:700">Mới</span>':'<span style="color:var(--muted)">Cũ</span>'}</td>
     <td style="font-size:11px;color:var(--muted)">${o.customer_tags||'—'}</td>
@@ -5969,8 +5973,8 @@ function dhRenderTable(){
   </tr>`).join('');
   wrap.innerHTML=`
     <div class="tbl-scroll"><table>
-      <thead><tr><th>Ngày tạo đơn</th><th>Mã đơn</th><th>Mới/Cũ</th><th>Thẻ KH</th><th>Khách hàng</th><th>SĐT</th><th>Địa chỉ</th><th>Nguồn đơn</th><th>Ghi chú</th><th>NV cập nhật</th><th>Ad ID</th><th>Brand</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--muted)">Không có đơn nào khớp bộ lọc</td></tr>'}</tbody>
+      <thead><tr><th>Trạng thái</th><th>Ngày tạo đơn</th><th>Mã đơn</th><th>Mới/Cũ</th><th>Thẻ KH</th><th>Khách hàng</th><th>SĐT</th><th>Địa chỉ</th><th>Nguồn đơn</th><th>Ghi chú</th><th>NV cập nhật</th><th>Ad ID</th><th>Brand</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="13" style="text-align:center;padding:24px;color:var(--muted)">Không có đơn nào khớp bộ lọc</td></tr>'}</tbody>
     </table></div>
     <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
       <button class="refresh-btn" ${page<=1?'disabled':''} onclick="dhSetPage(${page-1})">‹ Trước</button>
@@ -5981,7 +5985,9 @@ function dhRenderTable(){
 async function renderDataHub(){
   await dhLoadOrders();
   const today=todayISO();
-  const dhToday=dhOrders.filter(o=>o.order_date===today).length;
+  const dhConfirmed=dhOrders.filter(dhIsOrder);
+  const dhToday=dhConfirmed.filter(o=>o.order_date===today).length;
+  const dhDataToday=dhOrders.filter(o=>(o.pancake_updated_at||'').slice(0,10)===today).length;
   const dhNew=dhOrders.filter(o=>o.customer_status==='Mới').length;
   const dhOld=dhOrders.filter(o=>o.customer_status==='Cũ').length;
   let dhSyncLabel='—';
@@ -5996,8 +6002,10 @@ async function renderDataHub(){
     <div class="tbl-card" style="margin-bottom:16px">
       <div class="tbl-head"><div class="tbl-title">🟢 Pancake POS — Đơn hàng (tự động thật)</div><span class="tbl-count" style="margin-left:auto">Đồng bộ lần cuối: ${dhSyncLabel}</span></div>
       <div class="kpi-grid" style="padding:16px">
-        ${mkKpi(ic('box'),'Tổng đơn',num(dhOrders.length),'từ 1/6/2026','g-blue')}
-        ${mkKpi(ic('sparkle'),'Hôm nay',num(dhToday),'đơn tạo hôm nay','g-teal')}
+        ${mkKpi(ic('box'),'Tổng đơn',num(dhConfirmed.length),'đã CHỐT ĐƠN, từ 1/6/2026','g-blue')}
+        ${mkKpi(ic('sparkle'),'Hôm nay',num(dhToday),'đơn chốt hôm nay','g-teal')}
+        ${mkKpi(ic('tag'),'SL Data',num(dhOrders.length),'tổng data thô (chưa lọc chốt đơn)','g-orange')}
+        ${mkKpi(ic('pencil'),'SL Data cập nhật hôm nay',num(dhDataToday),'data có thay đổi hôm nay','g-yellow')}
         ${mkKpi(ic('users'),'Khách mới',num(dhNew),'lần đầu mua','g-green')}
         ${mkKpi(ic('check'),'Khách cũ',num(dhOld),'đã mua trước đó','g-purple')}
       </div>
