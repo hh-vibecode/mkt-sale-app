@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
 <title>APP MKT/SALE</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -25,7 +25,7 @@
   --shadow:0 1px 3px rgba(16,24,40,.08);
   --shadow-md:0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06);
   --sidebar-w:220px;--sidebar-w-col:56px;
-  --font:'Outfit','Inter',sans-serif;
+  --font:'Montserrat','Inter',sans-serif;
 }
 [data-theme="dark"]{
   --bg:#0c111d;--bg2:#101828;--surface:#101828;--surface2:#1d2939;
@@ -213,7 +213,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
 </head>
 <body>
 
-<div id="loginGate" style="position:fixed;inset:0;z-index:6000;background:#f2f4f7;display:none;align-items:center;justify-content:center;font-family:'Outfit','Inter',sans-serif">
+<div id="loginGate" style="position:fixed;inset:0;z-index:6000;background:#f2f4f7;display:none;align-items:center;justify-content:center;font-family:'Montserrat','Inter',sans-serif">
   <div style="background:#fff;border:1.5px solid #e4e7ec;border-radius:16px;padding:32px 32px 28px;width:350px;box-shadow:0 12px 16px -4px rgba(16,24,40,.08),0 4px 6px -2px rgba(16,24,40,.03)">
     <div style="text-align:center;margin-bottom:20px">
       <img src="logo.png" style="width:56px;height:56px;object-fit:contain" onerror="this.style.display='none'">
@@ -6235,6 +6235,26 @@ function renderOrders(){
 function rptSlViewMode(){return localStorage.getItem('rptSlViewMode')||'overview';}
 function rptSlSetViewMode(m){localStorage.setItem('rptSlViewMode',m);renderReportSaleLe();}
 function rptSlLast9(s){const d=(s||'').toString().replace(/\D/g,'');return d.length>=9?d.slice(-9):d;}
+// Data trước 1/6/2026 là bulk import cũ không đáng tin (>6k lead dồn vào 1 lượt lúc migrate) -- loại khỏi
+// MỌI báo cáo Sale Lẻ. LƯU Ý: leads.created_at bị stamp ĐỒNG LOẠT lúc migrate (không phải ngày thật), nên phải
+// lấy ngày thật từ bảng cũ saonl_customers.created_date (còn giữ nguyên, chưa xoá) qua lead_id trùng nhau.
+let rptSlLegacyDate=null;
+async function rptSlLoadLegacyDates(){
+  if(rptSlLegacyDate)return;
+  rptSlLegacyDate={};
+  try{
+    const rows=await sbFetchAll('saonl_customers','select=lead_id,created_date');
+    rows.forEach(r=>{rptSlLegacyDate[r.lead_id]=r.created_date;});
+  }catch(e){console.warn('Không tải được saonl_customers (ngày tạo gốc):',e.message);}
+}
+const RPT_SL_MIN_DATE='2026-06-01';
+// Lead không có trong saonl_customers = lead tạo mới thẳng trên CRM v2 sau migrate -> luôn tính là "gần đây".
+function rptSlRecentLeads(){
+  return crmLeads.filter(l=>{
+    const legacy=rptSlLegacyDate&&rptSlLegacyDate[l.lead_id];
+    return legacy?legacy>=RPT_SL_MIN_DATE:true;
+  });
+}
 // Khớp SĐT khách CRM với datahub_orders -- ưu tiên dòng có tag CHỐT ĐƠN (đáng tin nhất), rồi tới ngày mới nhất.
 function rptSlDhMatches(phone){
   const key=rptSlLast9(phone);if(!key)return[];
@@ -6246,6 +6266,7 @@ async function renderReportSaleLe(){
   if(!el)return;
   if(!crmCustomers.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>';return;}
   await dhLoadOrders();
+  await rptSlLoadLegacyDates();
   const mode=rptSlViewMode();
   el.innerHTML=`
     <div class="page-title">Báo cáo · Sale Lẻ</div>
@@ -6260,7 +6281,7 @@ async function renderReportSaleLe(){
   document.getElementById('rptSlBody').innerHTML = mode==='overview' ? rptSlOverviewHtml() : rptSlDetailHtml();
 }
 function rptSlOverviewHtml(){
-  const leads=crmLeads;
+  const leads=rptSlRecentLeads();
   const total=leads.length;
   const byStatus=s=>leads.filter(l=>(l.lead_status||'')===s);
   const newLeads=leads.filter(l=>!l.lead_status);
@@ -6270,7 +6291,7 @@ function rptSlOverviewHtml(){
   const closedLeads=byStatus('Chốt đơn');
   const lostLeads=byStatus('Mất lead');
   const closeRate=total>0?closedLeads.length/total*100:0;
-  const confirmedOrders=crmOrders.filter(o=>o.status==='confirmed');
+  const confirmedOrders=crmOrders.filter(o=>o.status==='confirmed'&&o.order_date>=RPT_SL_MIN_DATE);
   const closedRev=confirmedOrders.reduce((s,o)=>s+Number(o.revenue||0),0);
   const totalPotential=leads.reduce((s,l)=>s+Number(l.current_potential_value||0),0);
   const custById={};crmCustomers.forEach(c=>custById[c.customer_id]=c);
@@ -6344,7 +6365,10 @@ function rptSlShow(key){const d=(window._rptSlLists||{})[key];if(d)dataModal(d);
 function rptSlDetailHtml(){
   const auto=v=>v?`<span style="font-style:italic;color:var(--muted)" title="Tự động lấy từ Data Hub (Pancake) -- CRM chưa nhập tay">🔗 ${v}</span>`:'<span style="color:var(--muted)">—</span>';
   const manual=v=>v?v:'<span style="color:var(--muted)">—</span>';
-  const rows=crmCustomers.map(c=>{
+  // Chỉ hiện khách có ít nhất 1 lead từ 1/6/2026 trở đi -- loại bulk data cũ (xem RPT_SL_MIN_DATE).
+  const recentCustIds=new Set(rptSlRecentLeads().map(l=>l.customer_id));
+  const recentCustomers=crmCustomers.filter(c=>recentCustIds.has(c.customer_id));
+  const rows=recentCustomers.map(c=>{
     const lead=(window._crmLeadByCustomer[c.customer_id]||[])[0]||{};
     const dh=rptSlDhMatches(c.phone)[0];
     const lastAct=(window._crmActByCustomer[c.customer_id]||[])[0]||{};
@@ -6378,7 +6402,7 @@ function rptSlDetailHtml(){
     </tr>`;
   }).join('');
   return `<div class="tbl-card">
-    <div class="tbl-head"><div class="tbl-title">Chi tiết khách hàng · Sale Lẻ</div><div class="tbl-count">${num(crmCustomers.length)}</div><span style="margin-left:auto;font-size:11px;color:var(--muted)">🔗 = tự động lấy từ Data Hub (Pancake)</span></div>
+    <div class="tbl-head"><div class="tbl-title">Chi tiết khách hàng · Sale Lẻ</div><div class="tbl-count">${num(recentCustomers.length)}</div><span style="margin-left:auto;font-size:11px;color:var(--muted)">🔗 = tự động lấy từ Data Hub (Pancake) · chỉ tính data từ 1/6/2026</span></div>
     <div class="tbl-scroll"><table>
       <thead><tr><th>Ngày tạo</th><th>Nguồn</th><th>Kênh</th><th>Sales</th><th>Ad ID</th><th>Lead ID</th><th>Rep (Pancake)</th><th>SĐT</th><th>Tỉnh/TP</th><th>Quận/Huyện</th><th>Địa chỉ</th><th>Fanpage</th><th>Trạng thái</th><th>CS cuối</th><th>Ngày chưa CS</th><th>Ghi chú CS</th><th>Ngày đơn đầu</th><th>Sản phẩm đơn đầu</th><th>Tổng doanh thu</th><th>Mã KH</th><th>Brand</th></tr></thead>
       <tbody>${rows||'<tr><td colspan="21" style="text-align:center;padding:24px;color:var(--muted)">Chưa có khách hàng nào</td></tr>'}</tbody>
