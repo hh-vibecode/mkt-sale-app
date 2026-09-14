@@ -409,7 +409,7 @@ async function doLogin(){
 const ROLE_PAGES={admin:['overview','detail','workspace','sale-onl','crm','orders','report-saleretail','datahub','settings'],'sale-onl':['workspace','sale-onl','crm','orders','report-saleretail'],mkt:['overview','detail']};
 // TẠM: chỉ cho xem Data Hub (đang xử lý lại logic từ đầu), ẩn hết các trang khác bất kể role.
 // Xong việc thì đổi lại false để mở lại toàn bộ nav như cũ.
-const TEMP_ONLY_DATAHUB=true;
+const TEMP_ONLY_DATAHUB=false;
 function applyRole(){
   const role=localStorage.getItem('dashRole')||'admin';
   // role='account' = tài khoản tạo qua Admin > Cài đặt (bảng sales_users) -- quyền động lấy từ localStorage
