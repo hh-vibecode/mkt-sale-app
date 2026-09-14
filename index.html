@@ -277,6 +277,10 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
       <div class="nav-item" onclick="switchPage('crm')" id="nav-crm"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M11 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm10 14v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="nav-label">Customers</span></div>
       <div class="nav-item" onclick="switchPage('orders')" id="nav-orders"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4M3 6h18M16 10a4 4 0 0 1-8 0"/></svg></span><span class="nav-label">Orders</span></div>
     </nav>
+    <div class="sb-section" id="sec-report-label" style="margin-top:12px">Báo cáo</div>
+    <nav id="sec-report">
+      <div class="nav-item" onclick="switchPage('report-saleretail')" id="nav-report-saleretail"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg></span><span class="nav-label">Sale Lẻ</span></div>
+    </nav>
     <div class="sb-section" id="sec-qt-label" style="margin-top:12px">Quản trị</div>
     <nav id="sec-qt">
       <div class="nav-item" onclick="switchPage('settings')" id="nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9.5 12 1.8 1.8L15 10"/></svg></span><span class="nav-label">Phân quyền</span></div>
@@ -306,6 +310,9 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
     <div class="tab-page" id="page-datahub">
+      <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
+    </div>
+    <div class="tab-page" id="page-report-saleretail">
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
     <div class="tab-page" id="page-settings">
@@ -399,7 +406,7 @@ async function doLogin(){
 // Phân quyền: role => danh sách trang được xem (null = xem hết).
 // admin liệt kê tường minh (KHÔNG null) để loại trừ trang 'danhgia' — trang đánh giá tuần chỉ dành riêng cho role 'review'.
 // Thêm trang mới cho admin thì nhớ bổ sung id vào mảng dưới đây.
-const ROLE_PAGES={admin:['overview','detail','workspace','sale-onl','crm','orders','datahub','settings'],'sale-onl':['workspace','sale-onl','crm','orders'],mkt:['overview','detail']};
+const ROLE_PAGES={admin:['overview','detail','workspace','sale-onl','crm','orders','report-saleretail','datahub','settings'],'sale-onl':['workspace','sale-onl','crm','orders','report-saleretail'],mkt:['overview','detail']};
 // TẠM: chỉ cho xem Data Hub (đang xử lý lại logic từ đầu), ẩn hết các trang khác bất kể role.
 // Xong việc thì đổi lại false để mở lại toàn bộ nav như cũ.
 const TEMP_ONLY_DATAHUB=true;
@@ -440,7 +447,7 @@ function initAuth(){
 }
 
 function switchPage(p){
-  ['overview','detail','workspace','sale-onl','crm','orders','datahub','settings'].forEach(x=>{
+  ['overview','detail','workspace','sale-onl','crm','orders','datahub','settings','report-saleretail'].forEach(x=>{
     const el=document.getElementById('page-'+x);if(el)el.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);if(nav)nav.classList.toggle('active',x===p);
   });
@@ -449,6 +456,7 @@ function switchPage(p){
   if(p==='datahub')renderDataHub();
   if(p==='workspace')renderWorkspace();
   if(p==='orders')renderOrders();
+  if(p==='report-saleretail')renderReportSaleLe();
 }
 
 // ── Load ──
@@ -470,7 +478,7 @@ async function loadData(){
     if(mktOk)applyFilter();
     renderSaleOnl();
     renderSaleOnlData();
-    if(crmOk){renderCrm();renderWorkspace();renderOrders();if(document.getElementById('page-datahub').classList.contains('active'))renderDataHub();}
+    if(crmOk){renderCrm();renderWorkspace();renderOrders();if(document.getElementById('page-datahub').classList.contains('active'))renderDataHub();if(document.getElementById('page-report-saleretail').classList.contains('active'))renderReportSaleLe();}
     stopThinking();
   }catch(e){stopThinking();showErr('Không tải được: '+e.message);document.getElementById('btnLoad').disabled=false;}
 }
@@ -6222,6 +6230,162 @@ function renderOrders(){
     </div>`;
 }
 
+// ── Báo cáo · Sale Lẻ: trang tổng hợp CHỈ ĐỌC (không ghi bảng nào) từ CRM v2 (customers/leads/crm_activities/
+// orders) + Data Hub (datahub_orders) -- không phải nơi Sale thao tác hàng ngày, xem trang Customers/Workspace.
+function rptSlViewMode(){return localStorage.getItem('rptSlViewMode')||'overview';}
+function rptSlSetViewMode(m){localStorage.setItem('rptSlViewMode',m);renderReportSaleLe();}
+function rptSlLast9(s){const d=(s||'').toString().replace(/\D/g,'');return d.length>=9?d.slice(-9):d;}
+// Khớp SĐT khách CRM với datahub_orders -- ưu tiên dòng có tag CHỐT ĐƠN (đáng tin nhất), rồi tới ngày mới nhất.
+function rptSlDhMatches(phone){
+  const key=rptSlLast9(phone);if(!key)return[];
+  return dhOrders.filter(o=>rptSlLast9(o.phone)===key)
+    .sort((a,b)=>(dhIsOrder(b)?1:0)-(dhIsOrder(a)?1:0)||String(b.order_date||'').localeCompare(String(a.order_date||'')));
+}
+async function renderReportSaleLe(){
+  const el=document.getElementById('page-report-saleretail');
+  if(!el)return;
+  if(!crmCustomers.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>';return;}
+  await dhLoadOrders();
+  const mode=rptSlViewMode();
+  el.innerHTML=`
+    <div class="page-title">Báo cáo · Sale Lẻ</div>
+    <div class="page-sub">Tổng quan phễu lead &amp; danh sách chi tiết khách hàng lẻ -- đọc CRM + Data Hub, không ghi đè bảng nào</div>
+    <div class="period-bar">
+      <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
+        <button onclick="rptSlSetViewMode('overview')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='overview'?'var(--accent)':'var(--surface)'};color:${mode==='overview'?'#fff':'var(--text2)'}">📊 Tổng Quan</button>
+        <button onclick="rptSlSetViewMode('detail')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='detail'?'var(--accent)':'var(--surface)'};color:${mode==='detail'?'#fff':'var(--text2)'}">☰ Chi Tiết</button>
+      </span>
+    </div>
+    <div id="rptSlBody"></div>`;
+  document.getElementById('rptSlBody').innerHTML = mode==='overview' ? rptSlOverviewHtml() : rptSlDetailHtml();
+}
+function rptSlOverviewHtml(){
+  const leads=crmLeads;
+  const total=leads.length;
+  const byStatus=s=>leads.filter(l=>(l.lead_status||'')===s);
+  const newLeads=leads.filter(l=>!l.lead_status);
+  const caring=byStatus('Đang chăm sóc');
+  const waiting=byStatus('Chờ phản hồi');
+  const interested=byStatus('Có nhu cầu');
+  const closedLeads=byStatus('Chốt đơn');
+  const lostLeads=byStatus('Mất lead');
+  const closeRate=total>0?closedLeads.length/total*100:0;
+  const confirmedOrders=crmOrders.filter(o=>o.status==='confirmed');
+  const closedRev=confirmedOrders.reduce((s,o)=>s+Number(o.revenue||0),0);
+  const totalPotential=leads.reduce((s,l)=>s+Number(l.current_potential_value||0),0);
+  const custById={};crmCustomers.forEach(c=>custById[c.customer_id]=c);
+  const salesName=id=>(crmSalesUsers.find(s=>s.user_id===id)||{}).name||'—';
+  const cols=['Ngày tạo','Họ tên','SĐT','Nguồn','Kênh','Sales','Trạng thái','Tiềm năng'];
+  const rowOf=l=>{const c=custById[l.customer_id]||{};return[l.created_at?l.created_at.slice(0,10):'—',c.name||'—',c.phone||'—',l.source||'—',l.channel||'—',salesName(l.assigned_sales),l.lead_status||'Khách mới',l.current_potential_value?vnd(l.current_potential_value):''];};
+  window._rptSlLists={
+    total:{title:'Tất cả lead',cols,rows:leads.map(rowOf)},
+    new:{title:'Khách mới',cols,rows:newLeads.map(rowOf)},
+    caring:{title:'Đang chăm sóc',cols,rows:caring.map(rowOf)},
+    waiting:{title:'Chờ phản hồi',cols,rows:waiting.map(rowOf)},
+    interested:{title:'Có nhu cầu',cols,rows:interested.map(rowOf)},
+    closed:{title:'Đã chốt',cols,rows:closedLeads.map(rowOf)},
+    lost:{title:'Mất lead',cols,rows:lostLeads.map(rowOf)},
+  };
+  const clk=(key,html)=>`<div onclick="rptSlShow('${key}')" title="Bấm để xem chi tiết" style="cursor:pointer">${html}</div>`;
+  const byChan={};leads.forEach(l=>{const k=(l.channel||'Khác').trim()||'Khác';byChan[k]=(byChan[k]||0)+1;});
+  const chanRows=Object.entries(byChan).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:9px 14px;font-weight:700">${k}</td><td style="padding:9px 14px;text-align:center;font-weight:700">${num(n)}</td><td style="padding:9px 14px"><div style="height:5px;background:var(--bg2);border-radius:4px"><div style="height:5px;background:var(--accent);border-radius:4px;width:${total?(n/total*100).toFixed(0):0}%"></div></div></td></tr>`).join('');
+  const bySales={};
+  leads.forEach(l=>{const s=l.assigned_sales||'__unassigned';(bySales[s]=bySales[s]||{total:0,closed:0,rev:0}).total++;if((l.lead_status||'')==='Chốt đơn')bySales[s].closed++;});
+  confirmedOrders.forEach(o=>{const s=o.sales_id||'__unassigned';(bySales[s]=bySales[s]||{total:0,closed:0,rev:0}).rev+=Number(o.revenue||0);});
+  const salesRows=Object.entries(bySales).sort((a,b)=>b[1].total-a[1].total).map(([sid,d])=>`<tr style="border-bottom:1px solid var(--border)">
+    <td style="padding:9px 14px;font-weight:700">${sid==='__unassigned'?'Chưa phân công':salesName(sid)}</td>
+    <td style="padding:9px 14px;text-align:center;font-weight:700">${num(d.total)}</td>
+    <td style="padding:9px 14px;text-align:center;font-weight:700;color:var(--green)">${num(d.closed)}</td>
+    <td style="padding:9px 14px;text-align:center;font-weight:700;color:#2563eb">${d.total>0?pct(d.closed/d.total*100):'—'}</td>
+    <td style="padding:9px 14px;text-align:right;font-weight:800;color:var(--green)">${d.rev>0?vnd(d.rev):'—'}</td>
+  </tr>`).join('');
+  const byLostReason={};
+  lostLeads.forEach(l=>{const act=(window._crmActByCustomer[l.customer_id]||[])[0]||{};const g=(act.lost_group||act.lost_reason||'Khác').trim()||'Khác';byLostReason[g]=(byLostReason[g]||0)+1;});
+  const lostRows=Object.entries(byLostReason).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:9px 14px;font-weight:700">${k}</td><td style="padding:9px 14px;text-align:center;font-weight:700;color:var(--red)">${num(n)}</td></tr>`).join('');
+  return `
+    <div class="sec-label">I. Doanh Thu</div>
+    <div class="kpi-grid" style="grid-template-columns:1fr 1fr">
+      ${clk('closed',mkKpi(ic('check'),'Tổng Doanh Thu Đã Chốt',vnd(closedRev),num(closedLeads.length)+' lead đã chốt','g-green'))}
+      ${mkKpi(ic('diamond'),'Giá Trị Tiềm Năng',vnd(totalPotential),'toàn bộ lead đang mở','g-yellow')}
+    </div>
+    <div class="sec-label">II. Tổng Quan Lead (phễu)</div>
+    <div class="kpi-grid">
+      ${clk('total',mkKpi(ic('users'),'Tổng Lead',num(total),'tất cả lead','g-blue'))}
+      ${mkKpi(ic('target'),'Tỉ Lệ Chốt',pct(closeRate),num(closedLeads.length)+'/'+num(total)+' lead','g-teal')}
+      ${clk('new',mkKpi(ic('sparkle'),'Khách Mới',num(newLeads.length),'chưa có trạng thái','g-purple'))}
+      ${clk('caring',mkKpi(ic('chat'),'Đang Chăm Sóc',num(caring.length),'đang xử lý','g-blue'))}
+      ${clk('waiting',mkKpi(ic('clock'),'Chờ Phản Hồi',num(waiting.length),'đang chờ khách','g-yellow'))}
+      ${clk('interested',mkKpi(ic('sparkle'),'Có Nhu Cầu',num(interested.length),'sắp chốt','g-orange'))}
+      ${clk('closed',mkKpi(ic('check'),'Đã Chốt',num(closedLeads.length),'đã ra đơn','g-green'))}
+      ${clk('lost',mkKpi(ic('xcircle'),'Mất Lead',num(lostLeads.length),'không thành','g-red'))}
+    </div>
+    <div class="sec-label">III. Lead Theo Kênh</div>
+    <div class="tov-card"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:var(--bg2);border-bottom:2px solid var(--border)"><th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">KÊNH</th><th style="padding:9px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--muted)">SỐ LEAD</th><th style="padding:9px 14px;width:140px"></th></tr></thead>
+      <tbody>${chanRows||'<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--muted)">Chưa có dữ liệu</td></tr>'}</tbody>
+    </table></div></div>
+    <div class="sec-label">IV. Lead Theo Sales</div>
+    <div class="tov-card"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:var(--bg2);border-bottom:2px solid var(--border)">
+        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">SALES PHỤ TRÁCH</th>
+        <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--muted)">SỐ LEAD</th>
+        <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--green)">ĐÃ CHỐT</th>
+        <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#2563eb">TỶ LỆ CHỐT</th>
+        <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:var(--green)">DOANH THU</th>
+      </tr></thead><tbody>${salesRows||'<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--muted)">Chưa có dữ liệu</td></tr>'}</tbody>
+    </table></div></div>
+    <div class="sec-label">V. Mất Lead Theo Nguyên Nhân</div>
+    <div class="tov-card"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:var(--bg2);border-bottom:2px solid var(--border)"><th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">NHÓM NGUYÊN NHÂN</th><th style="padding:9px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--muted)">SỐ LEAD MẤT</th></tr></thead>
+      <tbody>${lostRows||'<tr><td colspan="2" style="padding:20px;text-align:center;color:var(--muted)">Chưa có lead mất</td></tr>'}</tbody>
+    </table></div></div>`;
+}
+function rptSlShow(key){const d=(window._rptSlLists||{})[key];if(d)dataModal(d);}
+function rptSlDetailHtml(){
+  const auto=v=>v?`<span style="font-style:italic;color:var(--muted)" title="Tự động lấy từ Data Hub (Pancake) -- CRM chưa nhập tay">🔗 ${v}</span>`:'<span style="color:var(--muted)">—</span>';
+  const manual=v=>v?v:'<span style="color:var(--muted)">—</span>';
+  const rows=crmCustomers.map(c=>{
+    const lead=(window._crmLeadByCustomer[c.customer_id]||[])[0]||{};
+    const dh=rptSlDhMatches(c.phone)[0];
+    const lastAct=(window._crmActByCustomer[c.customer_id]||[])[0]||{};
+    const myOrders=(window._crmOrdByCustomer[c.customer_id]||[]).filter(o=>o.status==='confirmed').sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
+    const firstOrder=myOrders[0];
+    const dhConfirmed=(dh&&dhIsOrder(dh))?dh:null;
+    const daysNoCs=c.last_contact_date?Math.floor((new Date()-new Date(c.last_contact_date))/86400000):null;
+    const salesNm=(crmSalesUsers.find(s=>s.user_id===lead.assigned_sales)||{}).name;
+    return `<tr style="cursor:pointer" onclick="openCrmDetail('${c.customer_id}')">
+      <td>${manual(lead.created_at?lead.created_at.slice(0,10):'')}</td>
+      <td>${lead.source?manual(lead.source):(dh?auto('Online'):manual())}</td>
+      <td>${lead.channel?manual(lead.channel):(dh&&dh.source?auto(dh.source):manual())}</td>
+      <td>${manual(salesNm)}</td>
+      <td>${lead.ad_id?manual(lead.ad_id):(dh&&dh.ad_id?auto(dh.ad_id):manual())}</td>
+      <td style="font-size:11px;color:var(--muted)">${manual(lead.lead_id)}</td>
+      <td>${dh&&dh.staff_name?auto(dh.staff_name):manual()}</td>
+      <td>${manual(c.phone)}</td>
+      <td>${c.province?manual(c.province):(dh&&dh.province?auto(dh.province):manual())}</td>
+      <td>${c.district?manual(c.district):(dh&&dh.district?auto(dh.district):manual())}</td>
+      <td style="font-size:11.5px">${c.address?manual(c.address):(dh?auto([dh.address,dh.ward].filter(Boolean).join(', ')):manual())}</td>
+      <td>${dh&&dh.source?auto(dh.source):manual()}</td>
+      <td>${crmStatusBadge(lead.lead_status)}</td>
+      <td>${manual(c.last_contact_date)}</td>
+      <td class="num">${daysNoCs==null?'—':num(daysNoCs)}</td>
+      <td style="font-size:11px;color:var(--text2);max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(lastAct.conversation_content||'').replace(/"/g,'&quot;')}">${manual(lastAct.conversation_content)}</td>
+      <td>${firstOrder?manual(firstOrder.order_date):(dhConfirmed?auto(dhConfirmed.order_date):manual())}</td>
+      <td>${firstOrder?manual(firstOrder.product):manual()}</td>
+      <td class="num" style="font-weight:800;color:${c.total_revenue>0?'var(--green)':'inherit'}">${c.total_revenue>0?vnd(c.total_revenue):'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${manual(c.customer_id)}</td>
+      <td>${dh&&dh.brand?auto(DH_BRAND_LABEL[dh.brand]||dh.brand):manual()}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="tbl-card">
+    <div class="tbl-head"><div class="tbl-title">Chi tiết khách hàng · Sale Lẻ</div><div class="tbl-count">${num(crmCustomers.length)}</div><span style="margin-left:auto;font-size:11px;color:var(--muted)">🔗 = tự động lấy từ Data Hub (Pancake)</span></div>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>Ngày tạo</th><th>Nguồn</th><th>Kênh</th><th>Sales</th><th>Ad ID</th><th>Lead ID</th><th>Rep (Pancake)</th><th>SĐT</th><th>Tỉnh/TP</th><th>Quận/Huyện</th><th>Địa chỉ</th><th>Fanpage</th><th>Trạng thái</th><th>CS cuối</th><th>Ngày chưa CS</th><th>Ghi chú CS</th><th>Ngày đơn đầu</th><th>Sản phẩm đơn đầu</th><th>Tổng doanh thu</th><th>Mã KH</th><th>Brand</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="21" style="text-align:center;padding:24px;color:var(--muted)">Chưa có khách hàng nào</td></tr>'}</tbody>
+    </table></div>
+  </div>`;
+}
+
 // ── Cài đặt (Admin): quản lý tài khoản -- Vị trí + Quyền truy cập. Thay cho "Sales phụ trách" lấy tràn từ
 // 40 tên lịch sử trong data cũ -- giờ dropdown Sales phụ trách CHỈ hiện tài khoản thật tạo ở đây (has_login=true).
 // Quyền chia theo đúng 2 nhóm trên sidebar: nhóm SALE (việc hàng ngày) và nhóm QUẢN TRỊ (cấp cao nhất —
@@ -6229,12 +6393,13 @@ function renderOrders(){
 // trong form tạo tài khoản.
 const CRM_PERMISSION_GROUPS=[
   ['Sale',[['workspace','Sales Workspace'],['crm','Customers'],['orders','Orders']]],
+  ['Báo cáo',[['report-saleretail','Sale Lẻ']]],
   ['Quản trị',[['settings','Phân quyền'],['overview','MKT Overview'],['sale-onl','Sale Overview'],['datahub','Data Hub']]],
 ];
 const CRM_PERMISSION_PAGES=CRM_PERMISSION_GROUPS.flatMap(([,items])=>items);
 const CRM_POSITION_DEFAULTS={
-  admin:['workspace','crm','orders','settings','overview','sale-onl','datahub'], // toàn quyền
-  manager:['workspace','crm','orders','overview','sale-onl','datahub'],          // xem hết số liệu, không quản tài khoản
+  admin:['workspace','crm','orders','report-saleretail','settings','overview','sale-onl','datahub'], // toàn quyền
+  manager:['workspace','crm','orders','report-saleretail','overview','sale-onl','datahub'],          // xem hết số liệu, không quản tài khoản
   sales:['workspace','crm','orders'],                                            // chỉ việc hàng ngày
   mkt:['overview','datahub'],                                                    // chỉ số liệu MKT + nguồn data
 };
