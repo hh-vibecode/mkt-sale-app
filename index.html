@@ -5986,10 +5986,10 @@ async function renderDataHub(){
   await dhLoadOrders();
   const today=todayISO();
   const dhConfirmed=dhOrders.filter(dhIsOrder);
-  const dhToday=dhConfirmed.filter(o=>o.order_date===today).length;
-  const dhDataToday=dhOrders.filter(o=>(o.pancake_updated_at||'').slice(0,10)===today).length;
   const dhNew=dhOrders.filter(o=>o.customer_status==='Mới').length;
   const dhOld=dhOrders.filter(o=>o.customer_status==='Cũ').length;
+  const dhNewConfirmed=dhConfirmed.filter(o=>o.customer_status==='Mới').length;
+  const dhOldConfirmed=dhConfirmed.filter(o=>o.customer_status==='Cũ').length;
   let dhSyncLabel='—';
   try{
     const dhHist=await sbFetchAll('sync_log',`select=started_at,status&source=eq.${encodeURIComponent('Data Hub - Pancake POS')}&order=started_at.desc&limit=1`);
@@ -6001,13 +6001,17 @@ async function renderDataHub(){
   const pancakeOrdersHtml=`
     <div class="tbl-card" style="margin-bottom:16px">
       <div class="tbl-head"><div class="tbl-title">🟢 Pancake POS — Đơn hàng (tự động thật)</div><span class="tbl-count" style="margin-left:auto">Đồng bộ lần cuối: ${dhSyncLabel}</span></div>
-      <div class="kpi-grid" style="padding:16px">
-        ${mkKpi(ic('box'),'Tổng đơn',num(dhConfirmed.length),'đã CHỐT ĐƠN, từ 1/6/2026','g-blue')}
-        ${mkKpi(ic('sparkle'),'Hôm nay',num(dhToday),'đơn chốt hôm nay','g-teal')}
-        ${mkKpi(ic('tag'),'SL Data',num(dhOrders.length),'tổng data thô (chưa lọc chốt đơn)','g-orange')}
-        ${mkKpi(ic('pencil'),'SL Data cập nhật hôm nay',num(dhDataToday),'data có thay đổi hôm nay','g-yellow')}
-        ${mkKpi(ic('users'),'Khách mới',num(dhNew),'lần đầu mua','g-green')}
-        ${mkKpi(ic('check'),'Khách cũ',num(dhOld),'đã mua trước đó','g-purple')}
+      <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:16px 16px 0">Data</div>
+      <div class="kpi-grid" style="padding:12px 16px 16px">
+        ${mkKpi(ic('tag'),'SL Data',num(dhOrders.length),'tổng data thô','g-orange')}
+        ${mkKpi(ic('users'),'Khách mới',num(dhNew),'trong data thô','g-green')}
+        ${mkKpi(ic('check'),'Khách cũ',num(dhOld),'trong data thô','g-purple')}
+      </div>
+      <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:0 16px">Đơn đã chốt</div>
+      <div class="kpi-grid" style="padding:12px 16px 16px">
+        ${mkKpi(ic('box'),'Tổng đơn',num(dhConfirmed.length),'có tag CHỐT ĐƠN','g-blue')}
+        ${mkKpi(ic('users'),'Khách mới',num(dhNewConfirmed),'trong đơn đã chốt','g-teal')}
+        ${mkKpi(ic('check'),'Khách cũ',num(dhOldConfirmed),'trong đơn đã chốt','g-yellow')}
       </div>
       <div style="padding:0 16px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
         <select id="dhBrandFilter" class="top-select" onchange="dhFilterChange()" style="height:30px;font-size:11px;padding:3px 10px;font-weight:600">
