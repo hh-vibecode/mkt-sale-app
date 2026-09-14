@@ -6275,11 +6275,22 @@ async function renderReportSaleLe(){
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         <button onclick="rptSlSetViewMode('overview')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='overview'?'var(--accent)':'var(--surface)'};color:${mode==='overview'?'#fff':'var(--text2)'}">📊 Tổng Quan</button>
         <button onclick="rptSlSetViewMode('detail')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='detail'?'var(--accent)':'var(--surface)'};color:${mode==='detail'?'#fff':'var(--text2)'}">☰ Chi Tiết</button>
+        <button onclick="rptSlSetViewMode('entry')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='entry'?'var(--accent)':'var(--surface)'};color:${mode==='entry'?'#fff':'var(--text2)'}">📝 Nhập Liệu</button>
       </span>
     </div>
     <div id="rptSlBody"></div>`;
-  document.getElementById('rptSlBody').innerHTML = mode==='overview' ? rptSlOverviewHtml() : rptSlDetailHtml();
+  if(mode==='overview'){
+    document.getElementById('rptSlBody').innerHTML=rptSlOverviewHtml();
+    rptSlDrawChanChart();
+  }else if(mode==='detail'){
+    document.getElementById('rptSlBody').innerHTML=rptSlDetailHtml();
+  }else{
+    document.getElementById('rptSlBody').innerHTML=rptSlEntryHtml();
+  }
 }
+// Brand không có sẵn trên CRM v2 (customers/leads) -- suy ra bằng cách khớp SĐT khách với Data Hub
+// (datahub_orders.brand, map cứng theo shop Pancake, xem DH_BRAND_LABEL) giống hệt cách rptSlDetailHtml() làm.
+function rptSlBrandOfPhone(phone){const m=rptSlDhMatches(phone)[0];return m?m.brand:null;}
 function rptSlOverviewHtml(){
   const leads=rptSlRecentLeads();
   const total=leads.length;
@@ -6291,7 +6302,9 @@ function rptSlOverviewHtml(){
   const closedLeads=byStatus('Chốt đơn');
   const lostLeads=byStatus('Mất lead');
   const closeRate=total>0?closedLeads.length/total*100:0;
-  const confirmedOrders=crmOrders.filter(o=>o.status==='confirmed'&&o.order_date>=RPT_SL_MIN_DATE);
+  // Doanh thu KHÔNG lọc theo mốc 1/6 -- đơn đã chốt là tiền thật, tính toàn bộ lịch sử (khớp đúng số bên
+  // trang Sale Overview cũ). Mốc 1/6 chỉ áp dụng cho phễu LEAD (loại bulk data cũ), không áp cho doanh thu.
+  const confirmedOrders=crmOrders.filter(o=>o.status==='confirmed');
   const closedRev=confirmedOrders.reduce((s,o)=>s+Number(o.revenue||0),0);
   const totalPotential=leads.reduce((s,l)=>s+Number(l.current_potential_value||0),0);
   const custById={};crmCustomers.forEach(c=>custById[c.customer_id]=c);
@@ -6323,11 +6336,38 @@ function rptSlOverviewHtml(){
   const byLostReason={};
   lostLeads.forEach(l=>{const act=(window._crmActByCustomer[l.customer_id]||[])[0]||{};const g=(act.lost_group||act.lost_reason||'Khác').trim()||'Khác';byLostReason[g]=(byLostReason[g]||0)+1;});
   const lostRows=Object.entries(byLostReason).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:9px 14px;font-weight:700">${k}</td><td style="padding:9px 14px;text-align:center;font-weight:700;color:var(--red)">${num(n)}</td></tr>`).join('');
+  // Doanh thu theo brand -- suy brand từ SĐT khách khớp Data Hub (CRM v2 không có sẵn cột brand).
+  const revByBrand={};
+  confirmedOrders.forEach(o=>{const c=custById[o.customer_id];const br=c?rptSlBrandOfPhone(c.phone):null;const key=br||'__unknown';revByBrand[key]=(revByBrand[key]||0)+Number(o.revenue||0);});
+  const brandCard=(key,label,icon,grad)=>mkKpi(icon,label,vnd(revByBrand[key]||0),'đã chốt','g-'+grad);
+  // Top 10 khách tiềm năng (loại đã chốt/đã mất -- những lead còn "mở" mới cần ưu tiên chăm sóc)
+  const topPot=leads.filter(l=>Number(l.current_potential_value||0)>0&&l.lead_status!=='Chốt đơn'&&l.lead_status!=='Mất lead')
+    .sort((a,b)=>Number(b.current_potential_value||0)-Number(a.current_potential_value||0)).slice(0,10);
+  const topPotRows=topPot.map(l=>{
+    const c=custById[l.customer_id]||{};
+    const lastAct=(window._crmActByCustomer[l.customer_id]||[])[0]||{};
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:8px 12px;font-size:12px;color:var(--muted)">${l.lead_id||'—'}</td>
+      <td style="padding:8px 12px;font-weight:700">${c.name||'—'}</td>
+      <td style="padding:8px 12px;font-size:12px">${salesName(l.assigned_sales)}</td>
+      <td style="padding:8px 12px;font-size:12px">${l.source||'—'}</td>
+      <td style="padding:8px 12px;font-size:11px;color:var(--text2);line-height:1.45;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(lastAct.conversation_content||'').replace(/"/g,'&quot;')}">${lastAct.conversation_content||'—'}</td>
+      <td style="padding:8px 12px;text-align:right;font-weight:800;color:#7c3aed">${vnd(l.current_potential_value)}</td>
+      <td style="padding:8px 12px;font-size:11px">${l.lead_status||'Khách mới'}</td>
+    </tr>`;
+  }).join('');
+  window._rptSlChanEntries=Object.entries(byChan).sort((a,b)=>b[1]-a[1]);
   return `
     <div class="sec-label">I. Doanh Thu</div>
     <div class="kpi-grid" style="grid-template-columns:1fr 1fr">
-      ${clk('closed',mkKpi(ic('check'),'Tổng Doanh Thu Đã Chốt',vnd(closedRev),num(closedLeads.length)+' lead đã chốt','g-green'))}
+      ${clk('closed',mkKpi(ic('check'),'Tổng Doanh Thu Đã Chốt',vnd(closedRev),num(confirmedOrders.length)+' đơn · toàn bộ lịch sử','g-green'))}
       ${mkKpi(ic('diamond'),'Giá Trị Tiềm Năng',vnd(totalPotential),'toàn bộ lead đang mở','g-yellow')}
+    </div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-top:12px">
+      ${brandCard('CT','Chánh Tâm',ic('store'),'blue')}
+      ${brandCard('HT','Hiền Thuỷ',ic('store'),'yellow')}
+      ${brandCard('Shidai','Shidai',ic('store'),'blue')}
+      ${brandCard('TTV','Tự Tại Viên',ic('store'),'purple')}
     </div>
     <div class="sec-label">II. Tổng Quan Lead (phễu)</div>
     <div class="kpi-grid">
@@ -6341,10 +6381,7 @@ function rptSlOverviewHtml(){
       ${clk('lost',mkKpi(ic('xcircle'),'Mất Lead',num(lostLeads.length),'không thành','g-red'))}
     </div>
     <div class="sec-label">III. Lead Theo Kênh</div>
-    <div class="tov-card"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-      <thead><tr style="background:var(--bg2);border-bottom:2px solid var(--border)"><th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">KÊNH</th><th style="padding:9px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--muted)">SỐ LEAD</th><th style="padding:9px 14px;width:140px"></th></tr></thead>
-      <tbody>${chanRows||'<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--muted)">Chưa có dữ liệu</td></tr>'}</tbody>
-    </table></div></div>
+    <div class="chart-card"><div class="chart-wrap" style="height:${Math.max(200,window._rptSlChanEntries.length*32)}px"><canvas id="cRptSlChan"></canvas></div></div>
     <div class="sec-label">IV. Lead Theo Sales</div>
     <div class="tov-card"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
       <thead><tr style="background:var(--bg2);border-bottom:2px solid var(--border)">
@@ -6355,11 +6392,36 @@ function rptSlOverviewHtml(){
         <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:var(--green)">DOANH THU</th>
       </tr></thead><tbody>${salesRows||'<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--muted)">Chưa có dữ liệu</td></tr>'}</tbody>
     </table></div></div>
-    <div class="sec-label">V. Mất Lead Theo Nguyên Nhân</div>
+    <div class="sec-label">V. Top 10 Khách Hàng Tiềm Năng</div>
+    <div class="tov-card"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:var(--bg2);border-bottom:2px solid var(--border)">
+        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">LEAD ID</th>
+        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">HỌ TÊN</th>
+        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">SALES</th>
+        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">NGUỒN</th>
+        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">NỘI DUNG TRAO ĐỔI</th>
+        <th style="padding:9px 12px;text-align:right;font-size:11px;font-weight:700;color:#7c3aed">GIÁ TRỊ TIỀM NĂNG</th>
+        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">TRẠNG THÁI</th>
+      </tr></thead><tbody>${topPotRows||'<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Chưa có dữ liệu</td></tr>'}</tbody>
+    </table></div></div>
+    <div class="sec-label">VI. Mất Lead Theo Nguyên Nhân</div>
     <div class="tov-card"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
       <thead><tr style="background:var(--bg2);border-bottom:2px solid var(--border)"><th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">NHÓM NGUYÊN NHÂN</th><th style="padding:9px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--muted)">SỐ LEAD MẤT</th></tr></thead>
       <tbody>${lostRows||'<tr><td colspan="2" style="padding:20px;text-align:center;color:var(--muted)">Chưa có lead mất</td></tr>'}</tbody>
     </table></div></div>`;
+}
+function rptSlDrawChanChart(){
+  const entries=window._rptSlChanEntries||[];
+  const ctx=document.getElementById('cRptSlChan');
+  if(!ctx||!entries.length)return;
+  const COLORS=['rgba(67,97,238,.8)','rgba(10,191,122,.8)','rgba(249,115,22,.8)','rgba(168,85,247,.8)','rgba(236,72,153,.8)','rgba(234,179,8,.8)','rgba(20,184,166,.8)','rgba(239,68,68,.8)'];
+  new Chart(ctx,{type:'bar',data:{
+    labels:entries.map(e=>e[0]),
+    datasets:[{data:entries.map(e=>e[1]),backgroundColor:entries.map((_,i)=>COLORS[i%COLORS.length]),borderRadius:6,borderSkipped:false}]
+  },options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} lead`}}},
+    scales:{x:{grid:{display:false},border:{display:false},ticks:{color:'var(--muted)',font:{size:10}}},
+      y:{grid:{display:false},border:{display:false},ticks:{color:'var(--text)',font:{size:11,weight:'600'}}}}}});
 }
 function rptSlShow(key){const d=(window._rptSlLists||{})[key];if(d)dataModal(d);}
 function rptSlDetailHtml(){
@@ -6408,6 +6470,99 @@ function rptSlDetailHtml(){
       <tbody>${rows||'<tr><td colspan="21" style="text-align:center;padding:24px;color:var(--muted)">Chưa có khách hàng nào</td></tr>'}</tbody>
     </table></div>
   </div>`;
+}
+// Lead có ngày tạo THẬT (legacy-aware, xem rptSlLegacyDate) trong N ngày gần nhất -- dùng chung cho tab Nhập Liệu.
+function rptSlRealDate(leadId,fallbackCreatedAt){
+  const legacy=rptSlLegacyDate&&rptSlLegacyDate[leadId];
+  return legacy||(fallbackCreatedAt?fallbackCreatedAt.slice(0,10):null);
+}
+function rptSlEntryLeads(){
+  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-2);cutoff.setHours(0,0,0,0);
+  const cutoffStr=cutoff.toISOString().slice(0,10);
+  return crmLeads.filter(l=>{const d=rptSlRealDate(l.lead_id,l.created_at);return d&&d>=cutoffStr;});
+}
+// Đơn Data Hub (Pancake) mới trong 3 ngày qua nhưng SĐT chưa khớp khách nào trong CRM -- hiện để Sale biết
+// còn data mới cần xử lý, CHỈ ĐỌC (không tự tạo lead/khách -- việc đó để Sale chủ động, tránh tạo trùng/rác).
+function rptSlUnmatchedDhRecent(){
+  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-2);cutoff.setHours(0,0,0,0);
+  const cutoffStr=cutoff.toISOString().slice(0,10);
+  const crmPhones=new Set(crmCustomers.map(c=>rptSlLast9(c.phone)).filter(Boolean));
+  return dhOrders.filter(o=>o.order_date>=cutoffStr&&dhIsOrder(o)&&!crmPhones.has(rptSlLast9(o.phone)));
+}
+async function rptSlChangeStatus(customerId,newStatus){
+  const lead=(window._crmLeadByCustomer[customerId]||[])[0];if(!lead)return;
+  await sbInsert('crm_activities',{customer_id:customerId,lead_id:lead.lead_id,sales_id:lead.assigned_sales,
+    activity_date:todayISO(),conversation_content:'(Đổi trạng thái nhanh từ tab Nhập liệu)',
+    status_after_activity:newStatus,potential_value:lead.current_potential_value||null,
+    next_followup_date:lead.next_followup_date||null});
+  await crmAudit('Đổi trạng thái nhanh → '+newStatus,customerId,lead.lead_status,newStatus);
+  await loadCrmFromSupabase();renderReportSaleLe();
+}
+async function rptSlSaveNote(customerId){
+  const input=document.getElementById('rptSlNote_'+customerId);
+  const content=(input&&input.value||'').trim();
+  if(!content)return;
+  const lead=(window._crmLeadByCustomer[customerId]||[])[0];if(!lead)return;
+  await sbInsert('crm_activities',{customer_id:customerId,lead_id:lead.lead_id,sales_id:lead.assigned_sales,
+    activity_date:todayISO(),conversation_content:content,
+    status_after_activity:lead.lead_status,potential_value:lead.current_potential_value||null,
+    next_followup_date:lead.next_followup_date||null});
+  await crmAudit('Ghi chú CS (tab Nhập liệu)',customerId,null,content);
+  await loadCrmFromSupabase();renderReportSaleLe();
+}
+function rptSlEntryHtml(){
+  const entryLeads=rptSlEntryLeads();
+  const custById={};crmCustomers.forEach(c=>custById[c.customer_id]=c);
+  const rows=entryLeads.map(l=>{
+    const c=custById[l.customer_id]||{};
+    const lastAct=(window._crmActByCustomer[l.customer_id]||[])[0]||{};
+    const d=rptSlRealDate(l.lead_id,l.created_at)||'—';
+    return `<tr>
+      <td style="font-size:11px;color:var(--muted)">${d}</td>
+      <td class="name">${c.name||'—'}</td>
+      <td>${c.phone||'—'}</td>
+      <td style="font-size:11px">${l.source||'—'}${l.channel?' / '+l.channel:''}</td>
+      <td>
+        <select onchange="rptSlChangeStatus('${l.customer_id}',this.value)" style="font-size:11.5px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
+          <option value="">Khách mới</option>
+          ${crmConfigOptions('status').map(s=>`<option value="${s}" ${s===l.lead_status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </td>
+      <td style="font-size:11px;color:var(--muted);max-width:200px" title="${(lastAct.conversation_content||'').replace(/"/g,'&quot;')}">${lastAct.conversation_content?('Gần nhất: '+lastAct.conversation_content):'Chưa có ghi chú'}</td>
+      <td style="min-width:220px">
+        <div style="display:flex;gap:6px">
+          <input id="rptSlNote_${l.customer_id}" placeholder="Nội dung trao đổi hôm nay…" style="flex:1;height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-family:var(--font)">
+          <button class="refresh-btn" onclick="rptSlSaveNote('${l.customer_id}')">💾 Lưu</button>
+        </div>
+      </td>
+      <td style="cursor:pointer;color:var(--accent);font-size:11.5px;font-weight:700" onclick="openCrmDetail('${l.customer_id}')">Xem hồ sơ ›</td>
+    </tr>`;
+  }).join('');
+  const dhNew=rptSlUnmatchedDhRecent();
+  const dhRows=dhNew.map(o=>`<tr>
+    <td style="font-size:11px;color:var(--muted)">${o.order_date}</td>
+    <td class="name">${o.customer_name||'—'}</td>
+    <td>${o.phone||'—'}</td>
+    <td style="font-size:11px">${o.source||'—'}</td>
+    <td><span style="display:inline-block;padding:2px 9px;border-radius:20px;background:var(--accent-l);color:var(--accent);font-size:11px;font-weight:800">${DH_BRAND_LABEL[o.brand]||o.brand||'—'}</span></td>
+    <td style="font-size:11px;color:var(--red)">Chưa có trong CRM</td>
+  </tr>`).join('');
+  return `
+    <div class="tbl-card" style="margin-bottom:16px">
+      <div class="tbl-head"><div class="tbl-title">Lead cần xử lý (3 ngày gần nhất)</div><div class="tbl-count">${num(entryLeads.length)}</div></div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Ngày vào</th><th>Khách hàng</th><th>SĐT</th><th>Nguồn/Kênh</th><th>Trạng thái</th><th>Ghi chú gần nhất</th><th>Nội dung trao đổi hôm nay</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Không có lead nào mới trong 3 ngày qua</td></tr>'}</tbody>
+      </table></div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-head"><div class="tbl-title">⚠️ Data Hub mới, chưa có trong CRM (3 ngày gần nhất)</div><div class="tbl-count">${num(dhNew.length)}</div></div>
+      <div style="padding:10px 16px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)">Chỉ hiển thị để biết — không tự tạo khách, cần Sale chủ động thêm vào CRM nếu muốn xử lý.</div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Ngày đơn</th><th>Tên khách (Pancake)</th><th>SĐT</th><th>Nguồn</th><th>Brand</th><th></th></tr></thead>
+        <tbody>${dhRows||'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Không có data Pancake mới chưa khớp CRM</td></tr>'}</tbody>
+      </table></div>
+    </div>`;
 }
 
 // ── Cài đặt (Admin): quản lý tài khoản -- Vị trí + Quyền truy cập. Thay cho "Sales phụ trách" lấy tràn từ
