@@ -407,9 +407,9 @@ async function doLogin(){
 // admin liệt kê tường minh (KHÔNG null) để loại trừ trang 'danhgia' — trang đánh giá tuần chỉ dành riêng cho role 'review'.
 // Thêm trang mới cho admin thì nhớ bổ sung id vào mảng dưới đây.
 const ROLE_PAGES={admin:['overview','detail','workspace','sale-onl','crm','orders','report-saleretail','datahub','settings'],'sale-onl':['workspace','sale-onl','crm','orders','report-saleretail'],mkt:['overview','detail']};
-// TẠM: chỉ cho xem Data Hub (đang xử lý lại logic từ đầu), ẩn hết các trang khác bất kể role.
-// Xong việc thì đổi lại false để mở lại toàn bộ nav như cũ.
-const TEMP_ONLY_DATAHUB=false;
+// TẠM: chỉ cho xem Data Hub + Báo cáo Sale Lẻ (2 phần mới làm), ẩn hết trang cũ bất kể role.
+// Xong việc thì đổi lại null để mở lại toàn bộ nav như cũ.
+const TEMP_VISIBLE_PAGES=['datahub','report-saleretail'];
 function applyRole(){
   const role=localStorage.getItem('dashRole')||'admin';
   // role='account' = tài khoản tạo qua Admin > Cài đặt (bảng sales_users) -- quyền động lấy từ localStorage
@@ -417,7 +417,7 @@ function applyRole(){
   let allowed;
   if(role==='account'){try{allowed=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){allowed=[];}}
   else allowed=ROLE_PAGES[role]!==undefined?ROLE_PAGES[role]:null;
-  if(TEMP_ONLY_DATAHUB)allowed=['datahub'];
+  if(TEMP_VISIBLE_PAGES)allowed=TEMP_VISIBLE_PAGES;
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el=>{
     const id=el.id.replace('nav-','');
     el.style.display=(allowed&&allowed.indexOf(id)<0)?'none':'';
