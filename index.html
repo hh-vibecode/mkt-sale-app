@@ -1531,6 +1531,7 @@ function curPeriodLabel(){
 function onDateChange(){
   if(allRows.length)applyFilter();
   renderSaleOnl();renderSaleOnlData();
+  if(crmCustomers.length&&document.getElementById('page-report-saleretail').classList.contains('active'))renderReportSaleLe();
 }
 function applyQuickFilter(){
   const v=document.getElementById('quickFilter').value;
@@ -6248,11 +6249,22 @@ async function rptSlLoadLegacyDates(){
   }catch(e){console.warn('Không tải được saonl_customers (ngày tạo gốc):',e.message);}
 }
 const RPT_SL_MIN_DATE='2026-06-01';
+// Ngày dùng để lọc 1 lead theo khoảng thời gian trên topbar -- giống hệt bản Sale Overview cũ: lead ĐÃ CHỐT
+// tính theo NGÀY CHỐT (ngày đơn xác nhận sớm nhất), lead còn lại tính theo ngày tạo thật.
+function rptSlLeadDateFor(l){
+  if((l.lead_status||'')==='Chốt đơn'){
+    const ords=(window._crmOrdByCustomer[l.customer_id]||[]).filter(o=>o.status==='confirmed'&&o.order_date);
+    if(ords.length)return ords.map(o=>o.order_date).sort()[0];
+  }
+  return rptSlRealDate(l.lead_id,l.created_at);
+}
 // Lead không có trong saonl_customers = lead tạo mới thẳng trên CRM v2 sau migrate -> luôn tính là "gần đây".
 function rptSlRecentLeads(){
+  const inRange=saleRangePred(l=>{const d=rptSlLeadDateFor(l);return d?localDate(d):null;});
   return crmLeads.filter(l=>{
     const legacy=rptSlLegacyDate&&rptSlLegacyDate[l.lead_id];
-    return legacy?legacy>=RPT_SL_MIN_DATE:true;
+    if(legacy&&legacy<RPT_SL_MIN_DATE)return false;
+    return inRange(l);
   });
 }
 // Khớp SĐT khách CRM với datahub_orders -- ưu tiên dòng có tag CHỐT ĐƠN (đáng tin nhất), rồi tới ngày mới nhất.
@@ -6270,7 +6282,7 @@ async function renderReportSaleLe(){
   const mode=rptSlViewMode();
   el.innerHTML=`
     <div class="page-title">Báo cáo · Sale Lẻ</div>
-    <div class="page-sub">Tổng quan phễu lead &amp; danh sách chi tiết khách hàng lẻ -- đọc CRM + Data Hub, không ghi đè bảng nào</div>
+    <div class="page-sub">Kỳ đang xem: <b>${curPeriodLabel()}</b> · lead tính từ 1/6/2026</div>
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         <button onclick="rptSlSetViewMode('overview')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='overview'?'var(--accent)':'var(--surface)'};color:${mode==='overview'?'#fff':'var(--text2)'}">📊 Tổng Quan</button>
@@ -6304,7 +6316,9 @@ function rptSlOverviewHtml(){
   const closeRate=total>0?closedLeads.length/total*100:0;
   // Doanh thu KHÔNG lọc theo mốc 1/6 -- đơn đã chốt là tiền thật, tính toàn bộ lịch sử (khớp đúng số bên
   // trang Sale Overview cũ). Mốc 1/6 chỉ áp dụng cho phễu LEAD (loại bulk data cũ), không áp cho doanh thu.
-  const confirmedOrders=crmOrders.filter(o=>o.status==='confirmed');
+  // Vẫn tôn trọng khoảng ngày chọn trên topbar (theo ngày đơn), rỗng = toàn bộ lịch sử.
+  const inRangeOrd=saleRangePred(o=>o.order_date?localDate(o.order_date):null);
+  const confirmedOrders=crmOrders.filter(o=>o.status==='confirmed').filter(inRangeOrd);
   const closedRev=confirmedOrders.reduce((s,o)=>s+Number(o.revenue||0),0);
   const totalPotential=leads.reduce((s,l)=>s+Number(l.current_potential_value||0),0);
   const custById={};crmCustomers.forEach(c=>custById[c.customer_id]=c);
