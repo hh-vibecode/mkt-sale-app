@@ -3,7 +3,15 @@ name: Sync Data Hub từ Pancake
 on:
   schedule:
     - cron: '*/30 * * * *'   # mỗi 30 phút -- Data Hub là lead mới, Sale cần thấy sớm hơn MKT (chỉ 1 lần/ngày)
-  workflow_dispatch: {}
+    # 3h10 sáng VN: backfill toàn bộ từ 1/6. Chạy thường chỉ quét 5 trang mới nhất/shop, KHÔNG thấy được sửa đổi
+    # trên đơn cũ (Pancake không sắp lại theo ngày sửa) -- mà Sale ghi Mã KH vào Ghi chú nội bộ của cả đơn cũ.
+    - cron: '10 20 * * *'
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: 'Quét lại toàn bộ đơn từ 1/6/2026'
+        type: boolean
+        default: false
 
 jobs:
   sync:
@@ -16,4 +24,5 @@ jobs:
         env:
           PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BACKFILL: ${{ (github.event.schedule == '10 20 * * *' || inputs.backfill) && '1' || '0' }}
         run: node scripts/sync-datahub-pancake.js
