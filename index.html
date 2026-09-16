@@ -6000,11 +6000,31 @@ function dhRenderTable(){
 // ── Data Hub tab 2: LỖI NHẬP LIỆU ──────────────────────────────────────────────────────────────────
 // Soi chéo Pancake (datahub_orders) với KiotViet (kiot_invoices) để chỉ ra chỗ Sale nhập thiếu/nhập sai.
 // KHÔNG đụng bảng nào migrate từ Google Sheet.
-let kiotInvoices=[],kiotLoaded=false;
+let kiotInvoices=[],kiotCustomers=[],kiotLoaded=false;
 async function kiotLoadInvoices(force){
   if(kiotLoaded&&!force)return;
-  kiotInvoices=await sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,total,status');
+  [kiotInvoices,kiotCustomers]=await Promise.all([
+    sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,total,status'),
+    sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name,total_revenue'),
+  ]);
   kiotLoaded=true;
+}
+// Nối Pancake <-> Kiot theo ĐÚNG thứ tự của script cũ (syncLeadSalesOnline): 9 SỐ CUỐI SĐT trước, hết cách
+// mới dùng Mã KH Sale gõ trong ghi chú nội bộ. Chỉ nhận khách Kiot đúng nhóm "Khách lẻ".
+function kiotRetailByPhone(){
+  if(window._kiotRetailByPhone)return window._kiotRetailByPhone;
+  const m={};
+  kiotCustomers.forEach(c=>{
+    if(!c.phone_key)return;
+    if((c.customer_group||'').trim().toLowerCase()!=='khách lẻ')return;
+    (m[c.phone_key]=m[c.phone_key]||[]).push(c);
+  });
+  return window._kiotRetailByPhone=m;
+}
+function kiotCustByCode(){
+  if(window._kiotCustByCode)return window._kiotCustByCode;
+  const m={};kiotCustomers.forEach(c=>{m[c.code]=c;});
+  return window._kiotCustByCode=m;
 }
 // Mã KH Kiot Sale ghi trong "Ghi chú nội bộ" của đơn Pancake -- chấp nhận "KH007310", "kh 7310", "KH 007310".
 function dhExtractKH(note){
@@ -6570,26 +6590,39 @@ const RPT_SL_STATUS_COLOR={'Chốt đơn':'var(--green)','Bàn giao':'var(--teal
 function rptSlBuildMaster(){
   const invByCode={};
   kiotInvoices.forEach(i=>{if(i.customer_code&&i.status===1)(invByCode[i.customer_code]=invByCode[i.customer_code]||[]).push(i);});
+  const byPhone=kiotRetailByPhone(),byCode=kiotCustByCode();
   const byKey={};
   dhOrders.forEach(o=>{(byKey[rptSlCustKey(o)]=byKey[rptSlCustKey(o)]||[]).push(o);});
   const rows=Object.entries(byKey).map(([key,orders])=>{
     orders.sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
     const last=orders[orders.length-1];
     const pick=f=>orders.map(f).filter(Boolean).pop()||'';
-    const kh=orders.map(o=>dhExtractKH(o.internal_note)).filter(Boolean).pop()||null;
-    const invs=(kh?(invByCode[kh]||[]):[]).slice().sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
+    const phone=pick(o=>o.phone);
+    // Nối Kiot theo đúng luồng vận hành: MÃ KH Sale điền vào ghi chú Pancake là khoá CHÍNH (người xác nhận),
+    // chưa có mã thì tự bù bằng 9 SỐ CUỐI SĐT (logic script cũ) để Sale không phải quay lại gắn thủ công.
+    const manualKH=orders.map(o=>dhExtractKH(o.internal_note)).filter(Boolean).pop()||null;
+    const phoneKey=rptSlLast9(phone);
+    let kiotCusts=[],linkBy='';
+    if(manualKH&&byCode[manualKH]){kiotCusts=[byCode[manualKH]];linkBy='Mã KH';}
+    else if(phoneKey&&(byPhone[phoneKey]||[]).length){kiotCusts=byPhone[phoneKey];linkBy='SĐT';}
+    // Khách có nhiều mã Kiot cùng 1 SĐT -> gộp hoá đơn của tất cả các mã (đúng cách script cũ cộng dồn).
+    const invs=kiotCusts.flatMap(c=>invByCode[c.code]||[]).sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
+    // Doanh thu CHỈ cộng hoá đơn từ 1/6 (kiot_invoices đã lọc sẵn) -- KHÔNG dùng total_revenue cộng dồn
+    // all-time của Kiot vì nó gồm cả giao dịch trước mốc.
     const revenue=invs.reduce((s,i)=>s+Number(i.total||0),0);
+    const kh=kiotCusts.length?kiotCusts[0].code:manualKH;
     const chot=orders.filter(dhIsOrder);
     const touches=[...orders.map(o=>o.order_date),...invs.map(i=>(i.purchase_date||'').slice(0,10))].filter(Boolean).sort();
     const lastTouch=touches[touches.length-1]||'';
-    return{key,orders,invs,kh,revenue,
-      name:pick(o=>o.customer_name)||'—',phone:pick(o=>o.phone),
+    return{key,orders,invs,kh,revenue,linkBy,manualKH,kiotCusts,
+      name:pick(o=>o.customer_name)||'—',phone,
       created:orders[0].order_date,brand:last.brand,shop:last.shop_name,
       source:pick(o=>o.source),staff:pick(o=>o.staff_name),adId:pick(o=>o.ad_id),
-      kiotName:invs.length?invs[invs.length-1].customer_name:'',
+      kiotName:kiotCusts.length?kiotCusts[0].name:(invs.length?invs[invs.length-1].customer_name:''),
+      province:kiotCusts.map(c=>c.location_name).filter(Boolean)[0]||'',
       saleType:dhSaleTypeOrder(last),status:chot.length?'Chốt đơn':rptSlStatusOf(last.customer_tags),
       isChot:chot.length>0,closeDate:chot.length?chot[0].order_date:'',
-      invoiceDate:invs.length?(invs[0].purchase_date||'').slice(0,10):'',
+      invoiceDate:invs.length?(invs[invs.length-1].purchase_date||'').slice(0,10):'',
       lastTouch,daysIdle:lastTouch?Math.floor((new Date()-new Date(lastTouch))/86400000):null};
   });
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
@@ -6620,7 +6653,9 @@ function rptSlMasterHtml(){
     <td><span style="font-weight:800;font-size:11.5px;color:${RPT_SL_STATUS_COLOR[r.status]||'var(--muted)'}">${r.status}</span></td>
     <td class="num">${num(r.orders.length)}</td>
     <td style="font-size:11px">${r.kh?('<code>'+r.kh+'</code>'):'<span style="color:var(--red)">chưa có</span>'}</td>
+    <td style="font-size:11px">${r.linkBy==='Mã KH'?'<span style="color:var(--green);font-weight:700">Mã KH</span>':r.linkBy==='SĐT'?'<span style="color:var(--accent);font-weight:700">🔗 SĐT</span>':'<span style="color:var(--muted)">—</span>'}</td>
     <td style="font-size:11px">${r.kiotName||'—'}</td>
+    <td style="font-size:11px">${r.province||'—'}</td>
     <td>${r.invoiceDate||'—'}</td>
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
     <td>${r.lastTouch||'—'}</td>
@@ -6633,6 +6668,9 @@ function rptSlMasterHtml(){
       ${mkKpi(ic('users'),'Tổng khách',num(all.length),'gộp từ '+num(dhOrders.length)+' data Pancake','g-blue')}
       ${mkKpi(ic('check'),'Khách đã chốt',num(all.filter(r=>r.isChot).length),'có đơn gắn thẻ CHỐT ĐƠN','g-green')}
       ${mkKpi(ic('cash'),'Doanh thu cộng dồn',vnd(all.reduce((s,r)=>s+r.revenue,0)),'từ hoá đơn KiotViet','g-teal')}
+      ${(()=>{const chotAll=all.filter(r=>r.isChot),linked=chotAll.filter(r=>r.linkBy);
+        return mkKpi(ic('duplicate'),'Đơn chốt đã nối Kiot',num(linked.length)+'/'+num(chotAll.length),
+          chotAll.length?pct(linked.length/chotAll.length*100)+' · '+num(linked.filter(r=>r.linkBy==='Mã KH').length)+' theo Mã KH, '+num(linked.filter(r=>r.linkBy==='SĐT').length)+' tự nối SĐT':'—','g-purple');})()}
       ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(all.filter(r=>r.daysIdle!==null&&r.daysIdle>=10&&!r.isChot).length),'>10 ngày, chưa chốt','g-yellow')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
@@ -6643,8 +6681,8 @@ function rptSlMasterHtml(){
       <div class="tbl-head"><div class="tbl-title">Master Data — hồ sơ khách</div><div class="tbl-count">${num(list.length)}</div>
         <span style="margin-left:auto;font-size:11px;color:var(--muted)">Doanh thu trong bộ lọc: <b style="color:var(--green)">${vnd(rev)}</b></span></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày tạo</th><th>Họ tên</th><th>SĐT</th><th>Brand</th><th>Nhóm KH</th><th>Nguồn</th><th>Sales</th><th>Trạng thái</th><th>Số đơn</th><th>Mã KH</th><th>Tên bên Kiot</th><th>Ngày hoá đơn</th><th>Doanh thu</th><th>Liên hệ cuối</th><th>Ngày chưa LH</th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="15" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
+        <thead><tr><th>Ngày tạo</th><th>Họ tên</th><th>SĐT</th><th>Brand</th><th>Nhóm KH</th><th>Nguồn</th><th>Sales</th><th>Trạng thái</th><th>Số đơn</th><th>Mã KH</th><th>Nối bằng</th><th>Tên bên Kiot</th><th>Tỉnh/TP</th><th>Ngày hoá đơn</th><th>Doanh thu</th><th>Liên hệ cuối</th><th>Ngày chưa LH</th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="17" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetMasterPage(${page-1})">‹ Trước</button>
