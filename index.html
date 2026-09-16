@@ -6748,9 +6748,6 @@ function rptSlMasterHtml(){
   let list=all;
   if(f==='chot')list=list.filter(r=>r.isChot);
   else if(f==='tiemnang')list=list.filter(r=>!r.isChot);
-  else if(f==='coma')list=list.filter(r=>r.kh);
-  else if(f==='thieuma')list=list.filter(r=>r.isChot&&!r.kh);
-  else if(f==='idle')list=list.filter(r=>r.isChot&&r.daysIdle!==null&&r.daysIdle>=10);
   if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.kiotName||'').toLowerCase().includes(q)||(r.leadId||'').toLowerCase().includes(q));
   const pageSize=50,page=window._rptSlMasterPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   // Bảng chỉ giữ các trường Sale dùng hàng ngày; mọi trường còn lại (Brand, Nhóm KH, Trạng thái, Mã KH,
@@ -6768,7 +6765,6 @@ function rptSlMasterHtml(){
       <span style="width:26px;height:26px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;flex:0 0 auto">👤</span>
       <span style="font-size:11.5px;font-weight:700;color:var(--accent)">Chi tiết</span></span></td>
   </tr>`).join('');
-  const chip=(v,label)=>`<span onclick="rptSlSetMasterFilter('${v}')" style="cursor:pointer;padding:5px 13px;border-radius:20px;font-size:11.5px;font-weight:700;background:${f===v?'var(--accent)':'var(--bg2)'};color:${f===v?'#fff':'var(--text2)'}">${label}</span>`;
   const rev=list.reduce((s,r)=>s+r.revenue,0);
   return `
     <div class="kpi-grid" style="margin-bottom:14px">
@@ -6780,9 +6776,11 @@ function rptSlMasterHtml(){
           chotAll.length?pct(linked.length/chotAll.length*100)+' · '+num(linked.filter(r=>r.linkBy==='Mã KH').length)+' theo Mã KH, '+num(linked.filter(r=>r.linkBy==='SĐT').length)+' tự nối SĐT':'—','g-purple');})()}
       ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(all.filter(r=>r.isChot&&r.daysIdle!==null&&r.daysIdle>=10).length),'khách ĐÃ CHỐT, >10 ngày chưa chăm lại','g-yellow')}
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
-      ${chip('all','Tất cả')}${chip('chot','Đã chốt')}${chip('tiemnang','Tiềm năng (chưa chốt)')}${chip('coma','Đã có Mã KH')}${chip('thieuma','Chốt nhưng thiếu Mã KH')}${chip('idle','Đã chốt, lâu chưa chăm lại')}
-      <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(renderReportSaleLe,350)" style="margin-left:auto;height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-end">
+      <select onchange="rptSlSetMasterFilter(this.value)" style="height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer">
+        ${[['all','Tất cả'],['chot','Đã chốt'],['tiemnang','Tiềm năng']].map(([v,l])=>`<option value="${v}"${f===v?' selected':''}>${l}</option>`).join('')}
+      </select>
+      <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(renderReportSaleLe,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
     </div>
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">Master Data — hồ sơ khách</div><div class="tbl-count">${num(list.length)}</div>
