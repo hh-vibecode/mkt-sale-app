@@ -5946,6 +5946,13 @@ const DH_BRAND_LABEL={CT:'Chánh Tâm',HT:'Hiền Thuỷ',Shidai:'Shidai',TTV:'T
 // Pancake gắn nhiều tag/dòng (LEAD ĐẶT, KH Lẻ, KH Sỉ, LEAD TIỀM NĂNG...) -- chỉ dòng có tag CHỐT ĐƠN
 // mới là đơn hàng thật, còn lại là data thô (lead/khách chưa chốt), không được tính vào KPI "đơn".
 function dhIsOrder(o){return(o.customer_tags||'').toUpperCase().includes('CHỐT ĐƠN');}
+// Data ĐỦ ĐIỀU KIỆN vào Master Data (áp dụng cho CẢ Sale Lẻ lẫn Sale Sỉ): chỉ khách đã chốt,
+// đã bàn giao, hoặc được Sale đánh giá là tiềm năng. Data thô mới gắn "LEAD ĐẠT" thì dừng ở
+// Data Hub, không đẩy sang Master Data -- tránh loãng (2.119 -> 159 khách).
+function dhIsQualified(o){
+  const t=(o.customer_tags||'').toUpperCase();
+  return t.includes('CHỐT ĐƠN')||t.includes('BÀN GIAO')||t.includes('TIỀM NĂNG');
+}
 let dhOrders=[],dhLoaded=false;
 async function dhLoadOrders(force){
   if(dhLoaded&&!force)return;
@@ -6075,6 +6082,13 @@ function dhDataIssues(){
       }
     }
     if(!isChot&&kh)add('Có Mã KH nhưng thiếu thẻ CHỐT ĐƠN','warn',o,kh+' · thẻ hiện tại: '+(o.customer_tags||'—'));
+    // Đã có hoá đơn bên Kiot mà đơn Pancake vẫn chưa gắn thẻ -> khách rơi ra ngoài Master Data, mất doanh thu.
+    if(!isChot&&!kh&&!dhIsQualified(o)){
+      const pk=dhLast9(o.phone),cs=pk?(byPhone[pk]||[]):[];
+      const iv=cs.flatMap(c=>invByCode[c.code]||[]).filter(x=>x.status===1);
+      if(iv.length)add('Có hoá đơn Kiot nhưng đơn Pancake chưa gắn thẻ','err',o,
+        iv.length+' hoá đơn ('+vnd(iv.reduce((s,x)=>s+Number(x.total||0),0))+') · thiếu thẻ CHỐT ĐƠN → không vào được Master Data');
+    }
     if(o.internal_note&&o.internal_note.trim()&&!kh)add('Ghi chú nội bộ không phải Mã KH','info',o,'"'+o.internal_note.trim()+'"');
     if(!kh)return;
     if(!custByCode[kh]){add('Mã KH không tồn tại bên Kiot','err',o,kh+' · gõ nhầm mã, không tìm thấy khách nào');return;}
@@ -6628,10 +6642,10 @@ function rptSlStatusOf(tags){
   if(t.includes('CHỐT ĐƠN'))return'Chốt đơn';
   if(t.includes('BÀN GIAO'))return'Bàn giao';
   if(t.includes('TIỀM NĂNG'))return'Tiềm năng';
-  if(t.includes('LEAD ĐẶT')||t.includes('LEAD ĐẠT'))return'Lead đặt';
+  if(t.includes('LEAD ĐẶT')||t.includes('LEAD ĐẠT'))return'Lead đạt';
   return'Data mới';
 }
-const RPT_SL_STATUS_COLOR={'Chốt đơn':'var(--green)','Bàn giao':'var(--teal)','Tiềm năng':'var(--accent)','Lead đặt':'var(--muted)','Data mới':'var(--muted)'};
+const RPT_SL_STATUS_COLOR={'Chốt đơn':'var(--green)','Bàn giao':'var(--teal)','Tiềm năng':'var(--accent)','Lead đạt':'var(--muted)','Data mới':'var(--muted)'};
 function rptSlBuildMaster(){
   const invByCode={};
   kiotInvoices.forEach(i=>{if(i.customer_code&&i.status===1)(invByCode[i.customer_code]=invByCode[i.customer_code]||[]).push(i);});
@@ -6639,6 +6653,9 @@ function rptSlBuildMaster(){
   const byKey={};
   // Báo cáo SALE LẺ -> loại hẳn đơn gắn thẻ KH SỈ. (Bên Kiot cũng chỉ nhận nhóm "Khách lẻ", xem kiotRetailByPhone.)
   dhOrders.filter(o=>dhSaleTypeOrder(o)!=='Sỉ').forEach(o=>{(byKey[rptSlCustKey(o)]=byKey[rptSlCustKey(o)]||[]).push(o);});
+  // Chỉ giữ khách ĐỦ ĐIỀU KIỆN (xem dhIsQualified). Gom theo khách TRƯỚC rồi mới lọc, để khách có
+  // 3 đơn mà chỉ 1 đơn chốt vẫn giữ nguyên lịch sử cả 3 đơn.
+  Object.keys(byKey).forEach(k=>{if(!byKey[k].some(dhIsQualified))delete byKey[k];});
   const rows=Object.entries(byKey).map(([key,orders])=>{
     orders.sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
     const last=orders[orders.length-1];
@@ -6666,7 +6683,10 @@ function rptSlBuildMaster(){
       source:pick(o=>o.source),staff:pick(o=>o.staff_name),adId:pick(o=>o.ad_id),
       kiotName:kiotCusts.length?kiotCusts[0].name:(invs.length?invs[invs.length-1].customer_name:''),
       province:kiotCusts.map(c=>c.location_name).filter(Boolean)[0]||'',
-      saleType:dhSaleTypeOrder(last),status:chot.length?'Chốt đơn':rptSlStatusOf(last.customer_tags),
+      // Trạng thái lấy theo mức CAO NHẤT trong mọi đơn của khách, không lấy theo đơn mới nhất -- khách đã
+      // được đánh giá tiềm năng ở đơn cũ mà đơn mới chỉ gắn "LEAD ĐẠT" thì vẫn phải là Tiềm năng.
+      saleType:dhSaleTypeOrder(last),status:chot.length?'Chốt đơn':(()=>{const rank=['Data mới','Lead đạt','Tiềm năng','Bàn giao','Chốt đơn'];
+        return orders.map(o=>rptSlStatusOf(o.customer_tags)).sort((a,b)=>rank.indexOf(b)-rank.indexOf(a))[0];})(),
       isChot:chot.length>0,closeDate:chot.length?chot[0].order_date:'',
       invoiceDate:invs.length?(invs[invs.length-1].purchase_date||'').slice(0,10):'',
       lastTouch,daysIdle:lastTouch?Math.floor((new Date()-new Date(lastTouch))/86400000):null};
@@ -6682,6 +6702,7 @@ function rptSlMasterHtml(){
   const f=rptSlMasterFilter(),q=(window._rptSlMasterQ||'').trim().toLowerCase();
   let list=all;
   if(f==='chot')list=list.filter(r=>r.isChot);
+  else if(f==='tiemnang')list=list.filter(r=>!r.isChot);
   else if(f==='coma')list=list.filter(r=>r.kh);
   else if(f==='thieuma')list=list.filter(r=>r.isChot&&!r.kh);
   else if(f==='idle')list=list.filter(r=>r.isChot&&r.daysIdle!==null&&r.daysIdle>=10);
@@ -6710,8 +6731,8 @@ function rptSlMasterHtml(){
   const rev=list.reduce((s,r)=>s+r.revenue,0);
   return `
     <div class="kpi-grid" style="margin-bottom:14px">
-      ${mkKpi(ic('users'),'Tổng khách',num(all.length),'gộp từ '+num(dhOrders.length)+' data Pancake','g-blue')}
-      ${mkKpi(ic('check'),'Khách đã chốt',num(all.filter(r=>r.isChot).length),'có đơn gắn thẻ CHỐT ĐƠN','g-green')}
+      ${mkKpi(ic('users'),'Tổng khách',num(all.length),'đã chốt / bàn giao / tiềm năng — lọc từ '+num(dhOrders.length)+' data Pancake','g-blue')}
+      ${mkKpi(ic('check'),'Khách đã chốt',num(all.filter(r=>r.isChot).length),num(all.filter(r=>!r.isChot).length)+' khách còn ở dạng tiềm năng','g-green')}
       ${mkKpi(ic('cash'),'Doanh thu cộng dồn',vnd(all.reduce((s,r)=>s+r.revenue,0)),'từ hoá đơn KiotViet','g-teal')}
       ${(()=>{const chotAll=all.filter(r=>r.isChot),linked=chotAll.filter(r=>r.linkBy);
         return mkKpi(ic('duplicate'),'Đơn chốt đã nối Kiot',num(linked.length)+'/'+num(chotAll.length),
@@ -6719,7 +6740,7 @@ function rptSlMasterHtml(){
       ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(all.filter(r=>r.isChot&&r.daysIdle!==null&&r.daysIdle>=10).length),'khách ĐÃ CHỐT, >10 ngày chưa chăm lại','g-yellow')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
-      ${chip('all','Tất cả')}${chip('chot','Đã chốt')}${chip('coma','Đã có Mã KH')}${chip('thieuma','Chốt nhưng thiếu Mã KH')}${chip('idle','Đã chốt, lâu chưa chăm lại')}
+      ${chip('all','Tất cả')}${chip('chot','Đã chốt')}${chip('tiemnang','Tiềm năng (chưa chốt)')}${chip('coma','Đã có Mã KH')}${chip('thieuma','Chốt nhưng thiếu Mã KH')}${chip('idle','Đã chốt, lâu chưa chăm lại')}
       <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(renderReportSaleLe,350)" style="margin-left:auto;height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
     </div>
     <div class="tbl-card">
