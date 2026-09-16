@@ -5993,7 +5993,6 @@ function dhRenderTable(){
 }
 async function renderDataHub(){
   await dhLoadOrders();
-  const today=todayISO();
   const dhConfirmed=dhOrders.filter(dhIsOrder);
   const dhNew=dhOrders.filter(o=>o.customer_status==='Mới').length;
   const dhOld=dhOrders.filter(o=>o.customer_status==='Cũ').length;
@@ -6059,21 +6058,10 @@ async function renderDataHub(){
     const rawSample=await sbFetchAll('leads','select=lead_id,source,channel,source_external_id,ad_id,department,created_at&order=created_at.desc&limit=5');
     rawPreviewHtml=`<pre style="font-size:11px;background:var(--bg2);border-radius:8px;padding:12px;overflow-x:auto;margin:0">${JSON.stringify(rawSample,null,2).replace(/</g,'&lt;')}</pre>`;
   }catch(e){rawPreviewHtml=`<div style="color:var(--red);font-size:12px;padding:12px">Lỗi tải: ${e.message}</div>`;}
-  const newToday=crmLeads.filter(l=>l.created_at&&l.created_at.slice(0,10)===today).length;
-  const updatedToday=crmCustomers.filter(c=>c.updated_at&&c.updated_at.slice(0,10)===today).length;
-  const unassigned=crmLeads.filter(l=>!l.assigned_sales).length;
   el.innerHTML=`
     <div class="page-title">Data Hub</div>
     <div class="page-sub">Nguồn dữ liệu &amp; trạng thái đồng bộ</div>
     ${pancakeOrdersHtml}
-    <div class="kpi-grid" style="margin-bottom:16px">
-      ${mkKpi(ic('box'),'Total records',num(crmCustomers.length),'khách trong hệ thống','g-blue')}
-      ${mkKpi(ic('sparkle'),'New today',num(newToday),'lead tạo hôm nay','g-teal')}
-      ${mkKpi(ic('pencil'),'Updated today',num(updatedToday),'khách có thay đổi hôm nay','g-green')}
-      ${mkKpi(ic('question'),'Unassigned',num(unassigned),'lead chưa gán Sale','g-orange')}
-      ${mkKpi(ic('duplicate'),'Duplicate','0','đã dedupe theo SĐT lúc migrate','g-purple')}
-      ${mkKpi(ic('alert'),'Sync errors','0','chưa có sync tự động để lỗi','g-red')}
-    </div>
     <div class="tbl-card" style="margin-bottom:16px">
       <div class="tbl-head"><div class="tbl-title">🟢 MKT — Meta Ads (tự động thật)</div></div>
       <div style="padding:16px">
