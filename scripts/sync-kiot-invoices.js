@@ -49,6 +49,27 @@ async function fetchInvoices(token, filter) {
   return all;
 }
 
+// Hoá đơn KHÔNG kèm SĐT khách -- phải lấy từ danh sách khách hàng rồi gắn vào theo Mã KH. SĐT là tín hiệu
+// duy nhất đối chiếu chéo được với Pancake (Pancake không có địa chỉ, tên thì 2 bên ghi khác kiểu).
+async function fetchCustomerPhones(token) {
+  const headers = { Retailer: KIOT_RETAILER, Authorization: 'Bearer ' + token };
+  const phoneByCode = {};
+  let offset = 0, total = Infinity;
+  while (offset < total) {
+    const qs = new URLSearchParams({ pageSize: PAGE_SIZE, currentItem: offset });
+    const res = await fetch(`https://public.kiotapi.com/customers?${qs}`, { headers });
+    if (!res.ok) throw new Error(`KiotViet customers lỗi ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    const json = await res.json();
+    total = json.total || 0;
+    const data = json.data || [];
+    data.forEach(c => { if (c.code && c.contactNumber) phoneByCode[c.code] = c.contactNumber; });
+    if (!data.length) break;
+    offset += PAGE_SIZE;
+    await new Promise(r => setTimeout(r, 120));
+  }
+  return phoneByCode;
+}
+
 // KiotViet trả giờ VN không kèm múi giờ ("2026-09-15T15:11:24.97") -- gắn +07:00 để Postgres không hiểu nhầm là UTC.
 const vnTime = s => (s ? (/[zZ]|[+-]\d\d:\d\d$/.test(s) ? s : s + '+07:00') : null);
 
@@ -129,11 +150,12 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
       const since = new Date(Date.now() - INCREMENTAL_DAYS * 86400000).toISOString().slice(0, 19);
       filter = { lastModifiedFrom: since };
     }
-    const invoices = await fetchInvoices(token, filter);
+    const [invoices, phoneByCode] = await Promise.all([fetchInvoices(token, filter), fetchCustomerPhones(token)]);
     const rows = invoices.map(mapInvoice).filter(r => r.purchase_date && r.purchase_date.slice(0, 10) >= MIN_PURCHASE_DATE);
+    rows.forEach(r => { r.customer_phone = r.customer_code ? (phoneByCode[r.customer_code] || null) : null; });
     const CHUNK = 500;
     for (let i = 0; i < rows.length; i += CHUNK) await upsertInvoices(rows.slice(i, i + CHUNK));
-    console.log(`XONG. API trả ${invoices.length} hoá đơn, đã upsert ${rows.length} (từ ${MIN_PURCHASE_DATE}).`);
+    console.log(`XONG. API trả ${invoices.length} hoá đơn, đã upsert ${rows.length} (từ ${MIN_PURCHASE_DATE}), ${rows.filter(r => r.customer_phone).length} dòng có SĐT khách.`);
     await logSyncEnd(logId, { status: 'success', recordsCreated: rows.length });
   } catch (e) {
     console.error('LỖI:', e.message);

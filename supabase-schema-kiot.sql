@@ -19,8 +19,9 @@ create table if not exists kiot_invoices (
   customer_id bigint,
   customer_code text,                    -- Mã KH (KH######) -- khoá nối với Pancake
   customer_name text,
-  customer_phone text,                   -- lấy từ /customers/code/{code} (hoá đơn KHÔNG có sẵn) -- đối soát chéo với Pancake
-  customer_address text,                 -- lấy từ /customers/code/{code} -- đối soát chéo với Pancake
+  customer_phone text,                   -- hoá đơn KHÔNG có sẵn SĐT -- script lấy từ /customers rồi gắn theo Mã KH.
+                                         -- Đây là tín hiệu DUY NHẤT đối chiếu chéo được với Pancake: Pancake không
+                                         -- có địa chỉ ở đơn nào, còn tên thì 2 bên ghi khác kiểu (FB name vs "KL Anh X - VL").
   order_code text,                       -- Mã đặt hàng KiotViet (nếu hoá đơn tạo từ đơn đặt)
   total numeric(14,2),                   -- Tổng tiền hàng sau giảm giá
   total_payment numeric(14,2),           -- Khách đã trả
