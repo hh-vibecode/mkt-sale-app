@@ -5997,8 +5997,127 @@ function dhRenderTable(){
       <button class="refresh-btn" ${page>=totalPages?'disabled':''} onclick="dhSetPage(${page+1})">Sau ›</button>
     </div>`;
 }
+// ── Data Hub tab 2: LỖI NHẬP LIỆU ──────────────────────────────────────────────────────────────────
+// Soi chéo Pancake (datahub_orders) với KiotViet (kiot_invoices) để chỉ ra chỗ Sale nhập thiếu/nhập sai.
+// KHÔNG đụng bảng nào migrate từ Google Sheet.
+let kiotInvoices=[],kiotLoaded=false;
+async function kiotLoadInvoices(force){
+  if(kiotLoaded&&!force)return;
+  kiotInvoices=await sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,total,status');
+  kiotLoaded=true;
+}
+// Mã KH Kiot Sale ghi trong "Ghi chú nội bộ" của đơn Pancake -- chấp nhận "KH007310", "kh 7310", "KH 007310".
+function dhExtractKH(note){
+  const m=/KH\s*0*(\d{3,7})/i.exec(note||'');
+  return m?('KH'+String(m[1]).padStart(6,'0')):null;
+}
+function dhLast9(s){const d=(s||'').toString().replace(/\D/g,'');return d.length>=9?d.slice(-9):d;}
+const DH_SEV={err:{label:'Lỗi',color:'var(--red)'},warn:{label:'Cảnh báo',color:'var(--yellow)'},info:{label:'Cần bổ sung',color:'var(--muted)'}};
+// Lẻ hay Sỉ lấy theo THẺ khách trên Pancake (KH LẺ / KH SỈ) chứ không theo brand -- Shidai có cả 2 loại
+// (523 đơn Lẻ / 202 đơn Sỉ). Bên Kiot thì theo chi nhánh: "Tổng kho sỉ Shidai" là Sỉ, còn lại là Lẻ.
+function dhSaleTypeOrder(o){
+  const t=(o.customer_tags||'').toUpperCase();
+  if(t.includes('KH SỈ'))return'Sỉ';
+  if(t.includes('KH LẺ'))return'Lẻ';
+  return'Chưa phân loại';
+}
+function dhSaleTypeInvoice(i){return /sỉ|si\b/i.test(i.branch_name||'')?'Sỉ':'Lẻ';}
+function dhDataIssues(){
+  const issues=[];
+  const invByCode={};kiotInvoices.forEach(i=>{if(i.customer_code)(invByCode[i.customer_code]=invByCode[i.customer_code]||[]).push(i);});
+  const khUsage={};
+  dhOrders.forEach(o=>{const kh=dhExtractKH(o.internal_note);if(kh)(khUsage[kh]=khUsage[kh]||[]).push(o);});
+  const add=(type,sev,o,detail)=>issues.push({type,sev,group:dhSaleTypeOrder(o),brand:DH_BRAND_LABEL[o.brand]||o.brand||'—',ref:'Đơn #'+o.system_id,date:o.order_date,cust:o.customer_name||'—',detail});
+  dhOrders.forEach(o=>{
+    const kh=dhExtractKH(o.internal_note),isChot=dhIsOrder(o);
+    if(isChot&&!kh)add('Đơn chốt chưa điền Mã KH','warn',o,o.internal_note?('ghi chú: "'+o.internal_note+'"'):'ghi chú nội bộ đang trống');
+    if(!isChot&&kh)add('Có Mã KH nhưng thiếu thẻ CHỐT ĐƠN','warn',o,kh+' · thẻ hiện tại: '+(o.customer_tags||'—'));
+    if(o.internal_note&&o.internal_note.trim()&&!kh)add('Ghi chú nội bộ không phải Mã KH','info',o,'"'+o.internal_note.trim()+'"');
+    if(isChot&&!o.phone)add('Đơn chốt thiếu SĐT','info',o,'không đối chiếu chéo được với Kiot');
+    if(!kh)return;
+    if((khUsage[kh]||[]).length>1){
+      const other=khUsage[kh].filter(x=>x!==o).map(x=>'#'+x.system_id+' ('+(DH_BRAND_LABEL[x.brand]||x.brand)+')').join(', ');
+      add('Mã KH bị điền trùng ở nhiều đơn','err',o,kh+' · trùng với '+other+' → doanh thu dễ bị đếm 2 lần');
+    }
+    const invs=invByCode[kh]||[],done=invs.filter(i=>i.status===1);
+    if(!invs.length){add('Mã KH không có hoá đơn nào bên Kiot','err',o,kh+' · sai mã hoặc khách chưa lên hoá đơn');return;}
+    const after=done.filter(i=>(i.purchase_date||'').slice(0,10)>=o.order_date);
+    if(!after.length){
+      const last=done.map(i=>(i.purchase_date||'').slice(0,10)).sort().pop();
+      add('Hoá đơn Kiot có trước ngày chốt','err',o,kh+' · hoá đơn gần nhất '+(last||'—')+', đều trước ngày chốt '+o.order_date);
+      return;
+    }
+    const kp=(after[0]||{}).customer_phone;
+    if(o.phone&&kp&&dhLast9(o.phone)!==dhLast9(kp))add('SĐT lệch giữa Pancake và Kiot','err',o,kh+' · Pancake '+o.phone+' ≠ Kiot '+kp);
+  });
+  // Chiều ngược lại: hoá đơn do chính Sale online xuất nhưng chưa gắn với đơn Pancake nào.
+  const usedCodes=new Set(Object.keys(khUsage));
+  const pancakeStaff=new Set(dhOrders.map(o=>(o.staff_name||'').trim()).filter(Boolean));
+  kiotInvoices.filter(i=>i.status===1&&i.customer_code&&!usedCodes.has(i.customer_code)&&pancakeStaff.has((i.sold_by_name||'').trim()))
+    .forEach(i=>issues.push({type:'Hoá đơn Kiot chưa gắn đơn Pancake',sev:'warn',group:dhSaleTypeInvoice(i),
+      brand:i.branch_name||'—',ref:i.code,date:(i.purchase_date||'').slice(0,10),cust:i.customer_name||'—',
+      detail:i.customer_code+' · '+(i.sold_by_name||'')+' · '+vnd(i.total)}));
+  return issues.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+}
+function dhIssueTypeFilter(){return window._dhIssueType||'all';}
+function dhSetIssueType(v){window._dhIssueType=v;renderDataHub();}
+function dhIssueSection(title,list,emptyMsg){
+  const sevOrder={err:0,warn:1,info:2};
+  const rows=list.slice().sort((a,b)=>(sevOrder[a.sev]-sevOrder[b.sev])||String(b.date).localeCompare(String(a.date))).map(i=>`<tr>
+    <td><span style="display:inline-block;padding:2px 9px;border-radius:20px;background:${i.sev==='err'?'var(--red-l)':i.sev==='warn'?'var(--yellow-l)':'var(--bg2)'};color:${DH_SEV[i.sev].color};font-size:11px;font-weight:800">${DH_SEV[i.sev].label}</span></td>
+    <td style="font-size:11.5px;font-weight:700">${i.type}</td>
+    <td>${i.brand}</td><td><code>${i.ref}</code></td><td>${i.date||'—'}</td>
+    <td class="name">${i.cust}</td><td style="font-size:11px;color:var(--muted)">${i.detail||''}</td>
+  </tr>`).join('');
+  const cnt=s=>list.filter(i=>i.sev===s).length;
+  return `
+    <div class="tbl-card" style="margin-bottom:16px">
+      <div class="tbl-head">
+        <div class="tbl-title">${title}</div><div class="tbl-count">${num(list.length)}</div>
+        <span style="margin-left:auto;display:flex;gap:6px;font-size:11px;font-weight:800">
+          <span style="color:var(--red)">${cnt('err')} lỗi</span>·
+          <span style="color:var(--yellow)">${cnt('warn')} cảnh báo</span>·
+          <span style="color:var(--muted)">${cnt('info')} cần bổ sung</span>
+        </span>
+      </div>
+      <div class="tbl-scroll" style="max-height:520px;overflow-y:auto"><table>
+        <thead><tr><th>Mức</th><th>Loại lỗi</th><th>Brand / Chi nhánh</th><th>Mã</th><th>Ngày</th><th>Khách hàng</th><th>Chi tiết</th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--green);font-weight:700">${emptyMsg}</td></tr>`}</tbody>
+      </table></div>
+    </div>`;
+}
+function dhIssuesHtml(){
+  const all=dhDataIssues();
+  const byType={};all.forEach(i=>{const t=byType[i.type]=byType[i.type]||{n:0};t.n++;});
+  const sel=dhIssueTypeFilter();
+  const list=sel==='all'?all:all.filter(i=>i.type===sel);
+  const cnt=s=>all.filter(i=>i.sev===s).length;
+  const le=list.filter(i=>i.group==='Lẻ'),si=list.filter(i=>i.group==='Sỉ'),other=list.filter(i=>i.group==='Chưa phân loại');
+  return `
+    <div class="kpi-grid" style="margin-bottom:16px">
+      ${mkKpi(ic('alert'),'Lỗi',num(cnt('err')),'sai dữ liệu, cần sửa ngay','g-red')}
+      ${mkKpi(ic('question'),'Cảnh báo',num(cnt('warn')),'thiếu thao tác của Sale','g-yellow')}
+      ${mkKpi(ic('pencil'),'Cần bổ sung',num(cnt('info')),'thiếu thông tin, chưa chặn gì','g-blue')}
+    </div>
+    <div class="period-bar" style="margin-bottom:12px">
+      <span style="font-size:11px;color:var(--muted);font-weight:700">Lọc loại lỗi:</span>
+      <select class="top-select" style="height:30px;font-size:11px;font-weight:600;min-width:320px" onchange="dhSetIssueType(this.value)">
+        <option value="all" ${sel==='all'?'selected':''}>Tất cả loại (${all.length})</option>
+        ${Object.entries(byType).sort((a,b)=>b[1].n-a[1].n).map(([t,d])=>`<option value="${t.replace(/"/g,'&quot;')}" ${sel===t?'selected':''}>${t} (${d.n})</option>`).join('')}
+      </select>
+      <span style="font-size:11px;color:var(--muted)">Lẻ / Sỉ phân theo thẻ khách (KH LẺ · KH SỈ) trên Pancake, riêng hoá đơn Kiot theo chi nhánh</span>
+    </div>
+    <div class="sec-label">Sale Lẻ (Online)</div>
+    ${dhIssueSection('Lỗi nhập liệu — Sale Lẻ',le,'Sale Lẻ không có lỗi nào 🎉')}
+    <div class="sec-label">Sale Sỉ</div>
+    ${dhIssueSection('Lỗi nhập liệu — Sale Sỉ',si,'Sale Sỉ không có lỗi nào 🎉')}
+    ${other.length?`<div class="sec-label">Chưa phân loại Lẻ/Sỉ</div>`+dhIssueSection('Đơn chưa gắn thẻ KH LẺ / KH SỈ',other,'—'):''}`;
+}
+function dhViewMode(){return localStorage.getItem('dhViewMode')||'overview';}
+function dhSetViewMode(m){localStorage.setItem('dhViewMode',m);window._dhIssuePage=1;renderDataHub();}
 async function renderDataHub(){
   await dhLoadOrders();
+  await kiotLoadInvoices();
   const dhConfirmed=dhOrders.filter(dhIsOrder);
   const dhNew=dhOrders.filter(o=>o.customer_status==='Mới').length;
   const dhOld=dhOrders.filter(o=>o.customer_status==='Cũ').length;
@@ -6059,14 +6178,19 @@ async function renderDataHub(){
       <td style="font-size:11px;color:var(--red)">${h.error_message||'—'}</td>
     </tr>`).join('');
   }catch(e){syncHistRows=`<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--red)">Lỗi tải: ${e.message}</td></tr>`;}
-  let rawPreviewHtml='<div style="color:var(--muted);font-size:12.5px;padding:12px">Đang tải...</div>';
-  try{
-    const rawSample=await sbFetchAll('leads','select=lead_id,source,channel,source_external_id,ad_id,department,created_at&order=created_at.desc&limit=5');
-    rawPreviewHtml=`<pre style="font-size:11px;background:var(--bg2);border-radius:8px;padding:12px;overflow-x:auto;margin:0">${JSON.stringify(rawSample,null,2).replace(/</g,'&lt;')}</pre>`;
-  }catch(e){rawPreviewHtml=`<div style="color:var(--red);font-size:12px;padding:12px">Lỗi tải: ${e.message}</div>`;}
-  el.innerHTML=`
+  const mode=dhViewMode();
+  const tabBtn=(m,label)=>`<button onclick="dhSetViewMode('${m}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode===m?'var(--accent)':'var(--surface)'};color:${mode===m?'#fff':'var(--text2)'}">${label}</button>`;
+  const issueCount=dhDataIssues().length;
+  const header=`
     <div class="page-title">Data Hub</div>
-    <div class="page-sub">Nguồn dữ liệu &amp; trạng thái đồng bộ</div>
+    <div class="page-sub">Nguồn dữ liệu Pancake + KiotViet (không dùng bảng migrate từ Google Sheet)</div>
+    <div class="period-bar">
+      <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
+        ${tabBtn('overview','📊 Tổng Quan')}${tabBtn('issues','⚠️ Lỗi Nhập Liệu ('+issueCount+')')}
+      </span>
+    </div>`;
+  if(mode==='issues'){el.innerHTML=header+dhIssuesHtml();return;}
+  el.innerHTML=header+`
     ${pancakeOrdersHtml}
     <div class="tbl-card" style="margin-bottom:16px">
       <div class="tbl-head"><div class="tbl-title">🟢 MKT — Meta Ads (tự động thật)</div></div>
@@ -6081,30 +6205,6 @@ async function renderDataHub(){
         <thead><tr><th>Thời gian</th><th>Nguồn</th><th>Tạo mới</th><th>Cập nhật</th><th>Trạng thái</th><th>Lỗi</th></tr></thead>
         <tbody>${syncHistRows}</tbody>
       </table></div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
-      <div class="tbl-card">
-        <div class="tbl-head"><div class="tbl-title">Raw Data Preview</div><div class="tbl-count">leads</div></div>
-        <div style="padding:12px">${rawPreviewHtml}</div>
-      </div>
-      <div class="tbl-card">
-        <div class="tbl-head"><div class="tbl-title">Mapping — Source → System → CRM</div></div>
-        <div class="tbl-scroll"><table style="font-size:11.5px">
-          <thead><tr><th>Source field</th><th>System field</th><th>Bảng</th></tr></thead>
-          <tbody>
-            <tr><td>Họ tên</td><td><code>name</code></td><td>customers</td></tr>
-            <tr><td>SĐT</td><td><code>phone</code></td><td>customers</td></tr>
-            <tr><td>Lead ID</td><td><code>lead_id</code> / <code>source_external_id</code></td><td>leads</td></tr>
-            <tr><td>Nguồn</td><td><code>source</code></td><td>leads</td></tr>
-            <tr><td>Kênh</td><td><code>channel</code></td><td>leads</td></tr>
-            <tr><td>Ads ID</td><td><code>ad_id</code></td><td>leads</td></tr>
-            <tr><td>Bộ phận</td><td><code>department</code></td><td>leads</td></tr>
-            <tr><td>Mã KH gốc</td><td><code>legacy_ma_kh</code></td><td>customers</td></tr>
-          </tbody>
-        </table></div>
-        <div style="padding:10px 16px;font-size:11px;color:var(--muted);border-top:1px solid var(--border)">Thêm nguồn mới (Pancake...) chỉ cần map field vào đúng bảng này, không sửa CRM.</div>
-      </div>
     </div>`;
   dhRenderTable();
 }
