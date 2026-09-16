@@ -6372,6 +6372,7 @@ async function renderReportSaleLe(){
   if(!el)return;
   if(!crmCustomers.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>';return;}
   await dhLoadOrders();
+  await kiotLoadInvoices();
   await rptSlLoadLegacyDates();
   const mode=rptSlViewMode();
   el.innerHTML=`
@@ -6380,18 +6381,18 @@ async function renderReportSaleLe(){
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         <button onclick="rptSlSetViewMode('overview')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='overview'?'var(--accent)':'var(--surface)'};color:${mode==='overview'?'#fff':'var(--text2)'}">📊 Tổng Quan</button>
-        <button onclick="rptSlSetViewMode('detail')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='detail'?'var(--accent)':'var(--surface)'};color:${mode==='detail'?'#fff':'var(--text2)'}">☰ Chi Tiết</button>
-        <button onclick="rptSlSetViewMode('entry')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='entry'?'var(--accent)':'var(--surface)'};color:${mode==='entry'?'#fff':'var(--text2)'}">📝 Nhập Liệu</button>
+        <button onclick="rptSlSetViewMode('master')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='master'?'var(--accent)':'var(--surface)'};color:${mode==='master'?'#fff':'var(--text2)'}">👤 Master Data</button>
+        <button onclick="rptSlSetViewMode('crm')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='crm'?'var(--accent)':'var(--surface)'};color:${mode==='crm'?'#fff':'var(--text2)'}">📋 CRM</button>
       </span>
     </div>
     <div id="rptSlBody"></div>`;
-  if(mode==='overview'){
+  if(mode==='master'){
+    document.getElementById('rptSlBody').innerHTML=rptSlMasterHtml();
+  }else if(mode==='crm'){
+    document.getElementById('rptSlBody').innerHTML=rptSlCrmHtml();
+  }else{
     document.getElementById('rptSlBody').innerHTML=rptSlOverviewHtml();
     rptSlDrawChanChart();
-  }else if(mode==='detail'){
-    document.getElementById('rptSlBody').innerHTML=rptSlDetailHtml();
-  }else{
-    document.getElementById('rptSlBody').innerHTML=rptSlEntryHtml();
   }
 }
 // Brand không có sẵn trên CRM v2 (customers/leads) -- suy ra theo đúng thứ tự bản Sale Overview cũ:
@@ -6545,147 +6546,187 @@ function rptSlDrawChanChart(){
       y:{grid:{display:false},border:{display:false},ticks:{color:'var(--text)',font:{size:11,weight:'600'}}}}}});
 }
 function rptSlShow(key){const d=(window._rptSlLists||{})[key];if(d)dataModal(d);}
-function rptSlDetailHtml(){
-  const auto=v=>v?`<span style="font-style:italic;color:var(--muted)" title="Tự động lấy từ Data Hub (Pancake) -- CRM chưa nhập tay">🔗 ${v}</span>`:'<span style="color:var(--muted)">—</span>';
-  const manual=v=>v?v:'<span style="color:var(--muted)">—</span>';
-  // Chỉ hiện khách có ít nhất 1 lead từ 1/6/2026 trở đi -- loại bulk data cũ (xem RPT_SL_MIN_DATE).
-  const recentCustIds=new Set(rptSlRecentLeads().map(l=>l.customer_id));
-  const recentCustomers=crmCustomers.filter(c=>recentCustIds.has(c.customer_id));
-  const rows=recentCustomers.map(c=>{
-    const lead=(window._crmLeadByCustomer[c.customer_id]||[])[0]||{};
-    const dh=rptSlDhMatches(c.phone)[0];
-    const lastAct=(window._crmActByCustomer[c.customer_id]||[])[0]||{};
-    const myOrders=(window._crmOrdByCustomer[c.customer_id]||[]).filter(o=>o.status==='confirmed').sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
-    const firstOrder=myOrders[0];
-    const dhConfirmed=(dh&&dhIsOrder(dh))?dh:null;
-    const daysNoCs=c.last_contact_date?Math.floor((new Date()-new Date(c.last_contact_date))/86400000):null;
-    const salesNm=crmSalesName(lead.assigned_sales);
-    return `<tr style="cursor:pointer" onclick="openCrmDetail('${c.customer_id}')">
-      <td>${manual(lead.created_at?lead.created_at.slice(0,10):'')}</td>
-      <td>${lead.source?manual(lead.source):(dh?auto('Online'):manual())}</td>
-      <td>${lead.channel?manual(lead.channel):(dh&&dh.source?auto(dh.source):manual())}</td>
-      <td>${manual(salesNm)}</td>
-      <td>${lead.ad_id?manual(lead.ad_id):(dh&&dh.ad_id?auto(dh.ad_id):manual())}</td>
-      <td style="font-size:11px;color:var(--muted)">${manual(lead.lead_id)}</td>
-      <td>${dh&&dh.staff_name?auto(dh.staff_name):manual()}</td>
-      <td>${manual(c.phone)}</td>
-      <td>${c.province?manual(c.province):(dh&&dh.province?auto(dh.province):manual())}</td>
-      <td>${c.district?manual(c.district):(dh&&dh.district?auto(dh.district):manual())}</td>
-      <td style="font-size:11.5px">${c.address?manual(c.address):(dh?auto([dh.address,dh.ward].filter(Boolean).join(', ')):manual())}</td>
-      <td>${dh&&dh.source?auto(dh.source):manual()}</td>
-      <td>${crmStatusBadge(lead.lead_status)}</td>
-      <td>${manual(c.last_contact_date)}</td>
-      <td class="num">${daysNoCs==null?'—':num(daysNoCs)}</td>
-      <td style="font-size:11px;color:var(--text2);max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(lastAct.conversation_content||'').replace(/"/g,'&quot;')}">${manual(lastAct.conversation_content)}</td>
-      <td>${firstOrder?manual(firstOrder.order_date):(dhConfirmed?auto(dhConfirmed.order_date):manual())}</td>
-      <td>${firstOrder?manual(firstOrder.product):manual()}</td>
-      <td class="num" style="font-weight:800;color:${c.total_revenue>0?'var(--green)':'inherit'}">${c.total_revenue>0?vnd(c.total_revenue):'—'}</td>
-      <td style="font-size:11px;color:var(--muted)">${manual(c.customer_id)}</td>
-      <td>${dh&&dh.brand?auto(DH_BRAND_LABEL[dh.brand]||dh.brand):manual()}</td>
-    </tr>`;
-  }).join('');
-  return `<div class="tbl-card">
-    <div class="tbl-head"><div class="tbl-title">Chi tiết khách hàng · Sale Lẻ</div><div class="tbl-count">${num(recentCustomers.length)}</div><span style="margin-left:auto;font-size:11px;color:var(--muted)">🔗 = tự động lấy từ Data Hub (Pancake) · chỉ tính data từ 1/6/2026</span></div>
-    <div class="tbl-scroll"><table>
-      <thead><tr><th>Ngày tạo</th><th>Nguồn</th><th>Kênh</th><th>Sales</th><th>Ad ID</th><th>Lead ID</th><th>Rep (Pancake)</th><th>SĐT</th><th>Tỉnh/TP</th><th>Quận/Huyện</th><th>Địa chỉ</th><th>Fanpage</th><th>Trạng thái</th><th>CS cuối</th><th>Ngày chưa CS</th><th>Ghi chú CS</th><th>Ngày đơn đầu</th><th>Sản phẩm đơn đầu</th><th>Tổng doanh thu</th><th>Mã KH</th><th>Brand</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="21" style="text-align:center;padding:24px;color:var(--muted)">Chưa có khách hàng nào</td></tr>'}</tbody>
-    </table></div>
-  </div>`;
+// ── Master Data & CRM: dựng theo đúng khung Data Hub -> Master Data -> CRM của sheet cũ, nhưng nguồn là
+// Pancake (datahub_orders) + KiotViet (kiot_invoices), KHÔNG dùng bảng nào migrate từ Google Sheet.
+//   Data Hub  = từng đơn thô Pancake (tab Data Hub)
+//   Master    = 1 dòng/khách, gộp các đơn cùng khách; 2 cột DẪN XUẤT như sheet cũ:
+//               "Liên hệ cuối" (max ngày đơn/hoá đơn) và "Doanh thu cộng dồn" (cộng hoá đơn Kiot)
+//   CRM       = 1 dòng/lần phát sinh (đơn Pancake hoặc hoá đơn Kiot), xếp theo thời gian
+// Khoá nối giữ nguyên tinh thần sheet cũ: Mã KH -> SĐT (9 số cuối) -> tên trong cùng shop.
+function rptSlCustKey(o){
+  const p=rptSlLast9(o.phone);
+  return p?('P'+p):('S'+o.shop_id+'|'+(o.customer_name||'').trim().toLowerCase());
 }
-// Lead có ngày tạo THẬT (legacy-aware, xem rptSlLegacyDate) trong N ngày gần nhất -- dùng chung cho tab Nhập Liệu.
-function rptSlRealDate(leadId,fallbackCreatedAt){
-  const legacy=rptSlLegacyDate&&rptSlLegacyDate[leadId];
-  return legacy||(fallbackCreatedAt?fallbackCreatedAt.slice(0,10):null);
+// Trạng thái khách suy từ THẺ Pancake của đơn mới nhất -- thay cho cột "Trạng thái" Sale gõ tay bên sheet.
+function rptSlStatusOf(tags){
+  const t=(tags||'').toUpperCase();
+  if(t.includes('CHỐT ĐƠN'))return'Chốt đơn';
+  if(t.includes('BÀN GIAO'))return'Bàn giao';
+  if(t.includes('TIỀM NĂNG'))return'Tiềm năng';
+  if(t.includes('LEAD ĐẶT')||t.includes('LEAD ĐẠT'))return'Lead đặt';
+  return'Data mới';
 }
-function rptSlEntryLeads(){
-  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-2);cutoff.setHours(0,0,0,0);
-  const cutoffStr=cutoff.toISOString().slice(0,10);
-  return crmLeads.filter(l=>{const d=rptSlRealDate(l.lead_id,l.created_at);return d&&d>=cutoffStr;});
+const RPT_SL_STATUS_COLOR={'Chốt đơn':'var(--green)','Bàn giao':'var(--teal)','Tiềm năng':'var(--accent)','Lead đặt':'var(--muted)','Data mới':'var(--muted)'};
+function rptSlBuildMaster(){
+  const invByCode={};
+  kiotInvoices.forEach(i=>{if(i.customer_code&&i.status===1)(invByCode[i.customer_code]=invByCode[i.customer_code]||[]).push(i);});
+  const byKey={};
+  dhOrders.forEach(o=>{(byKey[rptSlCustKey(o)]=byKey[rptSlCustKey(o)]||[]).push(o);});
+  const rows=Object.entries(byKey).map(([key,orders])=>{
+    orders.sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
+    const last=orders[orders.length-1];
+    const pick=f=>orders.map(f).filter(Boolean).pop()||'';
+    const kh=orders.map(o=>dhExtractKH(o.internal_note)).filter(Boolean).pop()||null;
+    const invs=(kh?(invByCode[kh]||[]):[]).slice().sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
+    const revenue=invs.reduce((s,i)=>s+Number(i.total||0),0);
+    const chot=orders.filter(dhIsOrder);
+    const touches=[...orders.map(o=>o.order_date),...invs.map(i=>(i.purchase_date||'').slice(0,10))].filter(Boolean).sort();
+    const lastTouch=touches[touches.length-1]||'';
+    return{key,orders,invs,kh,revenue,
+      name:pick(o=>o.customer_name)||'—',phone:pick(o=>o.phone),
+      created:orders[0].order_date,brand:last.brand,shop:last.shop_name,
+      source:pick(o=>o.source),staff:pick(o=>o.staff_name),adId:pick(o=>o.ad_id),
+      kiotName:invs.length?invs[invs.length-1].customer_name:'',
+      saleType:dhSaleTypeOrder(last),status:chot.length?'Chốt đơn':rptSlStatusOf(last.customer_tags),
+      isChot:chot.length>0,closeDate:chot.length?chot[0].order_date:'',
+      invoiceDate:invs.length?(invs[0].purchase_date||'').slice(0,10):'',
+      lastTouch,daysIdle:lastTouch?Math.floor((new Date()-new Date(lastTouch))/86400000):null};
+  });
+  return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
 }
-// Đơn Data Hub (Pancake) mới trong 3 ngày qua nhưng SĐT chưa khớp khách nào trong CRM -- hiện để Sale biết
-// còn data mới cần xử lý, CHỈ ĐỌC (không tự tạo lead/khách -- việc đó để Sale chủ động, tránh tạo trùng/rác).
-function rptSlUnmatchedDhRecent(){
-  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-2);cutoff.setHours(0,0,0,0);
-  const cutoffStr=cutoff.toISOString().slice(0,10);
-  const crmPhones=new Set(crmCustomers.map(c=>rptSlLast9(c.phone)).filter(Boolean));
-  return dhOrders.filter(o=>o.order_date>=cutoffStr&&dhIsOrder(o)&&!crmPhones.has(rptSlLast9(o.phone)));
-}
-async function rptSlChangeStatus(customerId,newStatus){
-  const lead=(window._crmLeadByCustomer[customerId]||[])[0];if(!lead)return;
-  await sbInsert('crm_activities',{customer_id:customerId,lead_id:lead.lead_id,sales_id:lead.assigned_sales,
-    activity_date:todayISO(),conversation_content:'(Đổi trạng thái nhanh từ tab Nhập liệu)',
-    status_after_activity:newStatus,potential_value:lead.current_potential_value||null,
-    next_followup_date:lead.next_followup_date||null});
-  await crmAudit('Đổi trạng thái nhanh → '+newStatus,customerId,lead.lead_status,newStatus);
-  await loadCrmFromSupabase();renderReportSaleLe();
-}
-async function rptSlSaveNote(customerId){
-  const input=document.getElementById('rptSlNote_'+customerId);
-  const content=(input&&input.value||'').trim();
-  if(!content)return;
-  const lead=(window._crmLeadByCustomer[customerId]||[])[0];if(!lead)return;
-  await sbInsert('crm_activities',{customer_id:customerId,lead_id:lead.lead_id,sales_id:lead.assigned_sales,
-    activity_date:todayISO(),conversation_content:content,
-    status_after_activity:lead.lead_status,potential_value:lead.current_potential_value||null,
-    next_followup_date:lead.next_followup_date||null});
-  await crmAudit('Ghi chú CS (tab Nhập liệu)',customerId,null,content);
-  await loadCrmFromSupabase();renderReportSaleLe();
-}
-function rptSlEntryHtml(){
-  const entryLeads=rptSlEntryLeads();
-  const custById={};crmCustomers.forEach(c=>custById[c.customer_id]=c);
-  const rows=entryLeads.map(l=>{
-    const c=custById[l.customer_id]||{};
-    const lastAct=(window._crmActByCustomer[l.customer_id]||[])[0]||{};
-    const d=rptSlRealDate(l.lead_id,l.created_at)||'—';
-    return `<tr>
-      <td style="font-size:11px;color:var(--muted)">${d}</td>
-      <td class="name">${c.name||'—'}</td>
-      <td>${c.phone||'—'}</td>
-      <td style="font-size:11px">${l.source||'—'}${l.channel?' / '+l.channel:''}</td>
-      <td>
-        <select onchange="rptSlChangeStatus('${l.customer_id}',this.value)" style="font-size:11.5px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
-          <option value="">Khách mới</option>
-          ${crmConfigOptions('status').map(s=>`<option value="${s}" ${s===l.lead_status?'selected':''}>${s}</option>`).join('')}
-        </select>
-      </td>
-      <td style="font-size:11px;color:var(--muted);max-width:200px" title="${(lastAct.conversation_content||'').replace(/"/g,'&quot;')}">${lastAct.conversation_content?('Gần nhất: '+lastAct.conversation_content):'Chưa có ghi chú'}</td>
-      <td style="min-width:220px">
-        <div style="display:flex;gap:6px">
-          <input id="rptSlNote_${l.customer_id}" placeholder="Nội dung trao đổi hôm nay…" style="flex:1;height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-family:var(--font)">
-          <button class="refresh-btn" onclick="rptSlSaveNote('${l.customer_id}')">💾 Lưu</button>
-        </div>
-      </td>
-      <td style="cursor:pointer;color:var(--accent);font-size:11.5px;font-weight:700" onclick="openCrmDetail('${l.customer_id}')">Xem hồ sơ ›</td>
-    </tr>`;
-  }).join('');
-  const dhNew=rptSlUnmatchedDhRecent();
-  const dhRows=dhNew.map(o=>`<tr>
-    <td style="font-size:11px;color:var(--muted)">${o.order_date}</td>
-    <td class="name">${o.customer_name||'—'}</td>
-    <td>${o.phone||'—'}</td>
-    <td style="font-size:11px">${o.source||'—'}</td>
-    <td><span style="display:inline-block;padding:2px 9px;border-radius:20px;background:var(--accent-l);color:var(--accent);font-size:11px;font-weight:800">${DH_BRAND_LABEL[o.brand]||o.brand||'—'}</span></td>
-    <td style="font-size:11px;color:var(--red)">Chưa có trong CRM</td>
+function rptSlMasterFilter(){return window._rptSlMasterF||'all';}
+function rptSlSetMasterFilter(v){window._rptSlMasterF=v;window._rptSlMasterPage=1;renderReportSaleLe();}
+function rptSlSetMasterPage(p){window._rptSlMasterPage=p;renderReportSaleLe();}
+function rptSlMasterSearch(){return(document.getElementById('rptSlMasterSearch')||{}).value||'';}
+function rptSlMasterHtml(){
+  const all=rptSlBuildMaster();
+  const f=rptSlMasterFilter(),q=(window._rptSlMasterQ||'').trim().toLowerCase();
+  let list=all;
+  if(f==='chot')list=list.filter(r=>r.isChot);
+  else if(f==='coma')list=list.filter(r=>r.kh);
+  else if(f==='thieuma')list=list.filter(r=>r.isChot&&!r.kh);
+  else if(f==='idle')list=list.filter(r=>r.daysIdle!==null&&r.daysIdle>=10&&!r.isChot);
+  else if(f==='le'||f==='si')list=list.filter(r=>r.saleType===(f==='le'?'Lẻ':'Sỉ'));
+  if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.kiotName||'').toLowerCase().includes(q));
+  const pageSize=50,page=window._rptSlMasterPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
+  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>`<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
+    <td>${r.created||'—'}</td>
+    <td class="name">${r.name}</td>
+    <td>${r.phone||'<span style="color:var(--muted)">—</span>'}</td>
+    <td><span style="display:inline-block;padding:2px 9px;border-radius:20px;background:var(--accent-l);color:var(--accent);font-size:11px;font-weight:800">${DH_BRAND_LABEL[r.brand]||r.brand||'—'}</span></td>
+    <td style="font-size:11px">${r.saleType}</td>
+    <td style="font-size:11px">${r.source||'—'}</td>
+    <td>${r.staff||'—'}</td>
+    <td><span style="font-weight:800;font-size:11.5px;color:${RPT_SL_STATUS_COLOR[r.status]||'var(--muted)'}">${r.status}</span></td>
+    <td class="num">${num(r.orders.length)}</td>
+    <td style="font-size:11px">${r.kh?('<code>'+r.kh+'</code>'):'<span style="color:var(--red)">chưa có</span>'}</td>
+    <td style="font-size:11px">${r.kiotName||'—'}</td>
+    <td>${r.invoiceDate||'—'}</td>
+    <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
+    <td>${r.lastTouch||'—'}</td>
+    <td class="num" style="${r.daysIdle!==null&&r.daysIdle>=10&&!r.isChot?'color:var(--red);font-weight:800':''}">${r.daysIdle===null?'—':num(r.daysIdle)}</td>
   </tr>`).join('');
+  const chip=(v,label)=>`<span onclick="rptSlSetMasterFilter('${v}')" style="cursor:pointer;padding:5px 13px;border-radius:20px;font-size:11.5px;font-weight:700;background:${f===v?'var(--accent)':'var(--bg2)'};color:${f===v?'#fff':'var(--text2)'}">${label}</span>`;
+  const rev=list.reduce((s,r)=>s+r.revenue,0);
   return `
-    <div class="tbl-card" style="margin-bottom:16px">
-      <div class="tbl-head"><div class="tbl-title">Lead cần xử lý (3 ngày gần nhất)</div><div class="tbl-count">${num(entryLeads.length)}</div></div>
-      <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày vào</th><th>Khách hàng</th><th>SĐT</th><th>Nguồn/Kênh</th><th>Trạng thái</th><th>Ghi chú gần nhất</th><th>Nội dung trao đổi hôm nay</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Không có lead nào mới trong 3 ngày qua</td></tr>'}</tbody>
-      </table></div>
+    <div class="kpi-grid" style="margin-bottom:14px">
+      ${mkKpi(ic('users'),'Tổng khách',num(all.length),'gộp từ '+num(dhOrders.length)+' data Pancake','g-blue')}
+      ${mkKpi(ic('check'),'Khách đã chốt',num(all.filter(r=>r.isChot).length),'có đơn gắn thẻ CHỐT ĐƠN','g-green')}
+      ${mkKpi(ic('cash'),'Doanh thu cộng dồn',vnd(all.reduce((s,r)=>s+r.revenue,0)),'từ hoá đơn KiotViet','g-teal')}
+      ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(all.filter(r=>r.daysIdle!==null&&r.daysIdle>=10&&!r.isChot).length),'>10 ngày, chưa chốt','g-yellow')}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
+      ${chip('all','Tất cả')}${chip('le','Khách Lẻ')}${chip('si','Khách Sỉ')}${chip('chot','Đã chốt')}${chip('coma','Đã có Mã KH')}${chip('thieuma','Chốt nhưng thiếu Mã KH')}${chip('idle','Lâu chưa liên hệ')}
+      <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(renderReportSaleLe,350)" style="margin-left:auto;height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
     </div>
     <div class="tbl-card">
-      <div class="tbl-head"><div class="tbl-title">⚠️ Data Hub mới, chưa có trong CRM (3 ngày gần nhất)</div><div class="tbl-count">${num(dhNew.length)}</div></div>
-      <div style="padding:10px 16px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)">Chỉ hiển thị để biết — không tự tạo khách, cần Sale chủ động thêm vào CRM nếu muốn xử lý.</div>
+      <div class="tbl-head"><div class="tbl-title">Master Data — hồ sơ khách</div><div class="tbl-count">${num(list.length)}</div>
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)">Doanh thu trong bộ lọc: <b style="color:var(--green)">${vnd(rev)}</b></span></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày đơn</th><th>Tên khách (Pancake)</th><th>SĐT</th><th>Nguồn</th><th>Brand</th><th></th></tr></thead>
-        <tbody>${dhRows||'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Không có data Pancake mới chưa khớp CRM</td></tr>'}</tbody>
+        <thead><tr><th>Ngày tạo</th><th>Họ tên</th><th>SĐT</th><th>Brand</th><th>Nhóm KH</th><th>Nguồn</th><th>Sales</th><th>Trạng thái</th><th>Số đơn</th><th>Mã KH</th><th>Tên bên Kiot</th><th>Ngày hoá đơn</th><th>Doanh thu</th><th>Liên hệ cuối</th><th>Ngày chưa LH</th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="15" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
       </table></div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
+        <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetMasterPage(${page-1})">‹ Trước</button>
+        <span style="font-size:12px;font-weight:700;color:var(--muted)">Trang ${page}/${totalPages}</span>
+        <button class="refresh-btn" ${page>=totalPages?'disabled':''} onclick="rptSlSetMasterPage(${page+1})">Sau ›</button>
+      </div>
     </div>`;
 }
-
+// Hồ sơ 1 khách: gộp mọi đơn Pancake + hoá đơn Kiot theo thời gian -- tương đương "xem chi tiết" bên sheet cũ.
+function rptSlShowCustomer(key){
+  const r=rptSlBuildMaster().find(x=>x.key===key);
+  if(!r)return;
+  const cols=['Ngày','Loại','Nội dung / Sản phẩm','Trạng thái','Giá trị'];
+  const rows=[
+    ...r.orders.map(o=>[o.order_date,'Đơn Pancake #'+o.system_id,(o.internal_note||o.source||'—'),o.customer_tags||'—','']),
+    ...r.invs.map(i=>[(i.purchase_date||'').slice(0,10),'Hoá đơn '+i.code,(i.sold_by_name||'')+' · '+(i.branch_name||''),'Hoàn thành',vnd(i.total)]),
+  ].sort((a,b)=>String(b[0]).localeCompare(String(a[0])));
+  dataModal({title:`${r.name}${r.phone?' · '+r.phone:''}${r.kh?' · '+r.kh:''} — doanh thu ${vnd(r.revenue)}`,cols,rows});
+}
+// ── CRM: dòng thời gian từng lần phát sinh (đơn Pancake / hoá đơn Kiot) ──
+function rptSlCrmFilter(){return window._rptSlCrmF||'all';}
+function rptSlSetCrmFilter(v){window._rptSlCrmF=v;window._rptSlCrmPage=1;renderReportSaleLe();}
+function rptSlSetCrmPage(p){window._rptSlCrmPage=p;renderReportSaleLe();}
+function rptSlCrmHtml(){
+  const master=rptSlBuildMaster();
+  const byKey={};master.forEach(m=>byKey[m.key]=m);
+  const events=[];
+  master.forEach(m=>{
+    m.orders.forEach(o=>events.push({date:o.order_date,kind:'Đơn Pancake',ref:'#'+o.system_id,name:m.name,phone:m.phone,
+      brand:DH_BRAND_LABEL[o.brand]||o.brand||'—',saleType:m.saleType,staff:o.staff_name||'—',
+      status:rptSlStatusOf(o.customer_tags),content:o.internal_note||o.source||'—',value:0,key:m.key}));
+    m.invs.forEach(i=>events.push({date:(i.purchase_date||'').slice(0,10),kind:'Hoá đơn Kiot',ref:i.code,name:m.name,phone:m.phone,
+      brand:i.branch_name||'—',saleType:m.saleType,staff:i.sold_by_name||'—',
+      status:'Đã xuất hoá đơn',content:(i.items||[]).map(x=>x.name).slice(0,3).join(', ')||i.description||'—',value:Number(i.total||0),key:m.key}));
+  });
+  const f=rptSlCrmFilter();
+  let list=events;
+  if(f==='pancake')list=list.filter(e=>e.kind==='Đơn Pancake');
+  else if(f==='kiot')list=list.filter(e=>e.kind==='Hoá đơn Kiot');
+  else if(f==='chot')list=list.filter(e=>e.status==='Chốt đơn');
+  else if(f==='le'||f==='si')list=list.filter(e=>e.saleType===(f==='le'?'Lẻ':'Sỉ'));
+  list=list.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const pageSize=50,page=window._rptSlCrmPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
+  const rows=list.slice((page-1)*pageSize,page*pageSize).map(e=>`<tr style="cursor:pointer" onclick="rptSlShowCustomer('${e.key.replace(/'/g,"\\'")}')">
+    <td>${e.date||'—'}</td>
+    <td><span style="display:inline-block;padding:2px 9px;border-radius:20px;background:${e.kind==='Hoá đơn Kiot'?'var(--green-l)':'var(--accent-l)'};color:${e.kind==='Hoá đơn Kiot'?'var(--green)':'var(--accent)'};font-size:11px;font-weight:800">${e.kind}</span></td>
+    <td><code>${e.ref}</code></td>
+    <td class="name">${e.name}</td>
+    <td>${e.phone||'—'}</td>
+    <td style="font-size:11px">${e.brand}</td>
+    <td style="font-size:11px">${e.saleType}</td>
+    <td>${e.staff}</td>
+    <td style="font-size:11.5px;font-weight:700;color:${RPT_SL_STATUS_COLOR[e.status]||'var(--text2)'}">${e.status}</td>
+    <td style="font-size:11px;color:var(--muted);max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(e.content||'').replace(/"/g,'&quot;')}">${e.content}</td>
+    <td class="num" style="font-weight:800;color:${e.value>0?'var(--green)':'inherit'}">${e.value>0?vnd(e.value):'—'}</td>
+  </tr>`).join('');
+  const chip=(v,label)=>`<span onclick="rptSlSetCrmFilter('${v}')" style="cursor:pointer;padding:5px 13px;border-radius:20px;font-size:11.5px;font-weight:700;background:${f===v?'var(--accent)':'var(--bg2)'};color:${f===v?'#fff':'var(--text2)'}">${label}</span>`;
+  const kiotEvents=events.filter(e=>e.kind==='Hoá đơn Kiot');
+  return `
+    <div class="kpi-grid" style="margin-bottom:14px">
+      ${mkKpi(ic('clipboard'),'Tổng lượt phát sinh',num(events.length),'đơn Pancake + hoá đơn Kiot','g-blue')}
+      ${mkKpi(ic('box'),'Đơn Pancake',num(events.length-kiotEvents.length),'mỗi đơn là 1 lượt','g-purple')}
+      ${mkKpi(ic('cash'),'Hoá đơn Kiot',num(kiotEvents.length),vnd(kiotEvents.reduce((s,e)=>s+e.value,0)),'g-green')}
+      ${mkKpi(ic('check'),'Lượt chốt đơn',num(events.filter(e=>e.status==='Chốt đơn').length),'đơn Pancake gắn thẻ CHỐT ĐƠN','g-teal')}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
+      ${chip('all','Tất cả')}${chip('pancake','Đơn Pancake')}${chip('kiot','Hoá đơn Kiot')}${chip('chot','Lượt chốt đơn')}${chip('le','Khách Lẻ')}${chip('si','Khách Sỉ')}
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-head"><div class="tbl-title">CRM — lịch sử phát sinh theo khách</div><div class="tbl-count">${num(list.length)}</div>
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)">Bấm 1 dòng để xem toàn bộ lịch sử của khách đó</span></div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Ngày</th><th>Loại</th><th>Mã</th><th>Khách hàng</th><th>SĐT</th><th>Brand / Chi nhánh</th><th>Nhóm KH</th><th>Người xử lý</th><th>Trạng thái</th><th>Nội dung / Sản phẩm</th><th>Giá trị</th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Không có lượt nào khớp bộ lọc</td></tr>'}</tbody>
+      </table></div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
+        <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetCrmPage(${page-1})">‹ Trước</button>
+        <span style="font-size:12px;font-weight:700;color:var(--muted)">Trang ${page}/${totalPages}</span>
+        <button class="refresh-btn" ${page>=totalPages?'disabled':''} onclick="rptSlSetCrmPage(${page+1})">Sau ›</button>
+      </div>
+    </div>`;
+}
 // ── Cài đặt (Admin): quản lý tài khoản -- Vị trí + Quyền truy cập. Thay cho "Sales phụ trách" lấy tràn từ
 // 40 tên lịch sử trong data cũ -- giờ dropdown Sales phụ trách CHỈ hiện tài khoản thật tạo ở đây (has_login=true).
 // Quyền chia theo đúng 2 nhóm trên sidebar: nhóm SALE (việc hàng ngày) và nhóm QUẢN TRỊ (cấp cao nhất —
