@@ -83,7 +83,11 @@ function mapOrder(o, shopMeta) {
     province: addr.province_name || null,
     source: sourceLabel,
     internal_note: o.note || null,
-    staff_name: (o.creator && o.creator.name) || null,
+    // Shop Nến Bơ (TTV) tạo đơn theo cách khác nên creator = null ở 56/100 đơn, nhưng assigning_seller
+    // vẫn có tên Sale. Các shop còn lại thì cả 3 trường đều đầy. Lấy theo thứ tự người TẠO -> người ĐƯỢC
+    // GIAO -> người sửa cuối, nếu không sẽ mất Sales phụ trách của gần hết brand TTV.
+    staff_name: (o.creator && o.creator.name) || (o.assigning_seller && o.assigning_seller.name)
+      || (o.assigning_care && o.assigning_care.name) || (o.last_editor && o.last_editor.name) || null,
     ad_id: o.ad_id || null,
     order_status: (o.status !== undefined && o.status !== null) ? String(o.status) : null,
     pancake_updated_at: o.updated_at || null,
