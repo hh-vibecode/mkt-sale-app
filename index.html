@@ -5501,17 +5501,23 @@ function pct(n){return n>0?n.toFixed(2)+'%':'—';}
 // =========================================================================================
 let crmCustomers=[],crmLeads=[],crmActivities=[],crmOrders=[],crmSalesUsers=[],crmConfig={};
 function crmConfigOptions(cat){return(crmConfig[cat]||[]).map(o=>o.value);}
+// Tra tên Sale để HIỂN THỊ -- luôn dùng hàm này, đừng tra crmSalesUsers (đã lọc has_login nên thiếu tên cũ).
+function crmSalesName(id){return(window._crmSalesNameById||{})[id]||(crmSalesUsers.find(s=>s.user_id===id)||{}).name||'';}
 async function loadCrmFromSupabase(){
-  const[customers,leads,activities,orders,salesUsers,config,auditLog]=await Promise.all([
+  const[customers,leads,activities,orders,salesUsers,allSalesUsers,config,auditLog]=await Promise.all([
     sbFetchAll('customers','select=*'),
     sbFetchAll('leads','select=*'),
     sbFetchAll('crm_activities','select=*&order=activity_date.desc,activity_id.desc'),
     sbFetchAll('orders','select=*&order=order_date.desc'),
-    sbFetchAll('sales_users','select=*&has_login=eq.true&status=eq.active&order=name.asc'), // chỉ tài khoản THẬT (tạo qua Cài đặt) -- 40 tên lịch sử lúc migrate không hiện ở đây nữa
+    sbFetchAll('sales_users','select=*&has_login=eq.true&status=eq.active&order=name.asc'), // chỉ tài khoản THẬT (tạo qua Cài đặt) -- dùng cho dropdown "Sales phụ trách"
+    // HIỂN THỊ TÊN thì phải tra trong TOÀN BỘ sales_users: leads.assigned_sales của data migrate trỏ tới 40 tên
+    // lịch sử (has_login=false), không có trong danh sách lọc ở trên -- thiếu map này là mọi cột Sales ra "—".
+    sbFetchAll('sales_users','select=user_id,name'),
     sbFetchAll('config_options','select=*&active=eq.true&order=sort_order.asc'),
     sbFetchAll('audit_log','select=*&object_type=eq.customer&order=created_at.desc'),
   ]);
   crmCustomers=customers;crmLeads=leads;crmActivities=activities;crmOrders=orders;crmSalesUsers=salesUsers;
+  window._crmSalesNameById={};allSalesUsers.forEach(s=>{window._crmSalesNameById[s.user_id]=s.name;});
   crmConfig={};
   config.forEach(o=>{(crmConfig[o.category]=crmConfig[o.category]||[]).push(o);});
   window._crmLeadByCustomer={};leads.forEach(l=>{(window._crmLeadByCustomer[l.customer_id]=window._crmLeadByCustomer[l.customer_id]||[]).push(l);});
@@ -6194,7 +6200,7 @@ function renderOrders(){
   const avgOrder=orders.length?totalRevenue/orders.length:0;
   const rows=orders.map(o=>{
     const cust=custById[o.customer_id]||{};
-    const salesName=(crmSalesUsers.find(s=>s.user_id===o.sales_id)||{}).name||'—';
+    const salesName=crmSalesName(o.sales_id)||'—';
     return`<tr style="cursor:pointer" onclick="openCrmDetail('${o.customer_id}')">
       <td><code>ORD${String(o.order_id).padStart(6,'0')}</code></td>
       <td>${o.order_date}</td><td class="name">${cust.name||o.customer_id}</td><td style="font-size:11px;color:var(--muted)">${o.lead_id||'—'}</td><td>${salesName}</td>
@@ -6288,9 +6294,19 @@ async function renderReportSaleLe(){
     document.getElementById('rptSlBody').innerHTML=rptSlEntryHtml();
   }
 }
-// Brand không có sẵn trên CRM v2 (customers/leads) -- suy ra bằng cách khớp SĐT khách với Data Hub
-// (datahub_orders.brand, map cứng theo shop Pancake, xem DH_BRAND_LABEL) giống hệt cách rptSlDetailHtml() làm.
+// Brand không có sẵn trên CRM v2 (customers/leads) -- suy ra theo đúng thứ tự bản Sale Overview cũ:
+// text cột Kênh trước (riêng TTV/Nến Bơ luôn theo text), rồi Ads ID -> tên chiến dịch MKT, cuối cùng mới
+// khớp SĐT với Data Hub. Nhờ vậy gần như đơn nào cũng ra brand, 4 brand cộng lại xấp xỉ tổng doanh thu.
 function rptSlBrandOfPhone(phone){const m=rptSlDhMatches(phone)[0];return m?m.brand:null;}
+function rptSlBrandOfOrder(o,custById,adCampMap){
+  const lead=(window._crmLeadByCustomer[o.customer_id]||[])[0]||{};
+  const byChannel=detectBrandFromChannelText(lead.channel);
+  if(byChannel==='TTV')return 'TTV';
+  const adId=(lead.ad_id||'').toString().trim();
+  if(adId&&adCampMap[adId]){const b=detectBrandFromChannelText(adCampMap[adId]);if(b)return b;}
+  if(byChannel)return byChannel;
+  return rptSlBrandOfPhone((custById[o.customer_id]||{}).phone);
+}
 function rptSlOverviewHtml(){
   const leads=rptSlRecentLeads();
   const total=leads.length;
@@ -6310,7 +6326,7 @@ function rptSlOverviewHtml(){
   const closedRev=confirmedOrders.reduce((s,o)=>s+Number(o.revenue||0),0);
   const totalPotential=leads.reduce((s,l)=>s+Number(l.current_potential_value||0),0);
   const custById={};crmCustomers.forEach(c=>custById[c.customer_id]=c);
-  const salesName=id=>(crmSalesUsers.find(s=>s.user_id===id)||{}).name||'—';
+  const salesName=id=>crmSalesName(id)||'—';
   const cols=['Ngày tạo','Họ tên','SĐT','Nguồn','Kênh','Sales','Trạng thái','Tiềm năng'];
   const rowOf=l=>{const c=custById[l.customer_id]||{};return[l.created_at?l.created_at.slice(0,10):'—',c.name||'—',c.phone||'—',l.source||'—',l.channel||'—',salesName(l.assigned_sales),l.lead_status||'Khách mới',l.current_potential_value?vnd(l.current_potential_value):''];};
   window._rptSlLists={
@@ -6322,6 +6338,19 @@ function rptSlOverviewHtml(){
     closed:{title:'Đã chốt',cols,rows:closedLeads.map(rowOf)},
     lost:{title:'Mất lead',cols,rows:lostLeads.map(rowOf)},
   };
+  // Doanh thu tách theo 4 brand -- bấm vào ô Tổng Doanh Thu để xem (thay cho việc bày 4 ô riêng ngoài trang)
+  const adCampMap=buildAdCampMap();
+  const revByBrand={};
+  confirmedOrders.forEach(o=>{
+    const b=rptSlBrandOfOrder(o,custById,adCampMap)||'__';
+    const e=revByBrand[b]=revByBrand[b]||{orders:0,rev:0};
+    e.orders++;e.rev+=Number(o.revenue||0);
+  });
+  const brandRows=BRAND_LIST.map(b=>{const e=revByBrand[b.key]||{orders:0,rev:0};
+    return[b.icon+' '+b.label,num(e.orders),vnd(e.rev),closedRev>0?pct(e.rev/closedRev*100):'—'];});
+  if(revByBrand['__'])brandRows.push(['Khác (ngoài 4 brand)',num(revByBrand['__'].orders),vnd(revByBrand['__'].rev),closedRev>0?pct(revByBrand['__'].rev/closedRev*100):'—']);
+  brandRows.push(['TỔNG',num(confirmedOrders.length),vnd(closedRev),'100%']);
+  window._rptSlLists.brandrev={title:'Doanh thu đã chốt theo brand',cols:['Brand','Số đơn','Doanh thu','Tỉ trọng'],rows:brandRows};
   const clk=(key,html)=>`<div onclick="rptSlShow('${key}')" title="Bấm để xem chi tiết" style="cursor:pointer">${html}</div>`;
   const byChan={};leads.forEach(l=>{const k=(l.channel||'Khác').trim()||'Khác';byChan[k]=(byChan[k]||0)+1;});
   const chanRows=Object.entries(byChan).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:9px 14px;font-weight:700">${k}</td><td style="padding:9px 14px;text-align:center;font-weight:700">${num(n)}</td><td style="padding:9px 14px"><div style="height:5px;background:var(--bg2);border-radius:4px"><div style="height:5px;background:var(--accent);border-radius:4px;width:${total?(n/total*100).toFixed(0):0}%"></div></div></td></tr>`).join('');
@@ -6338,10 +6367,6 @@ function rptSlOverviewHtml(){
   const byLostReason={};
   lostLeads.forEach(l=>{const act=(window._crmActByCustomer[l.customer_id]||[])[0]||{};const g=(act.lost_group||act.lost_reason||'Khác').trim()||'Khác';byLostReason[g]=(byLostReason[g]||0)+1;});
   const lostRows=Object.entries(byLostReason).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:9px 14px;font-weight:700">${k}</td><td style="padding:9px 14px;text-align:center;font-weight:700;color:var(--red)">${num(n)}</td></tr>`).join('');
-  // Doanh thu theo brand -- suy brand từ SĐT khách khớp Data Hub (CRM v2 không có sẵn cột brand).
-  const revByBrand={};
-  confirmedOrders.forEach(o=>{const c=custById[o.customer_id];const br=c?rptSlBrandOfPhone(c.phone):null;const key=br||'__unknown';revByBrand[key]=(revByBrand[key]||0)+Number(o.revenue||0);});
-  const brandCard=(key,label,icon,grad)=>mkKpi(icon,label,vnd(revByBrand[key]||0),'đã chốt','g-'+grad);
   // Top 10 khách tiềm năng (loại đã chốt/đã mất -- những lead còn "mở" mới cần ưu tiên chăm sóc)
   const topPot=leads.filter(l=>Number(l.current_potential_value||0)>0&&l.lead_status!=='Chốt đơn'&&l.lead_status!=='Mất lead')
     .sort((a,b)=>Number(b.current_potential_value||0)-Number(a.current_potential_value||0)).slice(0,10);
@@ -6362,14 +6387,8 @@ function rptSlOverviewHtml(){
   return `
     <div class="sec-label">I. Doanh Thu</div>
     <div class="kpi-grid" style="grid-template-columns:1fr 1fr">
-      ${clk('closed',mkKpi(ic('check'),'Tổng Doanh Thu Đã Chốt',vnd(closedRev),num(confirmedOrders.length)+' đơn · toàn bộ lịch sử','g-green'))}
+      ${clk('brandrev',mkKpi(ic('check'),'Tổng Doanh Thu Đã Chốt',vnd(closedRev),num(confirmedOrders.length)+' đơn · gộp 4 brand · 👆 xem tách brand','g-green'))}
       ${mkKpi(ic('diamond'),'Giá Trị Tiềm Năng',vnd(totalPotential),'toàn bộ lead đang mở','g-yellow')}
-    </div>
-    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-top:12px">
-      ${brandCard('CT','Chánh Tâm',ic('store'),'blue')}
-      ${brandCard('HT','Hiền Thuỷ',ic('store'),'yellow')}
-      ${brandCard('Shidai','Shidai',ic('store'),'blue')}
-      ${brandCard('TTV','Tự Tại Viên',ic('store'),'purple')}
     </div>
     <div class="sec-label">II. Tổng Quan Lead (phễu)</div>
     <div class="kpi-grid">
@@ -6440,7 +6459,7 @@ function rptSlDetailHtml(){
     const firstOrder=myOrders[0];
     const dhConfirmed=(dh&&dhIsOrder(dh))?dh:null;
     const daysNoCs=c.last_contact_date?Math.floor((new Date()-new Date(c.last_contact_date))/86400000):null;
-    const salesNm=(crmSalesUsers.find(s=>s.user_id===lead.assigned_sales)||{}).name;
+    const salesNm=crmSalesName(lead.assigned_sales);
     return `<tr style="cursor:pointer" onclick="openCrmDetail('${c.customer_id}')">
       <td>${manual(lead.created_at?lead.created_at.slice(0,10):'')}</td>
       <td>${lead.source?manual(lead.source):(dh?auto('Online'):manual())}</td>
@@ -6701,7 +6720,7 @@ function openCrmDetail(customerId){
   const lead=(window._crmLeadByCustomer[customerId]||[])[0]||{};
   const acts=window._crmActByCustomer[customerId]||[];
   const ords=window._crmOrdByCustomer[customerId]||[];
-  const salesName=(crmSalesUsers.find(s=>s.user_id===lead.assigned_sales)||{}).name||'—';
+  const salesName=crmSalesName(lead.assigned_sales)||'—';
   const timeline=acts.length?acts.map(a=>`
     <div style="border-left:3px solid ${CRM_STATUS_COLOR[a.status_after_activity]||'var(--border)'};padding:10px 14px;margin-bottom:10px;background:var(--bg2);border-radius:0 10px 10px 0">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
