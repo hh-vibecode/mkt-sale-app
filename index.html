@@ -6762,7 +6762,6 @@ function rptSlMasterHtml(){
     <td>${r.staff||'—'}</td>
     <td class="name">${r.name}</td>
     <td>${r.phone||'<span style="color:var(--muted)">—</span>'}</td>
-    <td style="font-size:11px;max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(r.diaChi||'').replace(/"/g,'&quot;')}">${r.diaChi||'—'}</td>
     <td>${r.lastTouch||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
     <td><span style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap">
@@ -6789,8 +6788,8 @@ function rptSlMasterHtml(){
       <div class="tbl-head"><div class="tbl-title">Master Data — hồ sơ khách</div><div class="tbl-count">${num(list.length)}</div>
         <span style="margin-left:auto;font-size:11px;color:var(--muted)">Doanh thu trong bộ lọc: <b style="color:var(--green)">${vnd(rev)}</b></span></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày tạo</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Địa chỉ</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
+        <thead><tr><th>Ngày tạo</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetMasterPage(${page-1})">‹ Trước</button>
