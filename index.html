@@ -2834,9 +2834,14 @@ function rptSlBuildMaster(){
   // Đơn từ tháng SAU trở đi là MUA LẠI -> tách ra repeatOrds, không cộng vào doanh số chốt của Sale.
   rows.forEach(r=>{
     const all=r.kords||[];
-    if(!all.length){r.repeatOrds=[];r.repeatRevenue=0;return;}
+    if(!all.length){r.repeatOrds=[];r.staleOrds=[];r.repeatRevenue=0;return;}
     const mo=String(all[0].purchase_date).slice(0,7);
-    r.kords=all.filter(o=>String(o.purchase_date).slice(0,7)===mo);
+    let first=all.filter(o=>String(o.purchase_date).slice(0,7)===mo);
+    // PHIẾU TREO: tháng đầu đã có đơn Hoàn thành thì bỏ đơn Phiếu tạm (status 1) cùng tháng -- đó là phiếu
+    // cũ Sale quên huỷ khi khách đổi hàng (vd Kiều Trang DH002322 225,5tr bị thay bởi DH002343 221,8tr).
+    const treo=first.some(o=>o.status===3)?first.filter(o=>o.status===1&&!o.direct):[];
+    first=first.filter(o=>!treo.includes(o));
+    r.kords=first;r.staleOrds=treo;
     r.repeatOrds=all.filter(o=>String(o.purchase_date).slice(0,7)!==mo);
     r.revenue=r.kords.reduce((s,o)=>s+Number(o.total||0),0);
     r.repeatRevenue=r.repeatOrds.reduce((s,o)=>s+Number(o.total||0),0);
@@ -2929,7 +2934,7 @@ function rptSlShowCustomer(key){
   ].join('');
   const tl=[
     ...r.orders.map(o=>({d:o.order_date,t:'Đơn Pancake #'+esc(o.system_id),c:esc(o.internal_note||o.source||''),s:esc(o.customer_tags||''),v:''})),
-    ...[...r.kords,...(r.repeatOrds||[]).map(o=>Object.assign({},o,{repeat:true}))].map(i=>({d:(i.purchase_date||'').slice(0,10),t:(i.repeat?'<span style="color:var(--muted)">[Mua lại]</span> ':'')+(i.direct?'Hoá đơn ':'Đặt hàng ')+esc(i.code)+' <span style="font-weight:600;color:var(--muted)">('+esc(i.status_value||'')+')</span>',c:esc((i.items||[]).map(x=>x.name+' x'+x.qty).join(', ')),s:esc((i.sold_by_name||'')+' · '+(i.branch_name||'')),v:vnd(i.total)})),
+    ...[...r.kords,...(r.repeatOrds||[]).map(o=>Object.assign({},o,{repeat:true})),...(r.staleOrds||[]).map(o=>Object.assign({},o,{stale:true}))].map(i=>({d:(i.purchase_date||'').slice(0,10),t:(i.repeat?'<span style="color:var(--muted)">[Mua lại]</span> ':i.stale?'<span style="color:var(--red)">[Phiếu treo - không tính]</span> ':'')+(i.direct?'Hoá đơn ':'Đặt hàng ')+esc(i.code)+' <span style="font-weight:600;color:var(--muted)">('+esc(i.status_value||'')+')</span>',c:esc((i.items||[]).map(x=>x.name+' x'+x.qty).join(', ')),s:esc((i.sold_by_name||'')+' · '+(i.branch_name||'')),v:vnd(i.total)})),
   ].sort((a,b)=>String(b.d).localeCompare(String(a.d)))
    .map(e=>`<tr style="border-bottom:1px solid var(--border)">
     <td style="padding:7px 12px;font-size:12px;color:var(--text2);white-space:nowrap">${dmy(e.d)||'—'}</td>
