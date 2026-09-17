@@ -2821,24 +2821,21 @@ function rptSlInputHtml(){
     <td>${r.staff||'—'}</td>`;
   const HEAD='<th>Ngày tạo</th><th>Lead ID</th><th>Họ tên</th><th>SĐT</th><th>Kênh</th><th>Sales</th>';
   const tbl=(head,rows)=>`<div class="tbl-scroll"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
-  const maInput=r=>`<td onclick="rptSlStop(event)"><input value="${(r.manualKH||'').replace(/"/g,'&quot;')}" placeholder="KH0075xx"
-      onkeydown="if(event.key==='Enter')rptSlSetField('${r.leadId}','kiot_code',this.value,this)"
-      onblur="if(this.value.trim()!==('${r.manualKH||''}'))rptSlSetField('${r.leadId}','kiot_code',this.value,this)"
-      style="width:110px;height:26px;padding:2px 8px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none"></td>`;
-  // Gợi ý theo SĐT: CHỈ để Sale đối chiếu rồi tự xác nhận, app không tự gán.
+  const maInput=r=>`<td style="font-size:11px">${r.manualKH?('<code>'+r.manualKH+'</code>'):'<span style="color:var(--red);font-weight:700">chưa có</span>'}</td>`;
+  // Gợi ý theo SĐT: chỉ để Sale biết nên tra mã nào bên Kiot, KHÔNG bấm để điền.
   const goiY=r=>`<td style="font-size:11px">${r.suggest.length
-    ? r.suggest.map(c=>`<span onclick="rptSlStop(event);rptSlSetField('${r.leadId}','kiot_code','${c.code}')" title="Bấm để điền mã này — hãy đối chiếu tên trước" style="cursor:pointer;display:inline-block;margin:1px 3px 1px 0;padding:2px 8px;border-radius:20px;background:var(--bg2);border:1px dashed var(--accent);color:var(--accent);font-weight:700">${c.code} · ${(c.name||'').slice(0,22)}</span>`).join('')
+    ? r.suggest.map(c=>'<span style="display:inline-block;margin:1px 3px 1px 0;padding:2px 8px;border-radius:20px;background:var(--bg2);color:var(--text2);font-weight:700">'+c.code+' · '+String(c.name||'').slice(0,22)+'</span>').join('')
     : '<span style="color:var(--muted)">không có gợi ý</span>'}</td>`;
 
-  const s1=tbl(HEAD+'<th>Mã KH Kiot *</th><th>Gợi ý theo SĐT (cần đối chiếu)</th><th>Doanh thu</th>',
+  const s1=tbl(HEAD+'<th>Mã KH Kiot</th><th>Gợi ý theo SĐT (tra bên Kiot)</th><th>Doanh thu</th>',
     b.thieuMa.map(r=>`<tr>${info(r)}${maInput(r)}${goiY(r)}<td class="num" style="color:var(--red);font-weight:800">chưa tính được</td></tr>`).join(''));
   const s2=tbl(HEAD+'<th>Mã đang điền</th><th>Vấn đề</th>',
     b.maSai.map(r=>`<tr>${info(r)}${maInput(r)}<td style="font-size:11px;color:var(--red);font-weight:700">Mã <code>${r.manualKH}</code> không có bên Kiot</td></tr>`).join(''));
   const ttSel=r=>`<td onclick="rptSlStop(event)"><select onchange="rptSlSetField('${r.leadId}','status',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid var(--yellow);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">
       <option value="">— chọn —</option>${RPT_SL_STATUS_OPTS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></td>`;
-  const s3=tbl(HEAD+'<th>Thẻ Pancake</th><th>Trạng thái *</th>',
+  const s3=tbl(HEAD+'<th>Thẻ Pancake</th><th style="'+RPT_SL_TH_EDIT+'">Trạng thái</th>',
     b.chuaTT.map(r=>`<tr>${info(r)}<td style="font-size:11px;color:var(--muted)">${r.tagStatus||'—'}</td>${ttSel(r)}</tr>`).join(''));
-  const s4=tbl(HEAD+'<th>Nhóm nguyên nhân *</th>',
+  const s4=tbl(HEAD+'<th style="'+RPT_SL_TH_EDIT+'">Nhóm nguyên nhân</th>',
     b.thieuLy.map(r=>`<tr>${info(r)}<td onclick="rptSlStop(event)"><select onchange="rptSlSetField('${r.leadId}','lost_group',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid var(--red);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer">
       <option value="">— chọn —</option>${RPT_SL_LOST_OPTS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></td></tr>`).join(''));
 
@@ -2850,7 +2847,7 @@ function rptSlInputHtml(){
       ${mkKpi(ic('check'),'Đơn chốt đã nối',num(b.all.filter(r=>r.isChot&&r.kh).length)+'/'+num(b.all.filter(r=>r.isChot).length),'nối bằng Mã KH','g-green')}
       ${mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow')}
     </div>
-    ${rptSlInputSec('s1','🔴','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','app KHÔNG tự nối bằng SĐT',b.thieuMa.length,'var(--red)',s1)}
+    ${rptSlInputSec('s1','🔴','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','sửa trong Pancake (ghi chú nội bộ) hoặc Kiot — app chỉ báo',b.thieuMa.length,'var(--red)',s1)}
     ${rptSlInputSec('s2','⚠️','Mã KH đã điền nhưng không tồn tại bên Kiot','',b.maSai.length,'var(--yellow)',s2)}
     ${rptSlInputSec('s3','📝','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
     ${rptSlInputSec('s4','❓','Mất lead nhưng chưa ghi nhóm nguyên nhân','',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}`;
