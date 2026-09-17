@@ -2570,10 +2570,14 @@ function rptSlApplyF(tab,list){
     (!st||rptSlRowStatus(r)===st)&&
     (!br||(DH_BRAND_LABEL[r.brand]||r.brand||'—')===br));
 }
-function rptSlFilterBar(tab,all){
-  const sales=[...new Set(all.map(r=>r.staff||'(chưa gán)'))].sort((a,b)=>a.localeCompare(b,'vi'));
-  const stats=[...new Set(all.map(rptSlRowStatus))].sort();
-  const brands=[...new Set(all.map(r=>DH_BRAND_LABEL[r.brand]||r.brand||'—'))].sort();
+function rptSlFilterBar(tab){
+  // Dựng lựa chọn từ TOÀN BỘ khách, không phải từ phần đang hiển thị -- nếu lấy theo phần đang hiển thị
+  // thì lọc ngày mặc định (hôm qua -> hôm nay) làm dropdown chỉ còn 1-2 mục, không lọc được gì nữa.
+  const full=rptSlBuildMaster();
+  const sales=[...new Set(full.map(r=>r.staff||'(chưa gán)'))].sort((a,b)=>a.localeCompare(b,'vi'));
+  // Trạng thái lấy danh sách CỐ ĐỊNH, không lấy theo giá trị đang có trong data.
+  const stats=['Chốt đơn',...RPT_SL_STATUS_OPTS,'(chưa cập nhật)'];
+  const brands=[...new Set(full.map(r=>DH_BRAND_LABEL[r.brand]||r.brand||'—'))].sort();
   const ip='height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer';
   const one=(k,label,opts)=>`<select onchange="rptSlSetF('${tab}','${k}',this.value)" style="${ip}">
     <option value="">${label}: tất cả</option>
@@ -2713,7 +2717,7 @@ function rptSlMasterHtml(){
       ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(all.filter(r=>r.isChot&&r.daysIdle!==null&&r.daysIdle>=10).length),'đã chốt, >10 ngày','g-yellow')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-end">
-      ${rptSlFilterBar('master',allRaw)}
+      ${rptSlFilterBar('master')}
       <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(renderReportSaleLe,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
     </div>
     <div class="tbl-card">
@@ -2904,7 +2908,7 @@ function rptSlCrmHtml(){
       ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(all.filter(r=>!r.isChot).reduce((s,r)=>s+r.potential,0)),'','g-orange')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;justify-content:flex-end">
-      ${rptSlFilterBar('crm',allRaw)}
+      ${rptSlFilterBar('crm')}
       <input value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(renderReportSaleLe,350)" style="${inp};height:30px;min-width:250px">
     </div>
     <div class="tbl-card">
