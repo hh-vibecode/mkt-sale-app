@@ -2404,7 +2404,7 @@ async function renderReportSaleLe(){
 // nối bằng MÃ KH (không tự nối SĐT), nên mọi con số ở đây đều truy ngược được về chứng từ.
 function rptSlOverviewHtml(){
   // Áp bộ lọc ngày RIÊNG của báo cáo: khách lọc theo NGÀY TẠO, đơn thô lọc theo NGÀY ĐƠN.
-  const master=rptSlBuildMaster().filter(r=>modInRange("saleretail",r.created));
+  const master=rptSlPeriod();
   const le=dhOrders.filter(o=>dhSaleTypeOrder(o)!=="Sỉ"&&modInRange("saleretail",o.order_date));
   const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
   const dat=le.filter(o=>tag(o,'LEAD ĐẠT')||dhIsQualified(o));
@@ -2635,6 +2635,30 @@ function rptSlSrcBadge(r){
     ? '<span style="display:inline-block;padding:2px 8px;border-radius:20px;background:rgba(249,115,22,.14);color:#c2410c;font-size:10.5px;font-weight:800;white-space:nowrap">Nhập tay</span>'
     : '<span style="display:inline-block;padding:2px 8px;border-radius:20px;background:var(--accent-l);color:var(--accent);font-size:10.5px;font-weight:800;white-space:nowrap">Pancake</span>';
 }
+// ── LỌC THEO KỲ: doanh số chạy theo NGÀY CHỐT = ngày hoá đơn Kiot ──
+// Trước đây lọc theo NGÀY TẠO khách nên tháng 9 chỉ ra 40tr trong khi thực tế 67,5tr: khách tạo từ
+// tháng 7-8 nhưng chốt trong tháng 9 bị loại oan.
+// Mỗi hoá đơn là 1 đơn đặt hàng bên Kiot với ngày riêng, nên cắt theo TỪNG HOÁ ĐƠN chứ không gom cả
+// khách vào 1 tháng -- khách mua 2 lần ở 2 tháng thì mỗi lần tính cho tháng của nó.
+// Khách CHƯA chốt (không có hoá đơn) thì xét theo ngày tạo.
+function rptSlInRange(r){
+  if(r.invs&&r.invs.length)return r.invs.some(i=>modInRange('saleretail',String(i.purchase_date).slice(0,10)));
+  return modInRange('saleretail',r.created);
+}
+// Trả về danh sách đã lọc kỳ, đồng thời TÍNH LẠI doanh thu chỉ từ hoá đơn trong kỳ.
+function rptSlPeriod(){
+  const rg=modRange('saleretail');
+  const rows=rptSlBuildMaster().filter(rptSlInRange);
+  if(!rg.from&&!rg.to)return rows;
+  return rows.map(r=>{
+    if(!r.invs||!r.invs.length)return r;
+    const invs=r.invs.filter(i=>modInRange('saleretail',String(i.purchase_date).slice(0,10)));
+    if(invs.length===r.invs.length)return r;
+    return Object.assign({},r,{invs,revenue:invs.reduce((s,i)=>s+Number(i.total||0),0),
+      closeDate:invs.length?String(invs[0].purchase_date).slice(0,10):r.closeDate,
+      invoiceDate:invs.length?String(invs[invs.length-1].purchase_date).slice(0,10):''});
+  });
+}
 function rptSlStatusPill(st){
   const c=RPT_SL_PILL[st];
   if(!c)return'<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:var(--bg2);color:var(--muted);font-size:11px;font-weight:700">chưa cập nhật</span>';
@@ -2723,7 +2747,9 @@ function rptSlBuildMaster(){
       // Thẻ Pancake vẫn giữ lại để biết khách thuộc nhóm nào (tiềm năng/bàn giao), tách khỏi trạng thái Sale chọn.
       tagStatus:(()=>{const rank=['Data mới','Lead đạt','Tiềm năng','Bàn giao','Chốt đơn'];
         return orders.map(o=>rptSlStatusOf(o.customer_tags)).sort((a,b)=>rank.indexOf(b)-rank.indexOf(a))[0];})(),
-      isChot:chot.length>0,closeDate:chot.length?chot[0].order_date:'',
+      // NGÀY CHỐT = ngày hoá đơn Kiot đầu tiên (đơn đặt hàng bên Kiot). Không lấy ngày đơn Pancake:
+      // Pancake là lúc chat chốt miệng, Kiot mới là lúc thành đơn thật -- doanh số chạy theo Kiot.
+      isChot:chot.length>0,closeDate:invs.length?(invs[0].purchase_date||'').slice(0,10):(chot.length?chot[0].order_date:''),
       invoiceDate:invs.length?(invs[invs.length-1].purchase_date||'').slice(0,10):'',
       lastTouch,daysIdle:lastTouch?Math.floor((new Date()-new Date(lastTouch))/86400000):null};
   });
@@ -2782,7 +2808,7 @@ function rptSlBuildMaster(){
 function rptSlSetMasterPage(p){window._rptSlMasterPage=p;renderReportSaleLe();}
 function rptSlMasterSearch(){return(document.getElementById('rptSlMasterSearch')||{}).value||'';}
 function rptSlMasterHtml(){
-  const allRaw=rptSlBuildMaster().filter(r=>modInRange('saleretail',r.created));
+  const allRaw=rptSlPeriod();
   const all=rptSlApplyF('master',allRaw);
   const q=(window._rptSlMasterQ||'').trim().toLowerCase();
   let list=all;
@@ -2968,7 +2994,7 @@ function rptSlInputHtml(){
 // Master giữ phần định danh, CRM thêm phần con người đánh giá. Tất cả ghi vào saleretail_manual.
 function rptSlSetCrmPage(p){window._rptSlCrmPage=p;renderReportSaleLe();}
 function rptSlCrmHtml(){
-  const allRaw=rptSlBuildMaster().filter(r=>modInRange('saleretail',r.created));
+  const allRaw=rptSlPeriod();
   const all=rptSlApplyF('crm',allRaw);
   const q=(window._rptSlCrmQ||'').trim().toLowerCase();
   let list=all;
