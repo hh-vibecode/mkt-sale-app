@@ -2702,9 +2702,6 @@ function rptSlMasterHtml(){
     <div class="kpi-grid" style="margin-bottom:14px">
       ${mkKpi(ic('users'),'Tổng khách',num(all.length),'đã chốt / bàn giao / tiềm năng','g-blue')}
       ${mkKpi(ic('check'),'Khách đã chốt',num(all.filter(r=>r.isChot).length),num(all.filter(r=>!r.isChot).length)+' khách còn ở dạng tiềm năng','g-green')}
-      ${mkKpi(ic('cash'),'Doanh thu cộng dồn',vnd(all.reduce((s,r)=>s+r.revenue,0)),'từ hoá đơn KiotViet','g-teal')}
-      ${(()=>{const chotAll=all.filter(r=>r.isChot),linked=chotAll.filter(r=>r.linkBy);
-        return mkKpi(ic('duplicate'),'Đơn chốt đã nối Kiot',num(linked.length)+'/'+num(chotAll.length),
           chotAll.length?pct(linked.length/chotAll.length*100)+' · '+num(linked.filter(r=>r.linkBy==='Mã KH').length)+' theo ghi chú Pancake, '+num(linked.filter(r=>r.linkBy==='Sale nhập').length)+' Sale nhập bù':'—','g-purple');})()}
       ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(all.filter(r=>r.isChot&&r.daysIdle!==null&&r.daysIdle>=10).length),'đã chốt, >10 ngày','g-yellow')}
     </div>
@@ -2892,12 +2889,21 @@ function rptSlCrmHtml(){
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
     <td style="font-size:11px">${r.kh?('<code>'+r.kh+'</code>'):'<span style="color:var(--muted)">—</span>'}</td>
   </tr>`).join('');
-  const chuaCham=all.filter(r=>!r.careDate&&!r.content).length;
+  // 6 dash theo khung CRM của dashboard cũ: hàng 1 về KHÁCH, hàng 2 về KẾT QUẢ.
+  const daCham=all.filter(r=>r.careDate||r.content);
+  const lauCS=all.filter(r=>!r.careDate&&!r.content||(r.daysIdle!==null&&r.daysIdle>=10));
+  const chot=all.filter(r=>r.isChot),mat=all.filter(r=>r.status==='Mất lead');
+  const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px';
   return `
-    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px">
-      ${mkKpi(ic('users'),'Khách trong CRM',num(all.length),num(all.filter(r=>r.isChot).length)+' đã chốt · '+num(all.filter(r=>!r.isChot).length)+' tiềm năng','g-blue')}
-      ${mkKpi(ic('clipboard'),'Đã ghi chăm sóc',num(all.length-chuaCham)+'/'+num(all.length),chuaCham?num(chuaCham)+' khách chưa có ghi chép nào':'','g-teal')}
-      ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(all.filter(r=>!r.isChot).reduce((s,r)=>s+r.potential,0)),'','g-orange')}
+    <div style="${g3}">
+      ${mkKpi(ic('users'),'Tổng số KH',num(all.length),'khách riêng biệt','g-blue')}
+      ${mkKpi(ic('check'),'KH đã chăm sóc',num(daCham.length),pct(all.length?daCham.length/all.length*100:0)+' tổng KH','g-green')}
+      ${mkKpi(ic('clock'),'KH chưa / lâu CS',num(lauCS.length),'chưa CS hoặc >10 ngày','g-red')}
+    </div>
+    <div style="${g3};margin-bottom:14px">
+      ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(all.filter(r=>!r.isChot).reduce((s,r)=>s+r.potential,0)),num(all.filter(r=>!r.isChot&&r.potential>0).length)+'/'+num(all.filter(r=>!r.isChot).length)+' khách chưa chốt','g-teal')}
+      ${mkKpi(ic('check'),'Đã chốt đơn',num(chot.length),pct(all.length?chot.length/all.length*100:0),'g-purple')}
+      ${mkKpi(ic('clock'),'Mất lead',num(mat.length),pct(all.length?mat.length/all.length*100:0),'g-orange')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;justify-content:flex-end">
       ${rptSlFilterBar('crm')}
