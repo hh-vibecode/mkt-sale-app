@@ -6908,6 +6908,8 @@ function rptSlMasterHtml(){
   let list=all;
   if(f==='chot')list=list.filter(r=>r.isChot);
   else if(f==='tiemnang')list=list.filter(r=>!r.isChot);
+  // Lọc nhanh nhóm Sale còn phải xử lý: chưa chốt và chưa chọn trạng thái ở dropdown.
+  else if(f==='chuatt')list=list.filter(r=>!r.isChot&&!r.manualStatus);
   if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.kiotName||'').toLowerCase().includes(q)||(r.leadId||'').toLowerCase().includes(q));
   const pageSize=50,page=window._rptSlMasterPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   // Bảng chỉ giữ các trường Sale dùng hàng ngày; mọi trường còn lại (Brand, Nhóm KH, Trạng thái, Mã KH,
@@ -6950,7 +6952,7 @@ function rptSlMasterHtml(){
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-end">
       <select onchange="rptSlSetMasterFilter(this.value)" style="height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer">
-        ${[['all','Tất cả'],['chot','Đã chốt'],['tiemnang','Tiềm năng']].map(([v,l])=>`<option value="${v}"${f===v?' selected':''}>${l}</option>`).join('')}
+        ${[['all','Tất cả'],['chot','Đã chốt'],['tiemnang','Tiềm năng'],['chuatt','Chưa chọn trạng thái']].map(([v,l])=>`<option value="${v}"${f===v?' selected':''}>${l}</option>`).join('')}
       </select>
       <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(renderReportSaleLe,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
     </div>
