@@ -246,26 +246,6 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     <span class="top-logo-text">APP <span>MKT/SALE</span></span>
   </div>
   <div class="topbar-right">
-  <div class="date-filter">
-    <select style="background:transparent;border:none;color:var(--text2);font-size:11px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;outline:none;padding:2px 4px" id="quickFilter" onchange="applyQuickFilter()">
-      <option value="">Chọn nhanh…</option>
-      <option value="today">Hôm nay</option>
-      <option value="yesterday">Hôm qua</option>
-      <option value="7days">7 ngày qua</option>
-      <option value="30days">30 ngày qua</option>
-      <option value="thismonth">Tháng này</option>
-      <option value="lastmonth">Tháng trước</option>
-      <option value="3months">3 tháng gần nhất</option>
-    </select>
-    <div class="fdiv"></div>
-    <label>Từ</label>
-    <input type="date" id="dateFrom" onchange="onDateChange()">
-    <div class="fdiv"></div>
-    <label>Đến</label>
-    <input type="date" id="dateTo" onchange="onDateChange()">
-    <div class="fdiv"></div>
-    <button class="btn-ghost" onclick="clearFilter()">Xoá</button>
-  </div>
   <button class="theme-toggle" onclick="toggleTheme()">
     <div class="toggle-track"><div class="toggle-thumb"></div></div>
     <span id="themeLabel">Tối</span>
@@ -458,6 +438,73 @@ function sbAdminGo(p){
   switchPage(p);
   const m=document.getElementById('sbAdminMenu'),b=document.getElementById('sbAdminBtn');
   if(m){m.classList.remove('open');}if(b){b.classList.remove('open');}
+}
+
+// ── BỘ LỌC NGÀY RIÊNG TỪNG MODULE ──
+// Trước đây có 1 bộ lọc chung trên topbar, đổi 1 chỗ là cả app đổi theo -> xem Data Hub xong quay sang
+// báo cáo là số đã bị lọc theo kỳ khác. Giờ mỗi module giữ khoảng ngày riêng trong localStorage.
+// Mặc định: HÔM QUA -> HÔM NAY (xem việc vừa phát sinh), bấm "Tất cả" để bỏ lọc.
+function modDateDefault(){
+  const d=new Date();const to=todayISO();
+  d.setDate(d.getDate()-1);
+  const from=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return{from,to};
+}
+function modRange(mod){
+  const raw=localStorage.getItem('modRange_'+mod);
+  if(raw===null)return modDateDefault();
+  try{const v=JSON.parse(raw);return{from:v.from||'',to:v.to||''};}catch(e){return modDateDefault();}
+}
+function modSetRange(mod,from,to,cb){
+  localStorage.setItem('modRange_'+mod,JSON.stringify({from:from||'',to:to||''}));
+  if(typeof window[cb]==='function')window[cb]();
+}
+function modQuick(mod,v,cb){
+  const t=todayISO();const d=new Date();let from=t,to=t;
+  if(v==='today'){}
+  else if(v==='yesterday'){d.setDate(d.getDate()-1);from=to=d.toISOString().slice(0,10);}
+  else if(v==='2days'){const x=modDateDefault();from=x.from;to=x.to;}
+  else if(v==='7days'){d.setDate(d.getDate()-6);from=d.toISOString().slice(0,10);}
+  else if(v==='30days'){d.setDate(d.getDate()-29);from=d.toISOString().slice(0,10);}
+  else if(v==='thismonth'){from=t.slice(0,8)+'01';}
+  else if(v==='all'){from='';to='';}
+  else return;
+  modSetRange(mod,from,to,cb);
+}
+// Dùng cho mọi module: true nếu ngày nằm trong khoảng (khoảng rỗng = không lọc)
+function modInRange(mod,dateStr){
+  const r=modRange(mod);if(!r.from&&!r.to)return true;
+  const d=String(dateStr||'').slice(0,10);if(!d)return false;
+  if(r.from&&d<r.from)return false;
+  if(r.to&&d>r.to)return false;
+  return true;
+}
+function modRangeLabel(mod){
+  const r=modRange(mod);
+  if(!r.from&&!r.to)return'Tất cả';
+  const v=x=>x?x.split('-').reverse().join('/'):'…';
+  return v(r.from)+' → '+v(r.to);
+}
+function modDateBar(mod,cb){
+  const r=modRange(mod);
+  const ip='height:28px;box-sizing:border-box;padding:2px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
+  return `<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:12px">
+    <select onchange="modQuick('${mod}',this.value,'${cb}')" style="${ip};cursor:pointer">
+      <option value="">Chọn nhanh…</option>
+      <option value="today">Hôm nay</option>
+      <option value="yesterday">Hôm qua</option>
+      <option value="2days">Hôm qua → hôm nay</option>
+      <option value="7days">7 ngày qua</option>
+      <option value="30days">30 ngày qua</option>
+      <option value="thismonth">Tháng này</option>
+      <option value="all">Tất cả</option>
+    </select>
+    <span style="font-size:11px;color:var(--muted);font-weight:700">Từ</span>
+    <input type="date" value="${r.from}" onchange="modSetRange('${mod}',this.value,'${r.to}','${cb}')" style="${ip}">
+    <span style="font-size:11px;color:var(--muted);font-weight:700">Đến</span>
+    <input type="date" value="${r.to}" onchange="modSetRange('${mod}','${r.from}',this.value,'${cb}')" style="${ip}">
+    <span style="font-size:11px;color:var(--muted)">Đang xem: <b style="color:var(--text2)">${modRangeLabel(mod)}</b></span>
+  </div>`;
 }
 
 function switchPage(p){
@@ -1110,69 +1157,6 @@ function dgQualityMetricsForRange(fromStr,toStr,brSel){
 
 
 // ── Filters ──
-function applyFilter(){
-  if(!allRows.length){
-    if(window.allRowsRaw&&window.allRowsRaw.length>0){
-      const d=window._mktDebug||{};
-      const w=d.why||{};
-      showErr(`Tải được ${window.allRowsRaw.length} rows nhưng allRows=0.\n`+
-        `Cột dùng: ${d.cols||'?'}\nRow đầu: ${d.r0||'?'}\n`+
-        `Lý do bị lọc: noCamp=${w.nocamp} numId=${w.numId} nonBlankId=${w.nonBlankId} noDate=${w.noDate} allStr=${w.allStr} badDate=${w.badDate}`);
-    }
-    return;
-  }
-  const from=document.getElementById('dateFrom').value;
-  const to=document.getElementById('dateTo').value;
-  const brSel=brandArr('_mktBrands');
-  const prodEl=document.getElementById('prodFilter');
-  const prod=prodEl?prodEl.value:'all';
-  let rows=allRows;
-  if(from||to){
-    const fromD=from?localDate(from):null;
-    const toD=to?localDate(to,true):null;
-    rows=rows.filter(r=>{
-      const d=parseDate(r[COL.DATE]);if(!d)return true;
-      if(fromD&&d<fromD)return false;
-      if(toD&&d>toD)return false;
-      return true;
-    });
-  }
-  if(brSel.length)rows=rows.filter(r=>brSel.includes(detectBrand(r[COL.CAMPAIGN])));
-  if(prod!=='all')rows=rows.filter(r=>detectProduct(r[COL.CAMPAIGN])===prod);
-
-  let saleFiltered=filterSaleRows(from,to);
-  if(saleFiltered.length&&(brSel.length||prod!=='all')){
-    const adCampMap=buildAdCampMap();
-    saleFiltered=saleFiltered.filter(r=>{
-      const text=(r[COL_SAONL.CHANNEL]||'')+' '+(r[COL_SAONL.PRODUCT]||'');
-      const isTTV=/tự tại viên|tu tai vien|nến bơ|nen bo/i.test(text);
-      // Kênh Tự Tại Viên thắng Ad ID; còn lại: có Ad ID → theo campaign, không có → theo kênh
-      const camp=(!isTTV)?adCampMap[(r[COL_SAONL.AD_ID]||'').trim()]:null;
-      let rb,rp;
-      if(camp){rb=detectBrand(camp);rp=detectProduct(camp);}
-      else{
-        rb=isTTV?'TTV':/ht[\s\-–]|hiền thu[ỷy]|hiến thu[ỷy]|hien thuy/i.test(text)?'HT':/shidai/i.test(text)?'Shidai':/chánh tâm|chanh tam|ct[\s\-–]/i.test(text)?'CT':null;
-        rp=detectProduct(r[COL_SAONL.PRODUCT]||'');
-      }
-      if(brSel.length&&!brSel.includes(rb))return false;
-      if(prod!=='all'&&rp!==prod)return false;
-      return true;
-    });
-  }
-  window._saleFiltered=saleFiltered;
-  
-}
-function clearFilter(){
-  document.getElementById('dateFrom').value='';
-  document.getElementById('dateTo').value='';
-  document.getElementById('quickFilter').value='';
-  window._mktBrands=[];
-  const pf=document.getElementById('prodFilter');if(pf)pf.value='all';
-  // Bug: thiếu tham số saleFiltered khiến tính Sale Performance (Doanh Số/Số Đơn Chốt...) trên
-  // mảng rỗng thay vì toàn bộ data khi bấm Xoá — phải tự tính lại giống hệt applyFilter()
-  const saleFiltered=filterSaleRows('','');
-  window._saleFiltered=saleFiltered;
-}
 function localDate(str,end=false){
   const p=str.split('-');
   return end?new Date(+p[0],+p[1]-1,+p[2],23,59,59):new Date(+p[0],+p[1]-1,+p[2],0,0,0);
@@ -1185,33 +1169,6 @@ function curPeriodLabel(){
   return(fv?fv.split('-').reverse().join('/'):'...')+' → '+(tv?tv.split('-').reverse().join('/'):'...');
 }
 // Đổi ngày → re-render cả MKT lẫn các báo cáo Sale
-function onDateChange(){
-  if(allRows.length)applyFilter();
-  
-  if(document.getElementById('page-report-saleretail').classList.contains('active'))renderReportSaleLe();
-}
-function applyQuickFilter(){
-  const v=document.getElementById('quickFilter').value;
-  if(!v)return;
-  const now=new Date();
-  const pad=n=>String(n).padStart(2,'0');
-  const fmt=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  let from,to;
-  if(v==='today'){from=to=fmt(today);}
-  else if(v==='yesterday'){const y=new Date(today);y.setDate(y.getDate()-1);from=to=fmt(y);}
-  else if(v==='7days'){const s=new Date(today);s.setDate(s.getDate()-6);from=fmt(s);to=fmt(today);}
-  else if(v==='30days'){const s=new Date(today);s.setDate(s.getDate()-29);from=fmt(s);to=fmt(today);}
-  else if(v==='thismonth'){from=fmt(new Date(today.getFullYear(),today.getMonth(),1));to=fmt(today);}
-  else if(v==='lastmonth'){
-    from=fmt(new Date(today.getFullYear(),today.getMonth()-1,1));
-    to=fmt(new Date(today.getFullYear(),today.getMonth(),0));
-  }
-  else if(v==='3months'){from=fmt(new Date(today.getFullYear(),today.getMonth()-2,1));to=fmt(today);}
-  document.getElementById('dateFrom').value=from;
-  document.getElementById('dateTo').value=to;
-  onDateChange();
-}
 
 // ── Brand & Product ──
 // Danh sách brand DUY NHẤT dùng chung toàn app (trước đây lặp lại ở 3 nơi: detectBrand/directBrand/brandText,
@@ -1837,6 +1794,9 @@ let dhOrders=[],dhLoaded=false;
 async function dhLoadOrders(force){
   if(dhLoaded&&!force)return;
   dhOrders=await sbFetchAll('datahub_orders','select=*&order=order_date.desc,system_id.desc');
+  // CHỈ CÓ 4 BRAND. Shop Hoàng Dương | Ming Ying là kênh TikTok của Chánh Tâm -> gom về CT.
+  // Chuẩn hoá ngay lúc nạp để dữ liệu cũ (đang lưu brand 'Other') cũng đúng, không phải chờ crawl lại.
+  dhOrders.forEach(o=>{if(String(o.shop_id)==='1329071685'||o.brand==='Other')o.brand='CT';});
   dhLoaded=true;
 }
 function dhFilteredOrders(){
@@ -1955,6 +1915,7 @@ function dhSaleTypeOrder(o){
 }
 function dhSaleTypeInvoice(i){return /sỉ|si\b/i.test(i.branch_name||'')?'Sỉ':'Lẻ';}
 function dhDataIssues(){
+  // Tab lỗi bám theo khoảng ngày của Data Hub, để Sale soi đúng phần vừa phát sinh.
   const issues=[];
   const invByCode={};kiotInvoices.forEach(i=>{if(i.customer_code)(invByCode[i.customer_code]=invByCode[i.customer_code]||[]).push(i);});
   const khUsage={};
@@ -2286,6 +2247,7 @@ async function renderDataHub(){
   const header=`
     <div class="page-title">Data Hub</div>
     <div class="page-sub">Nguồn dữ liệu Pancake + KiotViet (không dùng bảng migrate từ Google Sheet)</div>
+    ${modDateBar('datahub','renderDataHub')}
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         ${tabBtn('overview','📊 Tổng Quan')}${tabBtn('manual','✍️ Data Nhập Tay ('+dhManual.length+')')}${tabBtn('issues','⚠️ Lỗi Nhập Liệu ('+issueCount+')')}
@@ -2338,22 +2300,6 @@ async function rptSlSaveManual(leadId,patch){
 // Ô nhập trong bảng: chặn click nổi lên <tr> (nếu không sẽ mở modal chi tiết khi đang chọn dropdown).
 function rptSlStop(e){e.stopPropagation();}
 // Giá trị tiềm năng: Sale gõ số tự do ("15.000.000", "15tr", "15000000") -> chuẩn hoá về số nguyên VND.
-async function rptSlSetPotential(leadId,raw,el){
-  let s=String(raw||'').trim().toLowerCase().replace(/[.,\s]/g,'');
-  let v=0;
-  if(s){
-    const m=/^(\d+)(tr|trieu|triệu|k|ngan|nghin|nghìn)?$/.exec(s);
-    if(!m){if(el)el.style.borderColor='var(--red)';return;}
-    v=Number(m[1])*(m[2]?(/^(tr|trieu|triệu)$/.test(m[2])?1e6:1e3):1);
-  }
-  const cur=Number((rptSlManual[leadId]||{}).potential_value||0);
-  if(v===cur){if(el)el.value=v?num(v):'';return;}
-  try{
-    await rptSlSaveManual(leadId,{potential_value:v||null});
-    if(el){el.style.borderColor='var(--green)';setTimeout(()=>{el.style.borderColor='';},900);}
-    renderReportSaleLe();
-  }catch(err){alert(err.message);if(el)el.style.borderColor='var(--red)';}
-}
 async function rptSlSetField(leadId,field,value,el){
   const old=el?el.style.borderColor:'';
   try{
@@ -2372,7 +2318,8 @@ async function renderReportSaleLe(){
   const mode=rptSlViewMode();
   el.innerHTML=`
     <div class="page-title">Báo cáo · Sale Lẻ</div>
-    <div class="page-sub">Kỳ đang xem: <b>${curPeriodLabel()}</b> · lead tính từ 1/6/2026</div>
+    <div class="page-sub">Nguồn: Pancake + KiotViet · data tính từ 1/6/2026</div>
+    ${modDateBar('saleretail','renderReportSaleLe')}
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         <button onclick="rptSlSetViewMode('overview')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='overview'?'var(--accent)':'var(--surface)'};color:${mode==='overview'?'#fff':'var(--text2)'}">📊 Tổng Quan</button>
@@ -2527,7 +2474,7 @@ function rptSlShow(key){const d=(window._rptSlLists||{})[key];if(d)dataModal(d);
 const RPT_SL_SHOP_CODE={
   1022031789:'CT',  1943057093:'CT2', 100965386:'CT3', 1021966905:'CT4',
   1943096391:'HT',  715061393:'HT2',  408077426:'HT3',
-  1943052948:'SD',  408040224:'TTV',  1329071685:'HD',
+  1943052948:'SD',  408040224:'TTV',  1329071685:'CTT',  // Hoàng Dương/Ming Ying = TikTok của Chánh Tâm
 };
 function rptSlShopCode(o){return RPT_SL_SHOP_CODE[o.shop_id]||((o.brand||'XX')+String(o.shop_id||'').slice(-4));}
 // Chuẩn hoá tên kênh -- thay cho bảng quy đổi tay "8.NGUONDL" của sheet cũ. Nguồn Pancake dạng
@@ -2593,6 +2540,36 @@ function rptSlStatusOf(tags){
   return'Data mới';
 }
 const RPT_SL_STATUS_COLOR={'Chốt đơn':'var(--green)','Bàn giao':'var(--teal)','Tiềm năng':'var(--accent)','Lead đạt':'var(--muted)','Data mới':'var(--muted)'};
+// Lọc theo khoảng ngày RIÊNG của báo cáo Sale Lẻ (mặc định hôm qua -> hôm nay). Lọc theo NGÀY TẠO
+// khách; chọn "Tất cả" trên thanh lọc để xem toàn bộ.
+// ── BỘ LỌC CHUNG cho Master + CRM ──
+// Chỉ có 4 brand (CT / HT / Shidai / TTV); shop TikTok Hoàng Dương đã gom về CT lúc nạp dữ liệu.
+function rptSlF(tab,k){return (window['_rptSlF_'+tab]||{})[k]||'';}
+function rptSlSetF(tab,k,v){
+  window['_rptSlF_'+tab]=Object.assign({},window['_rptSlF_'+tab],{[k]:v});
+  window[tab==='master'?'_rptSlMasterPage':'_rptSlCrmPage']=1;
+  renderReportSaleLe();
+}
+// Trạng thái hiển thị của 1 khách: đã chốt thì luôn "Chốt đơn", còn lại lấy trạng thái Sale chọn.
+function rptSlRowStatus(r){return r.isChot?'Chốt đơn':(r.manualStatus||'(chưa cập nhật)');}
+function rptSlApplyF(tab,list){
+  const sale=rptSlF(tab,'sale'),st=rptSlF(tab,'status'),br=rptSlF(tab,'brand');
+  return list.filter(r=>
+    (!sale||(r.staff||'(chưa gán)')===sale)&&
+    (!st||rptSlRowStatus(r)===st)&&
+    (!br||(DH_BRAND_LABEL[r.brand]||r.brand||'—')===br));
+}
+function rptSlFilterBar(tab,all){
+  const sales=[...new Set(all.map(r=>r.staff||'(chưa gán)'))].sort((a,b)=>a.localeCompare(b,'vi'));
+  const stats=[...new Set(all.map(rptSlRowStatus))].sort();
+  const brands=[...new Set(all.map(r=>DH_BRAND_LABEL[r.brand]||r.brand||'—'))].sort();
+  const ip='height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer';
+  const one=(k,label,opts)=>`<select onchange="rptSlSetF('${tab}','${k}',this.value)" style="${ip}">
+    <option value="">${label}: tất cả</option>
+    ${opts.map(o=>`<option value="${String(o).replace(/"/g,'&quot;')}"${rptSlF(tab,k)===o?' selected':''}>${o}</option>`).join('')}
+  </select>`;
+  return one('sale','Sales',sales)+one('status','Trạng thái',stats)+one('brand','Brand',brands);
+}
 function rptSlBuildMaster(){
   const invByCode={};
   kiotInvoices.forEach(i=>{if(i.customer_code&&i.status===1)(invByCode[i.customer_code]=invByCode[i.customer_code]||[]).push(i);});
@@ -2688,7 +2665,8 @@ function rptSlSetMasterFilter(v){window._rptSlMasterF=v;window._rptSlMasterPage=
 function rptSlSetMasterPage(p){window._rptSlMasterPage=p;renderReportSaleLe();}
 function rptSlMasterSearch(){return(document.getElementById('rptSlMasterSearch')||{}).value||'';}
 function rptSlMasterHtml(){
-  const all=rptSlBuildMaster();
+  const allRaw=rptSlBuildMaster().filter(r=>modInRange('saleretail',r.created));
+  const all=rptSlApplyF('master',allRaw);
   const f=rptSlMasterFilter(),q=(window._rptSlMasterQ||'').trim().toLowerCase();
   let list=all;
   if(f==='chot')list=list.filter(r=>r.isChot);
@@ -2730,7 +2708,9 @@ function rptSlMasterHtml(){
           chotAll.length?pct(linked.length/chotAll.length*100)+' · '+num(linked.filter(r=>r.linkBy==='Mã KH').length)+' theo ghi chú Pancake, '+num(linked.filter(r=>r.linkBy==='Sale nhập').length)+' Sale nhập bù':'—','g-purple');})()}
       ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(all.filter(r=>r.isChot&&r.daysIdle!==null&&r.daysIdle>=10).length),'khách ĐÃ CHỐT, >10 ngày chưa chăm lại','g-yellow')}
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-end">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
+      ${rptSlFilterBar('master',allRaw)}
+      <span style="margin-left:auto"></span>
       <select onchange="rptSlSetMasterFilter(this.value)" style="height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer">
         ${[['all','Tất cả'],['chot','Đã chốt'],['tiemnang','Tiềm năng'],['chuatt','Chưa chọn trạng thái']].map(([v,l])=>`<option value="${v}"${f===v?' selected':''}>${l}</option>`).join('')}
       </select>
@@ -2889,7 +2869,8 @@ function rptSlCrmFilter(){return window._rptSlCrmF||'all';}
 function rptSlSetCrmFilter(v){window._rptSlCrmF=v;window._rptSlCrmPage=1;renderReportSaleLe();}
 function rptSlSetCrmPage(p){window._rptSlCrmPage=p;renderReportSaleLe();}
 function rptSlCrmHtml(){
-  const all=rptSlBuildMaster();
+  const allRaw=rptSlBuildMaster().filter(r=>modInRange('saleretail',r.created));
+  const all=rptSlApplyF('crm',allRaw);
   const f=rptSlCrmFilter(),q=(window._rptSlCrmQ||'').trim().toLowerCase();
   let list=all;
   if(f==='chot')list=list.filter(r=>r.isChot);
@@ -2930,6 +2911,7 @@ function rptSlCrmHtml(){
       ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(all.filter(r=>!r.isChot).reduce((s,r)=>s+r.potential,0)),'của nhóm chưa chốt','g-orange')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
+      ${rptSlFilterBar('crm',allRaw)}
       ${chip('all','Tất cả')}${chip('chot','Đã chốt')}${chip('tiemnang','Tiềm năng')}${chip('mat','Mất lead')}${chip('chuacham','Chưa ghi chăm sóc')}
       <input value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(renderReportSaleLe,350)" style="margin-left:auto;${inp};height:30px;min-width:250px">
     </div>
@@ -3041,12 +3023,13 @@ async function renderLog(){
   const head=`
     <div class="page-title">Nhật ký</div>
     <div class="page-sub">Thao tác người dùng chỉ lưu <b>7 ngày gần nhất</b> · hệ thống tự dọn lúc 02:15 mỗi ngày</div>
+    ${modDateBar('log','renderLog')}
     <div class="period-bar"><span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
       ${tb('user','👤 Thao tác người dùng')}${tb('sync','🔄 Lịch sử đồng bộ')}</span></div>`;
   if(tab==='sync'){el.innerHTML=head+'<div style="padding:40px;text-align:center;color:var(--muted)">Đang tải…</div>';el.innerHTML=head+await logSyncHtml();return;}
   await logLoad(true);
   const f=logFilter();
-  let list=logRows;
+  let list=logRows.filter(r=>modInRange('log',r.at));
   if(f==='del')list=list.filter(r=>r.act==='D');
   else if(f!=='all')list=list.filter(r=>r.who===f);
   const whos=[...new Set(logRows.map(r=>r.who).filter(Boolean))].sort();

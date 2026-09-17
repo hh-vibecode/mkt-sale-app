@@ -32,7 +32,7 @@ const SHOPS = [
   { id: 408077426, brand: 'HT' },    // Siêu thị Phật Giáo Hiền Thuỷ (trùng tên, hiện 0 đơn)
   { id: 1943052948, brand: 'Shidai' }, // Thời Đại - Tổng Kho Sỉ Đồ Thờ Miền Bắc (chính)
   { id: 408040224, brand: 'TTV' },   // Nến Bơ - Tự Tại Viên (chính)
-  { id: 1329071685, brand: 'Other' }, // Hoàng Dương | Ming Ying (nhỏ, không thuộc 4 brand chính)
+  { id: 1329071685, brand: 'CT' },   // Hoàng Dương | Ming Ying -- kênh TikTok của Chánh Tâm, đơn tính cho CT
 ];
 
 async function fetchShopOrders(shopId) {
