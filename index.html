@@ -278,6 +278,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     <div class="sb-section" id="sec-qt-label" style="margin-top:12px">Quản trị</div>
     <nav id="sec-qt">
       <div class="nav-item" onclick="switchPage('settings')" id="nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9.5 12 1.8 1.8L15 10"/></svg></span><span class="nav-label">Phân quyền</span></div>
+      <div class="nav-item" onclick="switchPage('log')" id="nav-log"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-6 7h6m-6 4h4"/></svg></span><span class="nav-label">Nhật ký thao tác</span></div>
       <div class="nav-item" onclick="switchPage('datahub')" id="nav-datahub"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="5" rx="8" ry="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg></span><span class="nav-label">Data Hub</span></div>
     </nav>
   </div>
@@ -291,6 +292,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     <div class="tab-page" id="page-report-saleretail">
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
+    <div class="tab-page" id="page-log"></div>
     <div class="tab-page" id="page-settings">
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
@@ -382,7 +384,7 @@ async function doLogin(){
 // Phân quyền: role => danh sách trang được xem (null = xem hết).
 // admin liệt kê tường minh (KHÔNG null) để loại trừ trang 'danhgia' — trang đánh giá tuần chỉ dành riêng cho role 'review'.
 // Thêm trang mới cho admin thì nhớ bổ sung id vào mảng dưới đây.
-const ROLE_PAGES={admin:['report-saleretail','datahub','settings'],'sale-onl':['report-saleretail','datahub'],mkt:['datahub']};
+const ROLE_PAGES={admin:['report-saleretail','datahub','settings','log'],'sale-onl':['report-saleretail','datahub'],mkt:['datahub']};
 // Đã xoá hẳn các trang cũ (MKT Overview / Sale Overview / Customers / Workspace / Orders / Detail)
 // để dựng lại từng cái một trên nguồn Pancake + Kiot -> không cần cờ ẩn tạm nữa.
 const TEMP_VISIBLE_PAGES=null;
@@ -421,11 +423,12 @@ function initAuth(){
 }
 
 function switchPage(p){
-  ['datahub','settings','report-saleretail'].forEach(x=>{
+  ['datahub','settings','report-saleretail','log'].forEach(x=>{
     const el=document.getElementById('page-'+x);if(el)el.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);if(nav)nav.classList.toggle('active',x===p);
   });
   if(p==='settings')renderSettings();
+  if(p==='log')renderLog();
   if(p==='datahub')renderDataHub();
   if(p==='report-saleretail')renderReportSaleLe();
 }
@@ -2120,26 +2123,35 @@ async function dhManualAdd(){
     msg.innerHTML='<span style="color:var(--red)">Mã '+row.kiot_code+' không tồn tại bên Kiot</span>';return;
   }
   try{
-    await sbInsert('datahub_manual',row);
+    const ins=await sbInsert('datahub_manual',row);
+    logAct('C','datahub_manual',ins&&ins.id?('M-'+String(ins.id).padStart(4,'0')):null,row.customer_name,null,null,
+      [row.created_date,row.kenh,row.kiot_code].filter(Boolean).join(' · '));
     await dhLoadManual(true);
     ['dhmName','dhmPhone','dhmKenh','dhmStaff','dhmKh'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     renderDataHub();
   }catch(e){msg.innerHTML='<span style="color:var(--red)">'+e.message+'</span>';}
 }
 async function dhManualDel(id){
-  if(!confirm('Xoá dòng này?'))return;
+  const r=dhManual.find(x=>x.id===id)||{};
+  // XOÁ là thao tác không hoàn tác được -> hỏi 2 lớp và nói rõ đang xoá ai.
+  if(!confirm('XOÁ khách "'+(r.customer_name||'?')+'"'+(r.kiot_code?' (mã '+r.kiot_code+')':'')+' khỏi Data nhập tay?\n\nDoanh thu của khách này sẽ biến mất khỏi báo cáo Sale Lẻ.'))return;
+  if(!confirm('Xác nhận lần cuối: xoá "'+(r.customer_name||'?')+'"? Thao tác này KHÔNG hoàn tác được.'))return;
   const res=await fetch(`${SUPABASE_URL}/rest/v1/datahub_manual?id=eq.${id}`,{method:'DELETE',
     headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
   if(!res.ok){alert('Xoá lỗi '+res.status);return;}
+  logAct('D','datahub_manual','M-'+String(id).padStart(4,'0'),r.customer_name,null,
+    [r.created_date,r.kenh,r.phone,r.kiot_code].filter(Boolean).join(' · '),null);
   await dhLoadManual(true);renderDataHub();
 }
 async function dhManualSet(id,field,value,el){
+  const before=(dhManual.find(r=>r.id===id)||{})[field];
   const v=(value||'').trim()||null;
   if(field==='kiot_code'&&v&&!kiotCustByCode()[v]){alert('Mã '+v+' không tồn tại bên Kiot');if(el)el.style.borderColor='var(--red)';return;}
   const res=await fetch(`${SUPABASE_URL}/rest/v1/datahub_manual?id=eq.${id}`,{method:'PATCH',
     headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
     body:JSON.stringify({[field]:v,updated_at:new Date().toISOString()})});
   if(!res.ok){alert('Lưu lỗi '+res.status);if(el)el.style.borderColor='var(--red)';return;}
+  logAct('U','datahub_manual','M-'+String(id).padStart(4,'0'),(dhManual.find(r=>r.id===id)||{}).customer_name,field,before,v);
   await dhLoadManual(true);renderDataHub();
 }
 function dhManualRev(){
@@ -2310,6 +2322,8 @@ async function rptSlSaveManual(leadId,patch){
     body:JSON.stringify(row),
   });
   if(!res.ok)throw new Error('Lưu lỗi '+res.status+': '+(await res.text()).slice(0,200));
+  // ghi nhật ký TỪNG trường đổi, kèm giá trị cũ để đối chiếu
+  Object.keys(patch).forEach(k=>logAct('U','saleretail_manual',leadId,null,k,(rptSlManual[leadId]||{})[k],patch[k]));
   rptSlManual[leadId]=(await res.json())[0]||row;
 }
 // Ô nhập trong bảng: chặn click nổi lên <tr> (nếu không sẽ mở modal chi tiết khi đang chọn dropdown).
@@ -2936,7 +2950,7 @@ function rptSlCrmHtml(){
 const CRM_PERMISSION_GROUPS=[
 
   ['Báo cáo',[['report-saleretail','Sale Lẻ']]],
-  ['Quản trị',[['settings','Phân quyền'],['datahub','Data Hub']]],
+  ['Quản trị',[['settings','Phân quyền'],['log','Nhật ký thao tác'],['datahub','Data Hub']]],
 ];
 const CRM_PERMISSION_PAGES=CRM_PERMISSION_GROUPS.flatMap(([,items])=>items);
 const CRM_POSITION_DEFAULTS={
@@ -2946,6 +2960,76 @@ const CRM_POSITION_DEFAULTS={
   mkt:['overview','datahub'],                                                    // chỉ số liệu MKT + nguồn data
 };
 const CRM_POSITION_LABEL={admin:'Admin',manager:'Quản lý',sales:'Sales',mkt:'Marketing'};
+// ── NHẬT KÝ THAO TÁC ──
+// Ghi ai sửa gì, đặc biệt là XOÁ. Bảng activity_log chỉ giữ 7 ngày gần nhất, Supabase tự dọn
+// bằng pg_cron lúc 02:15 sáng (xem supabase-schema-activity-log.sql).
+// Nguyên tắc chống phình: 1 dòng = 1 TRƯỜNG đổi, hành động lưu 1 ký tự, giá trị cắt 120 ký tự
+// (trigger bên DB tự cắt, không tin client).
+const LOG_ACT={C:{label:'Thêm',color:'var(--green)'},U:{label:'Sửa',color:'var(--accent)'},D:{label:'XOÁ',color:'var(--red)'}};
+function logWho(){return localStorage.getItem('dashUserName')||localStorage.getItem('dashRole')||'không rõ';}
+// Ghi log KHÔNG được làm hỏng thao tác chính -> nuốt lỗi, chỉ cảnh báo console.
+function logAct(act,tbl,ref,label,fld,oldV,newV){
+  const row={who:logWho(),act,tbl,ref:ref==null?null:String(ref),label:label||null,
+    fld:fld||null,old_v:oldV==null||oldV===''?null:String(oldV),new_v:newV==null||newV===''?null:String(newV)};
+  return fetch(`${SUPABASE_URL}/rest/v1/activity_log`,{
+    method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify(row),
+  }).catch(e=>console.warn('[LOG] không ghi được:',e.message));
+}
+let logRows=[],logLoaded=false;
+async function logLoad(force){
+  if(logLoaded&&!force)return;
+  logRows=await sbFetchAll('activity_log','select=*&order=at.desc');
+  logLoaded=true;
+}
+function logFilter(){return window._logF||'all';}
+function logSetFilter(v){window._logF=v;renderLog();}
+async function renderLog(){
+  const el=document.getElementById('page-log');
+  if(!el)return;
+  await logLoad(true);
+  const f=logFilter();
+  let list=logRows;
+  if(f==='del')list=list.filter(r=>r.act==='D');
+  else if(f!=='all')list=list.filter(r=>r.who===f);
+  const whos=[...new Set(logRows.map(r=>r.who).filter(Boolean))].sort();
+  const dt=s=>{const d=new Date(s);return d.toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});};
+  const val=v=>v==null||v===''?'<span style="color:var(--muted)">(trống)</span>':String(v).replace(/</g,'&lt;');
+  const rows=list.slice(0,500).map(r=>{const a=LOG_ACT[r.act]||{label:r.act,color:'var(--muted)'};
+    return `<tr>
+      <td style="white-space:nowrap">${dt(r.at)}</td>
+      <td class="name">${r.who||'—'}</td>
+      <td><span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:800;color:#fff;background:${a.color}">${a.label}</span></td>
+      <td style="font-size:11px">${r.tbl}</td>
+      <td style="font-size:11px">${r.label?r.label+' ':''}${r.ref?'<code>'+r.ref+'</code>':''}</td>
+      <td style="font-size:11px">${r.fld||'—'}</td>
+      <td style="font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${val(r.old_v)}</td>
+      <td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${val(r.new_v)}</td>
+    </tr>`;}).join('');
+  const nDel=logRows.filter(r=>r.act==='D').length;
+  const today=todayISO();
+  const chip=(v,l)=>`<span onclick="logSetFilter('${v}')" style="cursor:pointer;padding:5px 13px;border-radius:20px;font-size:11.5px;font-weight:700;background:${f===v?'var(--accent)':'var(--bg2)'};color:${f===v?'#fff':'var(--text2)'}">${l}</span>`;
+  el.innerHTML=`
+    <div class="page-title">Nhật ký thao tác</div>
+    <div class="page-sub">Chỉ lưu <b>7 ngày gần nhất</b> · hệ thống tự dọn lúc 02:15 mỗi ngày</div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px">
+      ${mkKpi(ic('clipboard'),'Thao tác 7 ngày',num(logRows.length),'mỗi dòng là 1 trường bị đổi','g-blue')}
+      ${mkKpi(ic('trash')||ic('clipboard'),'Lượt XOÁ',num(nDel),nDel?'cần soi kỹ nhất':'chưa có lượt xoá nào','g-red')}
+      ${mkKpi(ic('clock'),'Hôm nay',num(logRows.filter(r=>String(r.at).slice(0,10)===today).length),'tính từ 0h','g-teal')}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
+      ${chip('all','Tất cả')}${chip('del','🔴 Chỉ lượt XOÁ')}${whos.map(w=>chip(w,w)).join('')}
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-head"><div class="tbl-title">Nhật ký</div><div class="tbl-count">${num(list.length)}</div>
+        ${list.length>500?'<span style="margin-left:auto;font-size:11px;color:var(--muted)">hiện 500 dòng mới nhất</span>':''}</div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Thời gian</th><th>Tài khoản</th><th>Hành động</th><th>Bảng</th><th>Bản ghi</th><th>Trường</th><th>Giá trị cũ</th><th>Giá trị mới</th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Chưa có thao tác nào được ghi</td></tr>'}</tbody>
+      </table></div>
+    </div>`;
+}
+
 async function renderSettings(){
   const el=document.getElementById('page-settings');
   if(!el)return;
@@ -3026,6 +3110,9 @@ async function submitCrmAddAccount(){
       })
     });
     if(!res.ok){const t=await res.json().catch(()=>({}));throw new Error(t.message||('Lỗi '+res.status));}
+    // KHÔNG ghi mật khẩu vào nhật ký -- chỉ ghi ai được tạo, vị trí và quyền.
+    logAct('C','sales_users',(fd.get('username')||'').toString().trim(),(fd.get('name')||'').toString().trim(),null,null,
+      [(fd.get('position')||'').toString(),perms.join('+')].filter(Boolean).join(' · '));
     document.getElementById('crmAddAcctModal').style.display='none';
     await loadCrmFromSupabase();
     renderSettings();
@@ -3034,11 +3121,14 @@ async function submitCrmAddAccount(){
   finally{btn.disabled=false;btn.textContent='Tạo tài khoản';}
 }
 async function crmDeactivateAccount(userId){
-  if(!confirm('Khoá tài khoản này? (không xoá, chỉ tạm khoá đăng nhập)'))return;
+  const u=(crmSalesUsers||[]).find(x=>x.user_id===userId)||{};
+  const who=u.name||u.username||userId;
+  if(!confirm('Khoá tài khoản "'+who+'"?\n\nNgười này sẽ không đăng nhập được nữa. (Không xoá dữ liệu, có thể mở lại.)'))return;
   await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_deactivate_account`,{
     method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
     body:JSON.stringify({p_user_id:userId})
   });
+  logAct('D','sales_users',userId,who,'has_login','true','false');
   await loadCrmFromSupabase();
   renderSettings();
 }
