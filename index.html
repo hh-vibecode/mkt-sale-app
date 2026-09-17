@@ -6663,10 +6663,28 @@ function rptSlDiaChi(o){
   if(!o)return'';
   return[o.address,o.ward,o.district,o.province].map(x=>(x||'').trim()).filter(Boolean).join(', ');
 }
+// Kiot gần như không điền location_name (66/6.479 khách lẻ), nhưng Sale có thói quen gắn mã tỉnh vào
+// ĐUÔI TÊN khách: "KL Chị Kiều Trang - QN". Đây là nguồn tỉnh/TP thực tế duy nhất -> dịch lại.
+// CHỈ dịch mã chắc chắn: trong 55 mã đang có, nhiều mã không phải tỉnh (ZALO, DOJI, BIGC, SHIP, SPA...)
+// và vài mã lưỡng nghĩa (QN = Quảng Ninh hay Quảng Nam?) -- mã không nằm trong bảng thì BỎ QUA, không đoán.
+const RPT_SL_TINH={
+  HN:'Hà Nội',HCM:'TP.HCM',HP:'Hải Phòng',HD:'Hải Dương',NA:'Nghệ An',VL:'Vĩnh Long',
+  GL:'Gia Lai',TB:'Thái Bình',CT:'Cần Thơ',TH:'Thanh Hoá',PT:'Phú Thọ',BN:'Bắc Ninh',
+  'NĐ':'Nam Định',ND:'Nam Định','BĐ':'Bình Định',NB:'Ninh Bình','ĐT':'Đồng Tháp',
+  BRVT:'Bà Rịa - Vũng Tàu',TG:'Tiền Giang',SL:'Sơn La',KG:'Kiên Giang',BG:'Bắc Giang',
+  TNH:'Tây Ninh',AG:'An Giang',CB:'Cao Bằng',TQ:'Tuyên Quang',PY:'Phú Yên',BP:'Bình Phước',
+  CM:'Cà Mau',HT:'Hà Tĩnh',HY:'Hưng Yên',LD:'Lâm Đồng',KH:'Khánh Hoà',QB:'Quảng Bình',
+  VP:'Vĩnh Phúc','ĐB':'Điện Biên',HG:'Hà Giang','ĐL':'Đắk Lắk',BMT:'Đắk Lắk',YB:'Yên Bái',
+  BD:'Bình Dương',VINH:'Nghệ An',
+};
+// Gộp TẤT CẢ thành 1 trường "Địa chỉ" -- không tách Tỉnh/TP, Quận/Huyện riêng nữa.
 function rptSlDiaChiKiot(kiotCusts){
   for(const c of(kiotCusts||[])){
-    const v=[c.ward_name,c.location_name].map(x=>(x||'').trim()).filter(Boolean).join(', ');
-    if(v)return v;
+    const parts=[c.ward_name,c.location_name].map(x=>(x||'').trim()).filter(Boolean);
+    if(parts.length)return parts.join(', ');
+    const m=/[-–]\s*([A-Za-zĐđ]{2,5})\s*$/.exec((c.name||'').trim());
+    const t=m&&RPT_SL_TINH[m[1].toUpperCase()];
+    if(t)return t;
   }
   return'';
 }
@@ -6720,14 +6738,19 @@ function rptSlBuildMaster(){
     const touches=[...orders.map(o=>o.order_date),...invs.map(i=>(i.purchase_date||'').slice(0,10))].filter(Boolean).sort();
     const lastTouch=touches[touches.length-1]||'';
     return{key,orders,invs,kh,revenue,linkBy,manualKH,kiotCusts,leadId:rptSlLeadId(orders[0]),
-      name:pick(o=>o.customer_name)||'—',phone,
+      // SĐT: Pancake thường bỏ trống (chỉ 110/158 khách có), nhưng khách ĐÃ NỐI được Kiot thì bên Kiot
+      // gần như luôn có số (6.264/6.479 khách lẻ). Bù sang để không hiển thị "—" oan.
+      name:pick(o=>o.customer_name)||'—',
+      phone:phone||kiotCusts.map(c=>c.phone||c.phone_key).filter(Boolean)[0]
+        ||invs.map(i=>i.customer_phone).filter(Boolean).pop()||'',
+      phoneFromKiot:!phone,
       created:orders[0].order_date,brand:last.brand,shop:last.shop_name,
       source:pick(o=>o.source),staff:pick(o=>o.staff_name),adId:pick(o=>o.ad_id),
       // Data Pancake đều là khách tự nhắn về page -> "Nguồn khách" luôn là Online (offline nằm ở luồng khác).
       nguon:'Online',kenh:rptSlKenh(last),
       diaChi:orders.map(rptSlDiaChi).filter(Boolean).pop()||rptSlDiaChiKiot(kiotCusts),
       kiotName:kiotCusts.length?kiotCusts[0].name:(invs.length?invs[invs.length-1].customer_name:''),
-      province:kiotCusts.map(c=>c.location_name).filter(Boolean)[0]||'',
+
       // Trạng thái lấy theo mức CAO NHẤT trong mọi đơn của khách, không lấy theo đơn mới nhất -- khách đã
       // được đánh giá tiềm năng ở đơn cũ mà đơn mới chỉ gắn "LEAD ĐẠT" thì vẫn phải là Tiềm năng.
       saleType:dhSaleTypeOrder(last),status:chot.length?'Chốt đơn':(()=>{const rank=['Data mới','Lead đạt','Tiềm năng','Bàn giao','Chốt đơn'];
@@ -6818,7 +6841,6 @@ function rptSlShowCustomer(key){
     fld('Số hoá đơn Kiot',num(r.invs.length)),
     fld('Doanh thu cộng dồn',r.revenue>0?vnd(r.revenue):'—',r.revenue>0?'var(--green)':''),
     fld('Tên bên Kiot',esc(r.kiotName)),
-    fld('Tỉnh/TP',esc(r.province)),
     fld('Ngày hoá đơn gần nhất',esc(r.invoiceDate)),
     fld('Nguồn gốc (Pancake)',esc(r.source)),
     fld('Ad ID',r.adId?('<code style="font-size:11px">'+esc(r.adId)+'</code>'):''),
