@@ -2698,10 +2698,12 @@ function rptSlMasterHtml(){
   </tr>`).join('');
   const rev=list.reduce((s,r)=>s+r.revenue,0);
   return `
-    <div class="kpi-grid" style="margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px">
       ${mkKpi(ic('users'),'Tổng khách',num(all.length),'đã chốt / bàn giao / tiềm năng','g-blue')}
       ${mkKpi(ic('check'),'Khách đã chốt',num(all.filter(r=>r.isChot).length),num(all.filter(r=>!r.isChot).length)+' khách còn ở dạng tiềm năng','g-green')}
-          chotAll.length?pct(linked.length/chotAll.length*100)+' · '+num(linked.filter(r=>r.linkBy==='Mã KH').length)+' theo ghi chú Pancake, '+num(linked.filter(r=>r.linkBy==='Sale nhập').length)+' Sale nhập bù':'—','g-purple');})()}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px">
+      ${mkKpi(ic('cash'),'Doanh thu cộng dồn',vnd(all.reduce((s,r)=>s+r.revenue,0)),'từ hoá đơn KiotViet','g-teal')}
       ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(all.filter(r=>r.isChot&&r.daysIdle!==null&&r.daysIdle>=10).length),'đã chốt, >10 ngày','g-yellow')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-end">
