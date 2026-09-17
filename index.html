@@ -581,6 +581,12 @@ async function sbInsert(table,row){
   const data=await res.json();
   return data[0];
 }
+// Hiển thị ngày kiểu Việt Nam: 2026-09-17 -> 17/09/2026. Chỉ đổi lúc hiện, dữ liệu vẫn lưu ISO.
+function dmy(v){
+  const d=String(v||'').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return v||'';
+  return d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4);
+}
 function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 // Danh sách kênh/nguồn thực tế đã dùng trong data (để gợi ý datalist, không ép cứng vì kênh có thể phát sinh thêm)
 function saonlField(label,inputHtml,note){
@@ -1826,7 +1832,7 @@ function dhRenderTable(){
   const pageItems=list.slice((page-1)*pageSize,page*pageSize);
   const rows=pageItems.map(o=>`<tr>
     <td>${dhIsOrder(o)?'<span style="display:inline-block;padding:2px 9px;border-radius:20px;background:var(--green-l);color:var(--green);font-size:11px;font-weight:800">✓ Đơn</span>':'<span style="display:inline-block;padding:2px 9px;border-radius:20px;background:var(--bg2);color:var(--muted);font-size:11px;font-weight:700">Data</span>'}</td>
-    <td>${o.order_date||'—'}</td><td><code>${o.system_id}</code></td>
+    <td>${dmy(o.order_date)||'—'}</td><td><code>${o.system_id}</code></td>
     <td>${o.customer_status==='Mới'?'<span style="color:var(--green);font-weight:700">Mới</span>':'<span style="color:var(--muted)">Cũ</span>'}</td>
     <td style="font-size:11px;color:var(--muted)">${o.customer_tags||'—'}</td>
     <td class="name">${o.customer_name||'—'}</td><td>${o.phone||'—'}</td>
@@ -2166,7 +2172,7 @@ function dhManualHtml(){
   const rows=dhManual.map(r=>{
     const v=inv[r.kiot_code]||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
     return `<tr>
-      <td>${r.created_date||'—'}</td>
+      <td>${dmy(r.created_date)||'—'}</td>
       <td style="font-size:11px"><code>${dhManualLeadId(r)}</code></td>
       <td class="name">${r.customer_name}</td>
       <td>${r.phone||'<span style="color:var(--muted)">—</span>'}</td>
@@ -2360,7 +2366,7 @@ function rptSlOverviewHtml(){
   const custCols=['Ngày tạo','Lead ID','Họ tên','SĐT','Kênh','Sales','Trạng thái','Mã KH','Doanh thu'];
   const custRows=list=>list.map(r=>[r.created,r.leadId,r.name,r.phone||'',r.kenh,r.staff||'',r.isChot?'Chốt đơn':(r.manualStatus||r.tagStatus||''),r.kh||'',r.revenue>0?vnd(r.revenue):'']);
   const ordCols=['Ngày','Đơn','Brand','Khách hàng','SĐT','Sales','Thẻ Pancake'];
-  const ordRows=list=>list.map(o=>[o.order_date,'#'+o.system_id,DH_BRAND_LABEL[o.brand]||o.brand,o.customer_name||'',o.phone||'',o.staff_name||'',o.customer_tags||'']);
+  const ordRows=list=>list.map(o=>[dmy(o.order_date),'#'+o.system_id,DH_BRAND_LABEL[o.brand]||o.brand,o.customer_name||'',o.phone||'',o.staff_name||'',o.customer_tags||'']);
   L('ovData',{title:'Toàn bộ data Lẻ từ Pancake',cols:ordCols,rows:ordRows(le)});
   L('ovDat',{title:'Lead đạt (đã qua sàng lọc)',cols:ordCols,rows:ordRows(dat)});
   L('ovTiem',{title:'Lead tiềm năng (gồm cả đã chốt)',cols:ordCols,rows:ordRows(tiem)});
@@ -2677,7 +2683,7 @@ function rptSlMasterHtml(){
   // Bảng chỉ giữ các trường Sale dùng hàng ngày; mọi trường còn lại (Brand, Nhóm KH, Trạng thái, Mã KH,
   // Nối bằng, Tên Kiot, hoá đơn, lịch sử đơn...) nằm trong modal "Chi tiết" ở cột cuối.
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>`<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
-    <td>${r.created||'—'}</td>
+    <td>${dmy(r.created)||'—'}</td>
     <td style="font-size:11px">${r.nguon||'—'}</td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
     <td>${r.staff||'—'}</td>
@@ -2690,7 +2696,7 @@ function rptSlMasterHtml(){
         :'<span style="color:var(--muted);font-size:11px">chưa cập nhật</span>')}</td>
     <td style="font-size:11px">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.lostGroup||'<span style="color:var(--muted)">—</span>')}</td>
     <td class="num">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.potential?vnd(r.potential):'<span style="color:var(--muted)">—</span>')}</td>
-    <td>${r.lastTouch||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
+    <td>${dmy(r.lastTouch)||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
     <td><span style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap">
       <span style="width:26px;height:26px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;flex:0 0 auto">👤</span>
@@ -2747,7 +2753,7 @@ function rptSlShowCustomer(key){
     fld('Số hoá đơn Kiot',num(r.invs.length)),
     fld('Doanh thu cộng dồn',r.revenue>0?vnd(r.revenue):'—',r.revenue>0?'var(--green)':''),
     fld('Tên bên Kiot',esc(r.kiotName)),
-    fld('Ngày hoá đơn gần nhất',esc(r.invoiceDate)),
+    fld('Ngày hoá đơn gần nhất',esc(dmy(r.invoiceDate))),
     fld('Nguồn gốc (Pancake)',esc(r.source)),
     fld('Ad ID',r.adId?('<code style="font-size:11px">'+esc(r.adId)+'</code>'):''),
     fld('Ngày chưa liên hệ',r.daysIdle===null?'':num(r.daysIdle)+' ngày',r.isChot&&r.daysIdle>=10?'var(--red)':''),
@@ -2758,7 +2764,7 @@ function rptSlShowCustomer(key){
     ...r.invs.map(i=>({d:(i.purchase_date||'').slice(0,10),t:'Hoá đơn '+esc(i.code),c:esc((i.items||[]).map(x=>x.name+' x'+x.qty).join(', ')),s:esc((i.sold_by_name||'')+' · '+(i.branch_name||'')),v:vnd(i.total)})),
   ].sort((a,b)=>String(b.d).localeCompare(String(a.d)))
    .map(e=>`<tr style="border-bottom:1px solid var(--border)">
-    <td style="padding:7px 12px;font-size:12px;color:var(--text2);white-space:nowrap">${e.d||'—'}</td>
+    <td style="padding:7px 12px;font-size:12px;color:var(--text2);white-space:nowrap">${dmy(e.d)||'—'}</td>
     <td style="padding:7px 12px;font-size:12px;font-weight:700;white-space:nowrap">${e.t}</td>
     <td style="padding:7px 12px;font-size:11.5px;color:var(--text2)">${e.c||'—'}</td>
     <td style="padding:7px 12px;font-size:11px;color:var(--muted)">${e.s||'—'}</td>
@@ -2813,7 +2819,7 @@ function rptSlInputSec(id,icon,title,desc,count,color,body){
 }
 function rptSlInputHtml(){
   const b=rptSlTodoBuckets();
-  const info=r=>`<td>${r.created||'—'}</td>
+  const info=r=>`<td>${dmy(r.created)||'—'}</td>
     <td style="font-size:11px"><code>${r.leadId}</code></td>
     <td class="name">${r.name}</td>
     <td>${r.phone||'<span style="color:var(--red);font-size:11px">chưa có SĐT</span>'}</td>
@@ -2888,7 +2894,7 @@ function rptSlCrmHtml(){
       ?'<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:var(--green-l);color:var(--green);font-size:11px;font-weight:800">Chốt đơn</span>'
       :sel(r,'status',RPT_SL_STATUS_OPTS,r.manualStatus,130)}</td>
     <td onclick="rptSlStop(event)">${r.isChot?'<span style="color:var(--muted)">—</span>':sel(r,'lost_group',RPT_SL_LOST_OPTS,r.lostGroup,160)}</td>
-    <td>${r.closeDate||'<span style="color:var(--muted)">—</span>'}</td>
+    <td>${dmy(r.closeDate)||'<span style="color:var(--muted)">—</span>'}</td>
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
     <td style="font-size:11px">${r.kh?('<code>'+r.kh+'</code>'):'<span style="color:var(--muted)">—</span>'}</td>
   </tr>`).join('');
@@ -3018,7 +3024,7 @@ async function renderLog(){
   if(f==='del')list=list.filter(r=>r.act==='D');
   else if(f!=='all')list=list.filter(r=>r.who===f);
   const whos=[...new Set(logRows.map(r=>r.who).filter(Boolean))].sort();
-  const dt=s=>{const d=new Date(s);return d.toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});};
+  const dt=s=>{const d=new Date(s);return d.toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});};
   const val=v=>v==null||v===''?'<span style="color:var(--muted)">(trống)</span>':String(v).replace(/</g,'&lt;');
   const rows=list.slice(0,500).map(r=>{const a=LOG_ACT[r.act]||{label:r.act,color:'var(--muted)'};
     return `<tr>
