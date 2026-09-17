@@ -2633,7 +2633,7 @@ function rptSlBuildMaster(){
       // Trạng thái: khách có thẻ CHỐT ĐƠN thì KHOÁ CỨNG "Chốt đơn", Sale không sửa được.
       // Còn lại để Sale tự chọn ở dropdown; chưa chọn thì để TRỐNG (không suy từ thẻ nữa).
       manualStatus:mn.status||'',lostGroup:mn.lost_group||'',lostReason:mn.lost_reason||'',note:mn.note||'',
-      potential:Number(mn.potential_value||0),
+      potential:Number(mn.potential_value||0), careDate:mn.care_date||'',careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
       // SĐT: Pancake thường bỏ trống (chỉ 110/158 khách có), nhưng khách ĐÃ NỐI được Kiot thì bên Kiot
       // gần như luôn có số (6.264/6.479 khách lẻ). Bù sang để không hiển thị "—" oan.
       name:pick(o=>o.customer_name)||'—',
@@ -2670,7 +2670,7 @@ function rptSlBuildMaster(){
     rows.push({key:'M'+r.id,orders:[],invs,kh:kc?kc.code:null,revenue,linkBy:kc?'Nhập tay':'',
       manualKH:r.kiot_code||null,noteKH:null,kiotCusts:kc?[kc]:[],leadId,suggest:[],isManual:true,
       manualStatus:mn.status||'',lostGroup:mn.lost_group||'',lostReason:mn.lost_reason||'',note:mn.note||r.note||'',
-      potential:Number(mn.potential_value||0),
+      potential:Number(mn.potential_value||0), careDate:mn.care_date||'',careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
       name:r.customer_name||'—',phone:r.phone||(kc?(kc.phone||kc.phone_key||''):''),phoneFromKiot:!r.phone,
       created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staff:r.staff_name||'',adId:'',
       nguon:r.nguon||'Online',kenh:r.kenh||'(nhập tay)',diaChi:rptSlDiaChiKiot(kc?[kc]:[]),
@@ -2889,59 +2889,64 @@ function rptSlInputHtml(){
     ${rptSlInputSec('s3','📝','Chưa cập nhật trạng thái','Khách chưa chốt — chọn trạng thái chăm sóc',b.chuaTT.length,'var(--accent)',s3)}
     ${rptSlInputSec('s4','❓','Mất lead nhưng chưa ghi nhóm nguyên nhân','Thiếu cái này thì không phân tích được vì sao mất',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}`;
 }
-// ── CRM: dòng thời gian từng lần phát sinh (đơn Pancake / hoá đơn Kiot) ──
+// ── CRM: TOÀN BỘ khách chốt + tiềm năng từ Master đổ sang, mỗi khách 1 DÒNG.
+// Đúng khung tab "CRM Lẻ" của sheet cũ (đo 17/9/2026: 183 dòng / 181 khách, không khách nào 2 dòng)
+// -> hồ sơ chăm sóc theo KHÁCH, không phải nhật ký từng lần phát sinh.
+// Bộ cột lấy đúng sheet: Ngày chăm sóc · Kênh · Sales · Họ tên · Nội dung trao đổi · Giá trị tiềm năng
+// · Trạng thái · Nhóm nguyên nhân mất lead · Ngày chốt · Doanh thu · Mã KH.
+// Master giữ phần định danh, CRM thêm phần con người đánh giá. Tất cả ghi vào saleretail_manual.
 function rptSlCrmFilter(){return window._rptSlCrmF||'all';}
 function rptSlSetCrmFilter(v){window._rptSlCrmF=v;window._rptSlCrmPage=1;renderReportSaleLe();}
 function rptSlSetCrmPage(p){window._rptSlCrmPage=p;renderReportSaleLe();}
 function rptSlCrmHtml(){
-  const master=rptSlBuildMaster();
-  const byKey={};master.forEach(m=>byKey[m.key]=m);
-  const events=[];
-  master.forEach(m=>{
-    m.orders.forEach(o=>events.push({date:o.order_date,kind:'Đơn Pancake',ref:'#'+o.system_id,name:m.name,phone:m.phone,
-      brand:DH_BRAND_LABEL[o.brand]||o.brand||'—',saleType:m.saleType,staff:o.staff_name||'—',
-      status:rptSlStatusOf(o.customer_tags),content:o.internal_note||o.source||'—',value:0,key:m.key}));
-    m.invs.forEach(i=>events.push({date:(i.purchase_date||'').slice(0,10),kind:'Hoá đơn Kiot',ref:i.code,name:m.name,phone:m.phone,
-      brand:i.branch_name||'—',saleType:m.saleType,staff:i.sold_by_name||'—',
-      status:'Đã xuất hoá đơn',content:(i.items||[]).map(x=>x.name).slice(0,3).join(', ')||i.description||'—',value:Number(i.total||0),key:m.key}));
-  });
-  const f=rptSlCrmFilter();
-  let list=events;
-  if(f==='pancake')list=list.filter(e=>e.kind==='Đơn Pancake');
-  else if(f==='kiot')list=list.filter(e=>e.kind==='Hoá đơn Kiot');
-  else if(f==='chot')list=list.filter(e=>e.status==='Chốt đơn');
-  list=list.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const all=rptSlBuildMaster();
+  const f=rptSlCrmFilter(),q=(window._rptSlCrmQ||'').trim().toLowerCase();
+  let list=all;
+  if(f==='chot')list=list.filter(r=>r.isChot);
+  else if(f==='tiemnang')list=list.filter(r=>!r.isChot);
+  else if(f==='mat')list=list.filter(r=>r.status==='Mất lead');
+  else if(f==='chuacham')list=list.filter(r=>!r.careDate&&!r.content);
+  if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.content||'').toLowerCase().includes(q));
   const pageSize=50,page=window._rptSlCrmPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
-  const rows=list.slice((page-1)*pageSize,page*pageSize).map(e=>`<tr style="cursor:pointer" onclick="rptSlShowCustomer('${e.key.replace(/'/g,"\\'")}')">
-    <td>${e.date||'—'}</td>
-    <td><span style="display:inline-block;padding:2px 9px;border-radius:20px;background:${e.kind==='Hoá đơn Kiot'?'var(--green-l)':'var(--accent-l)'};color:${e.kind==='Hoá đơn Kiot'?'var(--green)':'var(--accent)'};font-size:11px;font-weight:800">${e.kind}</span></td>
-    <td><code>${e.ref}</code></td>
-    <td class="name">${e.name}</td>
-    <td>${e.phone||'—'}</td>
-    <td style="font-size:11px">${e.brand}</td>
-    <td>${e.staff}</td>
-    <td style="font-size:11.5px;font-weight:700;color:${RPT_SL_STATUS_COLOR[e.status]||'var(--text2)'}">${e.status}</td>
-    <td style="font-size:11px;color:var(--muted);max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(e.content||'').replace(/"/g,'&quot;')}">${e.content}</td>
-    <td class="num" style="font-weight:800;color:${e.value>0?'var(--green)':'inherit'}">${e.value>0?vnd(e.value):'—'}</td>
+  const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
+  const sel=(r,field,opts,cur,w)=>`<select onchange="rptSlSetField('${r.leadId}','${field}',this.value,this)" style="${inp};width:${w||130}px;cursor:pointer;font-weight:700">
+    <option value=""${cur?'':' selected'}>—</option>${opts.map(o=>`<option value="${o}"${cur===o?' selected':''}>${o}</option>`).join('')}</select>`;
+  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>`<tr>
+    <td onclick="rptSlStop(event)"><input type="date" value="${r.careDate||''}" onchange="rptSlSetField('${r.leadId}','care_date',this.value,this)" style="${inp};width:128px"></td>
+    <td style="font-size:11px">${r.kenh||'—'}</td>
+    <td>${r.staff||'—'}</td>
+    <td class="name" style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">${r.name}</td>
+    <td onclick="rptSlStop(event)"><input value="${String(r.content||'').replace(/"/g,'&quot;')}" placeholder="Nội dung trao đổi…"
+      onkeydown="if(event.key==='Enter')this.blur()"
+      onblur="if(this.value!==${JSON.stringify(String(r.content||''))})rptSlSetField('${r.leadId}','content',this.value,this)"
+      style="${inp};width:260px"></td>
+    <td class="num">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.potential?vnd(r.potential):'<span style="color:var(--muted)">—</span>')}</td>
+    <td onclick="rptSlStop(event)">${r.isChot
+      ?'<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:var(--green-l);color:var(--green);font-size:11px;font-weight:800">🔒 Chốt đơn</span>'
+      :sel(r,'status',RPT_SL_STATUS_OPTS,r.manualStatus,130)}</td>
+    <td onclick="rptSlStop(event)">${r.isChot?'<span style="color:var(--muted)">—</span>':sel(r,'lost_group',RPT_SL_LOST_OPTS,r.lostGroup,160)}</td>
+    <td>${r.closeDate||'<span style="color:var(--muted)">—</span>'}</td>
+    <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
+    <td style="font-size:11px">${r.kh?('<code>'+r.kh+'</code>'):'<span style="color:var(--muted)">—</span>'}</td>
   </tr>`).join('');
-  const chip=(v,label)=>`<span onclick="rptSlSetCrmFilter('${v}')" style="cursor:pointer;padding:5px 13px;border-radius:20px;font-size:11.5px;font-weight:700;background:${f===v?'var(--accent)':'var(--bg2)'};color:${f===v?'#fff':'var(--text2)'}">${label}</span>`;
-  const kiotEvents=events.filter(e=>e.kind==='Hoá đơn Kiot');
+  const chip=(v,l)=>`<span onclick="rptSlSetCrmFilter('${v}')" style="cursor:pointer;padding:5px 13px;border-radius:20px;font-size:11.5px;font-weight:700;background:${f===v?'var(--accent)':'var(--bg2)'};color:${f===v?'#fff':'var(--text2)'}">${l}</span>`;
+  const chuaCham=all.filter(r=>!r.careDate&&!r.content).length;
   return `
-    <div class="kpi-grid" style="margin-bottom:14px">
-      ${mkKpi(ic('clipboard'),'Tổng lượt phát sinh',num(events.length),'đơn Pancake + hoá đơn Kiot','g-blue')}
-      ${mkKpi(ic('box'),'Đơn Pancake',num(events.length-kiotEvents.length),'mỗi đơn là 1 lượt','g-purple')}
-      ${mkKpi(ic('cash'),'Hoá đơn Kiot',num(kiotEvents.length),vnd(kiotEvents.reduce((s,e)=>s+e.value,0)),'g-green')}
-      ${mkKpi(ic('check'),'Lượt chốt đơn',num(events.filter(e=>e.status==='Chốt đơn').length),'đơn Pancake gắn thẻ CHỐT ĐƠN','g-teal')}
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px">
+      ${mkKpi(ic('users'),'Khách trong CRM',num(all.length),num(all.filter(r=>r.isChot).length)+' đã chốt · '+num(all.filter(r=>!r.isChot).length)+' tiềm năng','g-blue')}
+      ${mkKpi(ic('clipboard'),'Đã ghi chăm sóc',num(all.length-chuaCham)+'/'+num(all.length),chuaCham?num(chuaCham)+' khách chưa có ghi chép nào':'đã ghi đủ','g-teal')}
+      ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(all.filter(r=>!r.isChot).reduce((s,r)=>s+r.potential,0)),'của nhóm chưa chốt','g-orange')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
-      ${chip('all','Tất cả')}${chip('pancake','Đơn Pancake')}${chip('kiot','Hoá đơn Kiot')}${chip('chot','Lượt chốt đơn')}
+      ${chip('all','Tất cả')}${chip('chot','Đã chốt')}${chip('tiemnang','Tiềm năng')}${chip('mat','Mất lead')}${chip('chuacham','Chưa ghi chăm sóc')}
+      <input value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(renderReportSaleLe,350)" style="margin-left:auto;${inp};height:30px;min-width:250px">
     </div>
     <div class="tbl-card">
-      <div class="tbl-head"><div class="tbl-title">CRM — lịch sử phát sinh theo khách</div><div class="tbl-count">${num(list.length)}</div>
-        <span style="margin-left:auto;font-size:11px;color:var(--muted)">Bấm 1 dòng để xem toàn bộ lịch sử của khách đó</span></div>
+      <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div>
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)">Sửa trực tiếp trong ô · bấm tên khách để xem lịch sử</span></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày</th><th>Loại</th><th>Mã</th><th>Khách hàng</th><th>SĐT</th><th>Brand / Chi nhánh</th><th>Người xử lý</th><th>Trạng thái</th><th>Nội dung / Sản phẩm</th><th>Giá trị</th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">Không có lượt nào khớp bộ lọc</td></tr>'}</tbody>
+        <thead><tr><th>Ngày chăm sóc</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>Nội dung trao đổi</th><th>Giá trị tiềm năng</th><th>Trạng thái</th><th>Nhóm nguyên nhân mất lead</th><th>Ngày chốt</th><th>Doanh thu</th><th>Mã KH</th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetCrmPage(${page-1})">‹ Trước</button>
