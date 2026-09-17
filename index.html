@@ -1913,6 +1913,14 @@ function dhNameMismatch(a,b){
   if(!x.length||!y.length)return false;
   return!y.some(w=>x.includes(w));
 }
+// Lỗi nào thuộc ĐỐI SOÁT (so với hoá đơn Kiot) -- không đưa vào tab Nhập Liệu của Sale.
+const DH_ISSUE_DOISOAT=new Set([
+  'Hoá đơn Kiot chưa gắn đơn Pancake',
+  'Nghi trùng hoá đơn (cùng ngày, cùng sản phẩm)',
+  'Hoá đơn Kiot có trước ngày chốt',
+  'Mã KH chưa có hoá đơn nào từ 1/6',
+  'Có hoá đơn Kiot nhưng đơn Pancake chưa gắn thẻ',
+]);
 const DH_SEV={err:{label:'Lỗi',color:'var(--red)'},warn:{label:'Cảnh báo',color:'var(--yellow)'},info:{label:'Cần bổ sung',color:'var(--muted)'}};
 // Lẻ hay Sỉ lấy theo THẺ khách trên Pancake (KH LẺ / KH SỈ) chứ không theo brand -- Shidai có cả 2 loại
 // (523 đơn Lẻ / 202 đơn Sỉ). Bên Kiot thì theo chi nhánh: "Tổng kho sỉ Shidai" là Sỉ, còn lại là Lẻ.
@@ -1929,7 +1937,7 @@ function dhDataIssues(){
   const invByCode={};kiotInvoices.forEach(i=>{if(i.customer_code)(invByCode[i.customer_code]=invByCode[i.customer_code]||[]).push(i);});
   const khUsage={};
   dhOrders.forEach(o=>{const kh=dhExtractKH(o.internal_note);if(kh)(khUsage[kh]=khUsage[kh]||[]).push(o);});
-  const add=(type,sev,o,detail)=>issues.push({type,sev,group:dhSaleTypeOrder(o),brand:DH_BRAND_LABEL[o.brand]||o.brand||'—',ref:'Đơn #'+o.system_id,date:o.order_date,cust:o.customer_name||'—',detail});
+  const add=(type,sev,o,detail)=>issues.push({type,sev,scope:DH_ISSUE_DOISOAT.has(type)?'doisoat':'sale',group:dhSaleTypeOrder(o),brand:DH_BRAND_LABEL[o.brand]||o.brand||'—',ref:'Đơn #'+o.system_id,date:o.order_date,cust:o.customer_name||'—',detail});
   const byPhone=kiotRetailByPhone(),custByCode=kiotCustByCode();
   dhOrders.forEach(o=>{
     const kh=dhExtractKH(o.internal_note),isChot=dhIsOrder(o);
@@ -2008,7 +2016,7 @@ function dhDataIssues(){
       const s=kiotItemSig(i);if(!s)return;
       const key=(i.purchase_date||'').slice(0,10)+'|'+s;
       if(seen[key]){
-        issues.push({type:'Nghi trùng hoá đơn (cùng ngày, cùng sản phẩm)',sev:'err',group:dhSaleTypeInvoice(i),
+        issues.push({type:'Nghi trùng hoá đơn (cùng ngày, cùng sản phẩm)',sev:'err',scope:'doisoat',group:dhSaleTypeInvoice(i),
           brand:i.branch_name||'—',ref:i.code+' ⟷ '+seen[key].code,date:(i.purchase_date||'').slice(0,10),
           cust:i.customer_name||'—',detail:code+' · '+vnd(i.total)+' · '+((i.items||[]).map(x=>x.name+' x'+x.qty).join(', ')||'')});
       }else seen[key]=i;
@@ -2021,7 +2029,7 @@ function dhDataIssues(){
   kiotCustomers.forEach(c=>{if(c.phone_key&&pancakePhones.has(c.phone_key))usedCodes.add(c.code);});
   const pancakeStaff=new Set(dhOrders.map(o=>(o.staff_name||'').trim()).filter(Boolean));
   kiotInvoices.filter(i=>i.status===1&&i.customer_code&&!usedCodes.has(i.customer_code)&&pancakeStaff.has((i.sold_by_name||'').trim()))
-    .forEach(i=>issues.push({type:'Hoá đơn Kiot chưa gắn đơn Pancake',sev:'warn',group:dhSaleTypeInvoice(i),
+    .forEach(i=>issues.push({type:'Hoá đơn Kiot chưa gắn đơn Pancake',sev:'warn',scope:'doisoat',group:dhSaleTypeInvoice(i),
       brand:i.branch_name||'—',ref:i.code,date:(i.purchase_date||'').slice(0,10),cust:i.customer_name||'—',
       detail:i.customer_code+' · '+(i.sold_by_name||'')+' · '+vnd(i.total)}));
   return issues.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
@@ -2832,7 +2840,7 @@ async function issueSetStatus(key,v,el){
 function rptSlIssueF(){return window._rptSlIssueF||'open';}
 function rptSlSetIssueF(v){window._rptSlIssueF=v;renderReportSaleLe();}
 function rptSlIssuesHtml(){
-  const all=dhDataIssues().filter(i=>i.group!=='Sỉ');
+  const all=dhDataIssues().filter(i=>i.group!=='Sỉ'&&i.scope!=='doisoat');
   const f=rptSlIssueF();
   const list=f==='open'?all.filter(i=>issueStatus(i)==='Chưa xử lý'):f==='done'?all.filter(i=>issueStatus(i)!=='Chưa xử lý'):all;
   const rank={err:0,warn:1,info:2};
