@@ -2286,7 +2286,6 @@ async function renderReportSaleLe(){
   await kiotLoadInvoices();
   await dhLoadManual();
   await rptSlLoadManual();
-  await issueLoad(true);
   const mode=rptSlViewMode();
   el.innerHTML=`
     ${modHeader('Báo cáo · Sale Lẻ','','saleretail','renderReportSaleLe')}
@@ -2812,63 +2811,6 @@ function rptSlInputSec(id,icon,title,desc,count,color,body){
     ${count?body:'<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không còn việc nào</div>'}
   </div>`;
 }
-// Đơn có vấn đề: lấy từ bộ dò lỗi chung (dhDataIssues) nhưng CHỈ phần Sale Lẻ.
-// Nhóm "Sỉ" để dành cho báo cáo Sale Sỉ sau này.
-// Lỗi được DÒ LẠI mỗi lần mở trang (không lưu vào DB), nên trạng thái xử lý lưu riêng ở bảng
-// issue_handled, khoá theo "<loại lỗi>|<ref>" để bám đúng ca kể cả khi danh sách được tính lại.
-const RPT_SL_ISSUE_ST=['Chưa xử lý','Đang xử lý','Đã xử lý','Bỏ qua'];
-let issueHandled={},issueHandledLoaded=false;
-async function issueLoad(force){
-  if(issueHandledLoaded&&!force)return;
-  const rows=await sbFetchAll('issue_handled','select=*');
-  issueHandled={};rows.forEach(r=>{issueHandled[r.issue_key]=r;});
-  issueHandledLoaded=true;
-}
-function issueKey(i){return i.type+'|'+(i.ref||'');}
-function issueStatus(i){return (issueHandled[issueKey(i)]||{}).status||'Chưa xử lý';}
-async function issueSetStatus(key,v,el){
-  const row={issue_key:key,status:v||'Chưa xử lý',updated_by:logWho(),updated_at:new Date().toISOString()};
-  const res=await fetch(`${SUPABASE_URL}/rest/v1/issue_handled?on_conflict=issue_key`,{
-    method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,
-      'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=representation'},
-    body:JSON.stringify(row)});
-  if(!res.ok){alert('Lưu lỗi '+res.status);if(el)el.style.borderColor='var(--red)';return;}
-  issueHandled[key]=(await res.json())[0]||row;
-  logAct('U','issue_handled',key,null,'status',null,v);
-  renderReportSaleLe();
-}
-function rptSlIssueF(){return window._rptSlIssueF||'open';}
-function rptSlSetIssueF(v){window._rptSlIssueF=v;renderReportSaleLe();}
-function rptSlIssuesHtml(){
-  const all=dhDataIssues().filter(i=>i.group!=='Sỉ'&&i.scope!=='doisoat');
-  const f=rptSlIssueF();
-  const list=f==='open'?all.filter(i=>issueStatus(i)==='Chưa xử lý'):f==='done'?all.filter(i=>issueStatus(i)!=='Chưa xử lý'):all;
-  const rank={err:0,warn:1,info:2};
-  list.sort((a,b)=>(rank[a.sev]-rank[b.sev])||a.type.localeCompare(b.type)||String(b.date).localeCompare(String(a.date)));
-  const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer';
-  const COL={'Chưa xử lý':'var(--red)','Đang xử lý':'var(--yellow)','Đã xử lý':'var(--green)','Bỏ qua':'var(--muted)'};
-  const rows=list.slice(0,300).map(i=>{const k=issueKey(i),st=issueStatus(i);const sev=DH_SEV[i.sev]||{label:i.sev,color:'var(--muted)'};
-    return `<tr>
-      <td><span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:800;color:#fff;background:${sev.color}">${sev.label}</span></td>
-      <td style="font-size:11.5px;font-weight:700">${i.type}</td>
-      <td>${dmy(i.date)||'—'}</td>
-      <td style="font-size:11px"><code>${i.ref||'—'}</code></td>
-      <td class="name">${i.cust||'—'}</td>
-      <td style="font-size:11px;color:var(--muted);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${String(i.detail||'').replace(/"/g,'&quot;')}">${i.detail||''}</td>
-      <td><select onchange="issueSetStatus('${k.replace(/'/g,"\\'")}',this.value,this)" style="${inp};width:118px;color:${COL[st]};border-color:${COL[st]}">
-        ${RPT_SL_ISSUE_ST.map(o=>`<option value="${o}"${st===o?' selected':''}>${o}</option>`).join('')}</select></td>
-    </tr>`;}).join('');
-  const chip=(v,l)=>`<span onclick="rptSlSetIssueF('${v}')" style="cursor:pointer;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;background:${f===v?'var(--accent)':'var(--bg2)'};color:${f===v?'#fff':'var(--text2)'}">${l}</span>`;
-  const open=all.filter(i=>issueStatus(i)==='Chưa xử lý').length;
-  return `
-    <div style="display:flex;gap:6px;padding:10px 14px;align-items:center;flex-wrap:wrap">
-      ${chip('open','Chưa xử lý ('+num(open)+')')}${chip('done','Đã đụng tới ('+num(all.length-open)+')')}${chip('all','Tất cả ('+num(all.length)+')')}
-    </div>
-    <div class="tbl-scroll"><table>
-      <thead><tr><th>Mức</th><th>Loại vấn đề</th><th>Ngày</th><th>Đơn / Hoá đơn</th><th>Khách hàng</th><th>Chi tiết</th><th style="${RPT_SL_TH_EDIT}">Xử lý</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--green);font-weight:700">✓ Không còn ca nào</td></tr>'}</tbody>
-    </table></div>`;
-}
 function rptSlInputHtml(){
   const b=rptSlTodoBuckets();
   const info=r=>`<td>${dmy(r.created)||'—'}</td>
@@ -2911,9 +2853,7 @@ function rptSlInputHtml(){
     ${rptSlInputSec('s1','🔴','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','app KHÔNG tự nối bằng SĐT',b.thieuMa.length,'var(--red)',s1)}
     ${rptSlInputSec('s2','⚠️','Mã KH đã điền nhưng không tồn tại bên Kiot','',b.maSai.length,'var(--yellow)',s2)}
     ${rptSlInputSec('s3','📝','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
-    ${rptSlInputSec('s4','❓','Mất lead nhưng chưa ghi nhóm nguyên nhân','',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}
-    ${(()=>{const n=dhDataIssues().filter(i=>i.group!=='Sỉ'&&issueStatus(i)==='Chưa xử lý').length;
-      return rptSlInputSec('s5','🧾','Đơn có vấn đề','',n,'var(--red)',rptSlIssuesHtml());})()}`;
+    ${rptSlInputSec('s4','❓','Mất lead nhưng chưa ghi nhóm nguyên nhân','',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}`;
 }
 // ── CRM: TOÀN BỘ khách chốt + tiềm năng từ Master đổ sang, mỗi khách 1 DÒNG.
 // Đúng khung tab "CRM Lẻ" của sheet cũ (đo 17/9/2026: 183 dòng / 181 khách, không khách nào 2 dòng)
