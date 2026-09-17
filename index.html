@@ -479,18 +479,12 @@ function modInRange(mod,dateStr){
   if(r.to&&d>r.to)return false;
   return true;
 }
-function modRangeLabel(mod){
-  const r=modRange(mod);
-  if(!r.from&&!r.to)return'Tất cả';
-  const v=x=>x?x.split('-').reverse().join('/'):'…';
-  return v(r.from)+' → '+v(r.to);
-}
 // Tiêu đề module + bộ lọc ngày trên CÙNG MỘT HÀNG, lọc đẩy sang phải.
 function modHeader(title,sub,mod,cb){
   return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px">
     <div style="min-width:0">
       <div class="page-title" style="margin-bottom:2px">${title}</div>
-      <div class="page-sub" style="margin-bottom:0">${sub}</div>
+      ${sub?`<div class="page-sub" style="margin-bottom:0">${sub}</div>`:''}
     </div>
     <div style="flex:0 0 auto">${modDateBar(mod,cb)}</div>
   </div>`;
@@ -513,7 +507,6 @@ function modDateBar(mod,cb){
     <input type="date" value="${r.from}" onchange="modSetRange('${mod}',this.value,'${r.to}','${cb}')" style="${ip}">
     <span style="font-size:11px;color:var(--muted);font-weight:700">Đến</span>
     <input type="date" value="${r.to}" onchange="modSetRange('${mod}','${r.from}',this.value,'${cb}')" style="${ip}">
-    <span style="font-size:11px;color:var(--muted)">Đang xem: <b style="color:var(--text2)">${modRangeLabel(mod)}</b></span>
   </div>`;
 }
 
@@ -2050,9 +2043,9 @@ function dhIssuesHtml(){
   const le=list.filter(i=>i.group==='Lẻ'),si=list.filter(i=>i.group==='Sỉ'),other=list.filter(i=>i.group==='Chưa phân loại');
   return `
     <div class="kpi-grid" style="margin-bottom:16px">
-      ${mkKpi(ic('alert'),'Lỗi',num(cnt('err')),'sai dữ liệu, cần sửa ngay','g-red')}
-      ${mkKpi(ic('question'),'Cảnh báo',num(cnt('warn')),'thiếu thao tác của Sale','g-yellow')}
-      ${mkKpi(ic('pencil'),'Cần bổ sung',num(cnt('info')),'thiếu thông tin, chưa chặn gì','g-blue')}
+      ${mkKpi(ic('alert'),'Lỗi',num(cnt('err')),'','g-red')}
+      ${mkKpi(ic('question'),'Cảnh báo',num(cnt('warn')),'','g-yellow')}
+      ${mkKpi(ic('pencil'),'Cần bổ sung',num(cnt('info')),'','g-blue')}
     </div>
     <div class="period-bar" style="margin-bottom:12px">
       <span style="font-size:11px;color:var(--muted);font-weight:700">Lọc loại lỗi:</span>
@@ -2190,13 +2183,12 @@ function dhManualHtml(){
   const tong=dhManual.reduce((s,r)=>s+(inv[r.kiot_code]||0),0);
   return dhManualForm()+`
     <div class="kpi-grid" style="margin-bottom:14px">
-      ${mkKpi(ic('clipboard'),'Data nhập tay',num(dhManual.length),'khách không có đơn Pancake','g-blue')}
-      ${mkKpi(ic('check'),'Đã có Mã KH',num(dhManual.filter(r=>r.kiot_code).length),'mới lấy được doanh thu','g-green')}
-      ${mkKpi(ic('cash'),'Doanh thu',vnd(tong),'từ hoá đơn KiotViet thật','g-teal')}
+      ${mkKpi(ic('clipboard'),'Data nhập tay',num(dhManual.length),'','g-blue')}
+      ${mkKpi(ic('check'),'Đã có Mã KH',num(dhManual.filter(r=>r.kiot_code).length),'','g-green')}
+      ${mkKpi(ic('cash'),'Doanh thu',vnd(tong),'','g-teal')}
     </div>
     <div class="tbl-card">
-      <div class="tbl-head"><div class="tbl-title">Data nhập tay</div><div class="tbl-count">${num(dhManual.length)}</div>
-        <span style="margin-left:auto;font-size:11px;color:var(--muted)">Vào thẳng Master Data của báo cáo Sale Lẻ</span></div>
+      <div class="tbl-head"><div class="tbl-title">Data nhập tay</div><div class="tbl-count">${num(dhManual.length)}</div></div>
       <div class="tbl-scroll"><table>
         <thead><tr><th>Ngày tạo</th><th>Lead ID</th><th>Họ tên khách</th><th>SĐT</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Mã KH</th><th>Tên bên Kiot</th><th>Doanh thu</th><th>Người tạo</th><th></th></tr></thead>
         <tbody>${rows||'<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--muted)">Chưa có dòng nào — dùng form phía trên để thêm</td></tr>'}</tbody>
@@ -2255,7 +2247,7 @@ async function renderDataHub(){
   const tabBtn=(m,label)=>`<button onclick="dhSetViewMode('${m}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode===m?'var(--accent)':'var(--surface)'};color:${mode===m?'#fff':'var(--text2)'}">${label}</button>`;
   const issueCount=dhDataIssues().length;
   const header=`
-    ${modHeader('Data Hub','Nguồn dữ liệu Pancake + KiotViet','datahub','renderDataHub')}
+    ${modHeader('Data Hub','','datahub','renderDataHub')}
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         ${tabBtn('overview','📊 Tổng Quan')}${tabBtn('manual','✍️ Data Nhập Tay ('+dhManual.length+')')}${tabBtn('issues','⚠️ Lỗi Nhập Liệu ('+issueCount+')')}
@@ -2325,7 +2317,7 @@ async function renderReportSaleLe(){
   await rptSlLoadManual();
   const mode=rptSlViewMode();
   el.innerHTML=`
-    ${modHeader('Báo cáo · Sale Lẻ','Nguồn: Pancake + KiotViet · data tính từ 1/6/2026','saleretail','renderReportSaleLe')}
+    ${modHeader('Báo cáo · Sale Lẻ','','saleretail','renderReportSaleLe')}
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         <button onclick="rptSlSetViewMode('overview')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='overview'?'var(--accent)':'var(--surface)'};color:${mode==='overview'?'#fff':'var(--text2)'}">📊 Tổng Quan</button>
@@ -2416,7 +2408,7 @@ function rptSlOverviewHtml(){
       const g2='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px';
       return `
     <div style="${g2}">
-      ${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(invCount)+' hoá đơn Kiot · nối bằng Mã KH','g-green')}
+      ${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(invCount)+' hoá đơn Kiot','g-green')}
       ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(pv),nPv?num(nPv)+'/'+num(open.length)+' khách chưa chốt đã ước lượng':'chưa khách nào được ước lượng','g-orange')}
     </div>
     <div style="${g3};margin-bottom:14px">
@@ -2721,13 +2713,13 @@ function rptSlMasterHtml(){
   const rev=list.reduce((s,r)=>s+r.revenue,0);
   return `
     <div class="kpi-grid" style="margin-bottom:14px">
-      ${mkKpi(ic('users'),'Tổng khách',num(all.length),'đã chốt / bàn giao / tiềm năng — lọc từ '+num(dhOrders.length)+' data Pancake','g-blue')}
+      ${mkKpi(ic('users'),'Tổng khách',num(all.length),'đã chốt / bàn giao / tiềm năng','g-blue')}
       ${mkKpi(ic('check'),'Khách đã chốt',num(all.filter(r=>r.isChot).length),num(all.filter(r=>!r.isChot).length)+' khách còn ở dạng tiềm năng','g-green')}
       ${mkKpi(ic('cash'),'Doanh thu cộng dồn',vnd(all.reduce((s,r)=>s+r.revenue,0)),'từ hoá đơn KiotViet','g-teal')}
       ${(()=>{const chotAll=all.filter(r=>r.isChot),linked=chotAll.filter(r=>r.linkBy);
         return mkKpi(ic('duplicate'),'Đơn chốt đã nối Kiot',num(linked.length)+'/'+num(chotAll.length),
           chotAll.length?pct(linked.length/chotAll.length*100)+' · '+num(linked.filter(r=>r.linkBy==='Mã KH').length)+' theo ghi chú Pancake, '+num(linked.filter(r=>r.linkBy==='Sale nhập').length)+' Sale nhập bù':'—','g-purple');})()}
-      ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(all.filter(r=>r.isChot&&r.daysIdle!==null&&r.daysIdle>=10).length),'khách ĐÃ CHỐT, >10 ngày chưa chăm lại','g-yellow')}
+      ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(all.filter(r=>r.isChot&&r.daysIdle!==null&&r.daysIdle>=10).length),'đã chốt, >10 ngày','g-yellow')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
       ${rptSlFilterBar('master',allRaw)}
@@ -2870,15 +2862,15 @@ function rptSlInputHtml(){
   const tong=b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length;
   return `
     <div class="kpi-grid" style="margin-bottom:14px">
-      ${mkKpi(ic('clipboard'),'Tổng việc cần làm',num(tong),'điền xong là Master Data tự cập nhật','g-purple')}
-      ${mkKpi(ic('cash'),'Đơn chốt chưa có Mã KH',num(b.thieuMa.length),'chưa nối được thì không tính được doanh thu','g-red')}
-      ${mkKpi(ic('check'),'Đơn chốt đã nối',num(b.all.filter(r=>r.isChot&&r.kh).length)+'/'+num(b.all.filter(r=>r.isChot).length),'nối bằng Mã KH — nguồn duy nhất','g-green')}
-      ${mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'khách chưa chốt, Sale cần chọn','g-yellow')}
+      ${mkKpi(ic('clipboard'),'Tổng việc cần làm',num(tong),'','g-purple')}
+      ${mkKpi(ic('cash'),'Đơn chốt chưa có Mã KH',num(b.thieuMa.length),'','g-red')}
+      ${mkKpi(ic('check'),'Đơn chốt đã nối',num(b.all.filter(r=>r.isChot&&r.kh).length)+'/'+num(b.all.filter(r=>r.isChot).length),'nối bằng Mã KH','g-green')}
+      ${mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow')}
     </div>
-    ${rptSlInputSec('s1','🔴','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','Bắt buộc điền — app KHÔNG tự nối bằng SĐT',b.thieuMa.length,'var(--red)',s1)}
-    ${rptSlInputSec('s2','⚠️','Mã KH đã điền nhưng không tồn tại bên Kiot','Gõ nhầm mã — sửa lại',b.maSai.length,'var(--yellow)',s2)}
-    ${rptSlInputSec('s3','📝','Chưa cập nhật trạng thái','Khách chưa chốt — chọn trạng thái chăm sóc',b.chuaTT.length,'var(--accent)',s3)}
-    ${rptSlInputSec('s4','❓','Mất lead nhưng chưa ghi nhóm nguyên nhân','Thiếu cái này thì không phân tích được vì sao mất',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}`;
+    ${rptSlInputSec('s1','🔴','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','app KHÔNG tự nối bằng SĐT',b.thieuMa.length,'var(--red)',s1)}
+    ${rptSlInputSec('s2','⚠️','Mã KH đã điền nhưng không tồn tại bên Kiot','',b.maSai.length,'var(--yellow)',s2)}
+    ${rptSlInputSec('s3','📝','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
+    ${rptSlInputSec('s4','❓','Mất lead nhưng chưa ghi nhóm nguyên nhân','',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}`;
 }
 // ── CRM: TOÀN BỘ khách chốt + tiềm năng từ Master đổ sang, mỗi khách 1 DÒNG.
 // Đúng khung tab "CRM Lẻ" của sheet cũ (đo 17/9/2026: 183 dòng / 181 khách, không khách nào 2 dòng)
@@ -2929,8 +2921,8 @@ function rptSlCrmHtml(){
   return `
     <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px">
       ${mkKpi(ic('users'),'Khách trong CRM',num(all.length),num(all.filter(r=>r.isChot).length)+' đã chốt · '+num(all.filter(r=>!r.isChot).length)+' tiềm năng','g-blue')}
-      ${mkKpi(ic('clipboard'),'Đã ghi chăm sóc',num(all.length-chuaCham)+'/'+num(all.length),chuaCham?num(chuaCham)+' khách chưa có ghi chép nào':'đã ghi đủ','g-teal')}
-      ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(all.filter(r=>!r.isChot).reduce((s,r)=>s+r.potential,0)),'của nhóm chưa chốt','g-orange')}
+      ${mkKpi(ic('clipboard'),'Đã ghi chăm sóc',num(all.length-chuaCham)+'/'+num(all.length),chuaCham?num(chuaCham)+' khách chưa có ghi chép nào':'','g-teal')}
+      ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(all.filter(r=>!r.isChot).reduce((s,r)=>s+r.potential,0)),'','g-orange')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
       ${rptSlFilterBar('crm',allRaw)}
@@ -2938,8 +2930,7 @@ function rptSlCrmHtml(){
       <input value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(renderReportSaleLe,350)" style="margin-left:auto;${inp};height:30px;min-width:250px">
     </div>
     <div class="tbl-card">
-      <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div>
-        <span style="margin-left:auto;font-size:11px;color:var(--muted)">Sửa trực tiếp trong ô · bấm tên khách để xem lịch sử</span></div>
+      <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
         <thead><tr><th>Ngày chăm sóc</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>Nội dung trao đổi</th><th>Giá trị tiềm năng</th><th>Trạng thái</th><th>Nhóm nguyên nhân mất lead</th><th>Ngày chốt</th><th>Doanh thu</th><th>Mã KH</th></tr></thead>
         <tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
@@ -3017,9 +3008,9 @@ async function logSyncHtml(){
   const bySrc={};hist.forEach(h=>{const k=h.source||'—';bySrc[k]=bySrc[k]||{n:0,last:null};bySrc[k].n++;if(!bySrc[k].last)bySrc[k].last=h.started_at;});
   return `
     <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px">
-      ${mkKpi(ic('clipboard'),'Lần chạy gần nhất',num(hist.length),'50 lần mới nhất','g-blue')}
+      ${mkKpi(ic('clipboard'),'Lần chạy gần nhất',num(hist.length),'','g-blue')}
       ${mkKpi(ic('check'),'Thành công',num(hist.length-fail),hist.length?pct((hist.length-fail)/hist.length*100):'—','g-green')}
-      ${mkKpi(ic('clock'),'Thất bại',num(fail),fail?'cần kiểm tra job':'không có lần nào lỗi','g-red')}
+      ${mkKpi(ic('clock'),'Thất bại',num(fail),fail?'':'','g-red')}
     </div>
     <div class="tbl-card" style="margin-bottom:16px">
       <div class="tbl-head"><div class="tbl-title">Nguồn đang đồng bộ</div><div class="tbl-count">${num(Object.keys(bySrc).length)}</div></div>
@@ -3043,7 +3034,7 @@ async function renderLog(){
   const tab=logTab();
   const tb=(v,l)=>`<button onclick="logSetTab('${v}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${tab===v?'var(--accent)':'var(--surface)'};color:${tab===v?'#fff':'var(--text2)'}">${l}</button>`;
   const head=`
-    ${modHeader('Nhật ký','Thao tác người dùng chỉ lưu <b>7 ngày gần nhất</b> · tự dọn lúc 02:15 mỗi ngày','log','renderLog')}
+    ${modHeader('Nhật ký','','log','renderLog')}
     <div class="period-bar"><span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
       ${tb('user','👤 Thao tác người dùng')}${tb('sync','🔄 Lịch sử đồng bộ')}</span></div>`;
   if(tab==='sync'){el.innerHTML=head+'<div style="padding:40px;text-align:center;color:var(--muted)">Đang tải…</div>';el.innerHTML=head+await logSyncHtml();return;}
@@ -3071,9 +3062,9 @@ async function renderLog(){
   const chip=(v,l)=>`<span onclick="logSetFilter('${v}')" style="cursor:pointer;padding:5px 13px;border-radius:20px;font-size:11.5px;font-weight:700;background:${f===v?'var(--accent)':'var(--bg2)'};color:${f===v?'#fff':'var(--text2)'}">${l}</span>`;
   el.innerHTML=head+`
     <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px">
-      ${mkKpi(ic('clipboard'),'Thao tác 7 ngày',num(logRows.length),'mỗi dòng là 1 trường bị đổi','g-blue')}
-      ${mkKpi(ic('trash')||ic('clipboard'),'Lượt XOÁ',num(nDel),nDel?'cần soi kỹ nhất':'chưa có lượt xoá nào','g-red')}
-      ${mkKpi(ic('clock'),'Hôm nay',num(logRows.filter(r=>String(r.at).slice(0,10)===today).length),'tính từ 0h','g-teal')}
+      ${mkKpi(ic('clipboard'),'Thao tác 7 ngày',num(logRows.length),'','g-blue')}
+      ${mkKpi(ic('trash')||ic('clipboard'),'Lượt XOÁ',num(nDel),nDel?'':'','g-red')}
+      ${mkKpi(ic('clock'),'Hôm nay',num(logRows.filter(r=>String(r.at).slice(0,10)===today).length),'','g-teal')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
       ${chip('all','Tất cả')}${chip('del','🔴 Chỉ lượt XOÁ')}${whos.map(w=>chip(w,w)).join('')}
@@ -3107,7 +3098,7 @@ async function renderSettings(){
     </tr>`).join('');
   el.innerHTML=`
     <div class="page-title">Phân quyền — Quản lý tài khoản</div>
-    <div class="page-sub">Quản lý tài khoản &amp; quyền truy cập</div>
+    
     <div class="period-bar">
       <span class="stat-chip">👥 ${accounts.filter(a=>a.status==='active').length} tài khoản đang hoạt động</span>
       <button class="refresh-btn" onclick="openCrmAddAccount()">➕ Tạo tài khoản</button>
