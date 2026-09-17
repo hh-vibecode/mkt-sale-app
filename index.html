@@ -2733,7 +2733,11 @@ function rptSlBuildMaster(){
     // cùng một khách (khách mua nhiều lần, người nhà dùng chung số, Sale lưu nhầm), mà doanh thu lại phụ
     // thuộc vào phép nối này. Khớp SĐT chỉ dùng làm GỢI Ý cho Sale xác nhận ở tab Nhập Liệu.
     let kiotCusts=[],linkBy='';
-    if(manualKH&&byCode[manualKH]){kiotCusts=[byCode[manualKH]];linkBy=noteKH?'Mã KH':'Sale nhập';}
+    // Khách có NHIỀU đơn Pancake mang Mã KH KHÁC nhau (vd Rain Smile: #71 ghi KH007369, #179 ghi KH007429)
+    // -> nối TẤT CẢ các mã. Trước đây chỉ lấy mã của đơn cuối nên mất 900k của KH007369.
+    const allNoteKH=[...new Set(orders.map(o=>dhExtractKH(o.internal_note)).filter(Boolean))];
+    if(allNoteKH.length>1){kiotCusts=allNoteKH.map(c=>byCode[c]).filter(Boolean);if(kiotCusts.length)linkBy='Mã KH';}
+    else if(manualKH&&byCode[manualKH]){kiotCusts=[byCode[manualKH]];linkBy=noteKH?'Mã KH':'Sale nhập';}
     // SĐT để gợi ý lấy cả số Sale ghi trong GHI CHÚ Pancake (vd #11 HT ghi chú "0977266131").
     const noteKeys=orders.map(o=>rptSlLast9((String(o.internal_note||'').match(/0\d{9}/)||[''])[0])).filter(Boolean);
     const suggest=kiotCusts.length?[]:[...new Set([phoneKey,...noteKeys].filter(Boolean))].flatMap(k=>byPhone[k]||[]);
@@ -2825,6 +2829,19 @@ function rptSlBuildMaster(){
     rest.forEach(r=>{r._merged=true;});
   });
   rows=rows.filter(r=>!r._merged);
+  // DOANH SỐ CHỐT = mọi đơn trong CÙNG THÁNG với đơn Kiot đầu tiên (người dùng chốt 17/9/2026: "mua liên
+  // tục trong tháng thì vẫn tính là mua lần đầu", vd Thanh Chương 01/7 + 14/7 = 88.535.000đ).
+  // Đơn từ tháng SAU trở đi là MUA LẠI -> tách ra repeatOrds, không cộng vào doanh số chốt của Sale.
+  rows.forEach(r=>{
+    const all=r.kords||[];
+    if(!all.length){r.repeatOrds=[];r.repeatRevenue=0;return;}
+    const mo=String(all[0].purchase_date).slice(0,7);
+    r.kords=all.filter(o=>String(o.purchase_date).slice(0,7)===mo);
+    r.repeatOrds=all.filter(o=>String(o.purchase_date).slice(0,7)!==mo);
+    r.revenue=r.kords.reduce((s,o)=>s+Number(o.total||0),0);
+    r.repeatRevenue=r.repeatOrds.reduce((s,o)=>s+Number(o.total||0),0);
+    r.lastKiotDate=String(r.kords[r.kords.length-1].purchase_date).slice(0,10);
+  });
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
 }
 function rptSlSetMasterPage(p){window._rptSlMasterPage=p;renderReportSaleLe();}
@@ -2849,7 +2866,7 @@ function rptSlMasterHtml(){
     <td>${rptSlStatusPill(rptSlRowStatus(r))}</td>
     <td class="num">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.potential?vnd(r.potential):'<span style="color:var(--muted)">—</span>')}</td>
     <td>${dmy(r.lastTouch)||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
-    <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
+    <td class="num" style="font-weight:800;color:${r.revenue+r.repeatRevenue>0?'var(--green)':'inherit'}">${r.revenue+r.repeatRevenue>0?vnd(r.revenue+r.repeatRevenue):'—'}</td>
     <td><span style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap">
       <span style="width:26px;height:26px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;flex:0 0 auto">👤</span>
       <span style="font-size:11.5px;font-weight:700;color:var(--accent)">Chi tiết</span></span></td>
@@ -2861,7 +2878,7 @@ function rptSlMasterHtml(){
       ${mkKpi(ic('check'),'Khách đã chốt',num(all.filter(r=>r.isChot).length),num(all.filter(r=>!r.isChot).length)+' khách còn ở dạng tiềm năng','g-green')}
     </div>
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px">
-      ${mkKpi(ic('cash'),'Doanh thu cộng dồn',vnd(all.reduce((s,r)=>s+r.revenue,0)),'từ đơn đặt hàng KiotViet','g-teal')}
+      ${mkKpi(ic('cash'),'Doanh thu chốt',vnd(all.reduce((s,r)=>s+r.revenue,0)),'từ đơn đặt hàng KiotViet','g-teal')}
       ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(all.filter(r=>r.isChot&&r.daysIdle!==null&&r.daysIdle>=10).length),'đã chốt, >10 ngày','g-yellow')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-end">
@@ -2901,7 +2918,8 @@ function rptSlShowCustomer(key){
     fld('Brand',esc(DH_BRAND_LABEL[r.brand]||r.brand)),
     fld('Số đơn Pancake',num(r.orders.length)),
     fld('Số đơn đặt hàng Kiot',num(r.kords.length)),
-    fld('Doanh thu cộng dồn',r.revenue>0?vnd(r.revenue):'—',r.revenue>0?'var(--green)':''),
+    fld('Doanh thu chốt (tháng đầu)',r.revenue>0?vnd(r.revenue):'—',r.revenue>0?'var(--green)':''),
+    fld('Mua lại (tháng sau)',r.repeatRevenue>0?vnd(r.repeatRevenue)+' · '+num(r.repeatOrds.length)+' đơn':''),
     fld('Tên bên Kiot',esc(r.kiotName)),
     fld('Ngày đặt hàng gần nhất',esc(dmy(r.lastKiotDate))),
     fld('Nguồn gốc (Pancake)',esc(r.source)),
@@ -2911,7 +2929,7 @@ function rptSlShowCustomer(key){
   ].join('');
   const tl=[
     ...r.orders.map(o=>({d:o.order_date,t:'Đơn Pancake #'+esc(o.system_id),c:esc(o.internal_note||o.source||''),s:esc(o.customer_tags||''),v:''})),
-    ...r.kords.map(i=>({d:(i.purchase_date||'').slice(0,10),t:(i.direct?'Hoá đơn ':'Đặt hàng ')+esc(i.code)+' <span style="font-weight:600;color:var(--muted)">('+esc(i.status_value||'')+')</span>',c:esc((i.items||[]).map(x=>x.name+' x'+x.qty).join(', ')),s:esc((i.sold_by_name||'')+' · '+(i.branch_name||'')),v:vnd(i.total)})),
+    ...[...r.kords,...(r.repeatOrds||[]).map(o=>Object.assign({},o,{repeat:true}))].map(i=>({d:(i.purchase_date||'').slice(0,10),t:(i.repeat?'<span style="color:var(--muted)">[Mua lại]</span> ':'')+(i.direct?'Hoá đơn ':'Đặt hàng ')+esc(i.code)+' <span style="font-weight:600;color:var(--muted)">('+esc(i.status_value||'')+')</span>',c:esc((i.items||[]).map(x=>x.name+' x'+x.qty).join(', ')),s:esc((i.sold_by_name||'')+' · '+(i.branch_name||'')),v:vnd(i.total)})),
   ].sort((a,b)=>String(b.d).localeCompare(String(a.d)))
    .map(e=>`<tr style="border-bottom:1px solid var(--border)">
     <td style="padding:7px 12px;font-size:12px;color:var(--text2);white-space:nowrap">${dmy(e.d)||'—'}</td>
