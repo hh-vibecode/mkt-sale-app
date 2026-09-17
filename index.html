@@ -2891,7 +2891,10 @@ function rptSlCrmHtml(){
       onkeydown="if(event.key==='Enter')this.blur()"
       onblur="if(this.value!==${JSON.stringify(String(r.content||''))})rptSlSetField('${r.leadId}','content',this.value,this)"
       style="${edit};width:260px"></td>
-    <td class="num">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.potential?vnd(r.potential):'<span style="color:var(--muted)">—</span>')}</td>
+    <td class="num" onclick="rptSlStop(event)">${r.isChot?'<span style="color:var(--muted)">—</span>'
+      :`<input value="${r.potential?num(r.potential):''}" inputmode="numeric" placeholder="0"
+        onkeydown="if(event.key==='Enter')this.blur()" onblur="rptSlSetPotential('${r.leadId}',this.value,this)"
+        style="${edit};width:110px;text-align:right">`}</td>
     <td onclick="rptSlStop(event)">${r.isChot
       ?'<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:var(--green-l);color:var(--green);font-size:11px;font-weight:800">Chốt đơn</span>'
       :sel(r,'status',RPT_SL_STATUS_OPTS,r.manualStatus,130)}</td>
@@ -2914,7 +2917,7 @@ function rptSlCrmHtml(){
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th style="${RPT_SL_TH_EDIT}">Ngày chăm sóc</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th>Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái</th><th style="${RPT_SL_TH_EDIT}">Nhóm nguyên nhân mất lead</th><th>Ngày chốt</th><th>Doanh thu</th><th>Mã KH</th></tr></thead>
+        <thead><tr><th style="${RPT_SL_TH_EDIT}">Ngày chăm sóc</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái</th><th style="${RPT_SL_TH_EDIT}">Nhóm nguyên nhân mất lead</th><th>Ngày chốt</th><th>Doanh thu</th><th>Mã KH</th></tr></thead>
         <tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
