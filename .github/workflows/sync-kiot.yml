@@ -2,10 +2,10 @@ name: Sync hoá đơn KiotViet
 
 on:
   schedule:
-    - cron: '15,45 * * * *'   # 30 phút/lần -- lệch khỏi phút 00/30 cho đỡ nghẽn lịch GitHub
-    # 3h20 sáng VN: quét lại toàn bộ từ 1/6. Sale sửa GHI CHÚ trên hoá đơn CŨ (điền mã đơn Pancake) mà chưa
-    # chắc KiotViet có cập nhật modifiedDate khi chỉ sửa ghi chú -- lượt quét này đảm bảo không bỏ sót.
-    - cron: '20 20 * * *'
+    # 7h05 sáng VN (00:05 UTC) -- lượt chính. Lệch 5 phút vì GitHub hay dồn/rớt cron đúng đầu giờ.
+    - cron: '5 0 * * *'
+    # 8h05 sáng VN (01:05 UTC) -- lượt DỰ PHÒNG, chạy lại y hệt phòng khi lượt đầu lỗi.
+    - cron: '5 1 * * *'
   workflow_dispatch:
     inputs:
       backfill:
@@ -25,5 +25,5 @@ jobs:
           KIOT_CLIENT_ID: ${{ secrets.KIOT_CLIENT_ID }}
           KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          BACKFILL: ${{ (github.event.schedule == '20 20 * * *' || inputs.backfill) && '1' || '0' }}
+          BACKFILL: '1'   # chỉ chạy 2 lượt/ngày nên luôn quét lại toàn bộ từ 1/6, không dùng chế độ 5 trang mới nhất
         run: node scripts/sync-kiot-invoices.js

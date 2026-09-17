@@ -4,7 +4,9 @@ on:
   schedule:
     # 01:12 UTC = 08:12 giờ Việt Nam (UTC+7) mỗi ngày. Lệch phút khỏi giờ tròn (xem giải thích ở
     # sync-mkt.yml) — cũng lệch với job sync-mkt (08:07) để 2 job không tranh runner cùng lúc.
-    - cron: '12 1 * * *'
+    # 7h05 sáng VN (00:05 UTC) lượt chính · 8h05 VN (01:05 UTC) lượt dự phòng. Lệch 5 phút vì GitHub hay rớt cron đầu giờ.
+    - cron: '5 0 * * *'
+    - cron: '5 1 * * *'
   workflow_dispatch:
     inputs:
       from:
