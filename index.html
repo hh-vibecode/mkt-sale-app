@@ -2140,7 +2140,6 @@ function dhManualHtml(){
     const v=inv[r.kiot_code]||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
     return `<tr>
       <td>${dmy(r.created_date)||'—'}</td>
-      <td style="font-size:11px"><code>${dhManualLeadId(r)}</code></td>
       <td class="name">${r.customer_name}</td>
       <td>${r.phone||'<span style="color:var(--muted)">—</span>'}</td>
       <td style="font-size:11px">${r.nguon||'—'}</td>
@@ -2163,8 +2162,8 @@ function dhManualHtml(){
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">Data nhập tay</div><div class="tbl-count">${num(dhManual.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày tạo</th><th>Lead ID</th><th>Họ tên khách</th><th>SĐT</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Mã KH</th><th>Tên bên Kiot</th><th>Doanh thu</th><th>Người tạo</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--muted)">Chưa có dòng nào — dùng form phía trên để thêm</td></tr>'}</tbody>
+        <thead><tr><th>Ngày tạo</th><th>Họ tên khách</th><th>SĐT</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Mã KH</th><th>Tên bên Kiot</th><th>Doanh thu</th><th>Người tạo</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Chưa có dòng nào — dùng form phía trên để thêm</td></tr>'}</tbody>
       </table></div>
     </div>`;
 }
@@ -2811,12 +2810,11 @@ function rptSlInputSec(id,icon,title,desc,count,color,body){
 function rptSlInputHtml(){
   const b=rptSlTodoBuckets();
   const info=r=>`<td>${dmy(r.created)||'—'}</td>
-    <td style="font-size:11px"><code>${r.leadId}</code></td>
     <td class="name">${r.name}</td>
     <td>${r.phone||'<span style="color:var(--red);font-size:11px">chưa có SĐT</span>'}</td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
     <td>${r.staff||'—'}</td>`;
-  const HEAD='<th>Ngày tạo</th><th>Lead ID</th><th>Họ tên</th><th>SĐT</th><th>Kênh</th><th>Sales</th>';
+  const HEAD='<th>Ngày tạo</th><th>Họ tên</th><th>SĐT</th><th>Kênh</th><th>Sales</th>';
   const tbl=(head,rows)=>`<div class="tbl-scroll"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
   const maInput=r=>`<td style="font-size:11px">${r.manualKH?('<code>'+r.manualKH+'</code>'):'<span style="color:var(--red);font-weight:700">chưa có</span>'}</td>`;
   // Gợi ý theo SĐT: chỉ để Sale biết nên tra mã nào bên Kiot, KHÔNG bấm để điền.
