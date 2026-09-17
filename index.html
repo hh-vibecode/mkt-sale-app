@@ -2629,6 +2629,12 @@ const RPT_SL_PILL={
   'Chăm sóc dài hạn':['var(--accent-l)','var(--accent)'],
   'Mất lead':['rgba(239,68,68,.13)','var(--red)'],
 };
+// Nguồn của 1 dòng: đơn Pancake (tự động) hay Sale nhập tay ở Data Hub.
+function rptSlSrcBadge(r){
+  return r.isManual
+    ? '<span style="display:inline-block;padding:2px 8px;border-radius:20px;background:rgba(249,115,22,.14);color:#c2410c;font-size:10.5px;font-weight:800;white-space:nowrap">Nhập tay</span>'
+    : '<span style="display:inline-block;padding:2px 8px;border-radius:20px;background:var(--accent-l);color:var(--accent);font-size:10.5px;font-weight:800;white-space:nowrap">Pancake</span>';
+}
 function rptSlStatusPill(st){
   const c=RPT_SL_PILL[st];
   if(!c)return'<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:var(--bg2);color:var(--muted);font-size:11px;font-weight:700">chưa cập nhật</span>';
@@ -2786,6 +2792,7 @@ function rptSlMasterHtml(){
   // Nối bằng, Tên Kiot, hoá đơn, lịch sử đơn...) nằm trong modal "Chi tiết" ở cột cuối.
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>`<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
     <td>${dmy(r.created)||'—'}</td>
+    <td>${rptSlSrcBadge(r)}</td>
     <td style="font-size:11px">${r.nguon||'—'}</td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
     <td>${r.staff||'—'}</td>
@@ -2817,8 +2824,8 @@ function rptSlMasterHtml(){
       <div class="tbl-head"><div class="tbl-title">Master Data — hồ sơ khách</div><div class="tbl-count">${num(list.length)}</div>
         <span style="margin-left:auto;font-size:11px;color:var(--muted)">Doanh thu trong bộ lọc: <b style="color:var(--green)">${vnd(rev)}</b></span></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày tạo</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
+        <thead><tr><th>Ngày tạo</th><th>Nguồn</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetMasterPage(${page-1})">‹ Trước</button>
@@ -2915,10 +2922,12 @@ function rptSlInputSec(id,icon,title,desc,count,color,body){
 function rptSlInputHtml(){
   const b=rptSlTodoBuckets();
   const info=r=>`<td>${dmy(r.created)||'—'}</td>
+    <td>${rptSlSrcBadge(r)}</td>
     <td class="name">${r.name}</td>
     <td>${r.phone||'<span style="color:var(--red);font-size:11px">chưa có SĐT</span>'}</td>
+    <td style="font-size:11px">${r.kenh||'—'}</td>
     <td>${r.staff||'—'}</td>`;
-  const HEAD='<th>Ngày tạo</th><th>Họ tên</th><th>SĐT</th><th>Kênh</th><th>Sales</th>';
+  const HEAD='<th>Ngày tạo</th><th>Nguồn</th><th>Họ tên</th><th>SĐT</th><th>Kênh</th><th>Sales</th>';
   const tbl=(head,rows)=>`<div class="tbl-scroll"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
   const maInput=r=>`<td style="font-size:11px">${r.manualKH?('<code>'+r.manualKH+'</code>'):'<span style="color:var(--red);font-weight:700">chưa có</span>'}</td>`;
   // Gợi ý theo SĐT: chỉ để Sale biết nên tra mã nào bên Kiot, KHÔNG bấm để điền.
@@ -2978,6 +2987,7 @@ function rptSlCrmHtml(){
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>{const E=ed===r.leadId;return `<tr${E?' style="background:rgba(67,97,238,.05)"':''}>
     ${E?`<td onclick="rptSlStop(event)"><input type="date" value="${r.careDate||''}" onchange="rptSlSetField('${r.leadId}','care_date',this.value,this)" style="${edit};width:128px"></td>`
        :lock(dmy(r.careDate)||'<span style="color:var(--muted)">—</span>',dmy(r.careDate),r)}
+    <td>${rptSlSrcBadge(r)}</td>
     <td>${r.staff||'—'}</td>
     <td class="name" style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">${r.name}</td>
     ${E?`<td onclick="rptSlStop(event)"><input value="${String(r.content||'').replace(/"/g,'&quot;')}" placeholder="Nội dung trao đổi…"
@@ -3025,8 +3035,8 @@ function rptSlCrmHtml(){
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th style="${RPT_SL_TH_EDIT}">Ngày chăm sóc</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái</th><th style="${RPT_SL_TH_EDIT}">Nhóm nguyên nhân mất lead</th><th>Ngày chốt</th><th>Doanh thu</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
+        <thead><tr><th style="${RPT_SL_TH_EDIT}">Ngày chăm sóc</th><th>Nguồn</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái</th><th style="${RPT_SL_TH_EDIT}">Nhóm nguyên nhân mất lead</th><th>Ngày chốt</th><th>Doanh thu</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetCrmPage(${page-1})">‹ Trước</button>
