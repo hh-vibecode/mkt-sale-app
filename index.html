@@ -6219,9 +6219,133 @@ function dhIssuesHtml(){
 }
 function dhViewMode(){return localStorage.getItem('dhViewMode')||'overview';}
 function dhSetViewMode(m){localStorage.setItem('dhViewMode',m);window._dhIssuePage=1;renderDataHub();}
+// ── DATA NHẬP TAY: khách chốt qua kênh KHÔNG đẩy đơn lên Pancake (TikTok, Website, chat tay,
+// khách quen gọi thẳng). Luồng Pancake không thể thấy nhóm này, nhưng nguồn vẫn là Online nên
+// vẫn thuộc phạm vi báo cáo Sale Lẻ. Thay cho tab "6.NGUONLE" của sheet cũ.
+// Đo trên sheet 17/9/2026: 19 khách kiểu này = 232tr doanh thu Kiot THẬT bị luồng Pancake bỏ sót.
+// Bộ trường giữ ĐÚNG như sheet 6.NGUONLE (Ngày tạo · Lead ID · Họ tên · SĐT · Nguồn · Kênh · Sales),
+// chỉ thêm MÃ KH -- vì đó là thứ duy nhất cho phép lấy doanh thu thật từ Kiot.
+// Trạng thái KHÔNG nhập ở đây: khách có hoá đơn Kiot là đã chốt, còn lại chọn ở Master Data.
+let dhManual=[],dhManualLoaded=false;
+const DH_MANUAL_KENH=['Tiktok Chánh Tâm','Tiktok Hiền Thuỷ','Tiktok Shidai','Tiktok Nến Bơ',
+  'Website Chánh Tâm','Website Hiền Thuỷ','Facebook Chánh Tâm','Facebook Hiền Thuỷ','Facebook Shidai',
+  'Facebook Nến Bơ','Zalo','Khách cũ giới thiệu','Gọi trực tiếp','Khác'];
+function dhManualLeadId(r){return'M-'+String(r.id).padStart(4,'0');}
+async function dhLoadManual(force){
+  if(dhManualLoaded&&!force)return;
+  dhManual=await sbFetchAll('datahub_manual','select=*&order=created_date.desc,id.desc');
+  dhManualLoaded=true;
+}
+function dhManualForm(){
+  const inp='height:30px;box-sizing:border-box;padding:3px 9px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:600;font-family:var(--font);outline:none;width:100%';
+  const fld=(l,h)=>`<div style="min-width:0"><div style="font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:3px;text-transform:uppercase">${l}</div>${h}</div>`;
+  return `<div class="tbl-card" style="padding:16px 18px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ Thêm khách nhập tay</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:11px 13px">
+      ${fld('Ngày tạo *',`<input type="date" id="dhmDate" value="${todayISO()}" style="${inp}">`)}
+      ${fld('Họ tên khách *',`<input id="dhmName" placeholder="VD: Chị Lưu" style="${inp}">`)}
+      ${fld('SĐT',`<input id="dhmPhone" inputmode="numeric" placeholder="09xxxxxxxx" style="${inp}">`)}
+      ${fld('Nguồn khách',`<select id="dhmNguon" style="${inp}"><option>Online</option><option>Offline</option></select>`)}
+      ${fld('Kênh',`<input id="dhmKenh" list="dhmKenhList" placeholder="VD: Tiktok Chánh Tâm" style="${inp}">
+        <datalist id="dhmKenhList">${DH_MANUAL_KENH.map(x=>`<option value="${x}">`).join('')}</datalist>`)}
+      ${fld('Sales phụ trách',`<input id="dhmStaff" list="dhmStaffList" placeholder="Tên Sale" style="${inp}">
+        <datalist id="dhmStaffList">${[...new Set(dhOrders.map(o=>o.staff_name).filter(Boolean))].sort().map(x=>`<option value="${x}">`).join('')}</datalist>`)}
+      ${fld('Mã KH Kiot',`<input id="dhmKh" placeholder="KH0075xx" style="${inp}">`)}
+      <div style="display:flex;align-items:flex-end"><button onclick="dhManualAdd()" class="refresh-btn" style="width:100%;height:30px">Thêm</button></div>
+    </div>
+    <div id="dhmMsg" style="margin-top:9px;font-size:11.5px;font-weight:700"></div>
+  </div>`;
+}
+// Brand suy từ tên kênh -- để báo cáo gộp chung được với data Pancake mà Sale không phải chọn thêm.
+function dhManualBrand(kenh){
+  const k=(kenh||'').toLowerCase();
+  if(/chánh tâm|chanh tam/.test(k))return'CT';
+  if(/hiền thu|hien thu/.test(k))return'HT';
+  if(/shidai|thời đại|thoi dai/.test(k))return'Shidai';
+  if(/nến bơ|nen bo|tự tại|tu tai/.test(k))return'TTV';
+  return null;
+}
+async function dhManualAdd(){
+  const g=id=>(document.getElementById(id)||{}).value||'';
+  const msg=document.getElementById('dhmMsg');
+  const kenh=g('dhmKenh').trim();
+  const row={
+    created_date:g('dhmDate'),customer_name:g('dhmName').trim(),phone:g('dhmPhone').trim()||null,
+    nguon:g('dhmNguon'),kenh:kenh||null,brand:dhManualBrand(kenh),
+    staff_name:g('dhmStaff').trim()||null,kiot_code:g('dhmKh').trim().toUpperCase()||null,
+    created_by:localStorage.getItem('dashUserName')||localStorage.getItem('dashRole')||'app',
+  };
+  if(!row.created_date||!row.customer_name){msg.innerHTML='<span style="color:var(--red)">Cần ít nhất Ngày tạo và Họ tên</span>';return;}
+  // Mã KH có gõ thì phải tồn tại bên Kiot -- chặn ngay lúc nhập, đỡ đi dò lỗi về sau.
+  if(row.kiot_code&&!kiotCustByCode()[row.kiot_code]){
+    msg.innerHTML='<span style="color:var(--red)">Mã '+row.kiot_code+' không tồn tại bên Kiot</span>';return;
+  }
+  try{
+    await sbInsert('datahub_manual',row);
+    await dhLoadManual(true);
+    ['dhmName','dhmPhone','dhmKenh','dhmStaff','dhmKh'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    renderDataHub();
+  }catch(e){msg.innerHTML='<span style="color:var(--red)">'+e.message+'</span>';}
+}
+async function dhManualDel(id){
+  if(!confirm('Xoá dòng này?'))return;
+  const res=await fetch(`${SUPABASE_URL}/rest/v1/datahub_manual?id=eq.${id}`,{method:'DELETE',
+    headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+  if(!res.ok){alert('Xoá lỗi '+res.status);return;}
+  await dhLoadManual(true);renderDataHub();
+}
+async function dhManualSet(id,field,value,el){
+  const v=(value||'').trim()||null;
+  if(field==='kiot_code'&&v&&!kiotCustByCode()[v]){alert('Mã '+v+' không tồn tại bên Kiot');if(el)el.style.borderColor='var(--red)';return;}
+  const res=await fetch(`${SUPABASE_URL}/rest/v1/datahub_manual?id=eq.${id}`,{method:'PATCH',
+    headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({[field]:v,updated_at:new Date().toISOString()})});
+  if(!res.ok){alert('Lưu lỗi '+res.status);if(el)el.style.borderColor='var(--red)';return;}
+  await dhLoadManual(true);renderDataHub();
+}
+function dhManualRev(){
+  const inv={};kiotInvoices.forEach(i=>{if(i.customer_code&&i.status===1)inv[i.customer_code]=(inv[i.customer_code]||0)+Number(i.total||0);});
+  return inv;
+}
+function dhManualHtml(){
+  const byCode=kiotCustByCode(),inv=dhManualRev();
+  const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none';
+  const rows=dhManual.map(r=>{
+    const v=inv[r.kiot_code]||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
+    return `<tr>
+      <td>${r.created_date||'—'}</td>
+      <td style="font-size:11px"><code>${dhManualLeadId(r)}</code></td>
+      <td class="name">${r.customer_name}</td>
+      <td>${r.phone||'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="font-size:11px">${r.nguon||'—'}</td>
+      <td style="font-size:11px">${r.kenh||'—'}</td>
+      <td>${r.staff_name||'—'}</td>
+      <td><input value="${(r.kiot_code||'').replace(/"/g,'&quot;')}" placeholder="KH…" style="${inp};width:96px"
+        onblur="if(this.value.trim().toUpperCase()!=='${r.kiot_code||''}')dhManualSet(${r.id},'kiot_code',this.value.toUpperCase(),this)"></td>
+      <td style="font-size:11px">${kc?kc.name:'<span style="color:var(--muted)">—</span>'}</td>
+      <td class="num" style="font-weight:800;color:${v?'var(--green)':'inherit'}">${v?vnd(v):'—'}</td>
+      <td><button onclick="dhManualDel(${r.id})" style="border:none;background:var(--bg2);color:var(--red);border-radius:7px;width:26px;height:26px;cursor:pointer;font-size:13px">✕</button></td>
+    </tr>`;}).join('');
+  const tong=dhManual.reduce((s,r)=>s+(inv[r.kiot_code]||0),0);
+  return dhManualForm()+`
+    <div class="kpi-grid" style="margin-bottom:14px">
+      ${mkKpi(ic('clipboard'),'Data nhập tay',num(dhManual.length),'khách không có đơn Pancake','g-blue')}
+      ${mkKpi(ic('check'),'Đã có Mã KH',num(dhManual.filter(r=>r.kiot_code).length),'mới lấy được doanh thu','g-green')}
+      ${mkKpi(ic('cash'),'Doanh thu',vnd(tong),'từ hoá đơn KiotViet thật','g-teal')}
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-head"><div class="tbl-title">Data nhập tay</div><div class="tbl-count">${num(dhManual.length)}</div>
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)">Vào thẳng Master Data của báo cáo Sale Lẻ</span></div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Ngày tạo</th><th>Lead ID</th><th>Họ tên khách</th><th>SĐT</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Mã KH</th><th>Tên bên Kiot</th><th>Doanh thu</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Chưa có dòng nào — dùng form phía trên để thêm</td></tr>'}</tbody>
+      </table></div>
+    </div>`;
+}
 async function renderDataHub(){
   await dhLoadOrders();
   await kiotLoadInvoices();
+  await dhLoadManual();
   const dhConfirmed=dhOrders.filter(dhIsOrder);
   const dhNew=dhOrders.filter(o=>o.customer_status==='Mới').length;
   const dhOld=dhOrders.filter(o=>o.customer_status==='Cũ').length;
@@ -6290,10 +6414,11 @@ async function renderDataHub(){
     <div class="page-sub">Nguồn dữ liệu Pancake + KiotViet (không dùng bảng migrate từ Google Sheet)</div>
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
-        ${tabBtn('overview','📊 Tổng Quan')}${tabBtn('issues','⚠️ Lỗi Nhập Liệu ('+issueCount+')')}
+        ${tabBtn('overview','📊 Tổng Quan')}${tabBtn('manual','✍️ Data Nhập Tay ('+dhManual.length+')')}${tabBtn('issues','⚠️ Lỗi Nhập Liệu ('+issueCount+')')}
       </span>
     </div>`;
   if(mode==='issues'){el.innerHTML=header+dhIssuesHtml();return;}
+  if(mode==='manual'){el.innerHTML=header+dhManualHtml();return;}
   el.innerHTML=header+`
     ${pancakeOrdersHtml}
     <div class="tbl-card" style="margin-bottom:16px">
@@ -6472,6 +6597,7 @@ async function renderReportSaleLe(){
   if(!crmCustomers.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>';return;}
   await dhLoadOrders();
   await kiotLoadInvoices();
+  await dhLoadManual();
   await rptSlLoadManual();
   const mode=rptSlViewMode();
   el.innerHTML=`
@@ -6747,6 +6873,28 @@ function rptSlBuildMaster(){
       isChot:chot.length>0,closeDate:chot.length?chot[0].order_date:'',
       invoiceDate:invs.length?(invs[invs.length-1].purchase_date||'').slice(0,10):'',
       lastTouch,daysIdle:lastTouch?Math.floor((new Date()-new Date(lastTouch))/86400000):null};
+  });
+  // Data NHẬP TAY (khách không có đơn Pancake) cũng là khách Sale Lẻ -> gộp vào Master cùng một dạng dòng.
+  // Nhóm này không có đơn Pancake nên không có thẻ; coi là ĐÃ CHỐT khi có hoá đơn Kiot thật.
+  (typeof dhManual!=='undefined'?dhManual:[]).filter(r=>(r.sale_type||'Lẻ')!=='Sỉ').forEach(r=>{
+    const leadId=dhManualLeadId(r);
+    const kc=r.kiot_code?byCode[r.kiot_code]:null;
+    const invs=(kc?(invByCode[kc.code]||[]):[]).slice().sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
+    const revenue=invs.reduce((s,i)=>s+Number(i.total||0),0);
+    const mn=rptSlManual[leadId]||{};
+    const touches=[r.created_date,...invs.map(i=>(i.purchase_date||'').slice(0,10))].filter(Boolean).sort();
+    const lastTouch=touches[touches.length-1]||'';
+    rows.push({key:'M'+r.id,orders:[],invs,kh:kc?kc.code:null,revenue,linkBy:kc?'Nhập tay':'',
+      manualKH:r.kiot_code||null,noteKH:null,kiotCusts:kc?[kc]:[],leadId,suggest:[],isManual:true,
+      manualStatus:mn.status||'',lostGroup:mn.lost_group||'',lostReason:mn.lost_reason||'',note:mn.note||r.note||'',
+      name:r.customer_name||'—',phone:r.phone||(kc?(kc.phone||kc.phone_key||''):''),phoneFromKiot:!r.phone,
+      created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staff:r.staff_name||'',adId:'',
+      nguon:r.nguon||'Online',kenh:r.kenh||'(nhập tay)',diaChi:rptSlDiaChiKiot(kc?[kc]:[]),
+      kiotName:kc?kc.name:'',saleType:r.sale_type||'Lẻ',
+      status:invs.length?'Chốt đơn':(mn.status||''),tagStatus:'Nhập tay',
+      isChot:invs.length>0,closeDate:invs.length?(invs[0].purchase_date||'').slice(0,10):'',
+      invoiceDate:invs.length?(invs[invs.length-1].purchase_date||'').slice(0,10):'',
+      lastTouch,daysIdle:lastTouch?Math.floor((new Date()-new Date(lastTouch))/86400000):null});
   });
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
 }
