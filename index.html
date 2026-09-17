@@ -6050,6 +6050,20 @@ function dhExtractKH(note){
   return m?('KH'+String(m[1]).padStart(6,'0')):null;
 }
 function dhLast9(s){const d=(s||'').toString().replace(/\D/g,'');return d.length>=9?d.slice(-9):d;}
+// So tên Pancake với tên Kiot. Kiot ghi kiểu "KL Chị Thuỷ - QN" nên phải bóc tiền tố KL/KS/KH, xưng hô,
+// và hậu tố tỉnh. Dấu tiếng Việt có 2 cách gõ Unicode khác nhau ("Thuỷ" vs "Thủy") -> phải normalize NFC
+// rồi bỏ dấu, nếu không sẽ báo lệch oan hàng loạt.
+function dhNameKey(s){
+  return(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/gi,'d').toLowerCase()
+    .replace(/[-–].*$/,'').replace(/^\s*(kl|ks|kh)\s+/,'')
+    .replace(/\b(anh|chi|chu|co|bac|ong|ba|em|thay|su|mr|mrs|ms|a|c|e)\b/g,'')
+    .replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
+}
+function dhNameMismatch(a,b){
+  const x=dhNameKey(a).split(' ').filter(w=>w.length>1),y=dhNameKey(b).split(' ').filter(w=>w.length>1);
+  if(!x.length||!y.length)return false;
+  return!y.some(w=>x.includes(w));
+}
 const DH_SEV={err:{label:'Lỗi',color:'var(--red)'},warn:{label:'Cảnh báo',color:'var(--yellow)'},info:{label:'Cần bổ sung',color:'var(--muted)'}};
 // Lẻ hay Sỉ lấy theo THẺ khách trên Pancake (KH LẺ / KH SỈ) chứ không theo brand -- Shidai có cả 2 loại
 // (523 đơn Lẻ / 202 đơn Sỉ). Bên Kiot thì theo chi nhánh: "Tổng kho sỉ Shidai" là Sỉ, còn lại là Lẻ.
@@ -6078,7 +6092,8 @@ function dhDataIssues(){
           (o.phone?('SĐT '+o.phone+' không khớp khách "Khách lẻ" nào bên Kiot'):'không có SĐT')+
           ' · chưa dán Mã KH → không lấy được doanh thu');
       }else if(!kh&&autoMatch.length){
-        add('Chưa dán Mã KH (app đang tự nối bằng SĐT)','info',o,'tự khớp '+autoMatch.map(c=>c.code).join(', ')+' — dán mã vào ghi chú sẽ chắc chắn hơn');
+        add('Đơn chốt chưa dán Mã KH','warn',o,'app KHÔNG tự nối bằng SĐT — gợi ý theo SĐT: '
+          +autoMatch.map(c=>c.code+' ("'+(c.name||'')+'")').join(', ')+' · đối chiếu rồi dán mã vào ghi chú');
       }
     }
     if(!isChot&&kh)add('Có Mã KH nhưng thiếu thẻ CHỐT ĐƠN','warn',o,kh+' · thẻ hiện tại: '+(o.customer_tags||'—'));
@@ -6097,6 +6112,16 @@ function dhDataIssues(){
       add('Khách Kiot không thuộc nhóm "Khách lẻ"','warn',o,kh+' · nhóm hiện tại: '+(kc.customer_group||'(trống)'));
     if(o.phone&&kc.phone_key&&dhLast9(o.phone)!==kc.phone_key)
       add('SĐT lệch giữa Pancake và Kiot','err',o,kh+' · Pancake '+o.phone+' ≠ Kiot '+(kc.phone||kc.phone_key));
+    // Mã Sale dán trỏ sang khách A, nhưng SĐT trên đơn lại là của khách B bên Kiot -> gần như chắc chắn
+    // dán nhầm mã. Đây là kiểu lỗi ÂM THẦM: mã vẫn hợp lệ nên mọi check khác đều đi qua, doanh thu vẫn
+    // cộng, chỉ là cộng cho nhầm người.
+    const pk0=dhLast9(o.phone),alt=pk0?(byPhone[pk0]||[]):[];
+    if(alt.length&&!alt.some(c=>c.code===kh))
+      add('Mã KH lệch với khách khớp SĐT','err',o,'dán '+kh+' ("'+(kc.name||'')+'") nhưng SĐT '+o.phone+' bên Kiot là '
+        +alt.map(c=>c.code+' ("'+(c.name||'')+'")').join(', ')+' → kiểm tra lại, dễ cộng doanh thu nhầm người');
+    // Tên hai bên không có lấy một chữ chung: có thể là nickname Facebook (bình thường), cũng có thể dán nhầm.
+    if(dhIsOrder(o)&&kc.name&&dhNameMismatch(o.customer_name,kc.name))
+      add('Tên Pancake khác hẳn tên bên Kiot','info',o,kh+' · Pancake "'+(o.customer_name||'')+'" vs Kiot "'+kc.name+'" — có thể là nickname, cần liếc qua');
     if((khUsage[kh]||[]).length>1){
       const other=khUsage[kh].filter(x=>x!==o).map(x=>'#'+x.system_id+' ('+(DH_BRAND_LABEL[x.brand]||x.brand)+')').join(', ');
       add('Mã KH bị điền trùng ở nhiều đơn','err',o,kh+' · trùng với '+other+' → doanh thu dễ bị đếm 2 lần');
