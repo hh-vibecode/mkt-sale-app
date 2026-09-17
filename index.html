@@ -2293,13 +2293,38 @@ async function rptSlSaveManual(leadId,patch){
 // Ô nhập trong bảng: chặn click nổi lên <tr> (nếu không sẽ mở modal chi tiết khi đang chọn dropdown).
 function rptSlStop(e){e.stopPropagation();}
 // Giá trị tiềm năng: Sale gõ số tự do ("15.000.000", "15tr", "15000000") -> chuẩn hoá về số nguyên VND.
-async function rptSlSetField(leadId,field,value,el){
+// Giá trị tiềm năng: Sale gõ tự do ("15.000.000", "15tr", "500k") -> chuẩn hoá về số nguyên VND.
+async function rptSlSetPotential(leadId,raw,el){
+  let s=String(raw||'').trim().toLowerCase().replace(/[.,\s]/g,'');
+  let v=0;
+  if(s){
+    const m=/^(\d+)(tr|trieu|triệu|k|ngan|nghin|nghìn)?$/.exec(s);
+    if(!m){if(el)el.style.borderColor='var(--red)';return;}
+    v=Number(m[1])*(m[2]?(/^(tr|trieu|triệu)$/.test(m[2])?1e6:1e3):1);
+  }
+  if(v===Number((rptSlManual[leadId]||{}).potential_value||0)){if(el)el.value=v?num(v):'';return;}
+  await rptSlSetFieldRaw(leadId,{potential_value:v||null},el);
+}
+// Lưu ô nhập chữ. KHÔNG nhúng giá trị cũ vào thuộc tính HTML để so sánh: JSON.stringify sinh ra dấu
+// nháy kép, mà thuộc tính onblur="..." cũng nháy kép -> thuộc tính bị cắt đứt giữa chừng và handler
+// KHÔNG BAO GIỜ CHẠY (chính là lý do "Nội dung trao đổi" gõ xong mất trắng). So với dữ liệu trong bộ
+// nhớ thay vì nhúng vào HTML.
+async function rptSlSaveText(leadId,field,el){
+  const cur=String((rptSlManual[leadId]||{})[field]||'');
+  if(String(el.value)===cur)return;
+  await rptSlSetField(leadId,field,el.value,el);
+}
+// Ghi thẳng 1 hoặc nhiều trường (giá trị đã chuẩn hoá sẵn, không ép về chuỗi).
+async function rptSlSetFieldRaw(leadId,patch,el){
   const old=el?el.style.borderColor:'';
   try{
-    await rptSlSaveManual(leadId,{[field]:(value||'').trim()||null});
+    await rptSlSaveManual(leadId,patch);
     if(el){el.style.borderColor='var(--green)';setTimeout(()=>{el.style.borderColor=old;},900);}
     renderReportSaleLe();
-  }catch(err){alert(err.message);if(el)el.style.borderColor='var(--red)';}
+  }catch(err){alert('Chưa lưu được: '+err.message);if(el)el.style.borderColor='var(--red)';}
+}
+async function rptSlSetField(leadId,field,value,el){
+  return rptSlSetFieldRaw(leadId,{[field]:String(value==null?'':value).trim()||null},el);
 }
 async function renderReportSaleLe(){
   const el=document.getElementById('page-report-saleretail');
@@ -2903,7 +2928,7 @@ function rptSlCrmHtml(){
     <td class="name" style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">${r.name}</td>
     <td onclick="rptSlStop(event)"><input value="${String(r.content||'').replace(/"/g,'&quot;')}" placeholder="Nội dung trao đổi…"
       onkeydown="if(event.key==='Enter')this.blur()"
-      onblur="if(this.value!==${JSON.stringify(String(r.content||''))})rptSlSetField('${r.leadId}','content',this.value,this)"
+      onblur="rptSlSaveText('${r.leadId}','content',this)"
       style="${edit};width:260px"></td>
     <td class="num" onclick="rptSlStop(event)">${r.isChot?'<span style="color:var(--muted)">—</span>'
       :`<input value="${r.potential?num(r.potential):''}" inputmode="numeric" placeholder="0"
