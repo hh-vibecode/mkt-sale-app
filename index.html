@@ -6326,7 +6326,6 @@ function crmGoToFiltered(quickF){window._crmQuickFilter=quickF;window._crmPage=1
 function renderWorkspace(){
   const el=document.getElementById('page-workspace');
   if(!el)return;
-  if(!crmCustomers.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>';return;}
   const salesF=crmWsSalesFilter();
   const today=todayISO();
   const rows=crmCustomers.map(c=>({c,lead:(window._crmLeadByCustomer[c.customer_id]||[])[0]||{},acts:window._crmActByCustomer[c.customer_id]||[]}))
@@ -6434,43 +6433,7 @@ function renderOrders(){
 function rptSlViewMode(){return localStorage.getItem('rptSlViewMode')||'overview';}
 function rptSlSetViewMode(m){localStorage.setItem('rptSlViewMode',m);renderReportSaleLe();}
 function rptSlLast9(s){const d=(s||'').toString().replace(/\D/g,'');return d.length>=9?d.slice(-9):d;}
-// Data trước 1/6/2026 là bulk import cũ không đáng tin (>6k lead dồn vào 1 lượt lúc migrate) -- loại khỏi
-// MỌI báo cáo Sale Lẻ. LƯU Ý: leads.created_at bị stamp ĐỒNG LOẠT lúc migrate (không phải ngày thật), nên phải
-// lấy ngày thật từ bảng cũ saonl_customers.created_date (còn giữ nguyên, chưa xoá) qua lead_id trùng nhau.
-let rptSlLegacyDate=null;
-async function rptSlLoadLegacyDates(){
-  if(rptSlLegacyDate)return;
-  rptSlLegacyDate={};
-  try{
-    const rows=await sbFetchAll('saonl_customers','select=lead_id,created_date');
-    rows.forEach(r=>{rptSlLegacyDate[r.lead_id]=r.created_date;});
-  }catch(e){console.warn('Không tải được saonl_customers (ngày tạo gốc):',e.message);}
-}
 const RPT_SL_MIN_DATE='2026-06-01';
-// Ngày dùng để lọc 1 lead theo khoảng thời gian trên topbar -- giống hệt bản Sale Overview cũ: lead ĐÃ CHỐT
-// tính theo NGÀY CHỐT (ngày đơn xác nhận sớm nhất), lead còn lại tính theo ngày tạo thật.
-function rptSlLeadDateFor(l){
-  if((l.lead_status||'')==='Chốt đơn'){
-    const ords=(window._crmOrdByCustomer[l.customer_id]||[]).filter(o=>o.status==='confirmed'&&o.order_date);
-    if(ords.length)return ords.map(o=>o.order_date).sort()[0];
-  }
-  return rptSlRealDate(l.lead_id,l.created_at);
-}
-// Lead không có trong saonl_customers = lead tạo mới thẳng trên CRM v2 sau migrate -> luôn tính là "gần đây".
-function rptSlRecentLeads(){
-  const inRange=saleRangePred(l=>{const d=rptSlLeadDateFor(l);return d?localDate(d):null;});
-  return crmLeads.filter(l=>{
-    const legacy=rptSlLegacyDate&&rptSlLegacyDate[l.lead_id];
-    if(legacy&&legacy<RPT_SL_MIN_DATE)return false;
-    return inRange(l);
-  });
-}
-// Khớp SĐT khách CRM với datahub_orders -- ưu tiên dòng có tag CHỐT ĐƠN (đáng tin nhất), rồi tới ngày mới nhất.
-function rptSlDhMatches(phone){
-  const key=rptSlLast9(phone);if(!key)return[];
-  return dhOrders.filter(o=>rptSlLast9(o.phone)===key)
-    .sort((a,b)=>(dhIsOrder(b)?1:0)-(dhIsOrder(a)?1:0)||String(b.order_date||'').localeCompare(String(a.order_date||'')));
-}
 // ── Dữ liệu Sale NHẬP TAY (bảng saleretail_manual) -> đổ thẳng sang Master Data ──
 // Tách riêng khỏi datahub_orders/kiot_* vì 2 bảng đó bị job sync ghi đè mỗi lần chạy.
 let rptSlManual={},rptSlManualLoaded=false;
@@ -6509,7 +6472,6 @@ async function renderReportSaleLe(){
   if(!crmCustomers.length){el.innerHTML='<div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>';return;}
   await dhLoadOrders();
   await kiotLoadInvoices();
-  await rptSlLoadLegacyDates();
   await rptSlLoadManual();
   const mode=rptSlViewMode();
   el.innerHTML=`
@@ -6535,142 +6497,97 @@ async function renderReportSaleLe(){
     rptSlDrawChanChart();
   }
 }
-// Brand không có sẵn trên CRM v2 (customers/leads) -- suy ra theo đúng thứ tự bản Sale Overview cũ:
-// text cột Kênh trước (riêng TTV/Nến Bơ luôn theo text), rồi Ads ID -> tên chiến dịch MKT, cuối cùng mới
-// khớp SĐT với Data Hub. Nhờ vậy gần như đơn nào cũng ra brand, 4 brand cộng lại xấp xỉ tổng doanh thu.
-function rptSlBrandOfPhone(phone){const m=rptSlDhMatches(phone)[0];return m?m.brand:null;}
-function rptSlBrandOfOrder(o,custById,adCampMap){
-  const lead=(window._crmLeadByCustomer[o.customer_id]||[])[0]||{};
-  const byChannel=detectBrandFromChannelText(lead.channel);
-  if(byChannel==='TTV')return 'TTV';
-  const adId=(lead.ad_id||'').toString().trim();
-  if(adId&&adCampMap[adId]){const b=detectBrandFromChannelText(adCampMap[adId]);if(b)return b;}
-  if(byChannel)return byChannel;
-  return rptSlBrandOfPhone((custById[o.customer_id]||{}).phone);
-}
+// ── TỔNG QUAN: dựng HOÀN TOÀN trên Pancake (datahub_orders) + KiotViet (kiot_invoices).
+// KHÔNG còn đọc bảng nào migrate từ Google Sheet (crmLeads/crmOrders/crmCustomers/saonl_*).
+// Phễu bám đúng thẻ Pancake: Data thô -> Lead đạt -> Tiềm năng -> Chốt đơn; doanh thu bám hoá đơn Kiot
+// nối bằng MÃ KH (không tự nối SĐT), nên mọi con số ở đây đều truy ngược được về chứng từ.
 function rptSlOverviewHtml(){
-  const leads=rptSlRecentLeads();
-  const total=leads.length;
-  const byStatus=s=>leads.filter(l=>(l.lead_status||'')===s);
-  const newLeads=leads.filter(l=>!l.lead_status);
-  const caring=byStatus('Đang chăm sóc');
-  const waiting=byStatus('Chờ phản hồi');
-  const interested=byStatus('Có nhu cầu');
-  const closedLeads=byStatus('Chốt đơn');
-  const lostLeads=byStatus('Mất lead');
-  const closeRate=total>0?closedLeads.length/total*100:0;
-  // Doanh thu KHÔNG lọc theo mốc 1/6 -- đơn đã chốt là tiền thật, tính toàn bộ lịch sử (khớp đúng số bên
-  // trang Sale Overview cũ). Mốc 1/6 chỉ áp dụng cho phễu LEAD (loại bulk data cũ), không áp cho doanh thu.
-  // Vẫn tôn trọng khoảng ngày chọn trên topbar (theo ngày đơn), rỗng = toàn bộ lịch sử.
-  const inRangeOrd=saleRangePred(o=>o.order_date?localDate(o.order_date):null);
-  const confirmedOrders=crmOrders.filter(o=>o.status==='confirmed').filter(inRangeOrd);
-  const closedRev=confirmedOrders.reduce((s,o)=>s+Number(o.revenue||0),0);
-  const totalPotential=leads.reduce((s,l)=>s+Number(l.current_potential_value||0),0);
-  const custById={};crmCustomers.forEach(c=>custById[c.customer_id]=c);
-  const salesName=id=>crmSalesName(id)||'—';
-  const cols=['Ngày tạo','Họ tên','SĐT','Nguồn','Kênh','Sales','Trạng thái','Tiềm năng'];
-  const rowOf=l=>{const c=custById[l.customer_id]||{};return[l.created_at?l.created_at.slice(0,10):'—',c.name||'—',c.phone||'—',l.source||'—',l.channel||'—',salesName(l.assigned_sales),l.lead_status||'Khách mới',l.current_potential_value?vnd(l.current_potential_value):''];};
-  window._rptSlLists={
-    total:{title:'Tất cả lead',cols,rows:leads.map(rowOf)},
-    new:{title:'Khách mới',cols,rows:newLeads.map(rowOf)},
-    caring:{title:'Đang chăm sóc',cols,rows:caring.map(rowOf)},
-    waiting:{title:'Chờ phản hồi',cols,rows:waiting.map(rowOf)},
-    interested:{title:'Có nhu cầu',cols,rows:interested.map(rowOf)},
-    closed:{title:'Đã chốt',cols,rows:closedLeads.map(rowOf)},
-    lost:{title:'Mất lead',cols,rows:lostLeads.map(rowOf)},
-  };
-  // Doanh thu tách theo 4 brand -- bấm vào ô Tổng Doanh Thu để xem (thay cho việc bày 4 ô riêng ngoài trang)
-  const adCampMap=buildAdCampMap();
-  const revByBrand={};
-  confirmedOrders.forEach(o=>{
-    const b=rptSlBrandOfOrder(o,custById,adCampMap)||'__';
-    const e=revByBrand[b]=revByBrand[b]||{orders:0,rev:0};
-    e.orders++;e.rev+=Number(o.revenue||0);
-  });
-  const brandRows=BRAND_LIST.map(b=>{const e=revByBrand[b.key]||{orders:0,rev:0};
-    return[b.icon+' '+b.label,num(e.orders),vnd(e.rev),closedRev>0?pct(e.rev/closedRev*100):'—'];});
-  if(revByBrand['__'])brandRows.push(['Khác (ngoài 4 brand)',num(revByBrand['__'].orders),vnd(revByBrand['__'].rev),closedRev>0?pct(revByBrand['__'].rev/closedRev*100):'—']);
-  brandRows.push(['TỔNG',num(confirmedOrders.length),vnd(closedRev),'100%']);
-  window._rptSlLists.brandrev={title:'Doanh thu đã chốt theo brand',cols:['Brand','Số đơn','Doanh thu','Tỉ trọng'],rows:brandRows};
-  const clk=(key,html)=>`<div onclick="rptSlShow('${key}')" title="Bấm để xem chi tiết" style="cursor:pointer">${html}</div>`;
-  const byChan={};leads.forEach(l=>{const k=(l.channel||'Khác').trim()||'Khác';byChan[k]=(byChan[k]||0)+1;});
-  const chanRows=Object.entries(byChan).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:9px 14px;font-weight:700">${k}</td><td style="padding:9px 14px;text-align:center;font-weight:700">${num(n)}</td><td style="padding:9px 14px"><div style="height:5px;background:var(--bg2);border-radius:4px"><div style="height:5px;background:var(--accent);border-radius:4px;width:${total?(n/total*100).toFixed(0):0}%"></div></div></td></tr>`).join('');
-  const bySales={};
-  leads.forEach(l=>{const s=l.assigned_sales||'__unassigned';(bySales[s]=bySales[s]||{total:0,closed:0,rev:0}).total++;if((l.lead_status||'')==='Chốt đơn')bySales[s].closed++;});
-  confirmedOrders.forEach(o=>{const s=o.sales_id||'__unassigned';(bySales[s]=bySales[s]||{total:0,closed:0,rev:0}).rev+=Number(o.revenue||0);});
-  const salesRows=Object.entries(bySales).sort((a,b)=>b[1].total-a[1].total).map(([sid,d])=>`<tr style="border-bottom:1px solid var(--border)">
-    <td style="padding:9px 14px;font-weight:700">${sid==='__unassigned'?'Chưa phân công':salesName(sid)}</td>
-    <td style="padding:9px 14px;text-align:center;font-weight:700">${num(d.total)}</td>
-    <td style="padding:9px 14px;text-align:center;font-weight:700;color:var(--green)">${num(d.closed)}</td>
-    <td style="padding:9px 14px;text-align:center;font-weight:700;color:#2563eb">${d.total>0?pct(d.closed/d.total*100):'—'}</td>
-    <td style="padding:9px 14px;text-align:right;font-weight:800;color:var(--green)">${d.rev>0?vnd(d.rev):'—'}</td>
-  </tr>`).join('');
-  const byLostReason={};
-  lostLeads.forEach(l=>{const act=(window._crmActByCustomer[l.customer_id]||[])[0]||{};const g=(act.lost_group||act.lost_reason||'Khác').trim()||'Khác';byLostReason[g]=(byLostReason[g]||0)+1;});
-  const lostRows=Object.entries(byLostReason).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<tr style="border-bottom:1px solid var(--border)"><td style="padding:9px 14px;font-weight:700">${k}</td><td style="padding:9px 14px;text-align:center;font-weight:700;color:var(--red)">${num(n)}</td></tr>`).join('');
-  // Top 10 khách tiềm năng (loại đã chốt/đã mất -- những lead còn "mở" mới cần ưu tiên chăm sóc)
-  const topPot=leads.filter(l=>Number(l.current_potential_value||0)>0&&l.lead_status!=='Chốt đơn'&&l.lead_status!=='Mất lead')
-    .sort((a,b)=>Number(b.current_potential_value||0)-Number(a.current_potential_value||0)).slice(0,10);
-  const topPotRows=topPot.map(l=>{
-    const c=custById[l.customer_id]||{};
-    const lastAct=(window._crmActByCustomer[l.customer_id]||[])[0]||{};
-    return `<tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:8px 12px;font-size:12px;color:var(--muted)">${l.lead_id||'—'}</td>
-      <td style="padding:8px 12px;font-weight:700">${c.name||'—'}</td>
-      <td style="padding:8px 12px;font-size:12px">${salesName(l.assigned_sales)}</td>
-      <td style="padding:8px 12px;font-size:12px">${l.source||'—'}</td>
-      <td style="padding:8px 12px;font-size:11px;color:var(--text2);line-height:1.45;max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${(lastAct.conversation_content||'').replace(/"/g,'&quot;')}">${lastAct.conversation_content||'—'}</td>
-      <td style="padding:8px 12px;text-align:right;font-weight:800;color:#7c3aed">${vnd(l.current_potential_value)}</td>
-      <td style="padding:8px 12px;font-size:11px">${l.lead_status||'Khách mới'}</td>
-    </tr>`;
-  }).join('');
-  window._rptSlChanEntries=Object.entries(byChan).sort((a,b)=>b[1]-a[1]);
+  const master=rptSlBuildMaster();
+  const le=dhOrders.filter(o=>dhSaleTypeOrder(o)!=='Sỉ');
+  const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
+  const dat=le.filter(o=>tag(o,'LEAD ĐẠT')||dhIsQualified(o));
+  const tiem=le.filter(o=>tag(o,'TIỀM NĂNG')), chotO=le.filter(dhIsOrder);
+  const chotKh=master.filter(r=>r.isChot), noiKh=master.filter(r=>r.kh);
+  const rev=master.reduce((s,r)=>s+r.revenue,0);
+  const invCount=master.reduce((s,r)=>s+r.invs.length,0);
+  window._rptSlLists={};
+  const L=(k,d)=>{window._rptSlLists[k]=d;return k;};
+  const custCols=['Ngày tạo','Lead ID','Họ tên','SĐT','Kênh','Sales','Trạng thái','Mã KH','Doanh thu'];
+  const custRows=list=>list.map(r=>[r.created,r.leadId,r.name,r.phone||'',r.kenh,r.staff||'',r.isChot?'Chốt đơn':(r.manualStatus||r.tagStatus||''),r.kh||'',r.revenue>0?vnd(r.revenue):'']);
+  const ordCols=['Ngày','Đơn','Brand','Khách hàng','SĐT','Sales','Thẻ Pancake'];
+  const ordRows=list=>list.map(o=>[o.order_date,'#'+o.system_id,DH_BRAND_LABEL[o.brand]||o.brand,o.customer_name||'',o.phone||'',o.staff_name||'',o.customer_tags||'']);
+  L('ovData',{title:'Toàn bộ data Lẻ từ Pancake',cols:ordCols,rows:ordRows(le)});
+  L('ovDat',{title:'Lead đạt (đã qua sàng lọc)',cols:ordCols,rows:ordRows(dat)});
+  L('ovTiem',{title:'Lead tiềm năng',cols:ordCols,rows:ordRows(tiem)});
+  L('ovChot',{title:'Đơn gắn thẻ CHỐT ĐƠN',cols:ordCols,rows:ordRows(chotO)});
+  L('ovChotKh',{title:'Khách đã chốt',cols:custCols,rows:custRows(chotKh)});
+  L('ovNoi',{title:'Khách đã nối được hoá đơn Kiot',cols:custCols,rows:custRows(noiKh)});
+  L('ovChuaNoi',{title:'Khách đã chốt nhưng CHƯA nối được Kiot',cols:custCols,rows:custRows(chotKh.filter(r=>!r.kh))});
+
+  // Doanh thu theo brand -- brand lấy thẳng từ shop Pancake, không phải suy đoán như bản cũ.
+  const byBrand={};master.forEach(r=>{if(r.revenue>0){const b=DH_BRAND_LABEL[r.brand]||r.brand||'Khác';byBrand[b]=(byBrand[b]||0)+r.revenue;}});
+
+  const bySale={};
+  master.forEach(r=>{const s=r.staff||'(chưa gán)';bySale[s]=bySale[s]||{data:0,chot:0,rev:0,noi:0};bySale[s].data++;if(r.isChot)bySale[s].chot++;if(r.kh)bySale[s].noi++;bySale[s].rev+=r.revenue;});
+  const saleRows=Object.entries(bySale).sort((a,b)=>b[1].rev-a[1].rev||b[1].chot-a[1].chot);
+
+  const byKenh={};master.forEach(r=>{const k=r.kenh||'(không rõ)';byKenh[k]=byKenh[k]||{n:0,chot:0,rev:0};byKenh[k].n++;if(r.isChot)byKenh[k].chot++;byKenh[k].rev+=r.revenue;});
+  const kenhRows=Object.entries(byKenh).sort((a,b)=>b[1].n-a[1].n);
+  window._rptSlChanEntries=kenhRows.map(([k,v])=>[k,v.n]);
+
+  const stat={};master.filter(r=>!r.isChot).forEach(r=>{const s=r.manualStatus||'(chưa cập nhật)';stat[s]=(stat[s]||0)+1;});
+
+  const bar=(rows,total,fmt)=>rows.map(([k,v])=>{const n=typeof v==='object'?v.n:v;const p=total?n/total*100:0;
+    return `<div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;font-weight:700;margin-bottom:3px">
+        <span>${k}</span><span style="color:var(--muted)">${fmt?fmt(v):num(n)} · ${pct(p)}</span></div>
+      <div style="height:7px;background:var(--bg2);border-radius:5px;overflow:hidden"><div style="width:${p.toFixed(1)}%;height:100%;background:var(--accent);border-radius:5px"></div></div>
+    </div>`;}).join('');
+  const card=(title,body)=>`<div class="tbl-card" style="padding:16px 18px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:800;margin-bottom:12px">${title}</div>${body}</div>`;
+
+  const funnel=[['Tổng data Lẻ',le.length,'ovData','#94a3b8'],['Lead đạt',dat.length,'ovDat','#4361ee'],
+    ['Lead tiềm năng',tiem.length,'ovTiem','#f59e0b'],['Đơn chốt',chotO.length,'ovChot','#0abf7a']];
+  const fmax=funnel[0][1]||1;
+  const funnelHtml=funnel.map(([l,v,k,c],i)=>`<div onclick="rptSlShow('${k}')" style="cursor:pointer;margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:4px">
+      <span>${l}</span><span>${num(v)}${i?' <span style="color:var(--muted);font-weight:600">· '+pct(funnel[i-1][1]?v/funnel[i-1][1]*100:0)+'</span>':''}</span></div>
+    <div style="height:22px;background:var(--bg2);border-radius:6px;overflow:hidden"><div style="width:${(v/fmax*100).toFixed(1)}%;height:100%;background:${c};border-radius:6px"></div></div>
+  </div>`).join('');
+
   return `
-    <div class="sec-label">I. Doanh Thu</div>
-    <div class="kpi-grid" style="grid-template-columns:1fr 1fr">
-      ${clk('brandrev',mkKpi(ic('check'),'Tổng Doanh Thu Đã Chốt',vnd(closedRev),num(confirmedOrders.length)+' đơn · gộp 4 brand · 👆 xem tách brand','g-green'))}
-      ${mkKpi(ic('diamond'),'Giá Trị Tiềm Năng',vnd(totalPotential),'toàn bộ lead đang mở','g-yellow')}
+    <div class="kpi-grid" style="margin-bottom:14px">
+      ${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(invCount)+' hoá đơn Kiot · nối bằng Mã KH','g-green')}
+      ${mkKpi(ic('users'),'Khách vào Master',num(master.length),num(chotKh.length)+' đã chốt · '+num(master.length-chotKh.length)+' tiềm năng','g-blue')}
+      ${mkKpi(ic('check'),'Tỉ lệ chốt',pct(le.length?chotO.length/le.length*100:0),num(chotO.length)+' đơn chốt / '+num(le.length)+' data','g-teal')}
+      ${mkKpi(ic('duplicate'),'Đã nối Kiot',num(noiKh.length)+'/'+num(chotKh.length),chotKh.length?pct(noiKh.length/chotKh.length*100)+' khách chốt có Mã KH':'—','g-purple')}
+      ${mkKpi(ic('cash'),'Giá trị TB / khách',vnd(noiKh.length?rev/noiKh.length:0),'trên khách đã nối được hoá đơn','g-yellow')}
     </div>
-    <div class="sec-label">II. Tổng Quan Lead (phễu)</div>
-    <div class="kpi-grid">
-      ${clk('total',mkKpi(ic('users'),'Tổng Lead',num(total),'tất cả lead','g-blue'))}
-      ${mkKpi(ic('target'),'Tỉ Lệ Chốt',pct(closeRate),num(closedLeads.length)+'/'+num(total)+' lead','g-teal')}
-      ${clk('new',mkKpi(ic('sparkle'),'Khách Mới',num(newLeads.length),'chưa có trạng thái','g-purple'))}
-      ${clk('caring',mkKpi(ic('chat'),'Đang Chăm Sóc',num(caring.length),'đang xử lý','g-blue'))}
-      ${clk('waiting',mkKpi(ic('clock'),'Chờ Phản Hồi',num(waiting.length),'đang chờ khách','g-yellow'))}
-      ${clk('interested',mkKpi(ic('sparkle'),'Có Nhu Cầu',num(interested.length),'sắp chốt','g-orange'))}
-      ${clk('closed',mkKpi(ic('check'),'Đã Chốt',num(closedLeads.length),'đã ra đơn','g-green'))}
-      ${clk('lost',mkKpi(ic('xcircle'),'Mất Lead',num(lostLeads.length),'không thành','g-red'))}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px">
+      ${card('Phễu chuyển đổi <span style="font-size:11px;color:var(--muted);font-weight:600">· bấm để xem danh sách</span>',funnelHtml)}
+      ${card('Doanh thu theo brand',Object.keys(byBrand).length?bar(Object.entries(byBrand).sort((a,b)=>b[1]-a[1]),rev,v=>vnd(v)):'<div style="color:var(--muted);font-size:12px">Chưa có doanh thu</div>')}
+      ${card('Lead theo kênh','<div style="height:'+Math.max(120,kenhRows.length*32)+'px"><canvas id="cRptSlChan"></canvas></div>')}
+      ${card('Trạng thái nhóm chưa chốt',Object.keys(stat).length?bar(Object.entries(stat).sort((a,b)=>b[1]-a[1]),master.length-chotKh.length):'<div style="color:var(--muted);font-size:12px">Chưa có khách nào</div>')}
     </div>
-    <div class="sec-label">III. Lead Theo Kênh</div>
-    <div class="chart-card"><div class="chart-wrap" style="height:${Math.max(200,window._rptSlChanEntries.length*32)}px"><canvas id="cRptSlChan"></canvas></div></div>
-    <div class="sec-label">IV. Lead Theo Sales</div>
-    <div class="tov-card"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-      <thead><tr style="background:var(--bg2);border-bottom:2px solid var(--border)">
-        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">SALES PHỤ TRÁCH</th>
-        <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--muted)">SỐ LEAD</th>
-        <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--green)">ĐÃ CHỐT</th>
-        <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#2563eb">TỶ LỆ CHỐT</th>
-        <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:var(--green)">DOANH THU</th>
-      </tr></thead><tbody>${salesRows||'<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--muted)">Chưa có dữ liệu</td></tr>'}</tbody>
-    </table></div></div>
-    <div class="sec-label">V. Top 10 Khách Hàng Tiềm Năng</div>
-    <div class="tov-card"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-      <thead><tr style="background:var(--bg2);border-bottom:2px solid var(--border)">
-        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">LEAD ID</th>
-        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">HỌ TÊN</th>
-        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">SALES</th>
-        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">NGUỒN</th>
-        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">NỘI DUNG TRAO ĐỔI</th>
-        <th style="padding:9px 12px;text-align:right;font-size:11px;font-weight:700;color:#7c3aed">GIÁ TRỊ TIỀM NĂNG</th>
-        <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">TRẠNG THÁI</th>
-      </tr></thead><tbody>${topPotRows||'<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Chưa có dữ liệu</td></tr>'}</tbody>
-    </table></div></div>
-    <div class="sec-label">VI. Mất Lead Theo Nguyên Nhân</div>
-    <div class="tov-card"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-      <thead><tr style="background:var(--bg2);border-bottom:2px solid var(--border)"><th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">NHÓM NGUYÊN NHÂN</th><th style="padding:9px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--muted)">SỐ LEAD MẤT</th></tr></thead>
-      <tbody>${lostRows||'<tr><td colspan="2" style="padding:20px;text-align:center;color:var(--muted)">Chưa có lead mất</td></tr>'}</tbody>
-    </table></div></div>`;
+    <div class="tbl-card" style="margin-top:4px">
+      <div class="tbl-head"><div class="tbl-title">Hiệu quả theo Sales</div><div class="tbl-count">${num(saleRows.length)}</div></div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Sales phụ trách</th><th>Khách trong Master</th><th>Đã chốt</th><th>Tỉ lệ chốt</th><th>Đã nối Kiot</th><th>Doanh thu</th></tr></thead>
+        <tbody>${saleRows.map(([s,v])=>`<tr>
+          <td class="name">${s}</td><td class="num">${num(v.data)}</td><td class="num">${num(v.chot)}</td>
+          <td class="num">${pct(v.data?v.chot/v.data*100:0)}</td><td class="num">${num(v.noi)}</td>
+          <td class="num" style="font-weight:800;color:${v.rev?'var(--green)':'inherit'}">${v.rev?vnd(v.rev):'—'}</td></tr>`).join('')}</tbody>
+      </table></div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-head"><div class="tbl-title">Hiệu quả theo kênh</div><div class="tbl-count">${num(kenhRows.length)}</div></div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Kênh</th><th>Khách</th><th>Đã chốt</th><th>Tỉ lệ chốt</th><th>Doanh thu</th></tr></thead>
+        <tbody>${kenhRows.map(([k,v])=>`<tr><td class="name">${k}</td><td class="num">${num(v.n)}</td><td class="num">${num(v.chot)}</td>
+          <td class="num">${pct(v.n?v.chot/v.n*100:0)}</td>
+          <td class="num" style="font-weight:800;color:${v.rev?'var(--green)':'inherit'}">${v.rev?vnd(v.rev):'—'}</td></tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;
 }
 function rptSlDrawChanChart(){
   const entries=window._rptSlChanEntries||[];
