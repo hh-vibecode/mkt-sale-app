@@ -2337,8 +2337,9 @@ async function renderReportSaleLe(){
 // Phễu bám đúng thẻ Pancake: Data thô -> Lead đạt -> Tiềm năng -> Chốt đơn; doanh thu bám hoá đơn Kiot
 // nối bằng MÃ KH (không tự nối SĐT), nên mọi con số ở đây đều truy ngược được về chứng từ.
 function rptSlOverviewHtml(){
-  const master=rptSlBuildMaster();
-  const le=dhOrders.filter(o=>dhSaleTypeOrder(o)!=='Sỉ');
+  // Áp bộ lọc ngày RIÊNG của báo cáo: khách lọc theo NGÀY TẠO, đơn thô lọc theo NGÀY ĐƠN.
+  const master=rptSlBuildMaster().filter(r=>modInRange("saleretail",r.created));
+  const le=dhOrders.filter(o=>dhSaleTypeOrder(o)!=="Sỉ"&&modInRange("saleretail",o.order_date));
   const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
   const dat=le.filter(o=>tag(o,'LEAD ĐẠT')||dhIsQualified(o));
   // Phễu phải CỘNG DỒN: đơn đã chốt thì trước đó đương nhiên cũng là tiềm năng. Nếu chỉ đếm đơn còn
@@ -2346,7 +2347,10 @@ function rptSlOverviewHtml(){
   const chotO=le.filter(dhIsOrder);
   const tiemGoc=le.filter(o=>tag(o,'TIỀM NĂNG')&&!dhIsOrder(o));
   const tiem=le.filter(o=>tag(o,'TIỀM NĂNG')||tag(o,'BÀN GIAO')||dhIsOrder(o));
-  const chotKh=master.filter(r=>r.isChot), noiKh=master.filter(r=>r.kh);
+  // "Đã nối Kiot" phải đếm trong nhóm ĐÃ CHỐT, không đếm cả khách chưa chốt có mã -- trước đó lấy
+  // tử số trên toàn bộ master nhưng mẫu số là khách chốt, thành ra 130/134 trong khi tab Nhập Liệu
+  // báo thiếu 6. Số đúng: 128/134.
+  const chotKh=master.filter(r=>r.isChot), noiKh=chotKh.filter(r=>r.kh);
   const rev=master.reduce((s,r)=>s+r.revenue,0);
   const invCount=master.reduce((s,r)=>s+r.invs.length,0);
   window._rptSlLists={};
