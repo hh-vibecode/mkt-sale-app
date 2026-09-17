@@ -2563,9 +2563,10 @@ function rptSlStatusOf(tags){
 // Cột Sale phải điền tay: CHỈ ô TIÊU ĐỀ đổi màu (chữ đỏ đậm + nền đỏ nhạt). Không tô cả cột, không tô cả hàng.
 const RPT_SL_TH_EDIT='color:var(--red);font-weight:800;background:rgba(239,68,68,.07)';
 // Dropdown trạng thái tự đổi màu theo giá trị đang chọn.
+// Dropdown trạng thái đổi màu theo giá trị đang chọn, dùng CHUNG bảng màu với viên thuốc ở Master.
 function rptSlSelTint(v){
-  const c={'Chốt đơn':'var(--green)','Mất lead':'var(--red)','Đang chăm sóc':'var(--yellow)','Chăm sóc dài hạn':'var(--accent)'}[v];
-  return c?(';color:'+c+';border-color:'+c):'';
+  const c=RPT_SL_PILL[v];
+  return c?(';color:'+c[1]+';border-color:'+c[1]+';background:'+c[0]):'';
 }
 const RPT_SL_STATUS_COLOR={'Chốt đơn':'var(--green)','Bàn giao':'var(--teal)','Tiềm năng':'var(--accent)','Lead đạt':'var(--muted)','Data mới':'var(--muted)'};
 // Lọc theo khoảng ngày RIÊNG của báo cáo Sale Lẻ (mặc định hôm qua -> hôm nay). Lọc theo NGÀY TẠO
@@ -2580,6 +2581,18 @@ function rptSlSetF(tab,k,v){
 }
 // Trạng thái hiển thị của 1 khách: đã chốt thì luôn "Chốt đơn", còn lại lấy trạng thái Sale chọn.
 function rptSlRowStatus(r){return r.isChot?'Chốt đơn':(r.manualStatus||'(chưa cập nhật)');}
+// Mỗi trạng thái 1 màu riêng, dạng viên thuốc -- nhìn cột là phân biệt được ngay, không phải đọc chữ.
+const RPT_SL_PILL={
+  'Chốt đơn':['var(--green-l)','var(--green)'],
+  'Đang chăm sóc':['rgba(234,179,8,.16)','#a16207'],
+  'Chăm sóc dài hạn':['var(--accent-l)','var(--accent)'],
+  'Mất lead':['rgba(239,68,68,.13)','var(--red)'],
+};
+function rptSlStatusPill(st){
+  const c=RPT_SL_PILL[st];
+  if(!c)return'<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:var(--bg2);color:var(--muted);font-size:11px;font-weight:700">chưa cập nhật</span>';
+  return'<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:'+c[0]+';color:'+c[1]+';font-size:11px;font-weight:800;white-space:nowrap">'+st+'</span>';
+}
 function rptSlApplyF(tab,list){
   const sale=rptSlF(tab,'sale'),st=rptSlF(tab,'status'),br=rptSlF(tab,'brand');
   return list.filter(r=>
@@ -2737,11 +2750,7 @@ function rptSlMasterHtml(){
     <td>${r.staff||'—'}</td>
     <td class="name">${r.name}</td>
     <td>${r.phone||'<span style="color:var(--muted)">—</span>'}</td>
-    <td>${r.isChot
-      ?'<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:var(--green-l);color:var(--green);font-size:11px;font-weight:800">Chốt đơn</span>'
-      :(r.manualStatus
-        ?'<span style="font-weight:800;font-size:11.5px;color:'+(RPT_SL_STATUS_COLOR[r.manualStatus]||'var(--text2)')+'">'+r.manualStatus+'</span>'
-        :'<span style="color:var(--muted);font-size:11px">chưa cập nhật</span>')}</td>
+    <td>${rptSlStatusPill(rptSlRowStatus(r))}</td>
     <td class="num">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.potential?vnd(r.potential):'<span style="color:var(--muted)">—</span>')}</td>
     <td>${dmy(r.lastTouch)||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
