@@ -485,10 +485,20 @@ function modRangeLabel(mod){
   const v=x=>x?x.split('-').reverse().join('/'):'…';
   return v(r.from)+' → '+v(r.to);
 }
+// Tiêu đề module + bộ lọc ngày trên CÙNG MỘT HÀNG, lọc đẩy sang phải.
+function modHeader(title,sub,mod,cb){
+  return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+    <div style="min-width:0">
+      <div class="page-title" style="margin-bottom:2px">${title}</div>
+      <div class="page-sub" style="margin-bottom:0">${sub}</div>
+    </div>
+    <div style="flex:0 0 auto">${modDateBar(mod,cb)}</div>
+  </div>`;
+}
 function modDateBar(mod,cb){
   const r=modRange(mod);
   const ip='height:28px;box-sizing:border-box;padding:2px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
-  return `<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:12px">
+  return `<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">
     <select onchange="modQuick('${mod}',this.value,'${cb}')" style="${ip};cursor:pointer">
       <option value="">Chọn nhanh…</option>
       <option value="today">Hôm nay</option>
@@ -2245,9 +2255,7 @@ async function renderDataHub(){
   const tabBtn=(m,label)=>`<button onclick="dhSetViewMode('${m}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode===m?'var(--accent)':'var(--surface)'};color:${mode===m?'#fff':'var(--text2)'}">${label}</button>`;
   const issueCount=dhDataIssues().length;
   const header=`
-    <div class="page-title">Data Hub</div>
-    <div class="page-sub">Nguồn dữ liệu Pancake + KiotViet (không dùng bảng migrate từ Google Sheet)</div>
-    ${modDateBar('datahub','renderDataHub')}
+    ${modHeader('Data Hub','Nguồn dữ liệu Pancake + KiotViet','datahub','renderDataHub')}
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         ${tabBtn('overview','📊 Tổng Quan')}${tabBtn('manual','✍️ Data Nhập Tay ('+dhManual.length+')')}${tabBtn('issues','⚠️ Lỗi Nhập Liệu ('+issueCount+')')}
@@ -2317,9 +2325,7 @@ async function renderReportSaleLe(){
   await rptSlLoadManual();
   const mode=rptSlViewMode();
   el.innerHTML=`
-    <div class="page-title">Báo cáo · Sale Lẻ</div>
-    <div class="page-sub">Nguồn: Pancake + KiotViet · data tính từ 1/6/2026</div>
-    ${modDateBar('saleretail','renderReportSaleLe')}
+    ${modHeader('Báo cáo · Sale Lẻ','Nguồn: Pancake + KiotViet · data tính từ 1/6/2026','saleretail','renderReportSaleLe')}
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         <button onclick="rptSlSetViewMode('overview')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='overview'?'var(--accent)':'var(--surface)'};color:${mode==='overview'?'#fff':'var(--text2)'}">📊 Tổng Quan</button>
@@ -3037,9 +3043,7 @@ async function renderLog(){
   const tab=logTab();
   const tb=(v,l)=>`<button onclick="logSetTab('${v}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${tab===v?'var(--accent)':'var(--surface)'};color:${tab===v?'#fff':'var(--text2)'}">${l}</button>`;
   const head=`
-    <div class="page-title">Nhật ký</div>
-    <div class="page-sub">Thao tác người dùng chỉ lưu <b>7 ngày gần nhất</b> · hệ thống tự dọn lúc 02:15 mỗi ngày</div>
-    ${modDateBar('log','renderLog')}
+    ${modHeader('Nhật ký','Thao tác người dùng chỉ lưu <b>7 ngày gần nhất</b> · tự dọn lúc 02:15 mỗi ngày','log','renderLog')}
     <div class="period-bar"><span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
       ${tb('user','👤 Thao tác người dùng')}${tb('sync','🔄 Lịch sử đồng bộ')}</span></div>`;
   if(tab==='sync'){el.innerHTML=head+'<div style="padding:40px;text-align:center;color:var(--muted)">Đang tải…</div>';el.innerHTML=head+await logSyncHtml();return;}
