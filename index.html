@@ -1960,8 +1960,8 @@ function dhDataIssues(){
     const kc=custByCode[kh];
     if((kc.customer_group||'').trim().toLowerCase()!=='khách lẻ')
       add('Khách Kiot không thuộc nhóm "Khách lẻ"','warn',o,kh+' · nhóm hiện tại: '+(kc.customer_group||'(trống)'));
-    if(o.phone&&kc.phone_key&&dhLast9(o.phone)!==kc.phone_key)
-      add('SĐT lệch giữa Pancake và Kiot','err',o,kh+' · Pancake '+o.phone+' ≠ Kiot '+(kc.phone||kc.phone_key));
+    // SĐT Pancake khác SĐT Kiot KHÔNG phải lỗi: 1 người dùng nhiều số (số riêng, số người nhà, số
+    // nhận hàng). Mã KH mới là khoá xác nhận, nên lệch số không ảnh hưởng gì -> không báo.
     // Mã Sale dán trỏ sang khách A, nhưng SĐT trên đơn lại là của khách B bên Kiot -> gần như chắc chắn
     // dán nhầm mã. Đây là kiểu lỗi ÂM THẦM: mã vẫn hợp lệ nên mọi check khác đều đi qua, doanh thu vẫn
     // cộng, chỉ là cộng cho nhầm người.
