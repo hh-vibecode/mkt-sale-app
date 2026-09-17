@@ -2153,7 +2153,7 @@ async function dhManualAdd(){
     created_date:g('dhmDate'),customer_name:g('dhmName').trim(),phone:g('dhmPhone').trim()||null,
     nguon:g('dhmNguon'),kenh:kenh||null,brand:dhManualBrand(kenh),
     staff_name:g('dhmStaff').trim()||null,kiot_code:g('dhmKh').trim().toUpperCase()||null,
-    created_by:localStorage.getItem('dashUserName')||localStorage.getItem('dashRole')||'app',
+    created_by:localStorage.getItem('dashUser')||localStorage.getItem('dashRole')||'app',
   };
   if(!row.created_date||!row.customer_name){msg.innerHTML='<span style="color:var(--red)">Cần ít nhất Ngày tạo và Họ tên</span>';return;}
   // Mã KH có gõ thì phải tồn tại bên Kiot -- chặn ngay lúc nhập, đỡ đi dò lỗi về sau.
@@ -2213,6 +2213,7 @@ function dhManualHtml(){
         onblur="if(this.value.trim().toUpperCase()!=='${r.kiot_code||''}')dhManualSet(${r.id},'kiot_code',this.value.toUpperCase(),this)"></td>
       <td style="font-size:11px">${kc?kc.name:'<span style="color:var(--muted)">—</span>'}</td>
       <td class="num" style="font-weight:800;color:${v?'var(--green)':'inherit'}">${v?vnd(v):'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${r.created_by||"—"}</td>
       <td><button onclick="dhManualDel(${r.id})" style="border:none;background:var(--bg2);color:var(--red);border-radius:7px;width:26px;height:26px;cursor:pointer;font-size:13px">✕</button></td>
     </tr>`;}).join('');
   const tong=dhManual.reduce((s,r)=>s+(inv[r.kiot_code]||0),0);
@@ -2226,8 +2227,8 @@ function dhManualHtml(){
       <div class="tbl-head"><div class="tbl-title">Data nhập tay</div><div class="tbl-count">${num(dhManual.length)}</div>
         <span style="margin-left:auto;font-size:11px;color:var(--muted)">Vào thẳng Master Data của báo cáo Sale Lẻ</span></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày tạo</th><th>Lead ID</th><th>Họ tên khách</th><th>SĐT</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Mã KH</th><th>Tên bên Kiot</th><th>Doanh thu</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Chưa có dòng nào — dùng form phía trên để thêm</td></tr>'}</tbody>
+        <thead><tr><th>Ngày tạo</th><th>Lead ID</th><th>Họ tên khách</th><th>SĐT</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Mã KH</th><th>Tên bên Kiot</th><th>Doanh thu</th><th>Người tạo</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--muted)">Chưa có dòng nào — dùng form phía trên để thêm</td></tr>'}</tbody>
       </table></div>
     </div>`;
 }
@@ -2322,7 +2323,7 @@ async function rptSlLoadManual(force){
   rptSlManualLoaded=true;
 }
 async function rptSlSaveManual(leadId,patch){
-  const row=Object.assign({lead_id:leadId},rptSlManual[leadId]||{},patch,{updated_at:new Date().toISOString(),updated_by:localStorage.getItem('dashUserName')||localStorage.getItem('dashRole')||'app'});
+  const row=Object.assign({lead_id:leadId},rptSlManual[leadId]||{},patch,{updated_at:new Date().toISOString(),updated_by:localStorage.getItem('dashUser')||localStorage.getItem('dashRole')||'app'});
   delete row.created_at;
   const res=await fetch(`${SUPABASE_URL}/rest/v1/saleretail_manual?on_conflict=lead_id`,{
     method:'POST',
@@ -2970,7 +2971,7 @@ const CRM_POSITION_LABEL={admin:'Admin',manager:'Quản lý',sales:'Sales',mkt:'
 // Nguyên tắc chống phình: 1 dòng = 1 TRƯỜNG đổi, hành động lưu 1 ký tự, giá trị cắt 120 ký tự
 // (trigger bên DB tự cắt, không tin client).
 const LOG_ACT={C:{label:'Thêm',color:'var(--green)'},U:{label:'Sửa',color:'var(--accent)'},D:{label:'XOÁ',color:'var(--red)'}};
-function logWho(){return localStorage.getItem('dashUserName')||localStorage.getItem('dashRole')||'không rõ';}
+function logWho(){return localStorage.getItem('dashUser')||localStorage.getItem('dashRole')||'không rõ';}
 // Ghi log KHÔNG được làm hỏng thao tác chính -> nuốt lỗi, chỉ cảnh báo console.
 function logAct(act,tbl,ref,label,fld,oldV,newV){
   const row={who:logWho(),act,tbl,ref:ref==null?null:String(ref),label:label||null,
