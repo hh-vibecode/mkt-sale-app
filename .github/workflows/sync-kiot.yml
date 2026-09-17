@@ -1,4 +1,4 @@
-name: Sync hoá đơn KiotViet
+name: Sync KiotViet (đơn đặt hàng + hoá đơn)
 
 on:
   schedule:
@@ -28,3 +28,12 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           BACKFILL: ${{ (github.event.schedule == '5 0 * * *' || inputs.backfill) && '1' || '0' }}
         run: node scripts/sync-kiot-invoices.js
+      # Đơn đặt hàng = nguồn doanh số + ngày chốt của báo cáo Sale (hoá đơn phía trên chỉ để đối soát).
+      # Luôn quét lại toàn bộ từ 1/6 (~9 request) để bắt cả đơn cũ bị huỷ / đổi tiền.
+      - name: Sync đơn đặt hàng KiotViet -> Supabase
+        if: always()
+        env:
+          KIOT_CLIENT_ID: ${{ secrets.KIOT_CLIENT_ID }}
+          KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/sync-kiot-orders.js
