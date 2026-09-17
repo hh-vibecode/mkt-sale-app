@@ -2382,7 +2382,6 @@ function rptSlOverviewHtml(){
   const kenhRows=Object.entries(byKenh).sort((a,b)=>b[1].n-a[1].n);
   window._rptSlChanEntries=kenhRows.map(([k,v])=>[k,v.n]);
 
-  const stat={};master.filter(r=>!r.isChot).forEach(r=>{const s=r.manualStatus||'(chưa cập nhật)';stat[s]=(stat[s]||0)+1;});
 
   const bar=(rows,total,fmt)=>rows.map(([k,v])=>{const n=typeof v==='object'?v.n:v;const p=total?n/total*100:0;
     return `<div style="margin-bottom:9px">
@@ -2423,7 +2422,6 @@ function rptSlOverviewHtml(){
       ${card('Phễu chuyển đổi <span style="font-size:11px;color:var(--muted);font-weight:600">· bấm để xem danh sách</span>',funnelHtml)}
       ${card('Doanh thu theo brand',Object.keys(byBrand).length?bar(Object.entries(byBrand).sort((a,b)=>b[1]-a[1]),rev,v=>vnd(v)):'<div style="color:var(--muted);font-size:12px">Chưa có doanh thu</div>')}
       ${card('Lead theo kênh','<div style="height:'+Math.max(120,kenhRows.length*32)+'px"><canvas id="cRptSlChan"></canvas></div>')}
-      ${card('Trạng thái nhóm chưa chốt',Object.keys(stat).length?bar(Object.entries(stat).sort((a,b)=>b[1]-a[1]),master.length-chotKh.length):'<div style="color:var(--muted);font-size:12px">Chưa có khách nào</div>')}
     </div>
     <div class="tbl-card" style="margin-top:4px">
       <div class="tbl-head"><div class="tbl-title">Hiệu quả theo Sales</div><div class="tbl-count">${num(saleRows.length)}</div></div>
