@@ -2,11 +2,11 @@ name: Sync Data Hub từ Pancake
 
 on:
   schedule:
-    # 3 lượt/ngày giờ VN: 7h05 sáng · 12h05 trưa · 15h05 chiều.
+    # 30 phút/lần -- chạy INCREMENTAL (5 trang mới nhất/shop), nhẹ, đủ bắt đơn mới.
+    - cron: '*/30 * * * *'
+    # 7h05 sáng VN (00:05 UTC) -- lượt BACKFILL quét lại toàn bộ từ 1/6, bắt cả sửa đổi trên đơn cũ.
     # Lệch 5 phút khỏi giờ tròn vì GitHub Actions hay dồn/rớt cron đúng phút :00.
     - cron: '5 0 * * *'
-    - cron: '5 5 * * *'
-    - cron: '5 8 * * *'
   workflow_dispatch:
     inputs:
       backfill:
@@ -25,5 +25,5 @@ jobs:
         env:
           PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          BACKFILL: '1'   # chỉ chạy 2 lượt/ngày nên luôn quét lại toàn bộ từ 1/6, không dùng chế độ 5 trang mới nhất
+          BACKFILL: ${{ (github.event.schedule == '5 0 * * *' || inputs.backfill) && '1' || '0' }}
         run: node scripts/sync-datahub-pancake.js
