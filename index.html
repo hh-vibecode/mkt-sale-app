@@ -2537,16 +2537,8 @@ function rptSlStatusOf(tags){
 }
 // Màu trạng thái dùng chung cho Master + CRM. Tô NỀN CẢ HÀNG để lướt mắt là thấy ngay hàng nào chốt,
 // hàng nào mất lead -- không tô riêng ô dữ liệu.
-const RPT_SL_ROW_TINT={
-  'Chốt đơn':'rgba(10,191,122,.10)',      // xanh lá
-  'Mất lead':'rgba(239,68,68,.10)',        // đỏ
-  'Đang chăm sóc':'rgba(234,179,8,.12)',   // vàng
-  'Chăm sóc dài hạn':'rgba(67,97,238,.08)',// xanh dương
-};
-function rptSlRowStyle(r){
-  const t=RPT_SL_ROW_TINT[r.isChot?'Chốt đơn':(r.manualStatus||'')];
-  return t?('background:'+t):'';
-}
+// Cột Sale phải điền tay: CHỈ ô TIÊU ĐỀ đổi màu (chữ đỏ đậm + nền đỏ nhạt). Không tô cả cột, không tô cả hàng.
+const RPT_SL_TH_EDIT='color:var(--red);font-weight:800;background:rgba(239,68,68,.07)';
 // Dropdown trạng thái tự đổi màu theo giá trị đang chọn.
 function rptSlSelTint(v){
   const c={'Chốt đơn':'var(--green)','Mất lead':'var(--red)','Đang chăm sóc':'var(--yellow)','Chăm sóc dài hạn':'var(--accent)'}[v];
@@ -2673,24 +2665,18 @@ function rptSlBuildMaster(){
   });
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
 }
-function rptSlMasterFilter(){return window._rptSlMasterF||'all';}
-function rptSlSetMasterFilter(v){window._rptSlMasterF=v;window._rptSlMasterPage=1;renderReportSaleLe();}
 function rptSlSetMasterPage(p){window._rptSlMasterPage=p;renderReportSaleLe();}
 function rptSlMasterSearch(){return(document.getElementById('rptSlMasterSearch')||{}).value||'';}
 function rptSlMasterHtml(){
   const allRaw=rptSlBuildMaster().filter(r=>modInRange('saleretail',r.created));
   const all=rptSlApplyF('master',allRaw);
-  const f=rptSlMasterFilter(),q=(window._rptSlMasterQ||'').trim().toLowerCase();
+  const q=(window._rptSlMasterQ||'').trim().toLowerCase();
   let list=all;
-  if(f==='chot')list=list.filter(r=>r.isChot);
-  else if(f==='tiemnang')list=list.filter(r=>!r.isChot);
-  // Lọc nhanh nhóm Sale còn phải xử lý: chưa chốt và chưa chọn trạng thái ở dropdown.
-  else if(f==='chuatt')list=list.filter(r=>!r.isChot&&!r.manualStatus);
   if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.kiotName||'').toLowerCase().includes(q)||(r.leadId||'').toLowerCase().includes(q));
   const pageSize=50,page=window._rptSlMasterPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   // Bảng chỉ giữ các trường Sale dùng hàng ngày; mọi trường còn lại (Brand, Nhóm KH, Trạng thái, Mã KH,
   // Nối bằng, Tên Kiot, hoá đơn, lịch sử đơn...) nằm trong modal "Chi tiết" ở cột cuối.
-  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>`<tr style="cursor:pointer;${rptSlRowStyle(r)}" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
+  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>`<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
     <td>${r.created||'—'}</td>
     <td style="font-size:11px">${r.nguon||'—'}</td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
@@ -2724,9 +2710,6 @@ function rptSlMasterHtml(){
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
       ${rptSlFilterBar('master',allRaw)}
       <span style="margin-left:auto"></span>
-      <select onchange="rptSlSetMasterFilter(this.value)" style="height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer">
-        ${[['all','Tất cả'],['chot','Đã chốt'],['tiemnang','Tiềm năng'],['chuatt','Chưa chọn trạng thái']].map(([v,l])=>`<option value="${v}"${f===v?' selected':''}>${l}</option>`).join('')}
-      </select>
       <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(renderReportSaleLe,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
     </div>
     <div class="tbl-card">
@@ -2878,27 +2861,20 @@ function rptSlInputHtml(){
 // Bộ cột lấy đúng sheet: Ngày chăm sóc · Kênh · Sales · Họ tên · Nội dung trao đổi · Giá trị tiềm năng
 // · Trạng thái · Nhóm nguyên nhân mất lead · Ngày chốt · Doanh thu · Mã KH.
 // Master giữ phần định danh, CRM thêm phần con người đánh giá. Tất cả ghi vào saleretail_manual.
-function rptSlCrmFilter(){return window._rptSlCrmF||'all';}
-function rptSlSetCrmFilter(v){window._rptSlCrmF=v;window._rptSlCrmPage=1;renderReportSaleLe();}
 function rptSlSetCrmPage(p){window._rptSlCrmPage=p;renderReportSaleLe();}
 function rptSlCrmHtml(){
   const allRaw=rptSlBuildMaster().filter(r=>modInRange('saleretail',r.created));
   const all=rptSlApplyF('crm',allRaw);
-  const f=rptSlCrmFilter(),q=(window._rptSlCrmQ||'').trim().toLowerCase();
+  const q=(window._rptSlCrmQ||'').trim().toLowerCase();
   let list=all;
-  if(f==='chot')list=list.filter(r=>r.isChot);
-  else if(f==='tiemnang')list=list.filter(r=>!r.isChot);
-  else if(f==='mat')list=list.filter(r=>r.status==='Mất lead');
-  else if(f==='chuacham')list=list.filter(r=>!r.careDate&&!r.content);
   if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.content||'').toLowerCase().includes(q));
   const pageSize=50,page=window._rptSlCrmPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
   // Ô Sale PHẢI thao tác -> nền xanh lá nhạt, nhìn là biết chỗ nào cần điền. Ô chỉ đọc giữ nền trắng.
-  // Ô sửa được để nền TRONG SUỐT cho lộ màu của hàng; viền đứt để vẫn nhận ra là ô nhập.
-  const edit=inp.replace('background:var(--surface)','background:transparent')+';border-style:dashed';
+  const edit=inp;
   const sel=(r,field,opts,cur,w)=>`<select onchange="rptSlSetField('${r.leadId}','${field}',this.value,this)" style="${edit};width:${w||130}px;cursor:pointer;font-weight:800${rptSlSelTint(cur)}">
     <option value=""${cur?'':' selected'}>—</option>${opts.map(o=>`<option value="${o}"${cur===o?' selected':''}>${o}</option>`).join('')}</select>`;
-  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>`<tr style="${rptSlRowStyle(r)}">
+  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>`<tr>
     <td onclick="rptSlStop(event)"><input type="date" value="${r.careDate||''}" onchange="rptSlSetField('${r.leadId}','care_date',this.value,this)" style="${edit};width:128px"></td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
     <td>${r.staff||'—'}</td>
@@ -2916,7 +2892,6 @@ function rptSlCrmHtml(){
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
     <td style="font-size:11px">${r.kh?('<code>'+r.kh+'</code>'):'<span style="color:var(--muted)">—</span>'}</td>
   </tr>`).join('');
-  const chip=(v,l)=>`<span onclick="rptSlSetCrmFilter('${v}')" style="cursor:pointer;padding:5px 13px;border-radius:20px;font-size:11.5px;font-weight:700;background:${f===v?'var(--accent)':'var(--bg2)'};color:${f===v?'#fff':'var(--text2)'}">${l}</span>`;
   const chuaCham=all.filter(r=>!r.careDate&&!r.content).length;
   return `
     <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px">
@@ -2926,13 +2901,12 @@ function rptSlCrmHtml(){
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
       ${rptSlFilterBar('crm',allRaw)}
-      ${chip('all','Tất cả')}${chip('chot','Đã chốt')}${chip('tiemnang','Tiềm năng')}${chip('mat','Mất lead')}${chip('chuacham','Chưa ghi chăm sóc')}
       <input value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(renderReportSaleLe,350)" style="margin-left:auto;${inp};height:30px;min-width:250px">
     </div>
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày chăm sóc</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>Nội dung trao đổi</th><th>Giá trị tiềm năng</th><th>Trạng thái</th><th>Nhóm nguyên nhân mất lead</th><th>Ngày chốt</th><th>Doanh thu</th><th>Mã KH</th></tr></thead>
+        <thead><tr><th style="${RPT_SL_TH_EDIT}">Ngày chăm sóc</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th>Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái</th><th style="${RPT_SL_TH_EDIT}">Nhóm nguyên nhân mất lead</th><th>Ngày chốt</th><th>Doanh thu</th><th>Mã KH</th></tr></thead>
         <tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
