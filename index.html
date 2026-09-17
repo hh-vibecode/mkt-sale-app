@@ -2254,6 +2254,29 @@ async function rptSlLoadManual(force){
   rptSlManual={};rows.forEach(r=>{rptSlManual[r.lead_id]=r;});
   rptSlManualLoaded=true;
 }
+// KHOÁ dữ liệu khi khách CHỐT. Sale điền đủ trường cho khách tiềm năng, hôm sau khách chốt và Pancake
+// đổi thẻ thành CHỐT ĐƠN -> mấy trường của giai đoạn tiềm năng (trạng thái chăm sóc, nguyên nhân mất
+// lead, giá trị tiềm năng) không còn nghĩa nữa, và nếu để lại thì lúc nào đó sẽ trồi lên gây sai số.
+// Quét mỗi lần mở báo cáo, dọn 1 lần rồi thôi (dọn xong không còn ca nào để quét).
+// GIỮ LẠI: Ngày chăm sóc, Nội dung trao đổi, Mã KH -- chốt rồi vẫn còn nguyên giá trị.
+async function rptSlLockChot(){
+  const stale=rptSlBuildMaster().filter(r=>r.isChot&&
+    (r.manualStatus||r.lostGroup||r.lostReason||r.potential));
+  if(!stale.length)return;
+  const body=stale.map(r=>({lead_id:r.leadId,status:null,lost_group:null,lost_reason:null,
+    potential_value:null,updated_by:'auto-khoa-chot',updated_at:new Date().toISOString()}));
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/saleretail_manual?on_conflict=lead_id`,{
+      method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,
+        'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},
+      body:JSON.stringify(body)});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    stale.forEach(r=>logAct('U','saleretail_manual',r.leadId,r.name,'(khoá khi chốt)',
+      [r.manualStatus,r.lostGroup,r.potential?num(r.potential):''].filter(Boolean).join(' · '),'Chốt đơn'));
+    await rptSlLoadManual(true);
+    console.log('[KHOÁ CHỐT] đã dọn '+stale.length+' khách vừa chuyển sang chốt đơn');
+  }catch(e){console.warn('[KHOÁ CHỐT] lỗi (bỏ qua):',e.message);}
+}
 async function rptSlSaveManual(leadId,patch){
   const row=Object.assign({lead_id:leadId},rptSlManual[leadId]||{},patch,{updated_at:new Date().toISOString(),updated_by:localStorage.getItem('dashUser')||localStorage.getItem('dashRole')||'app'});
   delete row.created_at;
@@ -2285,6 +2308,7 @@ async function renderReportSaleLe(){
   await kiotLoadInvoices();
   await dhLoadManual();
   await rptSlLoadManual();
+  await rptSlLockChot();
   const mode=rptSlViewMode();
   el.innerHTML=`
     ${modHeader('Báo cáo · Sale Lẻ','','saleretail','renderReportSaleLe')}

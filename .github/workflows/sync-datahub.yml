@@ -2,10 +2,11 @@ name: Sync Data Hub từ Pancake
 
 on:
   schedule:
-    # 7h05 sáng VN (00:05 UTC) -- lượt chính. Lệch 5 phút vì GitHub hay dồn/rớt cron đúng đầu giờ.
+    # 3 lượt/ngày giờ VN: 7h05 sáng · 12h05 trưa · 15h05 chiều.
+    # Lệch 5 phút khỏi giờ tròn vì GitHub Actions hay dồn/rớt cron đúng phút :00.
     - cron: '5 0 * * *'
-    # 8h05 sáng VN (01:05 UTC) -- lượt DỰ PHÒNG, chạy lại y hệt phòng khi lượt đầu lỗi.
-    - cron: '5 1 * * *'
+    - cron: '5 5 * * *'
+    - cron: '5 8 * * *'
   workflow_dispatch:
     inputs:
       backfill:
