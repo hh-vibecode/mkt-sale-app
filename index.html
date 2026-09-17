@@ -81,7 +81,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 
 /* LAYOUT */
 .app-body{display:flex;margin-top:54px;min-height:calc(100vh - 54px)}
-.sidebar{position:fixed;left:0;top:54px;bottom:0;width:var(--sidebar-w);background:var(--surface);border-right:1.5px solid var(--border);display:flex;flex-direction:column;transition:width .25s cubic-bezier(.4,0,.2,1);z-index:100;overflow:hidden}
+.sidebar{position:fixed;left:0;top:54px;bottom:0;width:var(--sidebar-w);background:var(--surface);border-right:1.5px solid var(--border);display:flex;flex-direction:column;padding-bottom:58px;transition:width .25s cubic-bezier(.4,0,.2,1);z-index:100;overflow:hidden}
 .sidebar.collapsed{width:var(--sidebar-w-col)}
 .sb-strip{height:4px;background:linear-gradient(90deg,var(--accent),#7c3aed,var(--teal),var(--green));flex-shrink:0}
 .sb-section{padding:16px 10px 6px;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;transition:opacity .2s}
@@ -95,6 +95,14 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .sidebar.collapsed .nav-label{opacity:0;width:0}
 .nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;flex-shrink:0;transition:opacity .2s}
 .sidebar.collapsed .nav-badge{opacity:0}
+.sb-admin{position:absolute;left:0;right:0;bottom:0;padding:8px 0 10px;border-top:1.5px solid var(--border);background:var(--surface)}
+.sb-admin-btn{display:flex;align-items:center;gap:11px;padding:9px 13px;margin:2px 8px;border-radius:10px;cursor:pointer;color:var(--text2);transition:all .18s;border:1.5px solid transparent}
+.sb-admin-btn:hover{background:var(--bg2);color:var(--text)}
+.sb-admin-btn.open{background:var(--accent-l);color:var(--accent);border-color:rgba(67,97,238,.15)}
+.sb-admin-btn svg{width:19px;height:19px;flex:0 0 auto}
+.sb-admin-menu{display:none;padding-bottom:4px}
+.sb-admin-menu.open{display:block}
+.sidebar.collapsed .sb-admin-menu{display:none!important}
 .main-content{margin-left:var(--sidebar-w);flex:1;padding:22px 24px 24px;transition:margin-left .25s cubic-bezier(.4,0,.2,1);min-width:0}
 .main-content.collapsed{margin-left:var(--sidebar-w-col)}
 .tab-page{display:none}.tab-page.active{display:block}
@@ -277,10 +285,20 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     </nav>
     <div class="sb-section" id="sec-qt-label" style="margin-top:12px">Quản trị</div>
     <nav id="sec-qt">
-      <div class="nav-item" onclick="switchPage('settings')" id="nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9.5 12 1.8 1.8L15 10"/></svg></span><span class="nav-label">Phân quyền</span></div>
-      <div class="nav-item" onclick="switchPage('log')" id="nav-log"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-6 7h6m-6 4h4"/></svg></span><span class="nav-label">Nhật ký thao tác</span></div>
       <div class="nav-item" onclick="switchPage('datahub')" id="nav-datahub"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="5" rx="8" ry="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg></span><span class="nav-label">Data Hub</span></div>
     </nav>
+    <!-- Phân quyền + Nhật ký là việc của admin, không phải việc hằng ngày -> gom vào 1 nút cờ lê
+         ghim đáy sidebar, bấm mới bung menu. Giữ id nav-settings/nav-log để applyRole() vẫn ẩn/hiện được. -->
+    <div class="sb-admin">
+      <div class="sb-admin-menu" id="sbAdminMenu">
+        <div class="nav-item" onclick="sbAdminGo('settings')" id="nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9.5 12 1.8 1.8L15 10"/></svg></span><span class="nav-label">Phân quyền</span></div>
+        <div class="nav-item" onclick="sbAdminGo('log')" id="nav-log"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-6 7h6m-6 4h4"/></svg></span><span class="nav-label">Nhật ký thao tác</span></div>
+      </div>
+      <div class="sb-admin-btn" id="sbAdminBtn" onclick="sbAdminToggle(event)" title="Quản trị hệ thống">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 1 5.4-5.4l-2.6 2.6"/></svg>
+        <span class="nav-label" style="font-size:12.5px;font-weight:700">Quản trị</span>
+      </div>
+    </div>
   </div>
 
   <div class="main-content" id="mainContent">
@@ -400,11 +418,17 @@ function applyRole(){
     const id=el.id.replace('nav-','');
     el.style.display=(allowed&&allowed.indexOf(id)<0)?'none':'';
   });
-  [['sec-marketing-label','sec-marketing'],['sec-sale-label','sec-sale'],['sec-admin-label','sec-admin']].forEach(([lab,nav])=>{
+  [['sec-report-label','sec-report'],['sec-qt-label','sec-qt']].forEach(([lab,nav])=>{
     const n=document.getElementById(nav);if(!n)return;
     const vis=[...n.querySelectorAll('.nav-item')].some(it=>it.style.display!=='none');
     const l=document.getElementById(lab);if(l)l.style.display=vis?'':'none';n.style.display=vis?'':'none';
   });
+  // Nút cờ lê chỉ hiện khi tài khoản còn ít nhất 1 mục quản trị -- nếu không sẽ là nút bấm vào không ra gì.
+  const am=document.getElementById('sbAdminMenu');
+  if(am){
+    const vis=[...am.querySelectorAll('.nav-item')].some(it=>it.style.display!=='none');
+    const wrap=am.parentElement;if(wrap)wrap.style.display=vis?'':'none';
+  }
   if(allowed&&allowed.length)switchPage(allowed[0]);
 }
 function logout(){localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
@@ -420,6 +444,20 @@ function initAuth(){
     const ipEl=document.getElementById('loginIp');if(ipEl)ipEl.textContent='IP của bạn: '+d.ip+' · gửi IP này cho admin để vào thẳng';
     if(AUTH_ALLOWED_IPS.includes(d.ip)){localStorage.setItem('dashRole','admin');gate.style.display='none';applyRole();}
   }).catch(()=>{});
+}
+
+// Menu Quản trị (cờ lê) ở đáy sidebar. Sidebar thu gọn thì không bung menu mà mở thẳng Phân quyền.
+function sbAdminToggle(e){
+  if(e)e.stopPropagation();
+  const sb=document.getElementById('sidebar');
+  if(sb&&sb.classList.contains('collapsed')){switchPage('settings');return;}
+  const m=document.getElementById('sbAdminMenu'),b=document.getElementById('sbAdminBtn');
+  const open=m.classList.toggle('open');b.classList.toggle('open',open);
+}
+function sbAdminGo(p){
+  switchPage(p);
+  const m=document.getElementById('sbAdminMenu'),b=document.getElementById('sbAdminBtn');
+  if(m){m.classList.remove('open');}if(b){b.classList.remove('open');}
 }
 
 function switchPage(p){
@@ -2241,22 +2279,6 @@ async function renderDataHub(){
     </div>`;
   const el=document.getElementById('page-datahub');
   if(!el)return;
-  let mktInfo='<div style="color:var(--muted);font-size:12.5px">Đang tải...</div>';
-  try{
-    const mktRows=await sbFetchAll('mkt_spend','select=ad_date&order=ad_date.desc&limit=1');
-    const mktCount=(await sbFetchAll('mkt_spend','select=id')).length;
-    mktInfo=`<b>${num(mktCount)}</b> dòng, mới nhất <b>${mktRows[0]?mktRows[0].ad_date:'—'}</b>`;
-  }catch(e){mktInfo='<span style="color:var(--red)">Lỗi tải: '+e.message+'</span>';}
-  let syncHistRows='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Chưa có lịch sử — job MKT chạy tự động lần tới sẽ ghi vào đây</td></tr>';
-  try{
-    const hist=await sbFetchAll('sync_log','select=*&order=started_at.desc&limit=20');
-    if(hist.length)syncHistRows=hist.map(h=>`<tr>
-      <td>${new Date(h.started_at).toLocaleString('vi-VN')}</td><td>${h.source}</td>
-      <td class="num">${num(h.records_created||0)}</td><td class="num">${num(h.records_updated||0)}</td>
-      <td>${h.status==='success'?'<span style="color:var(--green);font-weight:700">✓ Thành công</span>':h.status==='failed'?'<span style="color:var(--red);font-weight:700">✗ Lỗi</span>':'<span style="color:var(--yellow);font-weight:700">⏳ Đang chạy</span>'}</td>
-      <td style="font-size:11px;color:var(--red)">${h.error_message||'—'}</td>
-    </tr>`).join('');
-  }catch(e){syncHistRows=`<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--red)">Lỗi tải: ${e.message}</td></tr>`;}
   const mode=dhViewMode();
   const tabBtn=(m,label)=>`<button onclick="dhSetViewMode('${m}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode===m?'var(--accent)':'var(--surface)'};color:${mode===m?'#fff':'var(--text2)'}">${label}</button>`;
   const issueCount=dhDataIssues().length;
@@ -2271,21 +2293,7 @@ async function renderDataHub(){
   if(mode==='issues'){el.innerHTML=header+dhIssuesHtml();return;}
   if(mode==='manual'){el.innerHTML=header+dhManualHtml();return;}
   el.innerHTML=header+`
-    ${pancakeOrdersHtml}
-    <div class="tbl-card" style="margin-bottom:16px">
-      <div class="tbl-head"><div class="tbl-title">🟢 MKT — Meta Ads (tự động thật)</div></div>
-      <div style="padding:16px">
-        ${mktInfo}<br>
-        <span style="font-size:12px;color:var(--muted)">Đồng bộ tự động 7h sáng hàng ngày qua GitHub Actions (repo <code>mkt-sale-app</code>, 2 tài khoản quảng cáo) — xem tab Actions trên GitHub để coi lịch sử chạy.</span>
-      </div>
-    </div>
-    <div class="tbl-card">
-      <div class="tbl-head"><div class="tbl-title">Sync History</div></div>
-      <div class="tbl-scroll"><table>
-        <thead><tr><th>Thời gian</th><th>Nguồn</th><th>Tạo mới</th><th>Cập nhật</th><th>Trạng thái</th><th>Lỗi</th></tr></thead>
-        <tbody>${syncHistRows}</tbody>
-      </table></div>
-    </div>`;
+    ${pancakeOrdersHtml}`;
   dhRenderTable();
 }
 
@@ -2703,8 +2711,8 @@ function rptSlMasterHtml(){
         <option value=""${r.manualStatus?'':' selected'}>— chọn —</option>
         ${RPT_SL_STATUS_OPTS.map(s=>`<option value="${s}"${r.manualStatus===s?' selected':''}>${s}</option>`).join('')}
       </select>`}</td>
-    <td onclick="rptSlStop(event)">${r.status==='Mất lead'
-      ?`<select onchange="rptSlSetField('${r.leadId}','lost_group',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid ${r.lostGroup?'var(--border)':'var(--red)'};border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer">
+    <td onclick="rptSlStop(event)">${!r.isChot
+      ?`<select onchange="rptSlSetField('${r.leadId}','lost_group',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer">
         <option value=""${r.lostGroup?'':' selected'}>— chọn —</option>
         ${RPT_SL_LOST_OPTS.map(s=>`<option value="${s}"${r.lostGroup===s?' selected':''}>${s}</option>`).join('')}
       </select>`
@@ -2984,9 +2992,61 @@ async function logLoad(force){
 }
 function logFilter(){return window._logF||'all';}
 function logSetFilter(v){window._logF=v;renderLog();}
+function logTab(){return window._logTab||'user';}
+function logSetTab(v){window._logTab=v;renderLog();}
+// Lịch sử ĐỒNG BỘ (máy chạy) nằm cùng trang với nhật ký thao tác (người sửa) -- cùng trả lời một câu
+// hỏi: "dữ liệu này đến từ đâu, ai/cái gì đã đụng vào nó". Nguồn: bảng sync_log do các job GitHub ghi.
+async function logSyncHtml(){
+  let rows='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Chưa có lần đồng bộ nào</td></tr>';
+  let hist=[];
+  try{
+    hist=await sbFetchAll('sync_log','select=*&order=started_at.desc&limit=50');
+    if(hist.length)rows=hist.map(h=>`<tr>
+      <td style="white-space:nowrap">${new Date(h.started_at).toLocaleString('vi-VN')}</td>
+      <td class="name">${h.source||'—'}</td>
+      <td class="num">${num(h.records_created||0)}</td>
+      <td class="num">${num(h.records_updated||0)}</td>
+      <td>${h.status==='success'?'<span style="color:var(--green);font-weight:700">✓ Thành công</span>'
+        :h.status==='failed'?'<span style="color:var(--red);font-weight:700">✕ Lỗi</span>'
+        :'<span style="color:var(--yellow);font-weight:700">⋯ Đang chạy</span>'}</td>
+      <td style="font-size:11px;color:var(--red);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.error_message||'—'}</td>
+    </tr>`).join('');
+  }catch(e){rows=`<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--red)">Lỗi tải: ${e.message}</td></tr>`;}
+  const fail=hist.filter(h=>h.status==='failed').length;
+  const bySrc={};hist.forEach(h=>{const k=h.source||'—';bySrc[k]=bySrc[k]||{n:0,last:null};bySrc[k].n++;if(!bySrc[k].last)bySrc[k].last=h.started_at;});
+  return `
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px">
+      ${mkKpi(ic('clipboard'),'Lần chạy gần nhất',num(hist.length),'50 lần mới nhất','g-blue')}
+      ${mkKpi(ic('check'),'Thành công',num(hist.length-fail),hist.length?pct((hist.length-fail)/hist.length*100):'—','g-green')}
+      ${mkKpi(ic('clock'),'Thất bại',num(fail),fail?'cần kiểm tra job':'không có lần nào lỗi','g-red')}
+    </div>
+    <div class="tbl-card" style="margin-bottom:16px">
+      <div class="tbl-head"><div class="tbl-title">Nguồn đang đồng bộ</div><div class="tbl-count">${num(Object.keys(bySrc).length)}</div></div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Nguồn</th><th>Số lần trong 50 lần gần nhất</th><th>Chạy gần nhất</th></tr></thead>
+        <tbody>${Object.entries(bySrc).map(([k,v])=>`<tr><td class="name">${k}</td><td class="num">${num(v.n)}</td>
+          <td>${v.last?new Date(v.last).toLocaleString('vi-VN'):'—'}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted)">—</td></tr>'}</tbody>
+      </table></div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-head"><div class="tbl-title">Lịch sử đồng bộ</div><div class="tbl-count">${num(hist.length)}</div></div>
+      <div class="tbl-scroll"><table>
+        <thead><tr><th>Thời gian</th><th>Nguồn</th><th>Tạo mới</th><th>Cập nhật</th><th>Trạng thái</th><th>Lỗi</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+}
 async function renderLog(){
   const el=document.getElementById('page-log');
   if(!el)return;
+  const tab=logTab();
+  const tb=(v,l)=>`<button onclick="logSetTab('${v}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${tab===v?'var(--accent)':'var(--surface)'};color:${tab===v?'#fff':'var(--text2)'}">${l}</button>`;
+  const head=`
+    <div class="page-title">Nhật ký</div>
+    <div class="page-sub">Thao tác người dùng chỉ lưu <b>7 ngày gần nhất</b> · hệ thống tự dọn lúc 02:15 mỗi ngày</div>
+    <div class="period-bar"><span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
+      ${tb('user','👤 Thao tác người dùng')}${tb('sync','🔄 Lịch sử đồng bộ')}</span></div>`;
+  if(tab==='sync'){el.innerHTML=head+'<div style="padding:40px;text-align:center;color:var(--muted)">Đang tải…</div>';el.innerHTML=head+await logSyncHtml();return;}
   await logLoad(true);
   const f=logFilter();
   let list=logRows;
@@ -3009,9 +3069,7 @@ async function renderLog(){
   const nDel=logRows.filter(r=>r.act==='D').length;
   const today=todayISO();
   const chip=(v,l)=>`<span onclick="logSetFilter('${v}')" style="cursor:pointer;padding:5px 13px;border-radius:20px;font-size:11.5px;font-weight:700;background:${f===v?'var(--accent)':'var(--bg2)'};color:${f===v?'#fff':'var(--text2)'}">${l}</span>`;
-  el.innerHTML=`
-    <div class="page-title">Nhật ký thao tác</div>
-    <div class="page-sub">Chỉ lưu <b>7 ngày gần nhất</b> · hệ thống tự dọn lúc 02:15 mỗi ngày</div>
+  el.innerHTML=head+`
     <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px">
       ${mkKpi(ic('clipboard'),'Thao tác 7 ngày',num(logRows.length),'mỗi dòng là 1 trường bị đổi','g-blue')}
       ${mkKpi(ic('trash')||ic('clipboard'),'Lượt XOÁ',num(nDel),nDel?'cần soi kỹ nhất':'chưa có lượt xoá nào','g-red')}
