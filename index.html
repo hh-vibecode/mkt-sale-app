@@ -450,13 +450,13 @@ function modDateDefault(){
   const from=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   return{from,to};
 }
-function modRange(mod){
-  const raw=localStorage.getItem('modRange_'+mod);
-  if(raw===null)return modDateDefault();
-  try{const v=JSON.parse(raw);return{from:v.from||'',to:v.to||''};}catch(e){return modDateDefault();}
-}
+// Giữ trong BỘ NHỚ phiên, KHÔNG lưu xuống localStorage: mở lại app luôn quay về mặc định
+// (hôm qua -> hôm nay). Nếu nhớ lựa chọn cũ thì sáng hôm sau mở lên vẫn là kỳ của hôm trước mà
+// không ai để ý, số liệu đọc nhầm kỳ. Trong cùng phiên thì chuyển tab qua lại vẫn giữ nguyên.
+const modRanges={};
+function modRange(mod){return modRanges[mod]||modDateDefault();}
 function modSetRange(mod,from,to,cb){
-  localStorage.setItem('modRange_'+mod,JSON.stringify({from:from||'',to:to||''}));
+  modRanges[mod]={from:from||'',to:to||''};
   if(typeof window[cb]==='function')window[cb]();
 }
 function modQuick(mod,v,cb){
