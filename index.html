@@ -6632,7 +6632,11 @@ function rptSlOverviewHtml(){
   const le=dhOrders.filter(o=>dhSaleTypeOrder(o)!=='Sỉ');
   const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
   const dat=le.filter(o=>tag(o,'LEAD ĐẠT')||dhIsQualified(o));
-  const tiem=le.filter(o=>tag(o,'TIỀM NĂNG')), chotO=le.filter(dhIsOrder);
+  // Phễu phải CỘNG DỒN: đơn đã chốt thì trước đó đương nhiên cũng là tiềm năng. Nếu chỉ đếm đơn còn
+  // gắn thẻ "LEAD TIỀM NĂNG" thì bậc dưới (128 đơn chốt) lại to hơn bậc trên (37) -> tỉ lệ ra 346%.
+  const chotO=le.filter(dhIsOrder);
+  const tiemGoc=le.filter(o=>tag(o,'TIỀM NĂNG')&&!dhIsOrder(o));
+  const tiem=le.filter(o=>tag(o,'TIỀM NĂNG')||tag(o,'BÀN GIAO')||dhIsOrder(o));
   const chotKh=master.filter(r=>r.isChot), noiKh=master.filter(r=>r.kh);
   const rev=master.reduce((s,r)=>s+r.revenue,0);
   const invCount=master.reduce((s,r)=>s+r.invs.length,0);
@@ -6644,7 +6648,7 @@ function rptSlOverviewHtml(){
   const ordRows=list=>list.map(o=>[o.order_date,'#'+o.system_id,DH_BRAND_LABEL[o.brand]||o.brand,o.customer_name||'',o.phone||'',o.staff_name||'',o.customer_tags||'']);
   L('ovData',{title:'Toàn bộ data Lẻ từ Pancake',cols:ordCols,rows:ordRows(le)});
   L('ovDat',{title:'Lead đạt (đã qua sàng lọc)',cols:ordCols,rows:ordRows(dat)});
-  L('ovTiem',{title:'Lead tiềm năng',cols:ordCols,rows:ordRows(tiem)});
+  L('ovTiem',{title:'Lead tiềm năng (gồm cả đã chốt)',cols:ordCols,rows:ordRows(tiem)});
   L('ovChot',{title:'Đơn gắn thẻ CHỐT ĐƠN',cols:ordCols,rows:ordRows(chotO)});
   L('ovChotKh',{title:'Khách đã chốt',cols:custCols,rows:custRows(chotKh)});
   L('ovNoi',{title:'Khách đã nối được hoá đơn Kiot',cols:custCols,rows:custRows(noiKh)});
@@ -6685,7 +6689,7 @@ function rptSlOverviewHtml(){
     <div class="kpi-grid" style="margin-bottom:14px">
       ${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(invCount)+' hoá đơn Kiot · nối bằng Mã KH','g-green')}
       ${mkKpi(ic('users'),'Khách vào Master',num(master.length),num(chotKh.length)+' đã chốt · '+num(master.length-chotKh.length)+' tiềm năng','g-blue')}
-      ${mkKpi(ic('check'),'Tỉ lệ chốt',pct(le.length?chotO.length/le.length*100:0),num(chotO.length)+' đơn chốt / '+num(le.length)+' data','g-teal')}
+      ${mkKpi(ic('check'),'Tỉ lệ chốt / tiềm năng',pct(tiem.length?chotO.length/tiem.length*100:0),num(chotO.length)+' chốt / '+num(tiem.length)+' tiềm năng · '+pct(le.length?chotO.length/le.length*100:0)+' trên tổng data','g-teal')}
       ${mkKpi(ic('duplicate'),'Đã nối Kiot',num(noiKh.length)+'/'+num(chotKh.length),chotKh.length?pct(noiKh.length/chotKh.length*100)+' khách chốt có Mã KH':'—','g-purple')}
       ${mkKpi(ic('cash'),'Giá trị TB / khách',vnd(noiKh.length?rev/noiKh.length:0),'trên khách đã nối được hoá đơn','g-yellow')}
     </div>
