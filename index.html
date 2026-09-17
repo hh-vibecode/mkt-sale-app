@@ -2627,7 +2627,7 @@ function rptSlBuildMaster(){
     const revenue=invs.reduce((s,i)=>s+Number(i.total||0),0);
     const kh=kiotCusts.length?kiotCusts[0].code:manualKH;
     const chot=orders.filter(dhIsOrder);
-    const touches=[...orders.map(o=>o.order_date),...invs.map(i=>(i.purchase_date||'').slice(0,10))].filter(Boolean).sort();
+    const touches=[mn.care_date,...orders.map(o=>o.order_date),...invs.map(i=>(i.purchase_date||'').slice(0,10))].filter(Boolean).sort();
     const lastTouch=touches[touches.length-1]||'';
     return{key,orders,invs,kh,revenue,linkBy,manualKH,noteKH,kiotCusts,leadId,suggest,
       // Trạng thái: khách có thẻ CHỐT ĐƠN thì KHOÁ CỨNG "Chốt đơn", Sale không sửa được.
@@ -2665,7 +2665,7 @@ function rptSlBuildMaster(){
     const invs=(kc?(invByCode[kc.code]||[]):[]).slice().sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
     const revenue=invs.reduce((s,i)=>s+Number(i.total||0),0);
     const mn=rptSlManual[leadId]||{};
-    const touches=[r.created_date,...invs.map(i=>(i.purchase_date||'').slice(0,10))].filter(Boolean).sort();
+    const touches=[mn.care_date,r.created_date,...invs.map(i=>(i.purchase_date||'').slice(0,10))].filter(Boolean).sort();
     const lastTouch=touches[touches.length-1]||'';
     rows.push({key:'M'+r.id,orders:[],invs,kh:kc?kc.code:null,revenue,linkBy:kc?'Nhập tay':'',
       manualKH:r.kiot_code||null,noteKH:null,kiotCusts:kc?[kc]:[],leadId,suggest:[],isManual:true,
@@ -2705,24 +2705,13 @@ function rptSlMasterHtml(){
     <td>${r.staff||'—'}</td>
     <td class="name">${r.name}</td>
     <td>${r.phone||'<span style="color:var(--muted)">—</span>'}</td>
-    <td onclick="rptSlStop(event)">${r.isChot
-      ?`<span title="Khách có đơn gắn thẻ CHỐT ĐƠN — khoá cứng, không sửa được" style="display:inline-block;padding:3px 10px;border-radius:20px;background:var(--green-l);color:var(--green);font-size:11px;font-weight:800">🔒 Chốt đơn</span>`
-      :`<select onchange="rptSlSetField('${r.leadId}','status',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid ${r.manualStatus?'var(--border)':'var(--yellow)'};border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">
-        <option value=""${r.manualStatus?'':' selected'}>— chọn —</option>
-        ${RPT_SL_STATUS_OPTS.map(s=>`<option value="${s}"${r.manualStatus===s?' selected':''}>${s}</option>`).join('')}
-      </select>`}</td>
-    <td onclick="rptSlStop(event)">${!r.isChot
-      ?`<select onchange="rptSlSetField('${r.leadId}','lost_group',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer">
-        <option value=""${r.lostGroup?'':' selected'}>— chọn —</option>
-        ${RPT_SL_LOST_OPTS.map(s=>`<option value="${s}"${r.lostGroup===s?' selected':''}>${s}</option>`).join('')}
-      </select>`
-      :'<span style="color:var(--muted)">—</span>'}</td>
-    <td onclick="rptSlStop(event)">${r.isChot
-      ?'<span style="color:var(--muted);font-size:11px" title="Đã chốt rồi thì không còn là giá trị tiềm năng nữa">—</span>'
-      :`<input value="${r.potential?num(r.potential):''}" inputmode="numeric" placeholder="0"
-        onkeydown="if(event.key==='Enter')this.blur()"
-        onblur="rptSlSetPotential('${r.leadId}',this.value,this)"
-        style="width:96px;height:26px;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);text-align:right;outline:none">`}</td>
+    <td>${r.isChot
+      ?'<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:var(--green-l);color:var(--green);font-size:11px;font-weight:800">Chốt đơn</span>'
+      :(r.manualStatus
+        ?'<span style="font-weight:800;font-size:11.5px;color:'+(RPT_SL_STATUS_COLOR[r.manualStatus]||'var(--text2)')+'">'+r.manualStatus+'</span>'
+        :'<span style="color:var(--muted);font-size:11px">chưa cập nhật</span>')}</td>
+    <td style="font-size:11px">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.lostGroup||'<span style="color:var(--muted)">—</span>')}</td>
+    <td class="num">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.potential?vnd(r.potential):'<span style="color:var(--muted)">—</span>')}</td>
     <td>${r.lastTouch||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
     <td><span style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap">
@@ -2909,17 +2898,19 @@ function rptSlCrmHtml(){
   if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.content||'').toLowerCase().includes(q));
   const pageSize=50,page=window._rptSlCrmPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
-  const sel=(r,field,opts,cur,w)=>`<select onchange="rptSlSetField('${r.leadId}','${field}',this.value,this)" style="${inp};width:${w||130}px;cursor:pointer;font-weight:700">
+  // Ô Sale PHẢI thao tác -> nền xanh lá nhạt, nhìn là biết chỗ nào cần điền. Ô chỉ đọc giữ nền trắng.
+  const edit=inp.replace('background:var(--surface)','background:var(--green-l)')+';border-color:rgba(10,191,122,.35)';
+  const sel=(r,field,opts,cur,w)=>`<select onchange="rptSlSetField('${r.leadId}','${field}',this.value,this)" style="${edit};width:${w||130}px;cursor:pointer;font-weight:700">
     <option value=""${cur?'':' selected'}>—</option>${opts.map(o=>`<option value="${o}"${cur===o?' selected':''}>${o}</option>`).join('')}</select>`;
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>`<tr>
-    <td onclick="rptSlStop(event)"><input type="date" value="${r.careDate||''}" onchange="rptSlSetField('${r.leadId}','care_date',this.value,this)" style="${inp};width:128px"></td>
+    <td onclick="rptSlStop(event)"><input type="date" value="${r.careDate||''}" onchange="rptSlSetField('${r.leadId}','care_date',this.value,this)" style="${edit};width:128px"></td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
     <td>${r.staff||'—'}</td>
     <td class="name" style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">${r.name}</td>
     <td onclick="rptSlStop(event)"><input value="${String(r.content||'').replace(/"/g,'&quot;')}" placeholder="Nội dung trao đổi…"
       onkeydown="if(event.key==='Enter')this.blur()"
       onblur="if(this.value!==${JSON.stringify(String(r.content||''))})rptSlSetField('${r.leadId}','content',this.value,this)"
-      style="${inp};width:260px"></td>
+      style="${edit};width:260px"></td>
     <td class="num">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.potential?vnd(r.potential):'<span style="color:var(--muted)">—</span>')}</td>
     <td onclick="rptSlStop(event)">${r.isChot
       ?'<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:var(--green-l);color:var(--green);font-size:11px;font-weight:800">🔒 Chốt đơn</span>'
