@@ -6583,6 +6583,23 @@ async function rptSlSaveManual(leadId,patch){
 }
 // Ô nhập trong bảng: chặn click nổi lên <tr> (nếu không sẽ mở modal chi tiết khi đang chọn dropdown).
 function rptSlStop(e){e.stopPropagation();}
+// Giá trị tiềm năng: Sale gõ số tự do ("15.000.000", "15tr", "15000000") -> chuẩn hoá về số nguyên VND.
+async function rptSlSetPotential(leadId,raw,el){
+  let s=String(raw||'').trim().toLowerCase().replace(/[.,\s]/g,'');
+  let v=0;
+  if(s){
+    const m=/^(\d+)(tr|trieu|triệu|k|ngan|nghin|nghìn)?$/.exec(s);
+    if(!m){if(el)el.style.borderColor='var(--red)';return;}
+    v=Number(m[1])*(m[2]?(/^(tr|trieu|triệu)$/.test(m[2])?1e6:1e3):1);
+  }
+  const cur=Number((rptSlManual[leadId]||{}).potential_value||0);
+  if(v===cur){if(el)el.value=v?num(v):'';return;}
+  try{
+    await rptSlSaveManual(leadId,{potential_value:v||null});
+    if(el){el.style.borderColor='var(--green)';setTimeout(()=>{el.style.borderColor='';},900);}
+    renderReportSaleLe();
+  }catch(err){alert(err.message);if(el)el.style.borderColor='var(--red)';}
+}
 async function rptSlSetField(leadId,field,value,el){
   const old=el?el.style.borderColor:'';
   try{
@@ -6686,13 +6703,22 @@ function rptSlOverviewHtml(){
   </div>`).join('');
 
   return `
-    <div class="kpi-grid" style="margin-bottom:14px">
+    ${(()=>{
+      // 6 KPI xếp 2 HÀNG x 3 CỘT, nhóm theo chủ đề: hàng 1 toàn TIỀN, hàng 2 toàn KHÁCH & HIỆU SUẤT.
+      // Không để lẫn lộn tiền với số lượng trên cùng một hàng -- người đọc quét theo hàng.
+      const open=master.filter(r=>!r.isChot),pv=open.reduce((s,r)=>s+r.potential,0),nPv=open.filter(r=>r.potential>0).length;
+      const g='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px';
+      return `
+    <div style="${g}">
       ${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(invCount)+' hoá đơn Kiot · nối bằng Mã KH','g-green')}
-      ${mkKpi(ic('users'),'Khách vào Master',num(master.length),num(chotKh.length)+' đã chốt · '+num(master.length-chotKh.length)+' tiềm năng','g-blue')}
-      ${mkKpi(ic('check'),'Tỉ lệ chốt / tiềm năng',pct(tiem.length?chotO.length/tiem.length*100:0),num(chotO.length)+' chốt / '+num(tiem.length)+' tiềm năng · '+pct(le.length?chotO.length/le.length*100:0)+' trên tổng data','g-teal')}
-      ${mkKpi(ic('duplicate'),'Đã nối Kiot',num(noiKh.length)+'/'+num(chotKh.length),chotKh.length?pct(noiKh.length/chotKh.length*100)+' khách chốt có Mã KH':'—','g-purple')}
+      ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(pv),nPv?num(nPv)+'/'+num(open.length)+' khách chưa chốt đã ước lượng':'chưa khách nào được ước lượng','g-orange')}
       ${mkKpi(ic('cash'),'Giá trị TB / khách',vnd(noiKh.length?rev/noiKh.length:0),'trên khách đã nối được hoá đơn','g-yellow')}
     </div>
+    <div style="${g};margin-bottom:14px">
+      ${mkKpi(ic('users'),'Khách tiềm năng',num(master.length),num(chotKh.length)+' đã chốt · '+num(master.length-chotKh.length)+' chưa chốt','g-blue')}
+      ${mkKpi(ic('check'),'Tỉ lệ chốt / tiềm năng',pct(tiem.length?chotO.length/tiem.length*100:0),num(chotO.length)+' chốt / '+num(tiem.length)+' tiềm năng · '+pct(le.length?chotO.length/le.length*100:0)+' trên tổng data','g-teal')}
+      ${mkKpi(ic('duplicate'),'Đã nối Kiot',num(noiKh.length)+'/'+num(chotKh.length),chotKh.length?pct(noiKh.length/chotKh.length*100)+' khách chốt có Mã KH':'—','g-purple')}
+    </div>`;})()}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px">
       ${card('Phễu chuyển đổi <span style="font-size:11px;color:var(--muted);font-weight:600">· bấm để xem danh sách</span>',funnelHtml)}
       ${card('Doanh thu theo brand',Object.keys(byBrand).length?bar(Object.entries(byBrand).sort((a,b)=>b[1]-a[1]),rev,v=>vnd(v)):'<div style="color:var(--muted);font-size:12px">Chưa có doanh thu</div>')}
@@ -6855,6 +6881,7 @@ function rptSlBuildMaster(){
       // Trạng thái: khách có thẻ CHỐT ĐƠN thì KHOÁ CỨNG "Chốt đơn", Sale không sửa được.
       // Còn lại để Sale tự chọn ở dropdown; chưa chọn thì để TRỐNG (không suy từ thẻ nữa).
       manualStatus:mn.status||'',lostGroup:mn.lost_group||'',lostReason:mn.lost_reason||'',note:mn.note||'',
+      potential:Number(mn.potential_value||0),
       // SĐT: Pancake thường bỏ trống (chỉ 110/158 khách có), nhưng khách ĐÃ NỐI được Kiot thì bên Kiot
       // gần như luôn có số (6.264/6.479 khách lẻ). Bù sang để không hiển thị "—" oan.
       name:pick(o=>o.customer_name)||'—',
@@ -6891,6 +6918,7 @@ function rptSlBuildMaster(){
     rows.push({key:'M'+r.id,orders:[],invs,kh:kc?kc.code:null,revenue,linkBy:kc?'Nhập tay':'',
       manualKH:r.kiot_code||null,noteKH:null,kiotCusts:kc?[kc]:[],leadId,suggest:[],isManual:true,
       manualStatus:mn.status||'',lostGroup:mn.lost_group||'',lostReason:mn.lost_reason||'',note:mn.note||r.note||'',
+      potential:Number(mn.potential_value||0),
       name:r.customer_name||'—',phone:r.phone||(kc?(kc.phone||kc.phone_key||''):''),phoneFromKiot:!r.phone,
       created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staff:r.staff_name||'',adId:'',
       nguon:r.nguon||'Online',kenh:r.kenh||'(nhập tay)',diaChi:rptSlDiaChiKiot(kc?[kc]:[]),
@@ -6937,6 +6965,12 @@ function rptSlMasterHtml(){
         ${RPT_SL_LOST_OPTS.map(s=>`<option value="${s}"${r.lostGroup===s?' selected':''}>${s}</option>`).join('')}
       </select>`
       :'<span style="color:var(--muted)">—</span>'}</td>
+    <td onclick="rptSlStop(event)">${r.isChot
+      ?'<span style="color:var(--muted);font-size:11px" title="Đã chốt rồi thì không còn là giá trị tiềm năng nữa">—</span>'
+      :`<input value="${r.potential?num(r.potential):''}" inputmode="numeric" placeholder="0"
+        onkeydown="if(event.key==='Enter')this.blur()"
+        onblur="rptSlSetPotential('${r.leadId}',this.value,this)"
+        style="width:96px;height:26px;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);text-align:right;outline:none">`}</td>
     <td>${r.lastTouch||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
     <td><span style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap">
@@ -6964,8 +6998,8 @@ function rptSlMasterHtml(){
       <div class="tbl-head"><div class="tbl-title">Master Data — hồ sơ khách</div><div class="tbl-count">${num(list.length)}</div>
         <span style="margin-left:auto;font-size:11px;color:var(--muted)">Doanh thu trong bộ lọc: <b style="color:var(--green)">${vnd(rev)}</b></span></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày tạo</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Trạng thái</th><th>Nhóm nguyên nhân mất lead</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
+        <thead><tr><th>Ngày tạo</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Trạng thái</th><th>Nhóm nguyên nhân mất lead</th><th>Giá trị tiềm năng</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetMasterPage(${page-1})">‹ Trước</button>
