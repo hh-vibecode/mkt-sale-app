@@ -2353,19 +2353,87 @@ async function rptSlSaveContent(leadId){
     qcCloseModal();renderReportSaleLe();
   }catch(e){if(msg)msg.innerHTML='<span style="color:var(--red)">Chưa lưu được: '+e.message+'</span>';}
 }
-// Giá trị tiềm năng: Sale gõ tự do ("15.000.000", "15tr", "500k") -> chuẩn hoá về số nguyên VND.
-async function rptSlSetPotential(leadId,raw,el){
-  // "15tr", "1,5tr", "1.5 triệu", "500k", "15.000.000". Có đơn vị -> dấu , hoặc . là THẬP PHÂN
-  // (trước đây bỏ hết dấu nên "1,5tr" thành 15tr). Không đơn vị -> dấu là phân cách nghìn.
-  let s=String(raw||'').trim().toLowerCase().replace(/\s/g,'');
-  let v=0;
-  if(s){
-    const m=/^([\d.,]+)(tr|trieu|triệu|k|ngan|ngàn|nghin|nghìn)?$/.exec(s);
-    if(!m){if(el)el.style.borderColor='var(--red)';return;}
-    const n=m[2]?Number(m[1].replace(',','.')):Number(m[1].replace(/[.,]/g,''));
-    if(!isFinite(n)){if(el)el.style.borderColor='var(--red)';return;}
-    v=Math.round(n*(m[2]?(/^(tr|trieu|triệu)$/.test(m[2])?1e6:1e3):1));
+// Giá trị tiền Sale gõ tự do -> số nguyên VND; trả NaN nếu không hiểu được.
+// "15tr", "1,5tr", "1.5 triệu", "500k", "15.000.000". Có đơn vị -> dấu , hoặc . là THẬP PHÂN
+// (trước đây bỏ hết dấu nên "1,5tr" thành 15tr). Không đơn vị -> dấu là phân cách nghìn.
+function rptSlParseMoney(raw){
+  const s=String(raw||'').trim().toLowerCase().replace(/\s/g,'');
+  if(!s)return 0;
+  const m=/^([\d.,]+)(tr|trieu|triệu|k|ngan|ngàn|nghin|nghìn)?$/.exec(s);
+  if(!m)return NaN;
+  const n=m[2]?Number(m[1].replace(',','.')):Number(m[1].replace(/[.,]/g,''));
+  if(!isFinite(n))return NaN;
+  return Math.round(n*(m[2]?(/^(tr|trieu|triệu)$/.test(m[2])?1e6:1e3):1));
+}
+// POPUP SỬA CẢ HÀNG: bấm icon ✏️ nhỏ ở bất kỳ ô cần điền nào -> hiện TẤT CẢ ô Sale điền được của khách đó
+// trong 1 bảng (cùng khung với bảng Chi tiết), bấm Lưu ghi 1 lần xuống saleretail_manual.
+// Khách đã chốt: trạng thái khoá "Chốt đơn", không có giá trị tiềm năng / nguyên nhân mất lead.
+function rptSlEditRow(leadId){
+  const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
+  if(!r)return;
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const ip='width:100%;box-sizing:border-box;height:36px;padding:6px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--font);outline:none';
+  const lb=t=>'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">'+t+'</div>';
+  const opt=(list,cur)=>'<option value="">—</option>'+list.map(o=>'<option value="'+esc(o)+'"'+(cur===o?' selected':'')+'>'+esc(o)+'</option>').join('');
+  let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
+  m.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">
+    <div style="background:var(--surface);border-radius:16px;max-width:680px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)">
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <span style="width:38px;height:38px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 auto">✏️</span>
+        <div style="min-width:0">
+          <div style="font-size:15px;font-weight:800">${esc(r.name)}</div>
+          <div style="font-size:11.5px;color:var(--muted);font-weight:600">${esc(r.phone||'chưa có SĐT')} · ${esc(r.kenh)} · ${esc(r.staff||'chưa có sales')}${r.kh?' · '+esc(r.kh):''}</div>
+        </div>
+        <button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text);flex:0 0 auto">✕</button>
+      </div>
+      <div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+        <div>${lb('Ngày chăm sóc')}<input id="rsE_care" type="date" value="${esc(r.careDate)}" style="${ip}"></div>
+        <div>${lb('Giá trị tiềm năng')}${r.isChot
+          ?'<div style="height:36px;display:flex;align-items:center;color:var(--muted);font-size:12px">— khách đã chốt</div>'
+          :'<input id="rsE_pot" value="'+(r.potential?num(r.potential):'')+'" inputmode="numeric" placeholder="vd 15tr, 500k" style="'+ip+';text-align:right">'}</div>
+        <div>${lb('Trạng thái')}${r.isChot
+          ?'<div style="height:36px;display:flex;align-items:center">'+rptSlStatusPill('Chốt đơn')+'</div>'
+          :'<select id="rsE_status" style="'+ip+';cursor:pointer" onchange="document.getElementById(\'rsE_lostWrap\').style.opacity=this.value===\'Mất lead\'?1:.45">'+opt(RPT_SL_STATUS_OPTS,r.manualStatus)+'</select>'}</div>
+        ${r.isChot?'':`<div id="rsE_lostWrap" style="opacity:${r.manualStatus==='Mất lead'?1:.45}">${lb('Nhóm nguyên nhân mất lead')}<select id="rsE_lost" style="${ip};cursor:pointer">${opt(RPT_SL_LOST_OPTS,r.lostGroup)}</select></div>`}
+        <div style="grid-column:1/-1">${lb('Nội dung trao đổi')}
+          <textarea id="rsE_content" rows="6" placeholder="Khách quan tâm gì, đã trao đổi những gì, hẹn lại khi nào…"
+            onkeydown="if(event.ctrlKey&&event.key==='Enter')rptSlSaveRow('${leadId}')"
+            style="${ip};height:auto;line-height:1.55;resize:vertical">${esc(r.content)}</textarea></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:0 20px 16px">
+        <span id="rsE_msg" style="font-size:11.5px;font-weight:700;color:var(--muted)">Ctrl + Enter để lưu</span>
+        <button onclick="qcCloseModal()" class="btn-ghost" style="margin-left:auto">Huỷ</button>
+        <button onclick="rptSlSaveRow('${leadId}')" class="refresh-btn" style="padding:6px 18px">Lưu</button>
+      </div>
+    </div></div>`;
+}
+async function rptSlSaveRow(leadId){
+  const g=id=>document.getElementById(id);
+  const msg=g('rsE_msg'),cur=rptSlManual[leadId]||{};
+  const patch={};
+  const put=(k,v)=>{const a=v==null||v===''?null:v,b=cur[k]==null||cur[k]===''?null:cur[k];if(String(a)!==String(b))patch[k]=a;};
+  put('care_date',g('rsE_care')?g('rsE_care').value:null);
+  put('content',g('rsE_content')?g('rsE_content').value.trim():null);
+  if(g('rsE_pot')){
+    const v=rptSlParseMoney(g('rsE_pot').value);
+    if(isNaN(v)){g('rsE_pot').style.borderColor='var(--red)';if(msg)msg.innerHTML='<span style="color:var(--red)">Giá trị tiềm năng không hiểu được (vd 15tr, 500k, 15.000.000)</span>';return;}
+    put('potential_value',v||null);
   }
+  if(g('rsE_status')){
+    const st=g('rsE_status').value;put('status',st);
+    // Nhóm nguyên nhân chỉ có nghĩa khi Mất lead -- đổi sang trạng thái khác thì xoá đi cho sạch.
+    put('lost_group',st==='Mất lead'&&g('rsE_lost')?g('rsE_lost').value:null);
+  }
+  if(!Object.keys(patch).length){qcCloseModal();return;}
+  try{
+    if(msg)msg.textContent='Đang lưu…';
+    await rptSlSaveManual(leadId,patch);
+    qcCloseModal();renderReportSaleLe();
+  }catch(e){if(msg)msg.innerHTML='<span style="color:var(--red)">Chưa lưu được: '+e.message+'</span>';}
+}
+async function rptSlSetPotential(leadId,raw,el){
+  const v=rptSlParseMoney(raw);
+  if(isNaN(v)){if(el)el.style.borderColor='var(--red)';return;}
   if(v===Number((rptSlManual[leadId]||{}).potential_value||0)){if(el)el.value=v?num(v):'';return;}
   await rptSlSetFieldRaw(leadId,{potential_value:v||null},el);
 }
@@ -3064,36 +3132,30 @@ function rptSlCrmHtml(){
     <option value=""${cur?'':' selected'}>—</option>${opts.map(o=>`<option value="${o}"${cur===o?' selected':''}>${o}</option>`).join('')}</select>`;
   // Ô TEXT (ngày, nội dung, giá trị tiềm năng) KHOÁ mặc định -- tránh gõ nhầm khi chỉ đang xem.
   // Bấm nút ✏️ để mở sửa cho ĐÚNG hàng đó. Xem nhanh: rê chuột. Xem đầy đủ: bấm đúp mở hồ sơ khách.
-  const ed=window._rptSlEditRow;
-  const lock=(html,full,r)=>`<td ondblclick="rptSlStop(event);rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')"
-    title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm đúp để xem hồ sơ đầy đủ)" style="cursor:default">${html}</td>`;
-  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>{const E=ed===r.leadId;return `<tr${E?' style="background:rgba(67,97,238,.05)"':''}>
-    ${E?`<td onclick="rptSlStop(event)"><input type="date" value="${r.careDate||''}" onchange="rptSlSetField('${r.leadId}','care_date',this.value,this)" style="${edit};width:128px"></td>`
-       :lock(dmy(r.careDate)||'<span style="color:var(--muted)">—</span>',dmy(r.careDate),r)}
+  // Ô cần điền: giá trị + icon ✏️ nhỏ NGAY TRONG Ô. Bấm icon -> popup sửa TẤT CẢ ô điền được của hàng.
+  // Rê chuột xem nhanh; bấm đúp mở hồ sơ đầy đủ.
+  const pen=r=>`<button onclick="rptSlStop(event);rptSlEditRow('${r.leadId}')" title="Sửa thông tin chăm sóc"
+    style="flex:0 0 auto;border:none;background:transparent;cursor:pointer;font-size:11px;padding:2px 3px;border-radius:5px;opacity:.55" onmouseover="this.style.opacity=1;this.style.background='var(--bg2)'" onmouseout="this.style.opacity=.55;this.style.background='transparent'">✏️</button>`;
+  const lock=(html,full,r,right)=>`<td ondblclick="rptSlStop(event);rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')"
+    title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm đúp để xem hồ sơ đầy đủ)" style="cursor:default"><div style="display:flex;align-items:center;gap:4px;justify-content:${right?'flex-end':'space-between'}">${html}${pen(r)}</div></td>`;
+  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>{return `<tr>
+    ${lock(dmy(r.careDate)||'<span style="color:var(--muted)">—</span>',dmy(r.careDate),r)}
     <td>${rptSlSrcBadge(r)}</td>
     <td>${r.staff||'—'}</td>
     <td class="name" style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">${r.name}</td>
-    ${E?`<td onclick="rptSlStop(event)"><input value="${String(r.content||'').replace(/"/g,'&quot;')}" placeholder="Nội dung trao đổi…"
-        onkeydown="if(event.key==='Enter')this.blur()" onblur="rptSlSetField('${r.leadId}','content',this.value,this)"
-        style="${edit};width:260px"></td>`
-       :lock(r.content
+    ${lock(r.content
           ? '<span style="font-size:11.5px;display:block;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+String(r.content).replace(/</g,'&lt;')+'</span>'
           : '<span style="font-size:11.5px;color:var(--muted)">—</span>', r.content, r)}
     ${r.isChot?'<td class="num"><span style="color:var(--muted)">—</span></td>'
-      :E?`<td class="num" onclick="rptSlStop(event)"><input value="${r.potential?num(r.potential):''}" inputmode="numeric" placeholder="0"
-          onkeydown="if(event.key==='Enter')this.blur()" onblur="rptSlSetPotential('${r.leadId}',this.value,this)"
-          style="${edit};width:110px;text-align:right"></td>`
-       :lock('<span class="num" style="font-weight:700">'+(r.potential?vnd(r.potential):'<span style="color:var(--muted);font-weight:400">—</span>')+'</span>',r.potential?vnd(r.potential):'',r)}
+      :lock('<span class="num" style="font-weight:700">'+(r.potential?vnd(r.potential):'<span style="color:var(--muted);font-weight:400">—</span>')+'</span>',r.potential?vnd(r.potential):'',r,true)}
     <td onclick="rptSlStop(event)">${r.isChot?rptSlStatusPill('Chốt đơn')
       :sel(r,'status',RPT_SL_STATUS_OPTS,r.manualStatus,130)}</td>
     <td onclick="rptSlStop(event)">${r.isChot?'<span style="color:var(--muted)">—</span>':sel(r,'lost_group',RPT_SL_LOST_OPTS,r.lostGroup,160)}</td>
     <td>${dmy(r.closeDate)||'<span style="color:var(--muted)">—</span>'}</td>
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
     <td onclick="rptSlStop(event)" style="white-space:nowrap">
-      <button onclick="rptSlToggleEdit('${r.leadId}')" title="${E?'Xong, khoá lại':'Sửa các ô text'}"
-        style="border:1.5px solid ${E?'var(--accent)':'var(--border)'};background:${E?'var(--accent)':'var(--surface)'};color:${E?'#fff':'var(--text2)'};border-radius:7px;width:28px;height:26px;cursor:pointer;font-size:12px">${E?'✓':'✏️'}</button>
       <button onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')" title="Xem hồ sơ đầy đủ"
-        style="margin-left:5px;border:1.5px solid var(--border);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">👤 Chi tiết</button></td>
+        style="border:1.5px solid var(--border);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">👤 Chi tiết</button></td>
   </tr>`;}).join('');
   // 6 dash theo khung CRM của dashboard cũ: hàng 1 về KHÁCH, hàng 2 về KẾT QUẢ.
   const daCham=all.filter(r=>r.careDate||r.content);
