@@ -1972,9 +1972,21 @@ function dhDataIssues(){
     // Tên hai bên không có lấy một chữ chung: có thể là nickname Facebook (bình thường), cũng có thể dán nhầm.
     if(dhIsOrder(o)&&kc.name&&dhNameMismatch(o.customer_name,kc.name))
       add('Tên Pancake khác hẳn tên bên Kiot','info',o,kh+' · Pancake "'+(o.customer_name||'')+'" vs Kiot "'+kc.name+'" — có thể là nickname, cần liếc qua');
-    if((khUsage[kh]||[]).length>1){
-      const other=khUsage[kh].filter(x=>x!==o).map(x=>'#'+x.system_id+' ('+(DH_BRAND_LABEL[x.brand]||x.brand)+')').join(', ');
-      add('Mã KH bị điền trùng ở nhiều đơn','err',o,kh+' · trùng với '+other+' → doanh thu dễ bị đếm 2 lần');
+    // Cùng 1 Mã KH ở NHIỀU ĐƠN là chuyện BÌNH THƯỜNG -- khách mua lại. Chỉ sai khi mã đó rơi vào
+    // HAI KHÁCH KHÁC NHAU trong Master (khác SĐT/tên): lúc đó hoá đơn của mã bị cộng cho cả hai.
+    // Báo 1 lần trên mã, gắn vào đơn đầu tiên, thay vì báo trên từng đơn.
+    const users=khUsage[kh]||[];
+    if(users.length>1&&o===users[0]){
+      const keys={};users.forEach(x=>{(keys[rptSlCustKey(x)]=keys[rptSlCustKey(x)]||[]).push(x);});
+      const groups=Object.values(keys);
+      if(groups.length>1){
+        const mo=groups.map(g=>'"'+(g[0].customer_name||'?')+'" #'+g.map(x=>x.system_id).join('/')).join(' vs ');
+        // Tên khác hẳn nhau -> Sale dán nhầm mã sang người khác: hoá đơn bị cộng cho cả hai.
+        // Tên giống nhau mà SĐT khác -> nhiều khả năng CÙNG 1 người dùng 2 số, mã đúng nhưng app tách đôi.
+        const khacNguoi=groups.some(g=>dhNameMismatch(groups[0][0].customer_name,g[0].customer_name));
+        if(khacNguoi)add('Mã KH dán nhầm sang khách khác','err',o,kh+' · '+mo+' → hoá đơn bị cộng cho cả hai');
+        else add('1 khách bị tách đôi (2 SĐT, cùng mã)','warn',o,kh+' · '+mo+' → gộp lại hoặc sửa SĐT cho khớp');
+      }
     }
     const invs=invByCode[kh]||[],done=invs.filter(i=>i.status===1);
     if(!done.length){add('Mã KH chưa có hoá đơn nào từ 1/6','warn',o,kh+' ('+(kc.name||'')+') · khách có thật nhưng chưa lên hoá đơn → chưa tính được doanh thu');return;}
