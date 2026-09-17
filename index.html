@@ -1983,9 +1983,10 @@ function dhDataIssues(){
         const mo=groups.map(g=>'"'+(g[0].customer_name||'?')+'" #'+g.map(x=>x.system_id).join('/')).join(' vs ');
         // Tên khác hẳn nhau -> Sale dán nhầm mã sang người khác: hoá đơn bị cộng cho cả hai.
         // Tên giống nhau mà SĐT khác -> nhiều khả năng CÙNG 1 người dùng 2 số, mã đúng nhưng app tách đôi.
+        // Cùng tên, khác SĐT = 1 người dùng 2 số -> app TỰ GỘP theo Mã KH, không phải việc của Sale.
+        // Chỉ báo khi tên khác hẳn nhau: đó mới là dán nhầm mã sang người khác.
         const khacNguoi=groups.some(g=>dhNameMismatch(groups[0][0].customer_name,g[0].customer_name));
-        if(khacNguoi)add('Mã KH dán nhầm sang khách khác','err',o,kh+' · '+mo+' → hoá đơn bị cộng cho cả hai');
-        else add('1 khách bị tách đôi (2 SĐT, cùng mã)','warn',o,kh+' · '+mo+' → gộp lại hoặc sửa SĐT cho khớp');
+        if(khacNguoi)add('Mã KH dán nhầm sang khách khác','err',o,kh+' · '+mo+' → 2 người đang bị gộp làm một');
       }
     }
     const invs=invByCode[kh]||[],done=invs.filter(i=>i.status===1);
@@ -2552,7 +2553,7 @@ function rptSlBuildMaster(){
   // Chỉ giữ khách ĐỦ ĐIỀU KIỆN (xem dhIsQualified). Gom theo khách TRƯỚC rồi mới lọc, để khách có
   // 3 đơn mà chỉ 1 đơn chốt vẫn giữ nguyên lịch sử cả 3 đơn.
   Object.keys(byKey).forEach(k=>{if(!byKey[k].some(dhIsQualified))delete byKey[k];});
-  const rows=Object.entries(byKey).map(([key,orders])=>{
+  let rows=Object.entries(byKey).map(([key,orders])=>{
     orders.sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
     const last=orders[orders.length-1];
     const pick=f=>orders.map(f).filter(Boolean).pop()||'';
@@ -2630,6 +2631,33 @@ function rptSlBuildMaster(){
       invoiceDate:invs.length?(invs[invs.length-1].purchase_date||'').slice(0,10):'',
       lastTouch,daysIdle:lastTouch?Math.floor((new Date()-new Date(lastTouch))/86400000):null});
   });
+  // GỘP các dòng cùng MÃ KH. Một người có thể dùng 2 SĐT (nhắn từ 2 số, hoặc số người nhà), mà khoá gom
+  // khách của app là SĐT -> cùng 1 người bị tách thành 2 dòng và hoá đơn của họ bị cộng CẢ HAI LẦN.
+  // Mã KH là khoá do người xác nhận nên đáng tin hơn SĐT: trùng mã thì gộp.
+  const byKh={};
+  rows.forEach(r=>{if(r.kh)(byKh[r.kh]=byKh[r.kh]||[]).push(r);});
+  Object.values(byKh).filter(g=>g.length>1).forEach(g=>{
+    g.sort((a,b)=>String(a.created).localeCompare(String(b.created)));
+    const keep=g[0],rest=g.slice(1);
+    keep.orders=g.flatMap(r=>r.orders).sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
+    // hoá đơn phải LỌC TRÙNG theo mã hoá đơn, nếu không gộp xong vẫn cộng 2 lần
+    const seen={};keep.invs=g.flatMap(r=>r.invs).filter(i=>seen[i.code]?false:(seen[i.code]=true));
+    keep.revenue=keep.invs.reduce((s,i)=>s+Number(i.total||0),0);
+    keep.phone=keep.phone||rest.map(r=>r.phone).filter(Boolean)[0]||'';
+    keep.phones=[...new Set(g.map(r=>r.phone).filter(Boolean))];
+    keep.isChot=g.some(r=>r.isChot);
+    keep.mergedFrom=rest.map(r=>r.leadId);
+    ['staff','kenh','diaChi','content','careDate','manualStatus','lostGroup','lostReason'].forEach(f=>{
+      if(!keep[f])keep[f]=rest.map(r=>r[f]).filter(Boolean)[0]||keep[f];
+    });
+    keep.potential=Math.max(...g.map(r=>r.potential||0));
+    const touches=g.map(r=>r.lastTouch).filter(Boolean).sort();
+    keep.lastTouch=touches[touches.length-1]||keep.lastTouch;
+    keep.daysIdle=keep.lastTouch?Math.floor((new Date()-new Date(keep.lastTouch))/86400000):null;
+    keep.status=keep.isChot?'Chốt đơn':keep.manualStatus||'';
+    rest.forEach(r=>{r._merged=true;});
+  });
+  rows=rows.filter(r=>!r._merged);
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
 }
 function rptSlSetMasterPage(p){window._rptSlMasterPage=p;renderReportSaleLe();}
