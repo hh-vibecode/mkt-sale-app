@@ -3313,12 +3313,14 @@ function rptSlTodoBuckets(){
     thieuGT:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!r.potential),
     // 6. Bước B3 quy trình Sale: đơn trên POS Cake chưa đổi trạng thái cho khớp thẻ khách.
     saiB3:rptSlB3Issues(all),
+    // 7. Chưa ghi nội dung trao đổi -- thứ DUY NHẤT không hệ thống nào suy ra được, phải Sale ghi.
+    thieuND:all.filter(r=>!String(r.content||'').trim()),
   };
 }
 function rptSlTodoCount(){
   if(!rptSlManualLoaded||!dhLoaded||!kiotLoaded)return 0;
   const b=rptSlTodoBuckets();
-  return b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length+b.thieuGT.length+b.saiB3.length;
+  return b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length+b.thieuGT.length+b.saiB3.length+b.thieuND.length;
 }
 function rptSlInputSec(id,icon,title,desc,count,color,body){
   return `<div class="tbl-card" style="margin-bottom:16px">
@@ -3374,7 +3376,14 @@ function rptSlInputHtml(){
       <td style="font-size:10.5px;color:var(--muted)">${o.customer_tags||'—'}</td>
       <td style="font-size:11px;color:var(--red);font-weight:700">${dhOrderStatusLabel(o.order_status)}</td>
       <td style="font-size:11px;color:var(--green);font-weight:800">${can}</td></tr>`).join(''));
-  const tong=b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length+b.thieuGT.length+b.saiB3.length;
+  // Nội dung trao đổi thường dài -> không nhét ô input vào bảng, bấm nút mở popup sửa cả hàng.
+  const s8=tbl(HEAD+'<th>Trạng thái</th><th>Ngày chăm sóc</th><th style="'+RPT_SL_TH_EDIT+'">Nội dung trao đổi</th>',
+    b.thieuND.map(r=>`<tr>${info(r)}
+      <td>${r.isChot?rptSlStatusPill('Chốt đơn'):(r.manualStatus?rptSlStatusPill(r.manualStatus):'<span style="color:var(--muted);font-size:11px">chưa cập nhật</span>')}</td>
+      <td>${dmy(r.careDate)||'—'}</td>
+      <td onclick="rptSlStop(event)"><button onclick="rptSlEditRow('${r.leadId}')"
+        style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">✏️ Ghi nội dung</button></td></tr>`).join(''));
+  const tong=b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length+b.thieuGT.length+b.saiB3.length+b.thieuND.length;
   return `
     <div class="kpi-grid" style="margin-bottom:14px">
       ${mkKpi(ic('clipboard'),'Tổng việc cần làm',num(tong),'','g-purple')}
@@ -3387,6 +3396,7 @@ function rptSlInputHtml(){
     ${rptSlInputSec('s3','📝','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
     ${rptSlInputSec('s4','❓','Mất lead nhưng chưa ghi nhóm nguyên nhân','',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}
     ${rptSlInputSec('s5','💰','Khách tiềm năng chưa có giá trị dự kiến','',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
+    ${rptSlInputSec('s8','💬','Chưa ghi nội dung trao đổi','bấm để mở bảng nhập — app không tự suy được phần này',b.thieuND.length,'var(--accent)',s8)}
     ${rptSlInputSec('s7','🔄','Đơn POS Cake chưa đổi trạng thái (bước B3)','tiềm năng → Đã xác nhận · chốt đơn → Đã gửi hàng — sửa trong Pancake',b.saiB3.length,'var(--orange,#f97316)',s7)}
 `;
 }
