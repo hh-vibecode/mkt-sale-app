@@ -3430,6 +3430,7 @@ async function renderSettings(){
   let accounts=[];
   try{accounts=await sbFetchAll('sales_users','select=*&has_login=eq.true&order=created_at.desc');}
   catch(e){el.innerHTML='<div style="padding:40px;color:var(--red)">Lỗi tải: '+e.message+'</div>';return;}
+  window._crmAccounts=accounts;
   const rows=accounts.map(a=>`
     <tr>
       <td class="name">${a.name}</td>
@@ -3438,7 +3439,12 @@ async function renderSettings(){
       <td>${a.department||'—'}</td>
       <td style="font-size:11px;color:var(--muted)">${(a.permissions||[]).map(p=>(CRM_PERMISSION_PAGES.find(x=>x[0]===p)||[,p])[1]).join(', ')||'—'}</td>
       <td>${a.status==='active'?'<span style="color:var(--green);font-weight:700">Đang hoạt động</span>':'<span style="color:var(--muted)">Đã khoá</span>'}</td>
-      <td>${a.status==='active'?`<button class="btn-ghost" style="padding:4px 10px;font-size:11px" onclick="crmDeactivateAccount('${a.user_id}')">Khoá</button>`:''}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openCrmEditAccount('${a.user_id}')">Sửa</button>
+        <button class="btn-ghost" style="padding:4px 10px;font-size:11px;margin-left:4px" onclick="crmResetPassword('${a.user_id}')">Đổi mật khẩu</button>
+        ${a.status==='active'
+          ?`<button class="btn-ghost" style="padding:4px 10px;font-size:11px;margin-left:4px;color:var(--red)" onclick="crmDeactivateAccount('${a.user_id}')">Khoá</button>`
+          :`<button class="btn-ghost" style="padding:4px 10px;font-size:11px;margin-left:4px;color:var(--green)" onclick="crmReactivateAccount('${a.user_id}')">Mở lại</button>`}</td>
     </tr>`).join('');
   el.innerHTML=`
     <div class="page-title">Phân quyền — Quản lý tài khoản</div>
@@ -3513,6 +3519,76 @@ async function submitCrmAddAccount(){
   }catch(e){errEl.textContent='Lỗi: '+e.message;errEl.style.display='block';}
   finally{btn.disabled=false;btn.textContent='Tạo tài khoản';}
 }
+// SỬA TÀI KHOẢN: đổi tên / vị trí / bộ phận / quyền truy cập. Username không đổi (là khoá đăng nhập).
+function openCrmEditAccount(userId){
+  const a=(window._crmAccounts||[]).find(x=>x.user_id===userId);
+  if(!a)return;
+  const esc=t=>String(t==null?'':t).replace(/"/g,'&quot;');
+  const perms=a.permissions||[];
+  const body=`<form id="crmEditAcctForm" onsubmit="event.preventDefault();submitCrmEditAccount('${userId}')">
+      ${saonlField('Họ tên *',`<input required name="name" value="${esc(a.name)}" style="${saonlInputStyle}">`)}
+      ${saonlField('Username',`<input value="${esc(a.username)}" disabled style="${saonlInputStyle};background:var(--bg2);color:var(--muted)">`)}
+      ${saonlField('Vị trí *',`<select name="position" id="crmEditPosition" style="${saonlInputStyle}">${Object.keys(CRM_POSITION_LABEL).map(p=>`<option value="${p}"${a.position_title===p?' selected':''}>${CRM_POSITION_LABEL[p]}</option>`).join('')}</select>`)}
+      ${saonlField('Bộ phận',`<input name="department" value="${esc(a.department)}" style="${saonlInputStyle}">`)}
+      ${saonlField('Quyền truy cập',`<div id="crmEditPerms">${CRM_PERMISSION_GROUPS.map(([grp,items])=>`
+        <div style="margin-bottom:6px"><div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px">${grp}</div>
+        ${items.map(([id,label])=>`<label style="display:inline-flex;align-items:center;gap:5px;margin:0 12px 4px 0;font-size:12px;font-weight:600;cursor:pointer">
+          <input type="checkbox" name="perm" value="${id}"${perms.includes(id)?' checked':''}> ${label}</label>`).join('')}</div>`).join('')}</div>`)}
+      <div id="crmEditAcctErr" style="display:none;color:var(--red);font-size:12px;font-weight:700;margin-bottom:8px"></div>
+      <button type="submit" class="refresh-btn" style="width:100%;padding:10px">Lưu thay đổi</button>
+    </form>`;
+  crmModalShell('crmEditAcctModal','⚙️ Sửa tài khoản','linear-gradient(135deg,#334155,#0f172a)',body);
+}
+async function submitCrmEditAccount(userId){
+  const f=document.getElementById('crmEditAcctForm');
+  const errEl=document.getElementById('crmEditAcctErr');errEl.style.display='none';
+  const fd=new FormData(f);
+  const perms=[...f.querySelectorAll('input[name="perm"]:checked')].map(cb=>cb.value);
+  const btn=f.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Đang lưu...';
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_update_account`,{
+      method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({p_user_id:userId,p_name:(fd.get('name')||'').toString().trim(),
+        p_position:(fd.get('position')||'').toString(),p_department:(fd.get('department')||'').toString().trim()||null,p_permissions:perms})
+    });
+    if(!res.ok){const t=await res.json().catch(()=>({}));throw new Error(t.message||('Lỗi '+res.status));}
+    const old=(window._crmAccounts||[]).find(x=>x.user_id===userId)||{};
+    logAct('U','sales_users',old.username||userId,(fd.get('name')||'').toString().trim(),'permissions',(old.permissions||[]).join('+'),perms.join('+'));
+    document.getElementById('crmEditAcctModal').style.display='none';
+    renderSettings();
+    // Sửa quyền của CHÍNH MÌNH thì cập nhật luôn phiên đang mở, khỏi phải đăng xuất vào lại.
+    if(localStorage.getItem('dashUserId')===userId){
+      localStorage.setItem('dashPermissions',JSON.stringify(perms));
+      localStorage.setItem('dashPosition',(fd.get('position')||'').toString());
+      applyRole();
+    }
+  }catch(e){errEl.textContent='Lỗi: '+e.message;errEl.style.display='block';}
+  finally{btn.disabled=false;btn.textContent='Lưu thay đổi';}
+}
+async function crmResetPassword(userId){
+  const a=(window._crmAccounts||[]).find(x=>x.user_id===userId)||{};
+  const p=prompt('Đặt mật khẩu mới cho "'+(a.name||userId)+'" (tối thiểu 4 ký tự).\nNhớ báo lại cho người dùng.','');
+  if(p===null)return;
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_set_password`,{
+      method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({p_user_id:userId,p_password:p})
+    });
+    if(!res.ok){const t=await res.json().catch(()=>({}));throw new Error(t.message||('Lỗi '+res.status));}
+    logAct('U','sales_users',a.username||userId,a.name||'',null,null,'đổi mật khẩu'); // KHÔNG ghi mật khẩu vào nhật ký
+    alert('Đã đổi mật khẩu.');
+  }catch(e){alert('Chưa đổi được: '+e.message);}
+}
+async function crmReactivateAccount(userId){
+  const a=(window._crmAccounts||[]).find(x=>x.user_id===userId)||{};
+  if(!confirm('Mở lại tài khoản "'+(a.name||userId)+'"?'))return;
+  await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_reactivate_account`,{
+    method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({p_user_id:userId})
+  });
+  logAct('U','sales_users',a.username||userId,a.name||'','has_login','false','true');
+  renderSettings();
+}
 async function crmDeactivateAccount(userId){
   const u=(crmSalesUsers||[]).find(x=>x.user_id===userId)||{};
   const who=u.name||u.username||userId;
@@ -3522,7 +3598,6 @@ async function crmDeactivateAccount(userId){
     body:JSON.stringify({p_user_id:userId})
   });
   logAct('D','sales_users',userId,who,'has_login','true','false');
-  await loadCrmFromSupabase();
   renderSettings();
 }
 
