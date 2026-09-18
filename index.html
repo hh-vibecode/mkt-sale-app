@@ -83,6 +83,9 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .app-body{display:flex;margin-top:54px;min-height:calc(100vh - 54px)}
 .sidebar{position:fixed;left:0;top:54px;bottom:0;width:var(--sidebar-w);background:var(--surface);border-right:1.5px solid var(--border);display:flex;flex-direction:column;padding-bottom:58px;transition:width .25s cubic-bezier(.4,0,.2,1);z-index:100;overflow:hidden}
 .sidebar.collapsed{width:var(--sidebar-w-col)}
+/* Ẩn HẲN thanh bên để lấy toàn bộ bề ngang cho bảng số liệu (bảng CRM/Master rất nhiều cột). */
+.sidebar.hidden{width:0;border-right:none}
+.main-content.hidden{margin-left:0}
 .sb-strip{height:4px;background:linear-gradient(90deg,var(--accent),#7c3aed,var(--teal),var(--green));flex-shrink:0}
 .sb-section{padding:16px 10px 6px;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;transition:opacity .2s}
 .sidebar.collapsed .sb-section{opacity:0}
@@ -259,14 +262,14 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
 <div class="app-body">
   <div class="sidebar" id="sidebar">
     <div class="sb-strip"></div>
-    <div class="sb-section" id="sec-report-label" style="margin-top:12px">Báo cáo</div>
-    <nav id="sec-report">
-      <div class="nav-item" onclick="switchPage('report-saleretail')" id="nav-report-saleretail"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg></span><span class="nav-label">Báo cáo Sale Lẻ</span></div>
-    </nav>
     <div class="sb-section" id="sec-qt-label" style="margin-top:12px">Quản trị</div>
     <nav id="sec-qt">
       <div class="nav-item" onclick="switchPage('report-tonghop')" id="nav-report-tonghop"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span><span class="nav-label">Báo cáo tổng hợp</span></div>
       <div class="nav-item" onclick="switchPage('datahub')" id="nav-datahub"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="5" rx="8" ry="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg></span><span class="nav-label">Data Hub</span></div>
+    </nav>
+    <div class="sb-section" id="sec-report-label" style="margin-top:12px">Báo cáo</div>
+    <nav id="sec-report">
+      <div class="nav-item" onclick="switchPage('report-saleretail')" id="nav-report-saleretail"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg></span><span class="nav-label">Báo cáo Sale Lẻ</span></div>
     </nav>
     <!-- Phân quyền + Nhật ký là việc của admin, không phải việc hằng ngày -> gom vào 1 nút cờ lê
          ghim đáy sidebar, bấm mới bung menu. Giữ id nav-settings/nav-log để applyRole() vẫn ẩn/hiện được. -->
@@ -332,20 +335,27 @@ function toggleTheme(){
   localStorage.setItem('theme',dark?'light':'dark');
 }
 
-// ── Sidebar ──
-function toggleSidebar(){
-  sbCollapsed=!sbCollapsed;
-  document.getElementById('sidebar').classList.toggle('collapsed',sbCollapsed);
-  document.getElementById('mainContent').classList.toggle('collapsed',sbCollapsed);
-  localStorage.setItem('sb',sbCollapsed?'1':'0');
+// ── Sidebar: 3 trạng thái, bấm nút ☰ để xoay vòng ──
+//   'full'      đầy đủ chữ
+//   'collapsed' chỉ còn dải icon (vẫn bấm chuyển trang được)
+//   'hidden'    ẩn hẳn, bảng số liệu chiếm trọn bề ngang
+// Nhớ trạng thái trong localStorage 'sb' ('0' đầy đủ · '1' thu gọn · '2' ẩn hẳn).
+const SB_MODES=['full','collapsed','hidden'];
+const SB_LABEL={full:'Thu gọn thanh bên',collapsed:'Ẩn hẳn thanh bên',hidden:'Hiện lại thanh bên'};
+function sbApplyMode(m){
+  const sb=document.getElementById('sidebar'),mc=document.getElementById('mainContent'),btn=document.querySelector('.sb-toggle');
+  if(!sb||!mc)return;
+  sbCollapsed=(m==='collapsed');
+  sb.classList.toggle('collapsed',m==='collapsed');
+  sb.classList.toggle('hidden',m==='hidden');
+  mc.classList.toggle('collapsed',m==='collapsed');
+  mc.classList.toggle('hidden',m==='hidden');
+  if(btn)btn.title=SB_LABEL[m]||'';
+  localStorage.setItem('sb',String(SB_MODES.indexOf(m)));
 }
-(function(){
-  if(localStorage.getItem('sb')==='1'){
-    sbCollapsed=true;
-    document.getElementById('sidebar').classList.add('collapsed');
-    document.getElementById('mainContent').classList.add('collapsed');
-  }
-})();
+function sbMode(){const i=Number(localStorage.getItem('sb')||0);return SB_MODES[i]||'full';}
+function toggleSidebar(){sbApplyMode(SB_MODES[(SB_MODES.indexOf(sbMode())+1)%SB_MODES.length]);}
+(function(){sbApplyMode(sbMode());})();
 
 // ── Auth: khoá dashboard + phân quyền (client-side) ──
 // APP ĐÃ KHOÁ HOÀN TOÀN (18/9/2026): KHÔNG còn tài khoản cứng nào trong code.
@@ -396,11 +406,12 @@ const ROLE_PAGES={}; // không còn role cứng; quyền lấy từ tài khoản
 // để dựng lại từng cái một trên nguồn Pancake + Kiot -> không cần cờ ẩn tạm nữa.
 const TEMP_VISIBLE_PAGES=null;
 // '*' trong danh sách quyền = TOÀN QUYỀN, gồm cả những trang được thêm sau này.
-// Vị trí "Admin" cũng mặc định toàn quyền -> tạo module mới là admin thấy ngay, không phải cấp lại quyền.
+// CHỈ vị trí "Supreme Leader" mới mặc định toàn quyền. Admin vẫn phải tick từng trang trong Phân quyền
+// như mọi tài khoản khác -- có quyền quản tài khoản không có nghĩa là được xem hết số liệu.
 const PERM_ALL='*';
 function dashIsSupreme(a){
   if(Array.isArray(a)&&a.indexOf(PERM_ALL)>=0)return true;
-  return ['admin','supreme'].includes(localStorage.getItem('dashPosition')||'');
+  return (localStorage.getItem('dashPosition')||'')==='supreme';
 }
 // Quyền hiện tại của tài khoản đang đăng nhập; null = toàn quyền.
 function dashCan(page){
@@ -3382,7 +3393,7 @@ const CRM_PERMISSION_GROUPS=[
 const CRM_PERMISSION_PAGES=CRM_PERMISSION_GROUPS.flatMap(([,items])=>items);
 const CRM_POSITION_DEFAULTS={
   supreme:[PERM_ALL],                                                                                // Supreme Leader: trên cả admin, luôn có mọi thứ
-  admin:[PERM_ALL],                                                                                  // toàn quyền, tự có mọi module mới
+  admin:['report-saleretail','report-tonghop','datahub','datahub-manual','settings','log'],          // tick sẵn mọi trang HIỆN CÓ, module mới vẫn phải cấp thêm
   manager:['report-saleretail','report-tonghop','datahub'],                                          // xem hết số liệu, không quản tài khoản
   sales:['report-saleretail','datahub-manual'],                                  // báo cáo Sale + điền khách ngoài Pancake
   mkt:['overview','datahub'],                                                    // chỉ số liệu MKT + nguồn data
@@ -3514,6 +3525,10 @@ async function renderSettings(){
   let accounts=[];
   try{accounts=await sbFetchAll('sales_users','select=*&has_login=eq.true&order=created_at.desc');}
   catch(e){el.innerHTML='<div style="padding:40px;color:var(--red)">Lỗi tải: '+e.message+'</div>';return;}
+  // Tài khoản Supreme Leader chỉ hiện với CHÍNH CHỦ. Admin khác dù có quyền Phân quyền cũng không thấy,
+  // do đó không sửa / không khoá được (database còn chặn thêm một lớp nữa, xem supabase-schema-supreme-guard.sql).
+  const me=localStorage.getItem('dashUserId')||'';
+  accounts=accounts.filter(a=>a.position_title!=='supreme'||a.user_id===me);
   window._crmAccounts=accounts;
   const rows=accounts.map(a=>`
     <tr>
@@ -3637,7 +3652,8 @@ async function submitCrmEditAccount(userId){
     const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_update_account`,{
       method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
       body:JSON.stringify({p_user_id:userId,p_name:(fd.get('name')||'').toString().trim(),
-        p_position:(fd.get('position')||'').toString(),p_department:(fd.get('department')||'').toString().trim()||null,p_permissions:perms})
+        p_position:(fd.get('position')||'').toString(),p_department:(fd.get('department')||'').toString().trim()||null,
+        p_permissions:perms,p_actor:localStorage.getItem('dashUserId')||''})
     });
     if(!res.ok){const t=await res.json().catch(()=>({}));throw new Error(t.message||('Lỗi '+res.status));}
     const old=(window._crmAccounts||[]).find(x=>x.user_id===userId)||{};
@@ -3660,7 +3676,7 @@ async function crmResetPassword(userId){
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_set_password`,{
       method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({p_user_id:userId,p_password:p})
+      body:JSON.stringify({p_user_id:userId,p_password:p,p_actor:localStorage.getItem('dashUserId')||''})
     });
     if(!res.ok){const t=await res.json().catch(()=>({}));throw new Error(t.message||('Lỗi '+res.status));}
     logAct('U','sales_users',a.username||userId,a.name||'',null,null,'đổi mật khẩu'); // KHÔNG ghi mật khẩu vào nhật ký
@@ -3681,10 +3697,11 @@ async function crmDeactivateAccount(userId){
   const u=(crmSalesUsers||[]).find(x=>x.user_id===userId)||{};
   const who=u.name||u.username||userId;
   if(!confirm('Khoá tài khoản "'+who+'"?\n\nNgười này sẽ không đăng nhập được nữa. (Không xoá dữ liệu, có thể mở lại.)'))return;
-  await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_deactivate_account`,{
+  const dres=await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_deactivate_account`,{
     method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
-    body:JSON.stringify({p_user_id:userId})
+    body:JSON.stringify({p_user_id:userId,p_actor:localStorage.getItem('dashUserId')||''})
   });
+  if(!dres.ok){alert('Chưa khoá được: '+((await dres.json().catch(()=>({}))).message||dres.status));return;}
   logAct('D','sales_users',userId,who,'has_login','true','false');
   renderSettings();
 }
