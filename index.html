@@ -1897,6 +1897,7 @@ function dhFilteredOrders(){
     if(to&&o.order_date>to)return false;
     if(q&&!(String(o.system_id).includes(q)||(o.customer_name||'').toLowerCase().includes(q)||(o.phone||'').includes(q)||(o.ad_id||'').toLowerCase().includes(q)))return false;
     return true;
+  // Ngày mới nhất lên đầu (đơn cùng ngày thì mã đơn lớn hơn = tạo sau, cũng lên trước).
   });
 }
 function dhSetPage(p){window._dhPage=p;dhRenderTable();}
@@ -1905,7 +1906,7 @@ async function dhRefresh(){await dhLoadOrders(true);await renderDataHub();}
 function dhRenderTable(){
   const wrap=document.getElementById('dhTableWrap');
   if(!wrap)return;
-  const list=dhFilteredOrders();
+  const list=dhFilteredOrders().slice().sort((a,b)=>String(b.order_date).localeCompare(String(a.order_date))||Number(b.system_id||0)-Number(a.system_id||0));
   const pageSize=50,page=window._dhPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   const pageItems=list.slice((page-1)*pageSize,page*pageSize);
   const rows=pageItems.map(o=>`<tr>
@@ -2232,7 +2233,7 @@ function dhManualRev(){
 function dhManualHtml(){
   const byCode=kiotCustByCode(),inv=dhManualRev();
   const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none';
-  const rows=dhManual.map(r=>{
+  const rows=dhManual.slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
     const v=inv[r.kiot_code]||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
     return `<tr>
       <td>${dmy(r.created_date)||'—'}</td>
@@ -2270,7 +2271,8 @@ function dhExcludedHtml(){
   const list=ids.map(id=>{const mn=rptSlManual[id]||{};const o=(dhOrders||[]).find(x=>rptSlLeadId(x)===id);
     return{leadId:id,name:o?(o.customer_name||'—'):id,brand:o?(DH_BRAND_LABEL[o.brand]||o.brand||''):'',kenh:o?rptSlKenh(o):'',
       staff:o?(o.staff_name||''):'',created:o?o.order_date:'',tags:o?(o.customer_tags||''):'',
-      reason:mn.excluded_reason||'',who:mn.updated_by||'',at:(mn.updated_at||'').slice(0,10)};});
+      reason:mn.excluded_reason||'',who:mn.updated_by||'',at:(mn.updated_at||'').slice(0,10)};})
+    .sort((a,b)=>String(b.created||'').localeCompare(String(a.created||'')));
   return `<div class="tbl-card" style="margin-bottom:16px">
     <div class="tbl-head" style="border-left:4px solid var(--muted)">
       <div class="tbl-title">🚫 Data đã gỡ khỏi báo cáo Sale</div><div class="tbl-count">${num(list.length)}</div>
@@ -2768,7 +2770,7 @@ function rptSlOverviewHtml(){
     </div>
     ${(()=>{
       // Khách CHƯA chốt, sắp theo giá trị tiềm năng giảm dần -> quản lý nhìn ngay tiền còn đang treo ở đâu.
-      const top=master.filter(r=>!r.isChot&&r.status!=='Mất lead').sort((a,b)=>(b.potential||0)-(a.potential||0)||String(b.lastTouch).localeCompare(String(a.lastTouch)));
+      const top=rptSlSortNew(master.filter(r=>!r.isChot&&r.status!=='Mất lead'));
       const tong=top.reduce((s,r)=>s+(r.potential||0),0);
       return `<div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">Top khách hàng tiềm năng</div><div class="tbl-count">${num(top.length)}</div>
