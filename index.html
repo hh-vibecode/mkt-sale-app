@@ -2765,7 +2765,19 @@ function rptSlOverviewHtml(){
           <td class="num">${pct(v.n?v.chot/v.n*100:0)}</td>
           <td class="num" style="font-weight:800;color:${v.rev?'var(--green)':'inherit'}">${v.rev?vnd(v.rev):'—'}</td></tr>`).join('')}</tbody>
       </table></div>
-    </div>`;
+    </div>
+    ${(()=>{
+      // Khách CHƯA chốt, sắp theo giá trị tiềm năng giảm dần -> quản lý nhìn ngay tiền còn đang treo ở đâu.
+      const top=master.filter(r=>!r.isChot&&r.status!=='Mất lead').sort((a,b)=>(b.potential||0)-(a.potential||0)||String(b.lastTouch).localeCompare(String(a.lastTouch)));
+      const tong=top.reduce((s,r)=>s+(r.potential||0),0);
+      return `<div class="tbl-card">
+      <div class="tbl-head"><div class="tbl-title">Top khách hàng tiềm năng</div><div class="tbl-count">${num(top.length)}</div>
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)">Giá trị tiềm năng: <b style="color:var(--orange,#f97316)">${vnd(tong)}</b></span></div>
+      ${top.length?`<div class="tbl-scroll"><table><thead><tr>${RPT_SL_MASTER_HEAD}</tr></thead>
+        <tbody>${top.slice(0,50).map(rptSlMasterRow).join('')}</tbody></table></div>
+        ${top.length>50?'<div style="padding:10px;text-align:center;font-size:11px;color:var(--muted)">hiện 50 khách có giá trị tiềm năng cao nhất</div>':''}`
+        :'<div style="padding:22px;text-align:center;color:var(--muted);font-size:12.5px;font-weight:600">Chưa có khách tiềm năng nào trong kỳ</div>'}
+    </div>`;})()}`;
 }
 function rptSlDrawChanChart(){
   const entries=window._rptSlChanEntries||[];
@@ -3110,16 +3122,11 @@ function rptSlBuildMaster(){
 }
 function rptSlSetMasterPage(p){window._rptSlMasterPage=p;renderReportSaleLe();}
 function rptSlMasterSearch(){return(document.getElementById('rptSlMasterSearch')||{}).value||'';}
-function rptSlMasterHtml(){
-  const allRaw=rptSlPeriod();
-  const all=rptSlApplyF('master',allRaw);
-  const q=(window._rptSlMasterQ||'').trim().toLowerCase();
-  let list=all;
-  if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.kiotName||'').toLowerCase().includes(q)||(r.leadId||'').toLowerCase().includes(q));
-  const pageSize=50,page=window._rptSlMasterPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
-  // Bảng chỉ giữ các trường Sale dùng hàng ngày; mọi trường còn lại (Brand, Nhóm KH, Trạng thái, Mã KH,
-  // Nối bằng, Tên Kiot, hoá đơn, lịch sử đơn...) nằm trong modal "Chi tiết" ở cột cuối.
-  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>`<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
+// 1 dòng của bảng Master -- dùng chung cho tab Master Data và bảng "Top khách tiềm năng" ở Tổng quan,
+// để 2 chỗ luôn hiện cùng bộ cột, sửa 1 chỗ là cả 2 đổi theo.
+const RPT_SL_MASTER_HEAD='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th>';
+function rptSlMasterRow(r){
+  return `<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
     <td>${dmy(r.created)||'—'}</td>
     <td>${rptSlSrcBadge(r)}</td>
     <td style="font-size:11px">${r.nguon||'—'}</td>
@@ -3134,7 +3141,18 @@ function rptSlMasterHtml(){
     <td><span style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap">
       <span style="width:26px;height:26px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;flex:0 0 auto">👤</span>
       <span style="font-size:11.5px;font-weight:700;color:var(--accent)">Chi tiết</span></span></td>
-  </tr>`).join('');
+  </tr>`;
+}
+function rptSlMasterHtml(){
+  const allRaw=rptSlPeriod();
+  const all=rptSlApplyF('master',allRaw);
+  const q=(window._rptSlMasterQ||'').trim().toLowerCase();
+  let list=all;
+  if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.kiotName||'').toLowerCase().includes(q)||(r.leadId||'').toLowerCase().includes(q));
+  const pageSize=50,page=window._rptSlMasterPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
+  // Bảng chỉ giữ các trường Sale dùng hàng ngày; mọi trường còn lại (Brand, Nhóm KH, Trạng thái, Mã KH,
+  // Nối bằng, Tên Kiot, hoá đơn, lịch sử đơn...) nằm trong modal "Chi tiết" ở cột cuối.
+  const rows=list.slice((page-1)*pageSize,page*pageSize).map(rptSlMasterRow).join('');
   const rev=list.reduce((s,r)=>s+r.revenue,0);
   return `
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px">
@@ -3190,7 +3208,13 @@ function rptSlShowCustomer(key){
     fld('Ad ID',r.adId?('<code style="font-size:11px">'+esc(r.adId)+'</code>'):''),
     fld('Ngày chưa liên hệ',r.daysIdle===null?'':num(r.daysIdle)+' ngày',r.isChot&&r.daysIdle>=10?'var(--red)':''),
     fld('Địa chỉ',esc(r.diaChi)),
-  ].join('');
+    // Phần CHĂM SÓC -- trước đây modal chỉ có thông tin đơn/khách, thiếu hẳn thứ Sale ghi hằng ngày.
+    fld('Ngày chăm sóc',esc(dmy(r.careDate))),
+    fld('Giá trị tiềm năng',r.isChot?'':(r.potential?vnd(r.potential):''),r.potential?'var(--orange,#f97316)':''),
+    fld('Nhóm nguyên nhân mất lead',esc(r.lostGroup),r.lostGroup?'var(--red)':''),
+  ].join('')+`<div style="grid-column:1/-1">
+    <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Nội dung trao đổi gần nhất</div>
+    <div style="font-size:12.5px;font-weight:600;margin-top:4px;white-space:pre-wrap;line-height:1.5">${r.content?esc(r.content):'<span style="color:var(--muted);font-weight:600">—</span>'}</div></div>`;
   const tl=[
     ...r.orders.map(o=>({d:o.order_date,t:'Đơn Pancake #'+esc(o.system_id),c:esc(o.internal_note||o.source||''),s:esc(o.customer_tags||''),v:''})),
     ...[...r.kords,...(r.repeatOrds||[]).map(o=>Object.assign({},o,{repeat:true})),...(r.staleOrds||[]).map(o=>Object.assign({},o,{stale:true}))].map(i=>({d:(i.purchase_date||'').slice(0,10),t:(i.repeat?'<span style="color:var(--muted)">[Mua lại]</span> ':i.stale?'<span style="color:var(--red)">[Phiếu treo - không tính]</span> ':'')+(i.direct?'Hoá đơn ':'Đặt hàng ')+esc(i.code)+' <span style="font-weight:600;color:var(--muted)">('+esc(i.status_value||'')+')</span>',c:esc((i.items||[]).map(x=>x.name+' x'+x.qty).join(', ')),s:esc((i.sold_by_name||'')+' · '+(i.branch_name||'')),v:vnd(i.total)})),
