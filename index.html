@@ -201,7 +201,11 @@ tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
 tbody tr:last-child{border-bottom:none}
 tbody tr:hover{background:var(--bg2)}
 td{padding:10px 13px;white-space:nowrap;font-weight:500}
-td.num{font-family:var(--font);font-size:12px;font-weight:700}
+/* Cột số: căn phải + chữ số đều bề ngang -> các hàng thẳng cột, không so le.
+   Tiêu đề của cột số được căn phải tự động bằng tblAlign() (chạy sau mỗi lần render). */
+td.num{font-family:var(--font);font-size:12px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+th.num{text-align:right}
+table td,table th{vertical-align:middle}
 td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;font-size:12.5px}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700}
 .badge::before{content:'';width:5px;height:5px;border-radius:50%}
@@ -660,6 +664,33 @@ async function sbInsert(table,row){
   return data[0];
 }
 // Hiển thị ngày kiểu Việt Nam: 2026-09-17 -> 17/09/2026. Chỉ đổi lúc hiện, dữ liệu vẫn lưu ISO.
+// CĂN LỀ BẢNG: tiêu đề cột phải cùng phía với dữ liệu bên dưới (cột số -> căn phải).
+// Làm ở một chỗ cho mọi bảng thay vì gắn class thủ công ở từng chỗ dựng HTML, để bảng mới cũng tự đúng.
+function tblAlign(root){
+  (root||document).querySelectorAll('table').forEach(t=>{
+    const head=t.querySelector('thead tr'),body=t.querySelector('tbody tr');
+    if(!head||!body)return;
+    const hs=[...head.children],bs=[...body.children];
+    if(hs.length!==bs.length)return;                       // bảng lệch cột thì không đoán bừa
+    hs.forEach((th,i)=>{
+      const td=bs[i];if(!td)return;
+      const right=td.classList.contains('num')||/text-align:\s*right/.test(td.getAttribute('style')||'');
+      const want=right?'right':'left';
+      if(th.style.textAlign!==want)th.style.textAlign=want;
+    });
+  });
+}
+// Gọi lại mỗi khi có bảng mới được vẽ ra (mọi render đều gán innerHTML).
+(function(){
+  if(typeof MutationObserver!=='function')return;
+  let timer=null,busy=false;
+  const run=()=>{busy=true;try{tblAlign();}catch(e){}busy=false;};
+  const ob=new MutationObserver(()=>{if(busy)return;clearTimeout(timer);timer=setTimeout(run,60);});
+  document.addEventListener('DOMContentLoaded',()=>{
+    ob.observe(document.body,{childList:true,subtree:true});
+    run();
+  });
+})();
 function dmy(v){
   const d=String(v||'').slice(0,10);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return v||'';
