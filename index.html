@@ -2804,13 +2804,26 @@ function rptSlShopCode(o){return RPT_SL_SHOP_CODE[o.shop_id]||((o.brand||'XX')+S
 // "Nguồn đơn" Pancake có 2 dạng: "Facebook / <tên page> (<id>)" và chỉ "<tên page> (<id>)" (mất tiền tố).
 // Nên không cắt cứng theo dấu "/" mà nhận diện nền tảng; page id bắt đầu "ttm_" là TikTok Shop.
 const RPT_SL_PLATFORMS=['Facebook','TikTok','Instagram','Zalo','Shopee','Lazada','Website'];
+// Vài shop nằm trong brand lớn nhưng là KÊNH RIÊNG, phải gọi đúng tên để đọc báo cáo không nhầm:
+// shop TikTok "Hoàng Dương | Ming Ying" thuộc brand Chánh Tâm, trước đây hiện chung "TikTok Chánh Tâm"
+// với shop "Đồ Thờ Nhập Khẩu Chánh Tâm" -> nhìn ra 2 dòng cùng tên.
+const RPT_SL_KENH_SHOP={'1329071685':'Hoàng Dương'};
 function rptSlKenh(o){
   if(!o)return'';
   const s=o.source||'';
   let plat=RPT_SL_PLATFORMS.find(p=>new RegExp('^\\s*'+p+'\\s*/','i').test(s));
   if(!plat)plat=/ttm_/i.test(s)?'TikTok':'Facebook';
-  const brand=DH_BRAND_LABEL[o.brand]||o.brand||'';
-  return(plat+(brand?' '+brand:'')).trim()||o.shop_name||'';
+  const ten=RPT_SL_KENH_SHOP[String(o.shop_id)]||DH_BRAND_LABEL[o.brand]||o.brand||'';
+  return(plat+(ten?' '+ten:'')).trim()||o.shop_name||'';
+}
+// Kênh của dòng NHẬP TAY do người gõ ("Tiktok Chánh Tâm", "TikTok Chánh Tâm", "Facebook Hiền Thuỷ ")
+// -> chuẩn hoá hoa/thường và khoảng trắng, nếu không biểu đồ sẽ tách thành nhiều cột cùng nghĩa.
+function rptSlKenhNorm(k){
+  let t=String(k||'').replace(/\s+/g,' ').trim();
+  if(!t)return'';
+  t=t.replace(/tik\s*tok/i,'TikTok').replace(/facebook/i,'Facebook').replace(/zalo/i,'Zalo')
+     .replace(/website/i,'Website').replace(/shopee/i,'Shopee').replace(/instagram/i,'Instagram');
+  return t.replace(/hiền thủy/i,'Hiền Thuỷ');
 }
 // Pancake KHÔNG trả địa chỉ ở endpoint danh sách (đo 16/9/2026: 0/2.429 đơn có address/ward/district/province),
 // nên địa chỉ phải lấy bù từ khách Kiot đã nối. Bên Kiot cũng mỏng (167/7.586 có location_name) -> nhiều dòng
@@ -3037,7 +3050,7 @@ function rptSlBuildMaster(){
       potential:Number(mn.potential_value||0), careDate:mn.care_date||'',careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
       name:r.customer_name||'—',phone:r.phone||(kc?(kc.phone||kc.phone_key||''):''),phoneFromKiot:!r.phone,
       created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staff:r.staff_name||'',adId:'',
-      nguon:r.nguon||'Online',kenh:r.kenh||'(nhập tay)',diaChi:rptSlDiaChiKiot(kc?[kc]:[]),
+      nguon:r.nguon||'Online',kenh:rptSlKenhNorm(r.kenh)||'(nhập tay)',diaChi:rptSlDiaChiKiot(kc?[kc]:[]),
       kiotName:kc?kc.name:'',saleType:r.sale_type||'Lẻ',
       status:kords.length?'Chốt đơn':(mn.status||''),tagStatus:'Nhập tay',
       isChot:kords.length>0,closeDate:kords.length?(kords[0].purchase_date||'').slice(0,10):'',
