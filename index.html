@@ -2917,6 +2917,13 @@ function rptSlSrcBadge(r){
 // Bộ lọc ngày đang áp dụng: trang Sale Lẻ dùng 'saleretail', trang Báo cáo tổng hợp dùng 'tonghop'
 // (mặc định tháng này) -- cùng một hàm dựng số liệu, chỉ khác mốc ngày.
 function rptSlMod(){return window._rptSlMod||'saleretail';}
+// Ngày ĐẠI DIỆN của 1 khách -- đúng cái ngày mà bộ lọc kỳ đang xét: khách đã chốt lấy NGÀY CHỐT,
+// khách chưa chốt lấy NGÀY TẠO. Bảng xếp theo ngày này giảm dần -> việc mới nhất nằm trên cùng.
+function rptSlRowDate(r){
+  if(r.kords&&r.kords.length)return String(r.kords[r.kords.length-1].purchase_date||'').slice(0,10);
+  return (r.isChot&&r.closeDate?r.closeDate:r.created)||'';
+}
+function rptSlSortNew(list){return list.slice().sort((a,b)=>String(rptSlRowDate(b)).localeCompare(String(rptSlRowDate(a)))||String(b.lastTouch).localeCompare(String(a.lastTouch)));}
 function rptSlInRange(r){
   const M=rptSlMod();
   if(r.kords&&r.kords.length)return r.kords.some(i=>modInRange(M,String(i.purchase_date).slice(0,10)));
@@ -3135,7 +3142,7 @@ function rptSlMasterRow(r){
 }
 function rptSlMasterHtml(){
   const allRaw=rptSlPeriod();
-  const all=rptSlApplyF('master',allRaw);
+  const all=rptSlSortNew(rptSlApplyF('master',allRaw));
   const q=(window._rptSlMasterQ||'').trim().toLowerCase();
   let list=all;
   if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.kiotName||'').toLowerCase().includes(q)||(r.leadId||'').toLowerCase().includes(q));
@@ -3258,7 +3265,7 @@ function rptSlB3Issues(rows){
   return out.sort((a,b)=>String(b.o.order_date).localeCompare(String(a.o.order_date)));
 }
 function rptSlTodoBuckets(){
-  const all=rptSlBuildMaster();
+  const all=rptSlSortNew(rptSlBuildMaster());
   return{
     all,
     // 1. Đã chốt nhưng chưa có Mã KH -> mất doanh thu. Kể cả ca app khớp được SĐT vẫn phải điền.
@@ -3359,7 +3366,7 @@ function rptSlInputHtml(){
 function rptSlSetCrmPage(p){window._rptSlCrmPage=p;renderReportSaleLe();}
 function rptSlCrmHtml(){
   const allRaw=rptSlPeriod();
-  const all=rptSlApplyF('crm',allRaw);
+  const all=rptSlSortNew(rptSlApplyF('crm',allRaw));
   const q=(window._rptSlCrmQ||'').trim().toLowerCase();
   let list=all;
   if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.content||'').toLowerCase().includes(q));
