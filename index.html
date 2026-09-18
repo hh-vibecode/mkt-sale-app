@@ -2523,7 +2523,10 @@ function rptSlEditRow(leadId){
         <button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text);flex:0 0 auto">✕</button>
       </div>
       <div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
-        <div>${lb('Ngày chăm sóc')}<input id="rsE_care" type="date" value="${esc(r.careDate)}" style="${ip}"></div>
+        <div>${lb('Ngày chăm sóc')}${r.careAuto
+          ?'<div style="height:36px;display:flex;align-items:center;font-size:13px;font-weight:700">'+(dmy(r.careDate)||'—')
+            +'<span style="margin-left:8px;font-size:10.5px;font-weight:600;color:var(--muted)">ngày tạo đơn Pancake đầu tiên</span></div>'
+          :'<input id="rsE_care" type="date" value="'+esc(r.careDate)+'" style="'+ip+'">'}</div>
         <div>${lb('Giá trị tiềm năng')}${r.isChot
           ?'<div style="height:36px;display:flex;align-items:center;color:var(--muted);font-size:12px">— khách đã chốt</div>'
           :'<input id="rsE_pot" value="'+(r.potential?num(r.potential):'')+'" inputmode="numeric" placeholder="vd 15tr, 500k" style="'+ip+';text-align:right">'}</div>
@@ -3005,7 +3008,10 @@ function rptSlBuildMaster(){
       // Trạng thái: khách có thẻ CHỐT ĐƠN thì KHOÁ CỨNG "Chốt đơn", Sale không sửa được.
       // Còn lại để Sale tự chọn ở dropdown; chưa chọn thì để TRỐNG (không suy từ thẻ nữa).
       manualStatus:mn.status||'',lostGroup:mn.lost_group||'',lostReason:mn.lost_reason||'',note:mn.note||'',
-      potential:Number(mn.potential_value||0), careDate:mn.care_date||'',careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
+      potential:Number(mn.potential_value||0),
+      // NGÀY CHĂM SÓC của khách có đơn Pancake = ngày tạo đơn đầu tiên -> suy ra được, KHOÁ không cho sửa.
+      careDate:orders[0].order_date||mn.care_date||'',careAuto:true,
+      careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
       // SĐT: Pancake thường bỏ trống (chỉ 110/158 khách có), nhưng khách ĐÃ NỐI được Kiot thì bên Kiot
       // gần như luôn có số (6.264/6.479 khách lẻ). Bù sang để không hiển thị "—" oan.
       name:pick(o=>o.customer_name)||'—',
@@ -3043,7 +3049,7 @@ function rptSlBuildMaster(){
     rows.push({key:'M'+r.id,orders:[],kords,kh:kc?kc.code:null,revenue,linkBy:kc?'Nhập tay':'',
       manualKH:r.kiot_code||null,noteKH:null,kiotCusts:kc?[kc]:[],leadId,suggest:[],isManual:true,
       manualStatus:mn.status||'',lostGroup:mn.lost_group||'',lostReason:mn.lost_reason||'',note:mn.note||r.note||'',
-      potential:Number(mn.potential_value||0), careDate:mn.care_date||'',careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
+      potential:Number(mn.potential_value||0), careDate:mn.care_date||'',careAuto:false,careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
       name:r.customer_name||'—',phone:r.phone||(kc?(kc.phone||kc.phone_key||''):''),phoneFromKiot:!r.phone,
       created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staff:r.staff_name||'',adId:'',
       nguon:r.nguon||'Online',kenh:rptSlKenhNorm(r.kenh)||'(nhập tay)',diaChi:rptSlDiaChiKiot(kc?[kc]:[]),
@@ -3369,10 +3375,13 @@ function rptSlCrmHtml(){
   // Rê chuột xem nhanh; bấm đúp mở hồ sơ đầy đủ.
   const pen=r=>`<button onclick="rptSlStop(event);rptSlEditRow('${r.leadId}')" title="Sửa thông tin chăm sóc"
     style="flex:0 0 auto;border:none;background:transparent;cursor:pointer;font-size:11px;padding:2px 3px;border-radius:5px;opacity:.55" onmouseover="this.style.opacity=1;this.style.background='var(--bg2)'" onmouseout="this.style.opacity=.55;this.style.background='transparent'">✏️</button>`;
+  const lockRO=(html,full,r)=>`<td ondblclick="rptSlStop(event);rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')"
+    title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm đúp để xem hồ sơ đầy đủ)" style="cursor:default">${html}</td>`;
   const lock=(html,full,r,right)=>`<td ondblclick="rptSlStop(event);rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')"
     title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm đúp để xem hồ sơ đầy đủ)" style="cursor:default"><div style="display:flex;align-items:center;gap:4px;justify-content:${right?'flex-end':'space-between'}">${html}${pen(r)}</div></td>`;
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>{return `<tr>
-    ${lock(dmy(r.careDate)||'<span style="color:var(--muted)">—</span>',dmy(r.careDate),r)}
+    ${(r.careAuto?lockRO:lock)(dmy(r.careDate)||'<span style="color:var(--muted)">—</span>',
+      r.careAuto?'Ngày tạo đơn Pancake đầu tiên — app tự lấy, không sửa tay':dmy(r.careDate),r)}
     <td>${rptSlSrcBadge(r)}</td>
     <td>${r.staff||'—'}</td>
     <td class="name" style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">${r.name}</td>
