@@ -344,7 +344,11 @@ function toggleSidebar(){
 })();
 
 // ── Auth: khoá dashboard + phân quyền (client-side) ──
-const AUTH_USERS={admin:{pass:'admin@2026',role:'admin'},admin2:{pass:'admin2@2026',role:'admin'},'ngoc.onl':{pass:'ngoc.onl@2026',role:'sale-onl'},mkt:{pass:'mkt@2026',role:'mkt'}};
+// APP ĐÃ KHOÁ (18/9/2026): chỉ tài khoản tạo trong Phân quyền (bảng sales_users) mới xem/sửa được dữ liệu.
+// Các login cứng cũ (admin2 / ngoc.onl / mkt) đã bỏ hẳn.
+// Còn DUY NHẤT 'admin' làm chìa khoá mở khoá: chỉ vào được trang Phân quyền để tạo/sửa tài khoản,
+// KHÔNG xem được báo cáo, Data Hub hay nhật ký. Đổi mật khẩu này thì sửa ngay dòng dưới.
+const AUTH_USERS={admin:{pass:'admin@2026',role:'admin'}};
 const AUTH_ALLOWED_IPS=[]; // thêm IP máy bạn vào đây (vd '113.161.x.x') để vào thẳng khỏi đăng nhập
 function togglePass(){const p=document.getElementById('loginPass'),e=document.getElementById('loginEye');if(!p)return;if(p.type==='password'){p.type='text';e.textContent='🙈';e.style.color='#4361ee';}else{p.type='password';e.textContent='👁';e.style.color='#94a3b8';}}
 async function doLogin(){
@@ -355,7 +359,7 @@ async function doLogin(){
     // 4 tài khoản cũ không có position_title thật trong DB -- suy ra tương đương để chặn/mở quyền reassignment
     // nhất quán với tài khoản mới: admin/admin2=admin, ngoc.onl=manager (tài khoản chung nhiều người dùng
     // trước đây, giữ quyền rộng để không phá luồng đang dùng), mkt=mkt.
-    const impliedPosition={admin:'admin','sale-onl':'manager',mkt:'mkt'}[acc.role]||'sales';
+    const impliedPosition='admin';
     localStorage.setItem('dashRole',acc.role);localStorage.setItem('dashUser',u);
     localStorage.setItem('dashPosition',impliedPosition);
     localStorage.removeItem('dashPermissions');localStorage.removeItem('dashUserId');
@@ -382,10 +386,22 @@ async function doLogin(){
 // Phân quyền: role => danh sách trang được xem (null = xem hết).
 // admin liệt kê tường minh (KHÔNG null) để loại trừ trang 'danhgia' — trang đánh giá tuần chỉ dành riêng cho role 'review'.
 // Thêm trang mới cho admin thì nhớ bổ sung id vào mảng dưới đây.
-const ROLE_PAGES={admin:['report-saleretail','datahub','settings','log'],'sale-onl':['report-saleretail','datahub'],mkt:['datahub']};
+// 'datahub'        = toàn bộ Data Hub (data thô Pancake + tab Data Nhập Tay)
+// 'datahub-manual' = CHỈ tab "Data Nhập Tay" -- Sale vào điền khách ngoài Pancake nhưng KHÔNG xem data thô.
+const ROLE_PAGES={admin:['settings']};
 // Đã xoá hẳn các trang cũ (MKT Overview / Sale Overview / Customers / Workspace / Orders / Detail)
 // để dựng lại từng cái một trên nguồn Pancake + Kiot -> không cần cờ ẩn tạm nữa.
 const TEMP_VISIBLE_PAGES=null;
+// Quyền hiện tại của tài khoản đang đăng nhập; null = toàn quyền.
+function dashCan(page){
+  let a=window._dashAllowed;
+  if(a===undefined){
+    const role=localStorage.getItem('dashRole')||'admin';
+    if(role==='account'){try{a=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){a=[];}}
+    else a=ROLE_PAGES[role]!==undefined?ROLE_PAGES[role]:null;
+  }
+  return !a||a.indexOf(page)>=0;
+}
 function applyRole(){
   const role=localStorage.getItem('dashRole')||'admin';
   // role='account' = tài khoản tạo qua Admin > Cài đặt (bảng sales_users) -- quyền động lấy từ localStorage
@@ -394,9 +410,12 @@ function applyRole(){
   if(role==='account'){try{allowed=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){allowed=[];}}
   else allowed=ROLE_PAGES[role]!==undefined?ROLE_PAGES[role]:null;
   if(TEMP_VISIBLE_PAGES)allowed=TEMP_VISIBLE_PAGES;
+  window._dashAllowed=allowed;
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el=>{
     const id=el.id.replace('nav-','');
-    el.style.display=(allowed&&allowed.indexOf(id)<0)?'none':'';
+    // Data Hub có 2 mức quyền -> chỉ cần 1 trong 2 là hiện mục trên thanh bên.
+    const ok=!allowed||allowed.indexOf(id)>=0||(id==='datahub'&&allowed.indexOf('datahub-manual')>=0);
+    el.style.display=ok?'':'none';
   });
   [['sec-report-label','sec-report'],['sec-qt-label','sec-qt']].forEach(([lab,nav])=>{
     const n=document.getElementById(nav);if(!n)return;
@@ -410,6 +429,7 @@ function applyRole(){
     const wrap=am.parentElement;if(wrap)wrap.style.display=vis?'':'none';
   }
   if(allowed&&allowed.length)switchPage(allowed[0]);
+  else if(allowed)document.body.innerHTML='<div style="padding:40px;font:600 14px var(--font)">Tài khoản chưa được cấp quyền xem trang nào. Liên hệ admin.</div>';
 }
 function logout(){localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
 function canReassign(){return['admin','manager'].includes(localStorage.getItem('dashPosition')||'admin');}
@@ -418,7 +438,10 @@ function canReassign(){return['admin','manager'].includes(localStorage.getItem('
 // sales_users nên KHÔNG bị lọc -- giữ nguyên luồng đang dùng, tránh làm trắng màn hình của người đang xài.
 function initAuth(){
   const gate=document.getElementById('loginGate');if(!gate)return;
-  if(localStorage.getItem('dashRole')){gate.style.display='none';applyRole();return;}
+  // Phiên cũ của các login cứng đã bỏ -> buộc đăng nhập lại bằng tài khoản trong Phân quyền.
+  const role0=localStorage.getItem('dashRole');
+  if(role0&&role0!=='account'&&!AUTH_USERS[localStorage.getItem('dashUser')||'']){logout();return;}
+  if(role0){gate.style.display='none';applyRole();return;}
   gate.style.display='flex';
   fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{
     const ipEl=document.getElementById('loginIp');if(ipEl)ipEl.textContent='IP của bạn: '+d.ip+' · gửi IP này cho admin để vào thẳng';
@@ -511,6 +534,9 @@ function modDateBar(mod,cb){
 }
 
 function switchPage(p){
+  // Chặn cả khi gõ tay vào console / link cũ: không có quyền thì không mở trang.
+  // Data Hub mở được nếu có 1 trong 2 mức quyền; bên trong renderDataHub sẽ khoá tiếp tab data thô.
+  if(!dashCan(p)&&!(p==='datahub'&&dashCan('datahub-manual')))return;
   ['datahub','settings','report-saleretail','log'].forEach(x=>{
     const el=document.getElementById('page-'+x);if(el)el.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);if(nav)nav.classList.toggle('active',x===p);
@@ -2083,8 +2109,7 @@ function dhManualForm(){
       ${fld('Nguồn khách',`<select id="dhmNguon" style="${inp}"><option>Online</option><option>Offline</option></select>`)}
       ${fld('Kênh',`<input id="dhmKenh" list="dhmKenhList" placeholder="VD: Tiktok Chánh Tâm" style="${inp}">
         <datalist id="dhmKenhList">${DH_MANUAL_KENH.map(x=>`<option value="${x}">`).join('')}</datalist>`)}
-      ${fld('Sales phụ trách',`<input id="dhmStaff" list="dhmStaffList" placeholder="Tên Sale" style="${inp}">
-        <datalist id="dhmStaffList">${[...new Set(dhOrders.map(o=>o.staff_name).filter(Boolean))].sort().map(x=>`<option value="${x}">`).join('')}</datalist>`)}
+      ${fld('Sales phụ trách',`<select id="dhmStaff" style="${inp};cursor:pointer"><option value="">— chọn Sale —</option>${RPT_SL_SALES.map(x=>`<option value="${x}">${x}</option>`).join('')}</select>`)}
       ${fld('Mã KH Kiot',`<input id="dhmKh" placeholder="KH0075xx" style="${inp}">`)}
       <div style="display:flex;align-items:flex-end"><button onclick="dhManualAdd()" class="refresh-btn" style="width:100%;height:30px">Thêm</button></div>
     </div>
@@ -2234,13 +2259,16 @@ async function renderDataHub(){
     </div>`;
   const el=document.getElementById('page-datahub');
   if(!el)return;
-  const mode=dhViewMode();
+  // Chỉ có quyền 'datahub-manual' -> không được xem data thô Pancake: khoá cứng ở tab Data Nhập Tay,
+  // không hiện nút Tổng Quan (đổi localStorage cũng không vào được vì mode bị ép lại ở đây).
+  const onlyManual=!dashCan('datahub')&&dashCan('datahub-manual');
+  const mode=onlyManual?'manual':dhViewMode();
   const tabBtn=(m,label)=>`<button onclick="dhSetViewMode('${m}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode===m?'var(--accent)':'var(--surface)'};color:${mode===m?'#fff':'var(--text2)'}">${label}</button>`;
   const header=`
     ${modHeader('Data Hub','','datahub','renderDataHub')}
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
-        ${tabBtn('overview','📊 Tổng Quan')}${tabBtn('manual','✍️ Data Nhập Tay ('+dhManual.length+')')}
+        ${onlyManual?'':tabBtn('overview','📊 Tổng Quan')}${tabBtn('manual','✍️ Data Nhập Tay ('+dhManual.length+')')}
       </span>
     </div>`;
   if(mode==='manual'){el.innerHTML=header+dhManualHtml();return;}
@@ -2262,6 +2290,10 @@ function rptSlViewMode(){return localStorage.getItem('rptSlViewMode')||'overview
 function rptSlSetViewMode(m){localStorage.setItem('rptSlViewMode',m);renderReportSaleLe();}
 function rptSlLast9(s){const d=(s||'').toString().replace(/\D/g,'');return d.length>=9?d.slice(-9):d;}
 const RPT_SL_MIN_DATE='2026-06-01';
+// DANH SÁCH SALE THẬT -- dùng cho MỌI dropdown và bảng "Hiệu quả theo Sales".
+// Pancake trả về cả tên hệ thống ("Hệ thống", "PANCAKE THT HOLDING") và tên trùng người
+// ("Trịnh Lê Vân Ngọc" = "Vân Ngọc") -> không được để lọt vào ô chọn Sale.
+const RPT_SL_SALES=['Nguyễn Thảo Ngọc','Phạm Thị Lệ','Vân Ngọc','Đỗ Xuân Hoàng'];
 // ── Dữ liệu Sale NHẬP TAY (bảng saleretail_manual) -> đổ thẳng sang Master Data ──
 // Tách riêng khỏi datahub_orders/kiot_* vì 2 bảng đó bị job sync ghi đè mỗi lần chạy.
 let rptSlManual={},rptSlManualLoaded=false;
@@ -2443,6 +2475,23 @@ async function rptSlSetPotential(leadId,raw,el){
 // nhớ thay vì nhúng vào HTML.
 // Ghi thẳng 1 hoặc nhiều trường (giá trị đã chuẩn hoá sẵn, không ép về chuỗi).
 // Chỉ mở sửa MỘT hàng tại một thời điểm -- bấm bút ở hàng khác thì hàng cũ tự khoá lại.
+// GỠ KHỎI BÁO CÁO: data rác không tra được là ai (không SĐT, không Mã KH, không có đơn Kiot).
+// Chỉ ĐÁNH DẤU trong saleretail_manual.excluded -- đơn gốc bên Pancake/datahub_orders giữ nguyên,
+// tab Nhập Liệu luôn liệt kê các khách đang bị gỡ để khôi phục lại được.
+async function rptSlExclude(leadId,name){
+  const why=prompt('Gỡ "'+(name||leadId)+'" khỏi báo cáo.\nLý do (để người sau biết vì sao):','data lỗi, không xác định được khách');
+  if(why===null)return;
+  try{
+    await rptSlSaveManual(leadId,{excluded:true,excluded_reason:(why||'').trim()||null});
+    renderReportSaleLe();
+  }catch(e){alert('Chưa gỡ được: '+e.message);}
+}
+async function rptSlUnexclude(leadId){
+  try{
+    await rptSlSaveManual(leadId,{excluded:false,excluded_reason:null});
+    renderReportSaleLe();
+  }catch(e){alert('Chưa khôi phục được: '+e.message);}
+}
 function rptSlToggleEdit(leadId){
   window._rptSlEditRow=(window._rptSlEditRow===leadId)?null:leadId;
   renderReportSaleLe();
@@ -2529,7 +2578,7 @@ function rptSlOverviewHtml(){
 
   const bySale={};
   master.forEach(r=>{const s=r.staff||'(chưa gán)';bySale[s]=bySale[s]||{data:0,chot:0,rev:0,noi:0};bySale[s].data++;if(r.isChot)bySale[s].chot++;if(r.kh)bySale[s].noi++;bySale[s].rev+=r.revenue;});
-  const saleRows=Object.entries(bySale).sort((a,b)=>b[1].rev-a[1].rev||b[1].chot-a[1].chot);
+  const saleRows=Object.entries(bySale).filter(([s])=>RPT_SL_SALES.includes(s)).sort((a,b)=>b[1].rev-a[1].rev||b[1].chot-a[1].chot);
 
   const byKenh={};master.forEach(r=>{const k=r.kenh||'(không rõ)';byKenh[k]=byKenh[k]||{n:0,chot:0,rev:0};byKenh[k].n++;if(r.isChot)byKenh[k].chot++;byKenh[k].rev+=r.revenue;});
   const kenhRows=Object.entries(byKenh).sort((a,b)=>b[1].n-a[1].n);
@@ -2765,7 +2814,7 @@ function rptSlFilterBar(tab){
   // Dựng lựa chọn từ TOÀN BỘ khách, không phải từ phần đang hiển thị -- nếu lấy theo phần đang hiển thị
   // thì lọc ngày mặc định (hôm qua -> hôm nay) làm dropdown chỉ còn 1-2 mục, không lọc được gì nữa.
   const full=rptSlBuildMaster();
-  const sales=[...new Set(full.map(r=>r.staff||'(chưa gán)'))].sort((a,b)=>a.localeCompare(b,'vi'));
+  const sales=RPT_SL_SALES;
   // Trạng thái lấy danh sách CỐ ĐỊNH, không lấy theo giá trị đang có trong data.
   const stats=['Chốt đơn',...RPT_SL_STATUS_OPTS,'(chưa cập nhật)'];
   const brands=[...new Set(full.map(r=>DH_BRAND_LABEL[r.brand]||r.brand||'—'))].sort();
@@ -2897,6 +2946,9 @@ function rptSlBuildMaster(){
     rest.forEach(r=>{r._merged=true;});
   });
   rows=rows.filter(r=>!r._merged);
+  // Khách bị GỠ không vào bất kỳ tab nào (Tổng Quan / Master / CRM / Nhập Liệu) -- chỉ còn ở mục
+  // "Đã gỡ khỏi báo cáo" cuối tab Nhập Liệu để khôi phục.
+  rows=rows.filter(r=>!(rptSlManual[r.leadId]||{}).excluded);
   // DOANH SỐ CHỐT = mọi đơn trong CÙNG THÁNG với đơn Kiot đầu tiên (người dùng chốt 17/9/2026: "mua liên
   // tục trong tháng thì vẫn tính là mua lần đầu", vd Thanh Chương 01/7 + 14/7 = 88.535.000đ).
   // Đơn từ tháng SAU trở đi là MUA LẠI -> tách ra repeatOrds, không cộng vào doanh số chốt của Sale.
@@ -3079,8 +3131,10 @@ function rptSlInputHtml(){
         +((ordBy[c.code]||[]).map(o=>'<span style="color:var(--green);font-weight:700">'+o.code+' '+dmy(String(o.purchase_date).slice(0,10))+' '+vnd(o.total)+'</span>').join(', ')||'<span style="color:var(--muted)">chưa có đơn đặt hàng</span>')+'</div>').join('')
     : '<span style="color:var(--muted)">không có gợi ý</span>'}</td>`;
 
-  const s1=tbl(HEAD+'<th>Mã KH Kiot</th><th>Gợi ý theo SĐT (tra bên Kiot)</th><th>Doanh thu</th>',
-    b.thieuMa.map(r=>`<tr>${info(r)}${maInput(r)}${goiY(r)}<td class="num" style="color:var(--red);font-weight:800">chưa tính được</td></tr>`).join(''));
+  const goNut=r=>`<td onclick="rptSlStop(event)"><button onclick="rptSlExclude('${r.leadId}','${String(r.name||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" title="Gỡ khách này khỏi báo cáo (khôi phục được)"
+    style="border:1.5px solid var(--border);background:var(--surface);color:var(--muted);border-radius:7px;height:24px;padding:0 8px;cursor:pointer;font-size:10.5px;font-weight:700">Gỡ</button></td>`;
+  const s1=tbl(HEAD+'<th>Mã KH Kiot</th><th>Gợi ý theo SĐT (tra bên Kiot)</th><th>Doanh thu</th><th></th>',
+    b.thieuMa.map(r=>`<tr>${info(r)}${maInput(r)}${goiY(r)}<td class="num" style="color:var(--red);font-weight:800">chưa tính được</td>${goNut(r)}</tr>`).join(''));
   const s2=tbl(HEAD+'<th>Mã đang điền</th><th>Vấn đề</th>',
     b.maSai.map(r=>`<tr>${info(r)}${maInput(r)}<td style="font-size:11px;color:var(--red);font-weight:700">Mã <code>${r.manualKH}</code> không có bên Kiot</td></tr>`).join(''));
   const ttSel=r=>`<td onclick="rptSlStop(event)"><select onchange="rptSlSetField('${r.leadId}','status',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid var(--yellow);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">
@@ -3097,6 +3151,16 @@ function rptSlInputHtml(){
       <td class="num" onclick="rptSlStop(event)"><input inputmode="numeric" placeholder="vd 15tr, 500k"
         onkeydown="if(event.key==='Enter')this.blur()" onblur="if(this.value.trim())rptSlSetPotential('${r.leadId}',this.value,this)"
         style="height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--accent);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;width:120px;text-align:right"></td></tr>`).join(''));
+  // Danh sách khách ĐANG BỊ GỠ: dựng lại Master không lọc excluded rồi giữ đúng nhóm bị gỡ.
+  const goIds=Object.keys(rptSlManual).filter(k=>rptSlManual[k].excluded);
+  const goList=goIds.map(id=>{const mn=rptSlManual[id]||{};const o=(dhOrders||[]).find(x=>rptSlLeadId(x)===id);
+    return{leadId:id,name:o?(o.customer_name||'—'):id,kenh:o?rptSlKenh(o):'',staff:o?(o.staff_name||''):'',created:o?o.order_date:'',reason:mn.excluded_reason||'',who:mn.updated_by||'',at:(mn.updated_at||'').slice(0,10)};});
+  const s6=tbl('<th>Ngày tạo</th><th>Họ tên</th><th>Kênh</th><th>Sales</th><th>Lý do gỡ</th><th>Người gỡ</th><th></th>',
+    goList.map(r=>`<tr><td>${dmy(r.created)||'—'}</td><td class="name">${r.name}</td><td style="font-size:11px">${r.kenh||'—'}</td><td>${r.staff||'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${String(r.reason||'—').replace(/</g,'&lt;')}</td>
+      <td style="font-size:11px;color:var(--muted)">${r.who||'—'}${r.at?' · '+dmy(r.at):''}</td>
+      <td onclick="rptSlStop(event)"><button onclick="rptSlUnexclude('${r.leadId}')"
+        style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:24px;padding:0 9px;cursor:pointer;font-size:10.5px;font-weight:700">Khôi phục</button></td></tr>`).join(''));
   const tong=b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length+b.thieuGT.length;
   return `
     <div class="kpi-grid" style="margin-bottom:14px">
@@ -3109,7 +3173,8 @@ function rptSlInputHtml(){
     ${rptSlInputSec('s2','⚠️','Mã KH đã điền nhưng không tồn tại bên Kiot','',b.maSai.length,'var(--yellow)',s2)}
     ${rptSlInputSec('s3','📝','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
     ${rptSlInputSec('s4','❓','Mất lead nhưng chưa ghi nhóm nguyên nhân','',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}
-    ${rptSlInputSec('s5','💰','Khách tiềm năng chưa có giá trị dự kiến','',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}`;
+    ${rptSlInputSec('s5','💰','Khách tiềm năng chưa có giá trị dự kiến','',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
+    ${goList.length?rptSlInputSec('s6','🚫','Đã gỡ khỏi báo cáo','không tính vào bất kỳ tab nào -- bấm Khôi phục để đưa lại',goList.length,'var(--muted)',s6):''}`;
 }
 // ── CRM: TOÀN BỘ khách chốt + tiềm năng từ Master đổ sang, mỗi khách 1 DÒNG.
 // Đúng khung tab "CRM Lẻ" của sheet cũ (đo 17/9/2026: 183 dòng / 181 khách, không khách nào 2 dòng)
@@ -3198,13 +3263,14 @@ function rptSlCrmHtml(){
 const CRM_PERMISSION_GROUPS=[
 
   ['Báo cáo',[['report-saleretail','Sale Lẻ']]],
-  ['Quản trị',[['settings','Phân quyền'],['log','Nhật ký thao tác'],['datahub','Data Hub']]],
+  ['Data Hub',[['datahub','Toàn bộ Data Hub'],['datahub-manual','Chỉ tab Data Nhập Tay']]],
+  ['Quản trị',[['settings','Phân quyền'],['log','Nhật ký thao tác']]],
 ];
 const CRM_PERMISSION_PAGES=CRM_PERMISSION_GROUPS.flatMap(([,items])=>items);
 const CRM_POSITION_DEFAULTS={
   admin:['workspace','crm','orders','report-saleretail','settings','overview','sale-onl','datahub'], // toàn quyền
   manager:['workspace','crm','orders','report-saleretail','overview','sale-onl','datahub'],          // xem hết số liệu, không quản tài khoản
-  sales:['workspace','crm','orders'],                                            // chỉ việc hàng ngày
+  sales:['report-saleretail','datahub-manual'],                                  // báo cáo Sale + điền khách ngoài Pancake
   mkt:['overview','datahub'],                                                    // chỉ số liệu MKT + nguồn data
 };
 const CRM_POSITION_LABEL={admin:'Admin',manager:'Quản lý',sales:'Sales',mkt:'Marketing'};

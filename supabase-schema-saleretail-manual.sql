@@ -25,3 +25,9 @@ create policy saleretail_manual_write on public.saleretail_manual for insert wit
 
 drop policy if exists saleretail_manual_update on public.saleretail_manual;
 create policy saleretail_manual_update on public.saleretail_manual for update using (true) with check (true);
+
+-- GỠ KHỎI BÁO CÁO: data rác/lỗi (vd đơn Pancake không có SĐT, không có Mã KH, không tra được là ai).
+-- Đánh dấu chứ KHÔNG xoá: dòng vẫn nằm trong datahub_orders, gỡ nhầm thì khôi phục lại được,
+-- và tab Nhập Liệu luôn liệt kê các khách đang bị gỡ kèm lý do + người gỡ.
+alter table public.saleretail_manual add column if not exists excluded boolean not null default false;
+alter table public.saleretail_manual add column if not exists excluded_reason text;
