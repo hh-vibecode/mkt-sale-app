@@ -459,12 +459,31 @@ function canReassign(){return['supreme','admin','manager'].includes(localStorage
 // Tài khoản vị trí "Sales" chỉ được xem khách được gán cho mình (chuẩn CRM: Sale không thấy data cả công ty).
 // Admin/Manager xem tất cả. 4 tài khoản cũ (admin/admin2/ngoc.onl/mkt) không có user_id thật trong bảng
 // sales_users nên KHÔNG bị lọc -- giữ nguyên luồng đang dùng, tránh làm trắng màn hình của người đang xài.
+// Quyền được lưu trong trình duyệt lúc đăng nhập -> admin sửa quyền hoặc app thêm module mới thì người
+// đang mở app KHÔNG thấy cho tới khi đăng xuất vào lại (đúng ca 18/9: trang Báo cáo tổng hợp không hiện).
+// Nên mỗi lần mở app đọc lại quyền từ server. Tài khoản bị khoá thì đá ra luôn.
+async function dashRefreshPerms(){
+  const id=localStorage.getItem('dashUserId');
+  if(localStorage.getItem('dashRole')!=='account'||!id)return;
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/sales_users?user_id=eq.${encodeURIComponent(id)}&select=name,position_title,permissions,status,has_login`,
+      {headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    const a=(await res.json())[0];
+    if(!a)return;                         // không đọc được thì giữ nguyên phiên, đừng đá người đang làm
+    if(a.has_login===false||a.status!=='active'){alert('Tài khoản đã bị khoá.');logout();return;}
+    localStorage.setItem('dashUser',a.name||localStorage.getItem('dashUser')||'');
+    localStorage.setItem('dashPosition',a.position_title||'sales');
+    localStorage.setItem('dashPermissions',JSON.stringify(a.permissions||[]));
+    delete window._dashAllowed;
+    applyRole();
+  }catch(e){console.warn('Không làm mới được quyền:',e.message);}
+}
 function initAuth(){
   const gate=document.getElementById('loginGate');if(!gate)return;
   // Phiên cũ của các login cứng đã bỏ -> buộc đăng nhập lại bằng tài khoản trong Phân quyền.
   const role0=localStorage.getItem('dashRole');
   if(role0&&role0!=='account'&&!AUTH_USERS[localStorage.getItem('dashUser')||'']){logout();return;}
-  if(role0){gate.style.display='none';applyRole();return;}
+  if(role0){gate.style.display='none';applyRole();dashRefreshPerms();return;}
   gate.style.display='flex';
   fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{
     const ipEl=document.getElementById('loginIp');if(ipEl)ipEl.textContent='IP của bạn: '+d.ip+' · gửi IP này cho admin để vào thẳng';
