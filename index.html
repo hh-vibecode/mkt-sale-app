@@ -3120,6 +3120,27 @@ function rptSlShowCustomer(key){
 }
 // ── TAB NHẬP LIỆU: chia data thành các phần việc riêng để Sale nhìn là biết phải làm gì ──
 // Mọi thao tác ở đây ghi vào saleretail_manual -> Master Data đọc lại ngay, không phải nhập 2 nơi.
+// TRẠNG THÁI ĐƠN POS CAKE (cột order_status của datahub_orders) -- bước B3 trong quy trình Sale:
+//   khách TIỀM NĂNG -> đơn phải chuyển "Đã xác nhận"; khách CHỐT ĐƠN -> đơn phải chuyển "Đã gửi hàng".
+// Đối chiếu dữ liệu thật 18/9/2026 khớp đúng: thẻ CHỐT ĐƠN 122/131 đơn ở status 2, thẻ TIỀM NĂNG 20 đơn
+// ở status 1, phần còn lại ở status 0 = chưa ai đụng vào.
+const DH_ORDER_STATUS={'0':'Mới / chưa xử lý','1':'Đã xác nhận','2':'Đã gửi hàng','3':'Đã nhận hàng'};
+function dhOrderStatusLabel(v){return DH_ORDER_STATUS[String(v)]||('mã '+v);}
+// Đơn sai bước B3. CHỈ so Pancake với Pancake (thẻ khách vs trạng thái đơn) -> đúng phạm vi việc của Sale.
+function rptSlB3Issues(rows){
+  const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
+  const out=[];
+  rows.forEach(r=>{
+    (r.orders||[]).forEach(o=>{
+      const st=String(o.order_status);
+      const chot=dhIsOrder(o),tiem=tag(o,'TIỀM NĂNG')||tag(o,'BÀN GIAO');
+      if(chot&&st!=='2')out.push({r,o,can:'Đã gửi hàng'});
+      else if(tiem&&!chot&&st!=='1'&&st!=='2')out.push({r,o,can:'Đã xác nhận'});
+      else if(!chot&&st==='2')out.push({r,o,can:'gắn thẻ CHỐT ĐƠN'});
+    });
+  });
+  return out.sort((a,b)=>String(b.o.order_date).localeCompare(String(a.o.order_date)));
+}
 function rptSlTodoBuckets(){
   const all=rptSlBuildMaster();
   return{
@@ -3134,12 +3155,14 @@ function rptSlTodoBuckets(){
     thieuLy:all.filter(r=>r.status==='Mất lead'&&!r.lostGroup),
     // 5. Khách tiềm năng (chưa chốt, chưa mất) nhưng chưa có giá trị dự kiến.
     thieuGT:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!r.potential),
+    // 6. Bước B3 quy trình Sale: đơn trên POS Cake chưa đổi trạng thái cho khớp thẻ khách.
+    saiB3:rptSlB3Issues(all),
   };
 }
 function rptSlTodoCount(){
   if(!rptSlManualLoaded||!dhLoaded||!kiotLoaded)return 0;
   const b=rptSlTodoBuckets();
-  return b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length+b.thieuGT.length;
+  return b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length+b.thieuGT.length+b.saiB3.length;
 }
 function rptSlInputSec(id,icon,title,desc,count,color,body){
   return `<div class="tbl-card" style="margin-bottom:16px">
@@ -3188,7 +3211,14 @@ function rptSlInputHtml(){
       <td class="num" onclick="rptSlStop(event)"><input inputmode="numeric" placeholder="vd 15tr, 500k"
         onkeydown="if(event.key==='Enter')this.blur()" onblur="if(this.value.trim())rptSlSetPotential('${r.leadId}',this.value,this)"
         style="height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--accent);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;width:120px;text-align:right"></td></tr>`).join(''));
-  const tong=b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length+b.thieuGT.length;
+  const s7=tbl('<th>Ngày đơn</th><th>Đơn Pancake</th><th>Họ tên</th><th>Sales</th><th>Thẻ khách</th><th>Trạng thái đơn hiện tại</th><th>Cần đổi thành</th>',
+    b.saiB3.map(({r,o,can})=>`<tr><td>${dmy(o.order_date)||'—'}</td>
+      <td style="font-size:11px"><code>#${o.system_id}</code> ${DH_BRAND_LABEL[o.brand]||o.brand||''}</td>
+      <td class="name">${r.name}</td><td>${r.staff||'—'}</td>
+      <td style="font-size:10.5px;color:var(--muted)">${o.customer_tags||'—'}</td>
+      <td style="font-size:11px;color:var(--red);font-weight:700">${dhOrderStatusLabel(o.order_status)}</td>
+      <td style="font-size:11px;color:var(--green);font-weight:800">${can}</td></tr>`).join(''));
+  const tong=b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length+b.thieuGT.length+b.saiB3.length;
   return `
     <div class="kpi-grid" style="margin-bottom:14px">
       ${mkKpi(ic('clipboard'),'Tổng việc cần làm',num(tong),'','g-purple')}
@@ -3201,6 +3231,7 @@ function rptSlInputHtml(){
     ${rptSlInputSec('s3','📝','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
     ${rptSlInputSec('s4','❓','Mất lead nhưng chưa ghi nhóm nguyên nhân','',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}
     ${rptSlInputSec('s5','💰','Khách tiềm năng chưa có giá trị dự kiến','',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
+    ${rptSlInputSec('s7','🔄','Đơn POS Cake chưa đổi trạng thái (bước B3)','tiềm năng → Đã xác nhận · chốt đơn → Đã gửi hàng — sửa trong Pancake',b.saiB3.length,'var(--orange,#f97316)',s7)}
 `;
 }
 // ── CRM: TOÀN BỘ khách chốt + tiềm năng từ Master đổ sang, mỗi khách 1 DÒNG.
