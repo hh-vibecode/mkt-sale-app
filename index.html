@@ -483,6 +483,9 @@ function initAuth(){
   // Phiên cũ của các login cứng đã bỏ -> buộc đăng nhập lại bằng tài khoản trong Phân quyền.
   const role0=localStorage.getItem('dashRole');
   if(role0&&role0!=='account'&&!AUTH_USERS[localStorage.getItem('dashUser')||'']){logout();return;}
+  // Phiên cũ không có dashUserId (đăng nhập từ trước khi có làm mới quyền) thì không tra lại quyền được
+  // -> bắt đăng nhập lại, thay vì để người dùng ngồi nhìn menu thiếu mục mà không hiểu vì sao.
+  if(role0==='account'&&!localStorage.getItem('dashUserId')){logout();return;}
   if(role0){gate.style.display='none';applyRole();dashRefreshPerms();return;}
   gate.style.display='flex';
   fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{
