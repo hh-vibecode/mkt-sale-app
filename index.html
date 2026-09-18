@@ -2703,17 +2703,22 @@ function rptSlOverviewHtml(){
       // 6 KPI xếp 2 HÀNG x 3 CỘT, nhóm theo chủ đề: hàng 1 toàn TIỀN, hàng 2 toàn KHÁCH & HIỆU SUẤT.
       // Không để lẫn lộn tiền với số lượng trên cùng một hàng -- người đọc quét theo hàng.
       const open=master.filter(r=>!r.isChot),pv=open.reduce((s,r)=>s+r.potential,0),nPv=open.filter(r=>r.potential>0).length;
-      const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px';
+      // Trạng thái do Sale chọn (khách đã chốt bị khoá cứng là "Chốt đơn" nên không nằm ở 2 nhóm này).
+      const dangCS=master.filter(r=>!r.isChot&&(r.manualStatus==='Đang chăm sóc'||r.manualStatus==='Chăm sóc dài hạn'));
+      const matLead=master.filter(r=>!r.isChot&&r.manualStatus==='Mất lead');
+      // Hàng 1: TIỀN (2 ô). Hàng 2: SỐ LƯỢNG (4 ô) -- chia đều đúng bề ngang của hàng trên.
+      const g4='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px';
       const g2='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px';
       return `
     <div style="${g2}">
       ${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(ordCount)+' đơn đặt hàng Kiot','g-green')}
       ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(pv),nPv?num(nPv)+'/'+num(open.length)+' khách chưa chốt đã ước lượng':'chưa khách nào được ước lượng','g-orange')}
     </div>
-    <div style="${g3};margin-bottom:14px">
+    <div style="${g4};margin-bottom:14px">
       ${mkKpi(ic('users'),'Khách tiềm năng',num(master.length),num(chotKh.length)+' đã chốt · '+num(master.length-chotKh.length)+' chưa chốt','g-blue')}
       ${mkKpi(ic('check'),'Tỉ lệ chốt / tiềm năng',pct(tiem.length?chotO.length/tiem.length*100:0),num(chotO.length)+' chốt / '+num(tiem.length)+' tiềm năng · '+pct(le.length?chotO.length/le.length*100:0)+' trên tổng data','g-teal')}
-      ${mkKpi(ic('duplicate'),'Đã nối Kiot',num(noiKh.length)+'/'+num(chotKh.length),chotKh.length?pct(noiKh.length/chotKh.length*100)+' khách chốt có Mã KH':'—','g-purple')}
+      ${mkKpi(ic('clock'),'Đang chăm sóc',num(dangCS.length),master.length?pct(dangCS.length/master.length*100)+' tổng khách':'—','g-purple')}
+      ${mkKpi(ic('clock'),'Mất lead',num(matLead.length),master.length?pct(matLead.length/master.length*100)+' tổng khách':'—','g-red')}
     </div>`;})()}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px">
       ${card('Phễu chuyển đổi <span style="font-size:11px;color:var(--muted);font-weight:600">· bấm để xem danh sách</span>',funnelHtml)}
