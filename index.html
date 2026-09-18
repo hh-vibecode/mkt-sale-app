@@ -2386,7 +2386,6 @@ async function renderReportTongHop(){
   window._rptSlMod='tonghop';
   try{document.getElementById('rptThBody').innerHTML=(RPT_TH_TABS.find(x=>x[0]===cur)||RPT_TH_TABS[0])[2]();}
   finally{window._rptSlMod=null;}
-  if(cur==='sale-le')rptSlDrawChanChart();
 }
 // ── Báo cáo · Sale Lẻ: trang tổng hợp CHỈ ĐỌC (không ghi bảng nào) từ CRM v2 (customers/leads/crm_activities/
 // orders) + Data Hub (datahub_orders) -- không phải nơi Sale thao tác hàng ngày, xem trang Customers/Workspace.
@@ -2699,7 +2698,6 @@ function rptSlOverviewHtml(){
 
   const byKenh={};master.forEach(r=>{const k=r.kenh||'(không rõ)';byKenh[k]=byKenh[k]||{n:0,chot:0,rev:0};byKenh[k].n++;if(r.isChot)byKenh[k].chot++;byKenh[k].rev+=r.revenue;});
   const kenhRows=Object.entries(byKenh).sort((a,b)=>b[1].n-a[1].n);
-  window._rptSlChanEntries=kenhRows.map(([k,v])=>[k,v.n]);
 
 
   const bar=(rows,total,fmt)=>rows.map(([k,v])=>{const n=typeof v==='object'?v.n:v;const p=total?n/total*100:0;
@@ -2745,7 +2743,6 @@ function rptSlOverviewHtml(){
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px">
       ${card('Phễu chuyển đổi <span style="font-size:11px;color:var(--muted);font-weight:600">· bấm để xem danh sách</span>',funnelHtml)}
       ${card('Doanh thu theo brand',Object.keys(byBrand).length?bar(Object.entries(byBrand).sort((a,b)=>b[1]-a[1]),rev,v=>vnd(v)):'<div style="color:var(--muted);font-size:12px">Chưa có doanh thu</div>')}
-      ${card('Lead theo kênh','<div style="height:'+Math.max(120,kenhRows.length*32)+'px"><canvas id="cRptSlChan"></canvas></div>')}
     </div>
     <div class="tbl-card" style="margin-top:4px">
       <div class="tbl-head"><div class="tbl-title">Hiệu quả theo Sales</div><div class="tbl-count">${num(saleRows.length)}</div></div>
@@ -2778,19 +2775,6 @@ function rptSlOverviewHtml(){
         ${top.length>50?'<div style="padding:10px;text-align:center;font-size:11px;color:var(--muted)">hiện 50 khách có giá trị tiềm năng cao nhất</div>':''}`
         :'<div style="padding:22px;text-align:center;color:var(--muted);font-size:12.5px;font-weight:600">Chưa có khách tiềm năng nào trong kỳ</div>'}
     </div>`;})()}`;
-}
-function rptSlDrawChanChart(){
-  const entries=window._rptSlChanEntries||[];
-  const ctx=document.getElementById('cRptSlChan');
-  if(!ctx||!entries.length)return;
-  const COLORS=['rgba(67,97,238,.8)','rgba(10,191,122,.8)','rgba(249,115,22,.8)','rgba(168,85,247,.8)','rgba(236,72,153,.8)','rgba(234,179,8,.8)','rgba(20,184,166,.8)','rgba(239,68,68,.8)'];
-  new Chart(ctx,{type:'bar',data:{
-    labels:entries.map(e=>e[0]),
-    datasets:[{data:entries.map(e=>e[1]),backgroundColor:entries.map((_,i)=>COLORS[i%COLORS.length]),borderRadius:6,borderSkipped:false}]
-  },options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} lead`}}},
-    scales:{x:{grid:{display:false},border:{display:false},ticks:{color:'var(--muted)',font:{size:10}}},
-      y:{grid:{display:false},border:{display:false},ticks:{color:'var(--text)',font:{size:11,weight:'600'}}}}}});
 }
 function rptSlShow(key){const d=(window._rptSlLists||{})[key];if(d)dataModal(d);}
 // ── Master Data & CRM: dựng theo đúng khung Data Hub -> Master Data -> CRM của sheet cũ, nhưng nguồn là
