@@ -2540,6 +2540,8 @@ function rptSlParseMoney(raw){
 function rptSlEditRow(leadId){
   const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
   if(!r)return;
+  // KHÁCH ĐÃ CHỐT ĐƠN = hồ sơ đóng, KHÔNG sửa gì nữa (kể cả nội dung trao đổi) -- mở hồ sơ để xem thôi.
+  if(r.isChot){rptSlShowCustomer(r.key);return;}
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const ip='width:100%;box-sizing:border-box;height:36px;padding:6px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--font);outline:none';
   const lb=t=>'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">'+t+'</div>';
@@ -2647,6 +2649,9 @@ function rptSlToggleEdit(leadId){
   renderReportSaleLe();
 }
 async function rptSlSetFieldRaw(leadId,patch,el){
+  // Chặn ở tầng ghi: mọi đường vào (bảng, popup, gọi tay) đều không sửa được khách đã chốt.
+  const row=rptSlBuildMaster().find(x=>x.leadId===leadId);
+  if(row&&row.isChot){alert('Khách đã chốt đơn — hồ sơ đã khoá, không sửa được nữa.');return;}
   const old=el?el.style.borderColor:'';
   try{
     await rptSlSaveManual(leadId,patch);
@@ -3314,7 +3319,8 @@ function rptSlTodoBuckets(){
     // 6. Bước B3 quy trình Sale: đơn trên POS Cake chưa đổi trạng thái cho khớp thẻ khách.
     saiB3:rptSlB3Issues(all),
     // 7. Chưa ghi nội dung trao đổi -- thứ DUY NHẤT không hệ thống nào suy ra được, phải Sale ghi.
-    thieuND:all.filter(r=>!String(r.content||'').trim()),
+    //    Khách đã chốt thì hồ sơ đã khoá, không sửa được nữa -> không nhắc.
+    thieuND:all.filter(r=>!r.isChot&&!String(r.content||'').trim()),
   };
 }
 function rptSlTodoCount(){
@@ -3423,7 +3429,7 @@ function rptSlCrmHtml(){
   // Bấm nút ✏️ để mở sửa cho ĐÚNG hàng đó. Xem nhanh: rê chuột. Xem đầy đủ: bấm đúp mở hồ sơ khách.
   // Ô cần điền: giá trị + icon ✏️ nhỏ NGAY TRONG Ô. Bấm icon -> popup sửa TẤT CẢ ô điền được của hàng.
   // Rê chuột xem nhanh; bấm đúp mở hồ sơ đầy đủ.
-  const pen=r=>`<button onclick="rptSlStop(event);rptSlEditRow('${r.leadId}')" title="Sửa thông tin chăm sóc"
+  const pen=r=>r.isChot?'':`<button onclick="rptSlStop(event);rptSlEditRow('${r.leadId}')" title="Sửa thông tin chăm sóc"
     style="flex:0 0 auto;border:none;background:transparent;cursor:pointer;font-size:11px;padding:2px 3px;border-radius:5px;opacity:.55" onmouseover="this.style.opacity=1;this.style.background='var(--bg2)'" onmouseout="this.style.opacity=.55;this.style.background='transparent'">✏️</button>`;
   const lockRO=(html,full,r)=>`<td ondblclick="rptSlStop(event);rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')"
     title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm đúp để xem hồ sơ đầy đủ)" style="cursor:default">${html}</td>`;
