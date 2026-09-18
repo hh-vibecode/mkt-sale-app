@@ -344,18 +344,17 @@ function toggleSidebar(){
 })();
 
 // ── Auth: khoá dashboard + phân quyền (client-side) ──
-// APP ĐÃ KHOÁ (18/9/2026): chỉ tài khoản tạo trong Phân quyền (bảng sales_users) mới xem/sửa được dữ liệu.
-// Các login cứng cũ (admin2 / ngoc.onl / mkt) đã bỏ hẳn.
-// Còn DUY NHẤT 'admin' làm chìa khoá mở khoá: chỉ vào được trang Phân quyền để tạo/sửa tài khoản,
-// KHÔNG xem được báo cáo, Data Hub hay nhật ký. Đổi mật khẩu này thì sửa ngay dòng dưới.
-const AUTH_USERS={admin:{pass:'admin@2026',role:'admin'}};
+// APP ĐÃ KHOÁ HOÀN TOÀN (18/9/2026): KHÔNG còn tài khoản cứng nào trong code.
+// Muốn vào app thì phải có tài khoản tạo ở trang Phân quyền (bảng sales_users + app_login()).
+// Đừng thêm lại login cứng ở đây -- mật khẩu nằm trong file HTML công khai, ai xem nguồn cũng thấy.
+const AUTH_USERS={};
 const AUTH_ALLOWED_IPS=[]; // thêm IP máy bạn vào đây (vd '113.161.x.x') để vào thẳng khỏi đăng nhập
 function togglePass(){const p=document.getElementById('loginPass'),e=document.getElementById('loginEye');if(!p)return;if(p.type==='password'){p.type='text';e.textContent='🙈';e.style.color='#4361ee';}else{p.type='password';e.textContent='👁';e.style.color='#94a3b8';}}
 async function doLogin(){
   const u=(document.getElementById('loginUser').value||'').trim().toLowerCase();
   const p=document.getElementById('loginPass').value||'';
   const acc=AUTH_USERS[u];
-  if(acc&&acc.pass===p){
+  if(acc&&acc.pass===p){ // (không còn tài khoản cứng nào -- nhánh này giữ để không vỡ nếu sau này cần tạm mở)
     // 4 tài khoản cũ không có position_title thật trong DB -- suy ra tương đương để chặn/mở quyền reassignment
     // nhất quán với tài khoản mới: admin/admin2=admin, ngoc.onl=manager (tài khoản chung nhiều người dùng
     // trước đây, giữ quyền rộng để không phá luồng đang dùng), mkt=mkt.
@@ -388,7 +387,7 @@ async function doLogin(){
 // Thêm trang mới cho admin thì nhớ bổ sung id vào mảng dưới đây.
 // 'datahub'        = toàn bộ Data Hub (data thô Pancake + tab Data Nhập Tay)
 // 'datahub-manual' = CHỈ tab "Data Nhập Tay" -- Sale vào điền khách ngoài Pancake nhưng KHÔNG xem data thô.
-const ROLE_PAGES={admin:['settings']};
+const ROLE_PAGES={}; // không còn role cứng; quyền lấy từ tài khoản trong Phân quyền
 // Đã xoá hẳn các trang cũ (MKT Overview / Sale Overview / Customers / Workspace / Orders / Detail)
 // để dựng lại từng cái một trên nguồn Pancake + Kiot -> không cần cờ ẩn tạm nữa.
 const TEMP_VISIBLE_PAGES=null;
