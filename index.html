@@ -2550,7 +2550,11 @@ async function renderReportSaleLe(){
   await rptSlLockChot();
   const mode=rptSlViewMode();
   el.innerHTML=`
-    ${modHeader('Báo cáo · Sale Lẻ','','saleretail','renderReportSaleLe')}
+    ${mode==='input'
+      // Tab Nhập Liệu là danh sách VIỆC CẦN LÀM -> không lọc theo ngày (lọc ngày sẽ giấu mất việc tồn đọng),
+      // nên ẩn luôn thanh chọn ngày cho khỏi hiểu nhầm là đang lọc.
+      ?`<div class="page-title" style="margin-bottom:14px">Báo cáo · Sale Lẻ</div>`
+      :modHeader('Báo cáo · Sale Lẻ','','saleretail','renderReportSaleLe')}
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         <button onclick="rptSlSetViewMode('overview')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='overview'?'var(--accent)':'var(--surface)'};color:${mode==='overview'?'#fff':'var(--text2)'}">📊 Tổng Quan</button>
