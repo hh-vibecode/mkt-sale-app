@@ -395,6 +395,13 @@ const ROLE_PAGES={}; // không còn role cứng; quyền lấy từ tài khoản
 // Đã xoá hẳn các trang cũ (MKT Overview / Sale Overview / Customers / Workspace / Orders / Detail)
 // để dựng lại từng cái một trên nguồn Pancake + Kiot -> không cần cờ ẩn tạm nữa.
 const TEMP_VISIBLE_PAGES=null;
+// '*' trong danh sách quyền = TOÀN QUYỀN, gồm cả những trang được thêm sau này.
+// Vị trí "Admin" cũng mặc định toàn quyền -> tạo module mới là admin thấy ngay, không phải cấp lại quyền.
+const PERM_ALL='*';
+function dashIsSupreme(a){
+  if(Array.isArray(a)&&a.indexOf(PERM_ALL)>=0)return true;
+  return ['admin','supreme'].includes(localStorage.getItem('dashPosition')||'');
+}
 // Quyền hiện tại của tài khoản đang đăng nhập; null = toàn quyền.
 function dashCan(page){
   let a=window._dashAllowed;
@@ -403,6 +410,7 @@ function dashCan(page){
     if(role==='account'){try{a=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){a=[];}}
     else a=ROLE_PAGES[role]!==undefined?ROLE_PAGES[role]:null;
   }
+  if(dashIsSupreme(a))return true;
   return !a||a.indexOf(page)>=0;
 }
 function applyRole(){
@@ -413,6 +421,7 @@ function applyRole(){
   if(role==='account'){try{allowed=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){allowed=[];}}
   else allowed=ROLE_PAGES[role]!==undefined?ROLE_PAGES[role]:null;
   if(TEMP_VISIBLE_PAGES)allowed=TEMP_VISIBLE_PAGES;
+  if(dashIsSupreme(allowed))allowed=null; // toàn quyền -> không ẩn trang nào
   window._dashAllowed=allowed;
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el=>{
     const id=el.id.replace('nav-','');
@@ -435,7 +444,7 @@ function applyRole(){
   else if(allowed)document.body.innerHTML='<div style="padding:40px;font:600 14px var(--font)">Tài khoản chưa được cấp quyền xem trang nào. Liên hệ admin.</div>';
 }
 function logout(){localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
-function canReassign(){return['admin','manager'].includes(localStorage.getItem('dashPosition')||'admin');}
+function canReassign(){return['supreme','admin','manager'].includes(localStorage.getItem('dashPosition')||'admin');}
 // Tài khoản vị trí "Sales" chỉ được xem khách được gán cho mình (chuẩn CRM: Sale không thấy data cả công ty).
 // Admin/Manager xem tất cả. 4 tài khoản cũ (admin/admin2/ngoc.onl/mkt) không có user_id thật trong bảng
 // sales_users nên KHÔNG bị lọc -- giữ nguyên luồng đang dùng, tránh làm trắng màn hình của người đang xài.
@@ -3365,18 +3374,20 @@ function rptSlCrmHtml(){
 // trong form tạo tài khoản.
 const CRM_PERMISSION_GROUPS=[
 
+  ['Toàn quyền',[[PERM_ALL,'Mọi trang, kể cả module thêm sau này']]],
   ['Báo cáo',[['report-saleretail','Sale Lẻ'],['report-tonghop','Báo cáo tổng hợp (quản lý)']]],
   ['Data Hub',[['datahub','Toàn bộ Data Hub'],['datahub-manual','Chỉ tab Data Nhập Tay']]],
   ['Quản trị',[['settings','Phân quyền'],['log','Nhật ký thao tác']]],
 ];
 const CRM_PERMISSION_PAGES=CRM_PERMISSION_GROUPS.flatMap(([,items])=>items);
 const CRM_POSITION_DEFAULTS={
-  admin:['report-saleretail','report-tonghop','datahub','datahub-manual','settings','log'],          // toàn quyền
+  supreme:[PERM_ALL],                                                                                // Supreme Leader: trên cả admin, luôn có mọi thứ
+  admin:[PERM_ALL],                                                                                  // toàn quyền, tự có mọi module mới
   manager:['report-saleretail','report-tonghop','datahub'],                                          // xem hết số liệu, không quản tài khoản
   sales:['report-saleretail','datahub-manual'],                                  // báo cáo Sale + điền khách ngoài Pancake
   mkt:['overview','datahub'],                                                    // chỉ số liệu MKT + nguồn data
 };
-const CRM_POSITION_LABEL={admin:'Admin',manager:'Quản lý',sales:'Sales',mkt:'Marketing'};
+const CRM_POSITION_LABEL={supreme:'Supreme Leader',admin:'Admin',manager:'Quản lý',sales:'Sales',mkt:'Marketing'};
 // ── NHẬT KÝ THAO TÁC ──
 // Ghi ai sửa gì, đặc biệt là XOÁ. Bảng activity_log chỉ giữ 7 ngày gần nhất, Supabase tự dọn
 // bằng pg_cron lúc 02:15 sáng (xem supabase-schema-activity-log.sql).
@@ -3508,9 +3519,13 @@ async function renderSettings(){
     <tr>
       <td class="name">${a.name}</td>
       <td><code>${a.username||'—'}</code></td>
-      <td>${CRM_POSITION_LABEL[a.position_title]||a.position_title||'—'}</td>
+      <td>${a.position_title==='supreme'
+        ?'<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:800;color:#fff;background:linear-gradient(135deg,#f59e0b,#ef4444)">👑 Supreme Leader</span>'
+        :(CRM_POSITION_LABEL[a.position_title]||a.position_title||'—')}</td>
       <td>${a.department||'—'}</td>
-      <td style="font-size:11px;color:var(--muted)">${(a.permissions||[]).map(p=>(CRM_PERMISSION_PAGES.find(x=>x[0]===p)||[,p])[1]).join(', ')||'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${(a.permissions||[]).indexOf(PERM_ALL)>=0
+        ?'<span style="color:var(--green);font-weight:800">TOÀN QUYỀN</span> <span style="color:var(--muted)">(mọi trang, cả module thêm sau)</span>'
+        :((a.permissions||[]).map(p=>(CRM_PERMISSION_PAGES.find(x=>x[0]===p)||[,p])[1]).join(', ')||'—')}</td>
       <td>${a.status==='active'?'<span style="color:var(--green);font-weight:700">Đang hoạt động</span>':'<span style="color:var(--muted)">Đã khoá</span>'}</td>
       <td style="white-space:nowrap">
         <button class="btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openCrmEditAccount('${a.user_id}')">Sửa</button>
