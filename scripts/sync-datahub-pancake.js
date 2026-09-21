@@ -75,6 +75,9 @@ function mapOrder(o, shopMeta) {
     order_date: (o.inserted_at || '').slice(0, 10),
     customer_status: custStatus,
     customer_tags: tags,
+    // id hội thoại + page: để app dựng link mở thẳng khung chat Pancake với khách
+    conversation_id: o.conversation_id || (o.customer && o.customer.psid) || null,
+    page_id: o.page_id ? String(o.page_id) : ((o.customer && o.customer.page_id) ? String(o.customer.page_id) : null),
     customer_name: (o.customer && o.customer.name) || o.bill_full_name || null,
     phone,
     address: addr.address || addr.full_address || null,

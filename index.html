@@ -441,8 +441,25 @@ function dashScope(key){
   if((localStorage.getItem('dashPosition')||'')==='supreme')return[];
   try{const a=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(a)?a:[];}catch(e){return[];}
 }
-function dashSales(){return dashScope('dashDataSales');}
-function dashTypes(){return dashScope('dashDataTypes');}
+// XEM NHƯ TÀI KHOẢN KHÁC: ở tab Nhập Liệu, Supreme Leader / người có quyền Phân quyền chọn 1 tài khoản
+// để xem đúng phần data tài khoản đó được phép nhìn -> kiểm tra chéo, chắc chắn Sale này không thấy data Sale kia.
+// Chỉ nằm trong phiên làm việc (sessionStorage), đóng tab là hết; và KHÔNG bao giờ nới rộng phạm vi của
+// chính người đang xem -- nếu bản thân đã bị giới hạn thì lấy phần giao của hai phạm vi.
+function dashViewAs(){try{const v=JSON.parse(sessionStorage.getItem('dashViewAs')||'null');return v&&v.id?v:null;}catch(e){return null;}}
+function dashCanViewAs(){return dashIsSupreme()||dashCan('settings');}
+function dashGiao(a,b){            // [] = xem tất cả -> bên nào rỗng thì lấy bên kia
+  if(!a.length)return b.slice();
+  if(!b.length)return a.slice();
+  return a.filter(x=>b.includes(x));
+}
+function dashSales(){
+  const v=dashViewAs();
+  return v&&dashCanViewAs()?dashGiao(v.sales||[],dashScope('dashDataSales')):dashScope('dashDataSales');
+}
+function dashTypes(){
+  const v=dashViewAs();
+  return v&&dashCanViewAs()?dashGiao(v.types||[],dashScope('dashDataTypes')):dashScope('dashDataTypes');
+}
 function dashSeeSale(name){const a=dashSales();return !a.length||a.includes(String(name||'').trim());}
 function dashSeeType(t){const a=dashTypes();return !a.length||a.includes(t||'Lẻ');}
 function applyRole(){
@@ -2600,6 +2617,18 @@ function rptSlSaleIsHuman(n){
   return /[a-zà-ỹ]/i.test(t);
 }
 // Cột "Sales" hiển thị: tên Sale thật, hoặc nói rõ đơn đang gán cho tài khoản chung / chưa gán ai.
+// Bấm TÊN KHÁCH -> mở thẳng hội thoại Pancake với chính khách đó (tab mới).
+// id hội thoại lấy từ đơn Pancake (cột conversation_id, dạng "{page_id}_{psid}").
+function rptSlChatUrl(r){
+  if(!r||!r.convId)return'';
+  return 'https://pancake.vn/'+(r.pageId||String(r.convId).split('_')[0])+'?c_id='+encodeURIComponent(r.convId);
+}
+function rptSlTenKhach(r){
+  const ten=String(r.name||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const u=rptSlChatUrl(r);
+  if(!u)return ten;
+  return '<a href="'+u+'" target="_blank" rel="noopener" onclick="rptSlStop(event)" title="Mở hội thoại Pancake với khách này" style="color:inherit;text-decoration:none;border-bottom:1px dashed var(--accent)">'+ten+'</a>';
+}
 function rptSlStaffHtml(r){
   if(r.staff)return r.staff;
   if(r.staffRaw)return '<span style="color:var(--muted);font-size:11px" title="Đơn đang gán cho tài khoản chung bên Pancake ('+String(r.staffRaw).replace(/"/g,'')+') — cần gán đúng Sale phụ trách">tài khoản chung</span>';
@@ -3257,6 +3286,9 @@ function rptSlBuildMaster(){
       phone:phone||kiotCusts.map(c=>c.phone||c.phone_key).filter(Boolean)[0]||'',
       phoneFromKiot:!phone,
       created:orders[0].order_date,brand:last.brand,shop:last.shop_name,
+      // id hội thoại Pancake (lấy ở đơn mới nhất có) -> dựng link bấm vào tên khách là mở khung chat
+      convId:orders.map(o=>o.conversation_id).filter(Boolean).pop()||'',
+      pageId:orders.map(o=>o.page_id).filter(Boolean).pop()||'',
       source:pick(o=>o.source),adId:pick(o=>o.ad_id),
       // staff = tên Sale thật; staffRaw = tên gốc bên Pancake (có thể là tài khoản chung như
       // "PANCAKE THT HOLDING") -> cột Sales hiện rõ "tài khoản chung" thay vì gạch ngang khó hiểu.
@@ -3367,7 +3399,7 @@ function rptSlMasterRow(r){
     <td style="font-size:11px">${r.nguon||'—'}</td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
     <td>${rptSlStaffHtml(r)}</td>
-    <td class="name">${r.name}</td>
+    <td class="name">${rptSlTenKhach(r)}</td>
     <td>${r.phone||'<span style="color:var(--muted)">—</span>'}</td>
     <td>${rptSlStatusPill(rptSlRowStatus(r))}</td>
     <td class="num">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.potential?vnd(r.potential):'<span style="color:var(--muted)">—</span>')}</td>
@@ -3450,6 +3482,7 @@ function rptSlShowCustomer(key){
     fld('Mua lại (tháng sau)',r.repeatRevenue>0?vnd(r.repeatRevenue)+' · '+num(r.repeatOrds.length)+' đơn':''),
     fld('Tên bên Kiot',esc(r.kiotName)),
     fld('Ngày đặt hàng gần nhất',esc(dmy(r.lastKiotDate))),
+    fld('Hội thoại',rptSlChatUrl(r)?'<a href="'+rptSlChatUrl(r)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat Pancake</a>':''),
     fld('Nguồn gốc (Pancake)',esc(r.source)),
     fld('Ad ID',r.adId?('<code style="font-size:11px">'+esc(r.adId)+'</code>'):''),
     fld('Ngày chưa liên hệ',r.daysIdle===null?'':num(r.daysIdle)+' ngày',r.isChot&&r.daysIdle>=10?'var(--red)':''),
@@ -3574,11 +3607,45 @@ function rptSlInputSec(id,icon,title,desc,count,color,body,luonMo){
     ${mo?than:''}
   </div>`;
 }
+// Ô "Xem như tài khoản" ở góc phải tab Nhập Liệu (chỉ Supreme / người có quyền Phân quyền thấy).
+function rptSlViewAsBar(){
+  if(!dashCanViewAs())return'';
+  const v=dashViewAs(),accs=window._rptSlAccs;
+  if(!accs)rptSlLoadAccs();
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const mo=a=>{const p=[(a.data_sales||[]).length?(a.data_sales||[]).join(', '):'mọi Sale',
+                        (a.data_types||[]).length?'chỉ '+(a.data_types||[]).join('/'):''].filter(Boolean).join(' · ');
+    return '<option value="'+esc(a.user_id)+'"'+(v&&v.id===a.user_id?' selected':'')+'>'+esc(a.name)+' — '+esc(p)+'</option>';};
+  return `<div id="rptSlViewAs" style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:12px">
+    ${v?'<span style="font-size:11.5px;font-weight:800;color:#fff;background:var(--accent);border-radius:20px;padding:4px 12px">Đang xem như '+esc(v.name)+' — đúng phần data tài khoản này nhìn thấy</span>':''}
+    <span style="font-size:11.5px;color:var(--muted);font-weight:700">Xem như tài khoản</span>
+    <select onchange="rptSlSetViewAs(this.value)" style="height:30px;padding:3px 9px;border:1.5px solid ${v?'var(--accent)':'var(--border)'};border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:700;font-family:var(--font);cursor:pointer;max-width:340px">
+      <option value="">— Chính tôi (toàn bộ data) —</option>${accs?accs.map(mo).join(''):'<option disabled>đang tải…</option>'}
+    </select></div>`;
+}
+async function rptSlLoadAccs(){
+  if(window._rptSlAccsLoading)return; window._rptSlAccsLoading=true;
+  let list=[];
+  try{list=await sbFetchAll('sales_users','select=user_id,name,position_title,data_sales,data_types&has_login=eq.true&status=eq.active&order=name');}catch(e){list=[];}
+  const me=localStorage.getItem('dashUserId')||'';
+  window._rptSlAccs=list.filter(a=>a.position_title!=='supreme'||a.user_id===me);  // acc Supreme chỉ chính chủ thấy
+  window._rptSlAccsLoading=false;
+  const el=document.getElementById('rptSlViewAs');
+  if(el)el.outerHTML=rptSlViewAsBar();
+}
+function rptSlSetViewAs(id){
+  if(!dashCanViewAs())return;
+  const a=(window._rptSlAccs||[]).find(x=>x.user_id===id);
+  if(a)sessionStorage.setItem('dashViewAs',JSON.stringify({id:a.user_id,name:a.name,sales:a.data_sales||[],types:a.data_types||[]}));
+  else sessionStorage.removeItem('dashViewAs');
+  window._kiotOrdByCode=null;
+  rptSlRender();
+}
 function rptSlInputHtml(){
   const b=rptSlTodoBuckets();
   const info=r=>`<td>${dmy(r.created)||'—'}</td>
     <td>${rptSlSrcBadge(r)}</td>
-    <td class="name">${r.name}</td>
+    <td class="name">${rptSlTenKhach(r)}</td>
     <td>${r.phone||'<span style="color:var(--red);font-size:11px">chưa có SĐT</span>'}</td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
     <td>${rptSlStaffHtml(r)}</td>`;
@@ -3622,6 +3689,7 @@ function rptSlInputHtml(){
         style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">✏️ Ghi nội dung</button></td></tr>`).join(''));
   const tong=b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuGT.length+b.thieuND.length;
   return `
+    ${rptSlViewAsBar()}
     <div class="kpi-grid" style="margin-bottom:14px">
       ${mkKpi(ic('clipboard'),'Tổng việc cần làm',num(tong),'','g-purple')}
       ${mkKpi(ic('cash'),'Đơn chốt chưa có Mã KH',num(b.thieuMa.length),'','g-red')}
@@ -3669,7 +3737,7 @@ function rptSlCrmHtml(){
       r.careAuto?'Ngày tạo đơn Pancake đầu tiên — app tự lấy, không sửa tay':dmy(r.careDate),r)}
     <td>${rptSlSrcBadge(r)}</td>
     <td>${rptSlStaffHtml(r)}</td>
-    <td class="name" style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">${r.name}</td>
+    <td class="name">${rptSlTenKhach(r)}</td>
     ${lock(r.content
           ? '<span style="font-size:11.5px;display:block;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+String(r.content).replace(/</g,'&lt;')+'</span>'
           : '<span style="font-size:11.5px;color:var(--muted)">—</span>', r.content, r)}
