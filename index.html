@@ -3443,7 +3443,9 @@ function rptSlBuildMaster(){
     {const co={};keep.phones=g.flatMap(r=>r.phones||[]).filter(p=>{const k=rptSlLast9(p.so);return co[k]?false:(co[k]=true);});}
     keep.isChot=g.some(r=>r.isChot);
     keep.mergedFrom=rest.map(r=>r.leadId);
-    keep.mergedRows=rest.map(r=>({leadId:r.leadId,name:r.name,phone:r.phone}));
+    keep.mergedRows=rest.map(r=>({leadId:r.leadId,name:r.name,phone:r.phone,phones:r.phones,
+      created:r.created,kenh:r.kenh,staff:r.staff,convId:r.convId,pageId:r.pageId,
+      soDon:(r.orders||[]).length,isChot:r.isChot,careDate:r.careDate}));
     ['staff','kenh','diaChi','content','careDate','manualStatus'].forEach(f=>{
       if(!keep[f])keep[f]=rest.map(r=>r[f]).filter(Boolean)[0]||keep[f];
     });
@@ -3685,6 +3687,23 @@ function rptSlMaNgo(all){
     return!!r.ngoVi;
   });
 }
+// Bấm "Xem N khách" ở mục "Mã KH nghi gán nhầm" -> liệt kê từng khách đang dùng chung mã đó,
+// kèm khách thật bên Kiot, để Sale đối chiếu xem mã thuộc về ai rồi dán lại mã đúng.
+function rptSlShowTrungMa(key){
+  const r=rptSlBuildMaster().find(x=>x.key===key);
+  if(!r)return;
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const sdt=x=>((x.phones||[]).length?x.phones.map(p=>p.so).join(' · '):(x.phone||''));
+  const chat=x=>x.convId?'<a href="https://pancake.vn/'+(x.pageId||String(x.convId).split('_')[0])+'?c_id='+encodeURIComponent(x.convId)
+    +'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat</a>':'';
+  const dong=x=>[esc(x.leadId||''),dmy(x.created)||'',esc(x.name||''),esc(sdt(x)),esc(x.kenh||''),esc(x.staff||''),
+    num(x.soDon!==undefined?x.soDon:(x.orders||[]).length)+' đơn',x.isChot?'<span style="color:var(--green);font-weight:700">Chốt đơn</span>':'',chat(x)];
+  const rows=[dong(r),...(r.mergedRows||[]).map(dong)];
+  (r.kiotCusts||[]).forEach(c=>rows.push(['<span style="color:var(--muted)">bên Kiot</span>','',
+    esc(c.name||''),esc(c.phone||c.phone_key||''),'','','','','']));
+  dataModal({title:'Các khách đang dùng chung mã '+(r.kh||''),
+    cols:['Lead ID','Ngày tạo','Họ tên','SĐT','Kênh','Sales','Đơn Pancake','Trạng thái','Hội thoại'],rows});
+}
 function rptSlTodoBuckets(){
   const all=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao);
   return{
@@ -3795,7 +3814,9 @@ function rptSlInputHtml(){
     b.maNgo.map(r=>{const kc=r.kiotCusts[0]||{};
       return `<tr>${info(r)}<td style="font-size:11px"><code>${r.kh}</code></td>
       <td style="font-size:11px">${(kc.name||'—').replace(/</g,'&lt;')}${kc.phone?' · '+kc.phone:''}</td>
-      <td style="font-size:11px;color:var(--red);font-weight:700">${r.ngoVi||''}</td>
+      <td style="font-size:11px;color:var(--red);font-weight:700" onclick="rptSlStop(event)">${r.ngoVi||''}
+        <button onclick="rptSlShowTrungMa('${r.key.replace(/'/g,"\\'")}')" title="Xem thông tin từng khách đang dùng mã này"
+          style="display:block;margin-top:4px;border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:24px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">Xem ${num(1+(r.mergedRows||[]).length)} khách</button></td>
       <td class="num" style="font-weight:800">${r.revenue>0?vnd(r.revenue):'—'}</td>${maO(r)}</tr>`;}).join(''));
   const ttSel=r=>`<td onclick="rptSlStop(event)"><select onchange="rptSlSetField('${r.leadId}','status',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid var(--yellow);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">
       <option value="">— chọn —</option>${RPT_SL_STATUS_OPTS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></td>`;
