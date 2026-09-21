@@ -3753,7 +3753,8 @@ function rptSlTodoBuckets(){
     // 6. Bước B3 quy trình Sale: đơn trên POS Cake chưa đổi trạng thái cho khớp thẻ khách.
     // 7. Chưa ghi nội dung trao đổi -- thứ DUY NHẤT không hệ thống nào suy ra được, phải Sale ghi.
     //    Khách đã chốt thì hồ sơ đã khoá, không sửa được nữa -> không nhắc.
-    thieuND:all.filter(r=>!r.isChot&&!String(r.content||'').trim()),
+    //    Khách MẤT LEAD cũng thôi nhắc: đã bỏ rồi thì ghi nội dung trao đổi cũng không để làm gì.
+    thieuND:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!String(r.content||'').trim()),
   };
 }
 function rptSlTodoCount(){
