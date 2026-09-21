@@ -2599,6 +2599,12 @@ function rptSlSaleIsHuman(n){
   if(RPT_SL_SALE_BLACKLIST.some(b=>t.includes(b)))return false;
   return /[a-zà-ỹ]/i.test(t);
 }
+// Cột "Sales" hiển thị: tên Sale thật, hoặc nói rõ đơn đang gán cho tài khoản chung / chưa gán ai.
+function rptSlStaffHtml(r){
+  if(r.staff)return r.staff;
+  if(r.staffRaw)return '<span style="color:var(--muted);font-size:11px" title="Đơn đang gán cho tài khoản chung bên Pancake ('+String(r.staffRaw).replace(/"/g,'')+') — cần gán đúng Sale phụ trách">tài khoản chung</span>';
+  return '<span style="color:var(--muted)">chưa gán</span>';
+}
 function rptSlSalesList(){
   let out=[];
   try{
@@ -3251,7 +3257,11 @@ function rptSlBuildMaster(){
       phone:phone||kiotCusts.map(c=>c.phone||c.phone_key).filter(Boolean)[0]||'',
       phoneFromKiot:!phone,
       created:orders[0].order_date,brand:last.brand,shop:last.shop_name,
-      source:pick(o=>o.source),staff:rptSlSaleName(pick(o=>o.staff_name)),adId:pick(o=>o.ad_id),
+      source:pick(o=>o.source),adId:pick(o=>o.ad_id),
+      // staff = tên Sale thật; staffRaw = tên gốc bên Pancake (có thể là tài khoản chung như
+      // "PANCAKE THT HOLDING") -> cột Sales hiện rõ "tài khoản chung" thay vì gạch ngang khó hiểu.
+      staffRaw:pick(o=>o.staff_name),
+      staff:(x=>rptSlSaleIsHuman(x)?rptSlSaleName(x):'')(pick(o=>o.staff_name)),
       // Data Pancake đều là khách tự nhắn về page -> "Nguồn khách" luôn là Online (offline nằm ở luồng khác).
       nguon:'Online',kenh:rptSlKenh(last),
       diaChi:orders.map(rptSlDiaChi).filter(Boolean).pop()||rptSlDiaChiKiot(kiotCusts),
@@ -3284,7 +3294,7 @@ function rptSlBuildMaster(){
       manualStatus:mn.status||'',note:mn.note||r.note||'',
       potential:Number(mn.potential_value||0), careDate:mn.care_date||'',careAuto:false,careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
       name:r.customer_name||'—',phone:r.phone||(kc?(kc.phone||kc.phone_key||''):''),phoneFromKiot:!r.phone,
-      created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staff:rptSlSaleName(r.staff_name),adId:'',
+      created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staffRaw:r.staff_name||'',staff:(x=>rptSlSaleIsHuman(x)?rptSlSaleName(x):'')(r.staff_name),adId:'',
       nguon:r.nguon||'Online',kenh:rptSlKenhNorm(r.kenh)||'(nhập tay)',diaChi:rptSlDiaChiKiot(kc?[kc]:[]),
       kiotName:kc?kc.name:'',saleType:r.sale_type||'Lẻ',
       status:kords.length?'Chốt đơn':(mn.status||''),tagStatus:'Nhập tay',
@@ -3356,7 +3366,7 @@ function rptSlMasterRow(r){
     <td>${rptSlSrcBadge(r)}</td>
     <td style="font-size:11px">${r.nguon||'—'}</td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
-    <td>${r.staff||'—'}</td>
+    <td>${rptSlStaffHtml(r)}</td>
     <td class="name">${r.name}</td>
     <td>${r.phone||'<span style="color:var(--muted)">—</span>'}</td>
     <td>${rptSlStatusPill(rptSlRowStatus(r))}</td>
@@ -3532,7 +3542,7 @@ function rptSlInputHtml(){
     <td class="name">${r.name}</td>
     <td>${r.phone||'<span style="color:var(--red);font-size:11px">chưa có SĐT</span>'}</td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
-    <td>${r.staff||'—'}</td>`;
+    <td>${rptSlStaffHtml(r)}</td>`;
   const HEAD='<th>Ngày tạo</th><th>Nguồn</th><th>Họ tên</th><th>SĐT</th><th>Kênh</th><th>Sales</th>';
   const tbl=(head,rows)=>`<div class="tbl-scroll"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
   const maInput=r=>`<td style="font-size:11px">${r.manualKH?('<code>'+r.manualKH+'</code>'):'<span style="color:var(--red);font-weight:700">chưa có</span>'}</td>`;
@@ -3619,7 +3629,7 @@ function rptSlCrmHtml(){
     ${(r.careAuto?lockRO:lock)(dmy(r.careDate)||'<span style="color:var(--muted)">—</span>',
       r.careAuto?'Ngày tạo đơn Pancake đầu tiên — app tự lấy, không sửa tay':dmy(r.careDate),r)}
     <td>${rptSlSrcBadge(r)}</td>
-    <td>${r.staff||'—'}</td>
+    <td>${rptSlStaffHtml(r)}</td>
     <td class="name" style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">${r.name}</td>
     ${lock(r.content
           ? '<span style="font-size:11.5px;display:block;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+String(r.content).replace(/</g,'&lt;')+'</span>'
