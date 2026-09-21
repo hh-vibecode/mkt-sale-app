@@ -267,6 +267,18 @@ async function autoB3() {
       errors.push(`Shop ${shop.id} (${shop.brand}): ${e.message}`);
     }
   }
+  // Không đơn nào về mà cũng không báo lỗi = bất thường (token hết hạn, Pancake trục trặc).
+  // Dừng lại, KHÔNG chạy phần tự gắn thẻ / đổi trạng thái để máy không hành động trên dữ liệu thiếu.
+  if (grandTotal === 0) {
+    console.error('DỪNG: không lấy được đơn nào từ Pancake — bỏ qua bước gắn thẻ và đổi trạng thái.');
+    await logSyncEnd(logId, { status: 'failed', recordsCreated: 0, errorMessage: 'Không lấy được đơn nào từ Pancake' });
+    process.exit(1);
+  }
+  if (errors.length) {
+    console.error('CÓ SHOP LỖI — bỏ qua bước gắn thẻ và đổi trạng thái lượt này cho chắc.');
+    await logSyncEnd(logId, { status: 'failed', recordsCreated: grandTotal, errorMessage: errors.join(' | ').slice(0, 500) });
+    process.exit(1);
+  }
   const chot = await autoChot();            // gắn thẻ trước...
   const b3 = await autoB3();                // ...rồi mới đẩy trạng thái theo thẻ mới
   console.log(`XONG. Tổng ${grandTotal} đơn đã đồng bộ.` + (chot ? ' ' + chot : '') + (b3 ? ' ' + b3 : ''));
