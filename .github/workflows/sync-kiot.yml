@@ -1,12 +1,11 @@
 name: Sync KiotViet (đơn đặt hàng + hoá đơn)
 
+# LỊCH CHẠY DO SUPABASE ĐIỀU PHỐI (từ 21/9/2026).
+# GitHub Actions giãn cron dưới 1 giờ thành 2-5 tiếng, nên lịch đã chuyển sang pg_cron trên Supabase:
+# pg_cron -> Edge Function 'sync-now' -> workflow_dispatch (loại kích này chạy NGAY, không bị giãn).
+# Xem lịch hiện hành: bảng cron.job trên Supabase, hoặc mục "Lịch chạy tự động" trong app.
+# Ở đây chỉ giữ workflow_dispatch để Supabase và người dùng bấm chạy được.
 on:
-  schedule:
-    # 30 phút/lần -- chạy INCREMENTAL (5 trang mới nhất/shop), nhẹ, đủ bắt đơn mới.
-    - cron: '*/30 * * * *'
-    # 7h05 sáng VN (00:05 UTC) -- lượt BACKFILL quét lại toàn bộ từ 1/6, bắt cả sửa đổi trên đơn cũ.
-    # Lệch 5 phút khỏi giờ tròn vì GitHub Actions hay dồn/rớt cron đúng phút :00.
-    - cron: '5 0 * * *'
   workflow_dispatch:
     inputs:
       backfill:
