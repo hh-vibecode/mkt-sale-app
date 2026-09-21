@@ -3732,8 +3732,14 @@ function rptSlShowTrungMa(key){
   const rows=[dong(r),...(r.mergedRows||[]).map(dong)];
   (r.kiotCusts||[]).forEach(c=>rows.push(['<span style="color:var(--muted)">bên Kiot</span>','',
     esc(c.name||''),esc(c.phone||c.phone_key||''),'','','','','']));
+  // HÀNG TRONG ĐƠN KIOT: mở chat của từng khách rồi đối chiếu xem họ hỏi mua đúng mấy món này không --
+  // cách chắc ăn nhất để biết mã gán đúng người (người dùng gợi ý 21/9/2026). Đơn 316k toàn nến bơ mà
+  // khách chat hỏi tượng Quan Âm 12,5 triệu thì chắc chắn mã dán nhầm.
+  (r.kords||[]).forEach(o=>rows.push(['<span style="color:var(--muted)">đơn Kiot</span>',
+    dmy(String(o.purchase_date).slice(0,10)),'<span style="font-weight:600">'+esc(o.code||'')+'</span>',
+    vnd(o.total),esc((o.items||[]).map(i=>i.name+' x'+i.qty).join(' · ')),'','','','']));
   dataModal({title:'Các khách đang dùng chung mã '+(r.kh||''),
-    cols:['Lead ID','Ngày tạo','Họ tên','SĐT','Kênh','Sales','Đơn Pancake','Trạng thái','Hội thoại'],rows});
+    cols:['Lead ID','Ngày tạo','Họ tên / Mã đơn','SĐT / Tiền','Kênh / Mặt hàng','Sales','Đơn Pancake','Trạng thái','Hội thoại'],rows});
 }
 function rptSlTodoBuckets(){
   const all=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao);
