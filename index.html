@@ -420,6 +420,7 @@ const TEMP_VISIBLE_PAGES=null;
 // như mọi tài khoản khác -- có quyền quản tài khoản không có nghĩa là được xem hết số liệu.
 const PERM_ALL='*';
 function dashIsSupreme(a){
+  if(a===undefined){try{a=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){a=[];}}
   if(Array.isArray(a)&&a.indexOf(PERM_ALL)>=0)return true;
   return (localStorage.getItem('dashPosition')||'')==='supreme';
 }
@@ -2285,6 +2286,54 @@ function dhManualRev(){
 }
 // Data Nhập Tay chia theo LOẠI KHÁCH: tab "Nhập tay Lẻ" và "Nhập tay Sỉ" là 2 quyền riêng,
 // Sale Lẻ không thấy data Sỉ và ngược lại. Dòng thêm mới mang đúng sale_type của tab đang mở.
+// ── BẢNG ĐỒNG BỘ (chỉ Supreme Leader thấy) ──
+// Lịch cron + lần chạy cuối + nút chạy tay. Nút gọi Edge Function 'sync-now' (token GitHub nằm ở server,
+// KHÔNG nhúng vào file này vì repo public). Function từ chối nếu job đang chạy.
+const DH_CRON=[
+  {job:'datahub',ten:'Pancake POS',src:'Data Hub - Pancake POS',lich:'30 phút/lần + quét lại toàn bộ 7h05'},
+  {job:'kiot',   ten:'KiotViet (đơn đặt hàng + hoá đơn)',src:'KiotViet - Đơn đặt hàng',lich:'30 phút/lần + quét lại toàn bộ 7h05'},
+  {job:'mkt',    ten:'Meta Ads',src:'MKT - Meta Ads',lich:'7h05 · 12h05 · 15h05'},
+];
+async function dhSyncNow(job,btn){
+  if(btn){btn.disabled=true;btn.textContent='Đang gọi...';}
+  try{
+    const res=await fetch(`${SUPABASE_URL}/functions/v1/sync-now`,{method:'POST',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({job})});
+    const d=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(d.error||('lỗi '+res.status));
+    logAct('U','sync_log',job,null,'chạy tay',null,'đã kích job '+job);
+    if(btn){btn.textContent='✓ Đã kích';setTimeout(()=>{btn.disabled=false;btn.textContent='▶ Chạy ngay';},4000);}
+    alert('Đã kích job. Khoảng 1-2 phút nữa có dữ liệu mới, bấm Tải lại để xem.');
+  }catch(e){
+    alert('Chưa chạy được: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='▶ Chạy ngay';}
+  }
+}
+function dhCronHtml(log){
+  if(!dashIsSupreme())return'';
+  const ago=t=>{if(!t)return'chưa chạy lần nào';const m=Math.round((Date.now()-new Date(t))/60000);
+    return m<60?m+' phút trước':Math.floor(m/60)+' giờ '+(m%60)+' phút trước';};
+  return `<div class="tbl-card" style="margin-bottom:16px">
+    <div class="tbl-head" style="border-left:4px solid var(--accent)">
+      <div class="tbl-title">⏱️ Đồng bộ dữ liệu</div>
+      <span style="margin-left:auto;font-size:11px;color:var(--muted)">chỉ Supreme Leader thấy mục này</span></div>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>Nguồn</th><th>Lịch tự chạy</th><th>Lần cuối</th><th>Kết quả</th><th></th></tr></thead>
+      <tbody>${DH_CRON.map(c=>{const l=(log||{})[c.src]||{};
+        return `<tr>
+          <td class="name">${c.ten}</td>
+          <td style="font-size:11px;color:var(--muted)">${c.lich}</td>
+          <td style="font-size:11.5px">${l.started_at?dmy(String(l.started_at).slice(0,10))+' '+new Date(l.started_at).toLocaleTimeString('vi-VN'):'—'}
+            <span style="color:var(--muted);font-size:10.5px">· ${ago(l.started_at)}</span></td>
+          <td style="font-size:11px;font-weight:700;color:${l.status==='success'?'var(--green)':l.status==='failed'?'var(--red)':'var(--muted)'}">${l.status==='success'?'OK':l.status==='failed'?'Lỗi':(l.status||'—')}</td>
+          <td><button onclick="dhSyncNow('${c.job}',this)"
+            style="border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 12px;cursor:pointer;font-size:11px;font-weight:700">▶ Chạy ngay</button></td>
+        </tr>`;}).join('')}</tbody>
+    </table></div>
+    <div style="padding:9px 14px;font-size:10.5px;color:var(--muted)">GitHub Actions thường giãn lịch dưới 1 giờ thành 2-5 tiếng — cần số tươi thì bấm Chạy ngay (job đang chạy thì sẽ báo).</div>
+  </div>`;
+}
 function dhManualType(){return window._dhManualType==='Sỉ'?'Sỉ':'Lẻ';}
 function dhManualHtml(){
   const T=dhManualType();
@@ -2357,13 +2406,12 @@ async function renderDataHub(){
   const dhOld=dhOrders.filter(o=>o.customer_status==='Cũ').length;
   const dhNewConfirmed=dhConfirmed.filter(o=>o.customer_status==='Mới').length;
   const dhOldConfirmed=dhConfirmed.filter(o=>o.customer_status==='Cũ').length;
-  let dhSyncLabel='—';
+  let dhSyncLabel='—',dhLastBySrc={};
   try{
-    const dhHist=await sbFetchAll('sync_log',`select=started_at,status&source=eq.${encodeURIComponent('Data Hub - Pancake POS')}&order=started_at.desc&limit=1`);
-    if(dhHist[0]){
-      const st=dhHist[0].status;
-      dhSyncLabel=new Date(dhHist[0].started_at).toLocaleString('vi-VN')+(st==='success'?' · OK':st==='failed'?' · Lỗi':' · Đang chạy');
-    }
+    const hist=await sbFetchAll('sync_log','select=source,started_at,status&order=started_at.desc&limit=60');
+    hist.forEach(h=>{if(!dhLastBySrc[h.source])dhLastBySrc[h.source]=h;});
+    const d0=dhLastBySrc['Data Hub - Pancake POS'];
+    if(d0)dhSyncLabel=new Date(d0.started_at).toLocaleString('vi-VN')+(d0.status==='success'?' · OK':d0.status==='failed'?' · Lỗi':' · Đang chạy');
   }catch(e){}
   const pancakeOrdersHtml=`
     <div class="tbl-card" style="margin-bottom:16px">
@@ -2416,7 +2464,7 @@ async function renderDataHub(){
       </span>
     </div>`;
   if(mode==='manual'||mode==='manual-si'){el.innerHTML=header+dhManualHtml();return;}
-  el.innerHTML=header+pancakeOrdersHtml+dhExcludedHtml();
+  el.innerHTML=header+dhCronHtml(dhLastBySrc)+pancakeOrdersHtml+dhExcludedHtml();
   dhRenderTable();
 }
 
