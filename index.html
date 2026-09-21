@@ -269,7 +269,6 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     <div class="sb-section" id="sec-qt-label" style="margin-top:12px">Quản trị</div>
     <nav id="sec-qt">
       <div class="nav-item" onclick="switchPage('report-tonghop')" id="nav-report-tonghop"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span><span class="nav-label">Báo cáo tổng hợp</span></div>
-      <div class="nav-item" onclick="switchPage('datahub')" id="nav-datahub"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="5" rx="8" ry="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg></span><span class="nav-label">Data Hub</span></div>
     </nav>
     <div class="sb-section" id="sec-report-label" style="margin-top:12px">Báo cáo</div>
     <nav id="sec-report">
@@ -280,8 +279,9 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
          ghim đáy sidebar, bấm mới bung menu. Giữ id nav-settings/nav-log để applyRole() vẫn ẩn/hiện được. -->
     <div class="sb-admin">
       <div class="sb-admin-menu" id="sbAdminMenu">
+        <div class="nav-item" onclick="sbAdminGo('datahub')" id="nav-datahub"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="5" rx="8" ry="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg></span><span class="nav-label">Data Hub</span></div>
         <div class="nav-item" onclick="sbAdminGo('settings')" id="nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9.5 12 1.8 1.8L15 10"/></svg></span><span class="nav-label">Phân quyền</span></div>
-        <div class="nav-item" onclick="sbAdminGo('log')" id="nav-log"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-6 7h6m-6 4h4"/></svg></span><span class="nav-label">Nhật ký thao tác</span></div>
+        <div class="nav-item" onclick="sbAdminGo('log')" id="nav-log"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-6 7h6m-6 4h4"/></svg></span><span class="nav-label">Nhật ký chỉnh sửa</span></div>
       </div>
       <div class="sb-admin-btn" id="sbAdminBtn" onclick="sbAdminToggle(event)" title="Cài đặt nâng cao">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 1 5.4-5.4l-2.6 2.6"/></svg>
@@ -2339,35 +2339,38 @@ async function dhSyncNow(job,btn){
     if(btn){btn.disabled=false;btn.textContent='▶ Chạy ngay';}
   }
 }
+// Bảng LỊCH CHẠY -- hiện ở đầu tab "Lịch sử đồng bộ" (trang Nhật ký chỉnh sửa), không để trong Data Hub.
 function dhCronHtml(log){
   if(!dashIsSupreme())return'';
-  const auto=DH_AUTO.map(([t,d])=>`<div style="display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--border)">
-    <div style="min-width:220px;font-size:11.5px;font-weight:800;color:${t==='KHÔNG tự làm'?'var(--red)':'var(--text)'}">${t}</div>
-    <div style="font-size:11px;color:var(--muted);line-height:1.5">${d}</div></div>`).join('');
-  const ago=t=>{if(!t)return'chưa chạy lần nào';const m=Math.round((Date.now()-new Date(t))/60000);
+  const ago=t=>{if(!t)return'';const m=Math.round((Date.now()-new Date(t))/60000);
     return m<60?m+' phút trước':Math.floor(m/60)+' giờ '+(m%60)+' phút trước';};
+  const card=c=>{
+    const l=(c.src&&(log||{})[c.src])||{};
+    const mau=l.status==='success'?'var(--green)':l.status==='failed'?'var(--red)':'var(--muted)';
+    return `<div style="border:1.5px solid var(--border);border-left:4px solid ${mau};border-radius:11px;padding:12px 14px;background:var(--surface)">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px">
+        <span style="font-size:13px;font-weight:800">${c.ten}</span>
+        <span style="font-size:10.5px;font-weight:700;color:var(--accent);background:var(--accent-l);padding:2px 8px;border-radius:20px;white-space:nowrap">${c.lich}</span>
+        ${c.job?`<button onclick="dhSyncNow('${c.job}',this)" style="margin-left:auto;border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:25px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">▶ Chạy ngay</button>`:''}
+      </div>
+      <ul style="margin:0 0 9px 16px;padding:0;font-size:11.5px;color:var(--text2);line-height:1.65">${c.viec.map(v=>'<li>'+v+'</li>').join('')}</ul>
+      <div style="font-size:11px;color:var(--muted)">${l.started_at
+        ?'Lần cuối: <b style="color:var(--text)">'+new Date(l.started_at).toLocaleString('vi-VN')+'</b> · '+ago(l.started_at)
+          +' · <span style="color:'+mau+';font-weight:800">'+(l.status==='success'?'OK':l.status==='failed'?'Lỗi':l.status)+'</span>'
+        :'Không ghi log riêng'}</div>
+    </div>`;};
+  const auto=DH_AUTO.map(([t,d])=>`<div style="display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--border)">
+    <div style="flex:0 0 230px;font-size:11.5px;font-weight:800;color:${t==='KHÔNG tự làm'?'var(--red)':'var(--text)'}">${t}</div>
+    <div style="flex:1;font-size:11px;color:var(--muted);line-height:1.6">${d}</div></div>`).join('');
   return `<div class="tbl-card" style="margin-bottom:16px">
     <div class="tbl-head" style="border-left:4px solid var(--accent)">
-      <div class="tbl-title">Đồng bộ dữ liệu</div>
+      <div class="tbl-title">Lịch chạy tự động</div><div class="tbl-count">${num(DH_CRON.length)}</div>
       <span style="margin-left:auto;font-size:11px;color:var(--muted)">chỉ Supreme Leader thấy mục này</span></div>
-    <div class="tbl-scroll"><table>
-      <thead><tr><th>Việc</th><th>Lịch tự chạy</th><th>Máy làm gì</th><th>Lần cuối</th><th>Kết quả</th><th></th></tr></thead>
-      <tbody>${DH_CRON.map(c=>{const l=(c.src&&(log||{})[c.src])||{};
-        return `<tr>
-          <td class="name">${c.ten}</td>
-          <td style="font-size:11px;color:var(--muted)">${c.lich}</td>
-          <td style="font-size:11px;color:var(--text2);line-height:1.5;max-width:420px;white-space:normal">${c.viec.map(v=>'· '+v).join('<br>')}</td>
-          <td style="font-size:11.5px;white-space:nowrap">${l.started_at?dmy(String(l.started_at).slice(0,10))+' '+new Date(l.started_at).toLocaleTimeString('vi-VN'):'<span style="color:var(--muted)">không ghi log</span>'}
-            ${l.started_at?'<span style="color:var(--muted);font-size:10.5px">· '+ago(l.started_at)+'</span>':''}</td>
-          <td style="font-size:11px;font-weight:700;color:${l.status==='success'?'var(--green)':l.status==='failed'?'var(--red)':'var(--muted)'}">${l.status==='success'?'OK':l.status==='failed'?'Lỗi':(l.status||'—')}</td>
-          <td>${c.job?`<button onclick="dhSyncNow('${c.job}',this)"
-            style="border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 12px;cursor:pointer;font-size:11px;font-weight:700">▶ Chạy ngay</button>`:''}</td>
-        </tr>`;}).join('')}</tbody>
-    </table></div>
-    <div style="padding:10px 14px">
+    <div style="padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px">${DH_CRON.map(card).join('')}</div>
+    <div style="padding:0 14px 14px">
       <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px">Máy tự xử lý những gì</div>
       ${auto}
-      <div style="font-size:10.5px;color:var(--muted);margin-top:8px">GitHub Actions thường giãn lịch dưới 1 giờ thành 2-5 tiếng — cần số tươi thì bấm Chạy ngay (job đang chạy thì sẽ báo).</div>
+      <div style="font-size:10.5px;color:var(--muted);margin-top:9px">GitHub Actions thường giãn lịch dưới 1 giờ thành 2-5 tiếng — cần số tươi thì bấm Chạy ngay (job đang chạy thì sẽ báo).</div>
     </div>
   </div>`;
 }
@@ -2501,7 +2504,7 @@ async function renderDataHub(){
       </span>
     </div>`;
   if(mode==='manual'||mode==='manual-si'){el.innerHTML=header+dhManualHtml();return;}
-  el.innerHTML=header+dhCronHtml(dhLastBySrc)+pancakeOrdersHtml+dhExcludedHtml();
+  el.innerHTML=header+pancakeOrdersHtml+dhExcludedHtml();
   dhRenderTable();
 }
 
@@ -3656,7 +3659,7 @@ const CRM_PERMISSION_GROUPS=[
   ['Toàn quyền',[[PERM_ALL,'Mọi trang, kể cả module thêm sau này']]],
   ['Báo cáo',[['report-saleretail','Sale Lẻ'],['report-salesi','Sale Sỉ'],['report-tonghop','Báo cáo tổng hợp (quản lý)']]],
   ['Data Hub',[['datahub','Toàn bộ Data Hub'],['datahub-manual','Nhập tay — khách Lẻ'],['datahub-manual-si','Nhập tay — khách Sỉ']]],
-  ['Quản trị',[['settings','Phân quyền'],['log','Nhật ký thao tác']]],
+  ['Quản trị',[['settings','Phân quyền'],['log','Nhật ký chỉnh sửa']]],
 ];
 const CRM_PERMISSION_PAGES=CRM_PERMISSION_GROUPS.flatMap(([,items])=>items);
 const CRM_POSITION_DEFAULTS={
@@ -3693,11 +3696,18 @@ async function logLoad(force){
 }
 function logFilter(){return window._logF||'all';}
 function logSetFilter(v){window._logF=v;renderLog();}
-function logTab(){return window._logTab||'user';}
+function logTab(){return window._logTab||'sync';}
 function logSetTab(v){window._logTab=v;renderLog();}
 // Lịch sử ĐỒNG BỘ (máy chạy) nằm cùng trang với nhật ký thao tác (người sửa) -- cùng trả lời một câu
 // hỏi: "dữ liệu này đến từ đâu, ai/cái gì đã đụng vào nó". Nguồn: bảng sync_log do các job GitHub ghi.
 async function logSyncHtml(){
+  // Lịch chạy tự động đặt ngay đầu tab, để mở ra là biết máy đang làm gì theo lịch nào.
+  let lich='';
+  try{
+    const h60=await sbFetchAll('sync_log','select=source,started_at,status&order=started_at.desc&limit=60');
+    const last={};h60.forEach(h=>{if(!last[h.source])last[h.source]=h;});
+    lich=dhCronHtml(last);
+  }catch(e){lich=dhCronHtml({});}
   let rows='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Chưa có lần đồng bộ nào</td></tr>';
   let hist=[];
   try{
@@ -3715,7 +3725,7 @@ async function logSyncHtml(){
   }catch(e){rows=`<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--red)">Lỗi tải: ${e.message}</td></tr>`;}
   const fail=hist.filter(h=>h.status==='failed').length;
   const bySrc={};hist.forEach(h=>{const k=h.source||'—';bySrc[k]=bySrc[k]||{n:0,last:null};bySrc[k].n++;if(!bySrc[k].last)bySrc[k].last=h.started_at;});
-  return `
+  return lich+`
     <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px">
       ${mkKpi(ic('clipboard'),'Lần chạy gần nhất',num(hist.length),'','g-blue')}
       ${mkKpi(ic('check'),'Thành công',num(hist.length-fail),hist.length?pct((hist.length-fail)/hist.length*100):'—','g-green')}
@@ -3743,9 +3753,9 @@ async function renderLog(){
   const tab=logTab();
   const tb=(v,l)=>`<button onclick="logSetTab('${v}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${tab===v?'var(--accent)':'var(--surface)'};color:${tab===v?'#fff':'var(--text2)'}">${l}</button>`;
   const head=`
-    ${modHeader('Nhật ký','','log','renderLog')}
+    ${modHeader('Nhật ký chỉnh sửa','','log','renderLog')}
     <div class="period-bar"><span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
-      ${tb('user','Thao tác người dùng')}${tb('sync','Lịch sử đồng bộ')}</span></div>`;
+      ${tb('sync','Lịch sử đồng bộ')}${tb('user','Lịch sử chỉnh sửa')}</span></div>`;
   if(tab==='sync'){el.innerHTML=head+'<div style="padding:40px;text-align:center;color:var(--muted)">Đang tải…</div>';el.innerHTML=head+await logSyncHtml();return;}
   await logLoad(true);
   const f=logFilter();
