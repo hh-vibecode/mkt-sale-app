@@ -565,9 +565,9 @@ const modRanges={};
 // Mặc định riêng theo module: trang tổng hợp cho quản lý xem cả THÁNG NÀY, trang thao tác hằng ngày
 // thì hôm qua -> hôm nay (xem modDateDefault).
 function modDefaultFor(mod){
-  // Trang tổng hợp và báo cáo Sale Sỉ xem theo THÁNG NÀY: tổng hợp là để nhìn bức tranh chung, còn Sỉ
-  // data rất thưa (cả tháng 9 mới 15 khách) nên mặc định 2 ngày sẽ ra bảng trắng, tưởng lỗi.
-  if(mod==='tonghop'||mod==='salesi'){const t=todayISO();return{from:t.slice(0,8)+'01',to:t};}
+  // Trang tổng hợp và CẢ HAI báo cáo Sale (Lẻ + Sỉ) xem theo THÁNG NÀY: đây là báo cáo kỳ, Sale mở lên
+  // là muốn thấy kết quả tháng đang chạy; mặc định 2 ngày làm bảng gần như trắng, dễ tưởng mất data.
+  if(mod==='tonghop'||mod==='salesi'||mod==='saleretail'){const t=todayISO();return{from:t.slice(0,8)+'01',to:t};}
   return modDateDefault();
 }
 function modRange(mod){return modRanges[mod]||modDefaultFor(mod);}
