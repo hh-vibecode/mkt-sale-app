@@ -395,6 +395,8 @@ async function doLogin(){
       localStorage.setItem('dashUserId',account.user_id);
       localStorage.setItem('dashPosition',account.position_title||'sales');
       localStorage.setItem('dashPermissions',JSON.stringify(account.permissions||[]));
+      localStorage.setItem('dashDataSales',JSON.stringify(account.data_sales||[]));
+      localStorage.setItem('dashDataTypes',JSON.stringify(account.data_types||[]));
       document.getElementById('loginGate').style.display='none';applyRole();return;
     }
   }catch(e){console.warn('app_login lỗi:',e.message);}
@@ -428,6 +430,16 @@ function dashCan(page){
   if(dashIsSupreme(a))return true;
   return !a||a.indexOf(page)>=0;
 }
+// PHẠM VI DỮ LIỆU của tài khoản: xem data của những Sale nào, và loại Sỉ hay Lẻ.
+// Mảng rỗng = xem TẤT CẢ (mặc định, giữ nguyên hành vi cũ). Supreme Leader luôn xem tất cả.
+function dashScope(key){
+  if((localStorage.getItem('dashPosition')||'')==='supreme')return[];
+  try{const a=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(a)?a:[];}catch(e){return[];}
+}
+function dashSales(){return dashScope('dashDataSales');}
+function dashTypes(){return dashScope('dashDataTypes');}
+function dashSeeSale(name){const a=dashSales();return !a.length||a.includes(String(name||'').trim());}
+function dashSeeType(t){const a=dashTypes();return !a.length||a.includes(t||'Lẻ');}
 function applyRole(){
   const role=localStorage.getItem('dashRole')||'admin';
   // role='account' = tài khoản tạo qua Admin > Cài đặt (bảng sales_users) -- quyền động lấy từ localStorage
@@ -458,7 +470,7 @@ function applyRole(){
   if(allowed&&allowed.length)switchPage(allowed[0]);
   else if(allowed)document.body.innerHTML='<div style="padding:40px;font:600 14px var(--font)">Tài khoản chưa được cấp quyền xem trang nào. Liên hệ admin.</div>';
 }
-function logout(){localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
+function logout(){['dashDataSales','dashDataTypes'].forEach(k=>localStorage.removeItem(k));localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
 function canReassign(){return['supreme','admin','manager'].includes(localStorage.getItem('dashPosition')||'admin');}
 // Tài khoản vị trí "Sales" chỉ được xem khách được gán cho mình (chuẩn CRM: Sale không thấy data cả công ty).
 // Admin/Manager xem tất cả. 4 tài khoản cũ (admin/admin2/ngoc.onl/mkt) không có user_id thật trong bảng
@@ -470,7 +482,7 @@ async function dashRefreshPerms(){
   const id=localStorage.getItem('dashUserId');
   if(localStorage.getItem('dashRole')!=='account'||!id)return;
   try{
-    const res=await fetch(`${SUPABASE_URL}/rest/v1/sales_users?user_id=eq.${encodeURIComponent(id)}&select=name,position_title,permissions,status,has_login`,
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/sales_users?user_id=eq.${encodeURIComponent(id)}&select=name,position_title,permissions,data_sales,data_types,status,has_login`,
       {headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
     const a=(await res.json())[0];
     if(!a)return;                         // không đọc được thì giữ nguyên phiên, đừng đá người đang làm
@@ -478,6 +490,8 @@ async function dashRefreshPerms(){
     localStorage.setItem('dashUser',a.name||localStorage.getItem('dashUser')||'');
     localStorage.setItem('dashPosition',a.position_title||'sales');
     localStorage.setItem('dashPermissions',JSON.stringify(a.permissions||[]));
+    localStorage.setItem('dashDataSales',JSON.stringify(a.data_sales||[]));
+    localStorage.setItem('dashDataTypes',JSON.stringify(a.data_types||[]));
     delete window._dashAllowed;
     applyRole();
   }catch(e){console.warn('Không làm mới được quyền:',e.message);}
@@ -1923,6 +1937,7 @@ function dhFilteredOrders(){
   const to=document.getElementById('dhDateTo')?.value||'';
   const q=(document.getElementById('dhSearch')?.value||'').trim().toLowerCase();
   return dhOrders.filter(o=>{
+    if(!dashSeeSale(o.staff_name)||!dashSeeType(dhSaleTypeOrder(o)))return false;
     if(brand!=='all'&&o.brand!==brand)return false;
     if(from&&o.order_date<from)return false;
     if(to&&o.order_date>to)return false;
@@ -2264,7 +2279,7 @@ function dhManualRev(){
 function dhManualHtml(){
   const byCode=kiotCustByCode(),inv=dhManualRev();
   const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none';
-  const rows=dhManual.slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
+  const rows=dhManual.filter(r=>dashSeeSale(r.staff_name)&&dashSeeType(r.sale_type||'Lẻ')).slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
     const v=inv[r.kiot_code]||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
     return `<tr>
       <td>${dmy(r.created_date)||'—'}</td>
@@ -2702,7 +2717,7 @@ async function renderReportSaleLe(){
 function rptSlOverviewHtml(){
   // Áp bộ lọc ngày RIÊNG của báo cáo: khách lọc theo NGÀY TẠO, đơn thô lọc theo NGÀY ĐƠN.
   const master=rptSlPeriod();
-  const le=dhOrders.filter(o=>dhSaleTypeOrder(o)!=="Sỉ"&&modInRange(rptSlMod(),o.order_date));
+  const le=dhOrders.filter(o=>dhSaleTypeOrder(o)!=="Sỉ"&&dashSeeSale(o.staff_name)&&modInRange(rptSlMod(),o.order_date));
   const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
   const dat=le.filter(o=>tag(o,'LEAD ĐẠT')||dhIsQualified(o));
   // Phễu phải CỘNG DỒN: đơn đã chốt thì trước đó đương nhiên cũng là tiềm năng. Nếu chỉ đếm đơn còn
@@ -3135,6 +3150,8 @@ function rptSlBuildMaster(){
   // Khách bị GỠ không vào bất kỳ tab nào (Tổng Quan / Master / CRM / Nhập Liệu) -- chỉ còn ở mục
   // "Đã gỡ khỏi báo cáo" cuối tab Nhập Liệu để khôi phục.
   rows=rows.filter(r=>!(rptSlManual[r.leadId]||{}).excluded);
+  // PHẠM VI DỮ LIỆU: tài khoản chỉ được xem khách của những Sale được gán (và đúng loại Sỉ/Lẻ).
+  rows=rows.filter(r=>dashSeeSale(r.staff)&&dashSeeType(r.saleType||'Lẻ'));
   // DOANH SỐ CHỐT = mọi đơn trong CÙNG THÁNG với đơn Kiot đầu tiên (người dùng chốt 17/9/2026: "mua liên
   // tục trong tháng thì vẫn tính là mua lần đầu", vd Thanh Chương 01/7 + 14/7 = 88.535.000đ).
   // Đơn từ tháng SAU trở đi là MUA LẠI -> tách ra repeatOrds, không cộng vào doanh số chốt của Sale.
@@ -3651,6 +3668,11 @@ async function renderSettings(){
         ?'<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:800;color:#fff;background:linear-gradient(135deg,#f59e0b,#ef4444)">👑 Supreme Leader</span>'
         :(CRM_POSITION_LABEL[a.position_title]||a.position_title||'—')}</td>
       <td>${a.department||'—'}</td>
+      <td style="font-size:11px">${(()=>{
+        const ds=a.data_sales||[],dt=a.data_types||[];
+        if(a.position_title==='supreme'||(!ds.length&&!dt.length))return'<span style="color:var(--muted)">toàn bộ data</span>';
+        return(ds.length?ds.join(', '):'mọi Sale')+(dt.length?' · chỉ '+dt.join('/'):'');
+      })()}</td>
       <td style="font-size:11px;color:var(--muted)">${(a.permissions||[]).indexOf(PERM_ALL)>=0
         ?'<span style="color:var(--green);font-weight:800">TOÀN QUYỀN</span> <span style="color:var(--muted)">(mọi trang, cả module thêm sau)</span>'
         :((a.permissions||[]).map(p=>(CRM_PERMISSION_PAGES.find(x=>x[0]===p)||[,p])[1]).join(', ')||'—')}</td>
@@ -3672,7 +3694,7 @@ async function renderSettings(){
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">Danh sách tài khoản</div><div class="tbl-count">${accounts.length}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Họ tên</th><th>Username</th><th>Vị trí</th><th>Bộ phận</th><th>Quyền truy cập</th><th>Trạng thái</th><th></th></tr></thead>
+        <thead><tr><th>Họ tên</th><th>Username</th><th>Vị trí</th><th>Bộ phận</th><th>Phạm vi dữ liệu</th><th>Quyền truy cập</th><th>Trạng thái</th><th></th></tr></thead>
         <tbody>${rows||'<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Chưa có tài khoản nào — bấm "Tạo tài khoản" để thêm Sale đầu tiên</td></tr>'}</tbody>
       </table></div>
     </div>`;
@@ -3691,6 +3713,7 @@ function openCrmAddAccount(){
         <option value="mkt">Marketing</option>
       </select>`)}
       ${saonlField('Bộ phận',`<input name="department" style="${saonlInputStyle}" value="Sale Online (Lẻ)">`)}
+      ${crmScopeFields([],[])}
       ${saonlField('Quyền truy cập',`<div id="crmAcctPerms">${CRM_PERMISSION_GROUPS.map(([grp,items])=>`
         <div style="margin-bottom:9px">
           <div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">${grp}</div>
@@ -3722,6 +3745,8 @@ async function submitCrmAddAccount(){
         p_position:(fd.get('position')||'').toString(),
         p_department:(fd.get('department')||'').toString().trim()||null,
         p_permissions:perms,
+        p_data_sales:[...f.querySelectorAll('input[name="dsale"]:checked')].map(c=>c.value),
+        p_data_types:[...f.querySelectorAll('input[name="dtype"]:checked')].map(c=>c.value),
       })
     });
     if(!res.ok){const t=await res.json().catch(()=>({}));throw new Error(t.message||('Lỗi '+res.status));}
@@ -3736,6 +3761,18 @@ async function submitCrmAddAccount(){
   finally{btn.disabled=false;btn.textContent='Tạo tài khoản';}
 }
 // SỬA TÀI KHOẢN: đổi tên / vị trí / bộ phận / quyền truy cập. Username không đổi (là khoá đăng nhập).
+// Ô chọn PHẠM VI DỮ LIỆU: xem data của Sale nào + loại Sỉ/Lẻ nào. Không tick gì = xem tất cả.
+const RPT_SL_TYPES=['Lẻ','Sỉ'];
+function crmScopeFields(sales,types){
+  const cb=(nm,v,on)=>`<label style="display:inline-flex;align-items:center;gap:5px;margin:0 12px 4px 0;font-size:12px;font-weight:600;cursor:pointer">
+    <input type="checkbox" name="${nm}" value="${String(v).replace(/"/g,'&quot;')}"${on?' checked':''}> ${v}</label>`;
+  return saonlField('Phạm vi dữ liệu',`
+    <div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px">Xem data của Sale</div>
+    <div>${RPT_SL_SALES.map(x=>cb('dsale',x,(sales||[]).includes(x))).join('')}</div>
+    <div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:6px 0 3px">Loại khách</div>
+    <div>${RPT_SL_TYPES.map(x=>cb('dtype',x,(types||[]).includes(x))).join('')}</div>
+    <div style="font-size:10.5px;color:var(--muted);margin-top:5px">Không tick gì = xem tất cả</div>`);
+}
 function openCrmEditAccount(userId){
   const a=(window._crmAccounts||[]).find(x=>x.user_id===userId);
   if(!a)return;
@@ -3746,6 +3783,7 @@ function openCrmEditAccount(userId){
       ${saonlField('Username',`<input value="${esc(a.username)}" disabled style="${saonlInputStyle};background:var(--bg2);color:var(--muted)">`)}
       ${saonlField('Vị trí *',`<select name="position" id="crmEditPosition" style="${saonlInputStyle}">${Object.keys(CRM_POSITION_LABEL).map(p=>`<option value="${p}"${a.position_title===p?' selected':''}>${CRM_POSITION_LABEL[p]}</option>`).join('')}</select>`)}
       ${saonlField('Bộ phận',`<input name="department" value="${esc(a.department)}" style="${saonlInputStyle}">`)}
+      ${crmScopeFields(a.data_sales||[],a.data_types||[])}
       ${saonlField('Quyền truy cập',`<div id="crmEditPerms">${CRM_PERMISSION_GROUPS.map(([grp,items])=>`
         <div style="margin-bottom:6px"><div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px">${grp}</div>
         ${items.map(([id,label])=>`<label style="display:inline-flex;align-items:center;gap:5px;margin:0 12px 4px 0;font-size:12px;font-weight:600;cursor:pointer">
@@ -3766,7 +3804,9 @@ async function submitCrmEditAccount(userId){
       method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
       body:JSON.stringify({p_user_id:userId,p_name:(fd.get('name')||'').toString().trim(),
         p_position:(fd.get('position')||'').toString(),p_department:(fd.get('department')||'').toString().trim()||null,
-        p_permissions:perms,p_actor:localStorage.getItem('dashUserId')||''})
+        p_permissions:perms,p_actor:localStorage.getItem('dashUserId')||'',
+        p_data_sales:[...f.querySelectorAll('input[name="dsale"]:checked')].map(c=>c.value),
+        p_data_types:[...f.querySelectorAll('input[name="dtype"]:checked')].map(c=>c.value)})
     });
     if(!res.ok){const t=await res.json().catch(()=>({}));throw new Error(t.message||('Lỗi '+res.status));}
     const old=(window._crmAccounts||[]).find(x=>x.user_id===userId)||{};
