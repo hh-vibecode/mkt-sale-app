@@ -3667,12 +3667,16 @@ async function rptSlSaveKH(leadId,val,el){
 // BỌC ĐẦU CHO MÃ KH: mã gõ sai vẫn có thể TRÙNG một khách có thật bên Kiot -> app nối vào và ăn nhầm
 // doanh thu của người khác. Không chặn cứng được (Sale mới là người biết khách nào là khách nào), nên
 // app soi 2 dấu hiệu rồi đẩy sang tab Nhập Liệu cho Sale kiểm tra:
-// SĐT LÀ BẰNG CHỨNG CAO NHẤT (người dùng chốt 21/9/2026): "sđt giống nhau thì là 1 người rồi".
-// -> TRÙNG SỐ THÌ KHÔNG BAO GIỜ BÁO, dù tên khác nhau (1 người nhắn ở 2 brand, đổi tên Facebook...).
-// Chỉ báo khi SĐT THỰC SỰ KHÁC NHAU:
-//   a) Một Mã KH bị gán cho nhiều khách mang SĐT khác nhau
-//   b) Khách và khách bên Kiot lệch SĐT, và tên cũng không dính nhau (Kiot hay ghi kiểu
-//      "KB ANH SĨ - ĐÀ NẴNG" trong khi Pancake là tên Facebook nên chỉ lệch tên thì bỏ qua).
+// SĐT LÀ BẰNG CHỨNG CAO NHẤT: trùng số thì là một người, dù tên khác (1 người nhắn ở 2 brand...).
+// NHƯNG chỉ tính SỐ DO PANCAKE CÓ. Khách không có số thì app đang MƯỢN số bên Kiot để hiển thị --
+// đem số mượn đó đi đối chiếu với chính khách Kiot kia thì lúc nào cũng "trùng", hoá ra tự chứng minh
+// cho nhau (đúng ca test 21/9/2026: Giang Nguyen không có SĐT, dán bừa mã KH007625 của "KL Anh Cường"
+// -> app tưởng khớp). KHÔNG CÓ SỐ = KHÔNG CÓ BẰNG CHỨNG, không phải là khớp.
+// Báo khi:
+//   a) Một Mã KH gán cho nhiều khách mà KHÔNG chứng minh được cùng số Pancake
+//   b) Khách có số Pancake nhưng lệch số bên Kiot, và tên cũng không dính nhau (Kiot hay ghi
+//      "KB ANH SĨ - ĐÀ NẴNG" còn Pancake là tên Facebook, nên chỉ lệch tên thì bỏ qua)
+//   c) Khách KHÔNG có số Pancake nào và tên cũng lệch hẳn tên bên Kiot -> không gì chứng minh mã đúng
 // Doanh thu Kiot có "same same" với số Sale dự kiến không -> lệch dưới 30% coi như đúng khách,
 // khỏi bắt Sale kiểm tra lại (người dùng chốt 21/9/2026: "doanh thu same same thì auke").
 function rptSlTienKhop(r){
@@ -3690,14 +3694,18 @@ function rptSlMaNgo(all){
     const sdtKiot=rptSlLast9(kc.phone||kc.phone_key||'');
     const lechSdt=sdtKH.length&&sdtKiot&&!sdtKH.includes(sdtKiot);
     const lechTen=dhNameMismatch(r.name,kc.name||'');
-    const nhieuKhach=(r.mergedRows||[]).some(x=>{
-      const ds=((x.phones||[]).map(p=>rptSlLast9(p.so)).filter(Boolean));
-      if(!ds.length)ds.push(rptSlLast9(x.phone||''));
-      const co=ds.filter(Boolean);
-      return co.length&&sdtKH.length&&!co.some(a=>sdtKH.includes(a));   // không số nào trùng -> 2 người khác nhau
-    });
-    r.ngoVi=nhieuKhach?'Mã này đang gán cho nhiều khách khác nhau'
-      :(lechSdt&&lechTen?'Khách bên Kiot khác cả SĐT lẫn tên':'');
+    // chỉ lấy SỐ CỦA PANCAKE, tuyệt đối không lấy số mượn từ Kiot
+    const soPC=x=>((x.phones||[]).filter(p=>!p.tuKiot).map(p=>rptSlLast9(p.so)).filter(Boolean));
+    const dongs=[{name:r.name,ds:sdtKH},...(r.mergedRows||[]).map(x=>({name:x.name,ds:soPC(x)}))];
+    const thieuSo=dongs.filter(d=>!d.ds.length);
+    const cungSo=dongs.length>1&&!thieuSo.length
+      &&dongs.slice(1).every(d=>d.ds.some(a=>dongs[0].ds.includes(a)));
+    const nhieuKhach=dongs.length>1&&!cungSo;
+    r.ngoVi=nhieuKhach
+      ?(thieuSo.length?'Mã dùng cho '+dongs.length+' khách, có khách không có SĐT để đối chiếu'
+                      :'Mã này đang gán cho '+dongs.length+' khách khác số nhau')
+      :(lechSdt&&lechTen?'Khách bên Kiot khác cả SĐT lẫn tên'
+      :(!sdtKH.length&&lechTen?'Khách không có SĐT trên Pancake, tên cũng khác hẳn bên Kiot':''));
     return!!r.ngoVi;
   });
 }
