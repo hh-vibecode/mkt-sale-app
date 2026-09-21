@@ -2683,7 +2683,7 @@ function rptSlSaleName(x){
 // ── Dữ liệu Sale NHẬP TAY (bảng saleretail_manual) -> đổ thẳng sang Master Data ──
 // Tách riêng khỏi datahub_orders/kiot_* vì 2 bảng đó bị job sync ghi đè mỗi lần chạy.
 let rptSlManual={},rptSlManualLoaded=false;
-const RPT_SL_STATUS_OPTS=['Đang chăm sóc','Chăm sóc dài hạn','Mất lead'];
+const RPT_SL_STATUS_OPTS=['Đang chăm sóc','Chưa liên hệ được','Chốt đơn','Mất lead'];
 async function rptSlLoadManual(force){
   if(rptSlManualLoaded&&!force)return;
   const rows=await sbFetchAll('saleretail_manual','select=*');
@@ -2896,7 +2896,41 @@ async function rptSlSetFieldRaw(leadId,patch,el){
   }catch(err){alert('Chưa lưu được: '+err.message);if(el)el.style.borderColor='var(--red)';}
 }
 async function rptSlSetField(leadId,field,value,el){
+  // Chọn trạng thái "Chốt đơn" KHÔNG phải là ghi 1 chữ vào ô -- nó là cả quy trình chốt đơn.
+  if(field==='status'&&String(value).trim()==='Chốt đơn')return rptSlChotFlow(leadId,el);
   return rptSlSetFieldRaw(leadId,{[field]:String(value==null?'':value).trim()||null},el);
+}
+// QUY TRÌNH CHỐT ĐƠN 1 CHẠM (người dùng chốt 21/9/2026): Sale chọn "Chốt đơn" ở dropdown ->
+//   1. App hỏi Mã KH Kiot (gợi ý sẵn mã khớp SĐT nếu có)
+//   2. Mã phải CÓ THẬT bên Kiot mới đi tiếp -- gõ sai thì dừng, trạng thái giữ nguyên, không ghi gì
+//   3. Đúng mã -> ghi mã vào ghi chú đơn Pancake + đẩy trạng thái đơn + đổi thẻ TIỀM NĂNG sang CHỐT ĐƠN
+//      (làm ở Edge Function 'pancake-note', cùng đường với nút Lưu bên tab Nhập Liệu)
+// Trạng thái "Chốt đơn" trong app do THẺ Pancake quyết định, nên không lưu chữ "Chốt đơn" vào bảng tay.
+async function rptSlChotFlow(leadId,el){
+  const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
+  if(!r){alert('Không tìm thấy khách này.');return;}
+  if(r.isChot){rptSlRender();return;}
+  const goiY=(r.suggest||[]).map(c=>c.code+' · '+(c.name||'')).join('\n');
+  const mac=r.manualKH||r.kh||(r.suggest&&r.suggest[0]?r.suggest[0].code:'');
+  const nhap=prompt('CHỐT ĐƠN cho "'+r.name+'"\n\nNhập Mã KH Kiot của khách (vd KH007620):'
+    +(goiY?'\n\nGợi ý theo SĐT:\n'+goiY:''),mac||'');
+  if(nhap===null){rptSlRender();return;}   // bấm Huỷ -> trả dropdown về trạng thái cũ
+  const m=/^\s*(?:kh)?\s*0*(\d{3,7})\s*$/i.exec(String(nhap));
+  if(!m){alert('Mã KH không đúng dạng. Ví dụ đúng: KH007620');rptSlRender();return;}
+  const ma='KH'+m[1].padStart(6,'0');
+  const kc=kiotCustByCode()[ma];
+  if(!kc){alert('Bên Kiot không có mã '+ma+'. Kiểm tra lại mã rồi làm lại — app chưa đổi gì cả.');rptSlRender();return;}
+  const don=(kiotOrdByCode()[ma]||[]).filter(o=>o.status!==4);
+  if(!don.length&&!confirm(ma+' · '+(kc.name||'')+'\n\nMã này CHƯA có đơn đặt hàng nào bên Kiot (từ 1/6).\nVẫn chốt đơn chứ?'))
+    {rptSlRender();return;}
+  // Dòng NHẬP TAY không có đơn Pancake -> ghi thẳng Mã KH vào bảng nhập tay, doanh thu Kiot tự về theo mã
+  if(r.isManual){
+    const id=Number(String(r.key).replace(/^M/,''));
+    await dhManualSet(id,'kiot_code',ma,null);
+    await dhManualSet(id,'status','Chốt đơn',null);
+    window._kiotOrdByCode=null;rptSlRender();return;
+  }
+  await rptSlSaveKH(leadId,ma,null);
 }
 function renderReportSaleLe(){return rptSlRenderPage('Lẻ');}
 function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
@@ -3046,7 +3080,7 @@ function rptSlOverviewHtml(){
     </div>
     ${(()=>{
       // Khách CHƯA chốt, sắp theo giá trị tiềm năng giảm dần -> quản lý nhìn ngay tiền còn đang treo ở đâu.
-      const top=rptSlSortNew(master.filter(r=>!r.isChot&&r.status!=='Mất lead'));
+      const top=rptSlSortNew(master.filter(r=>!r.isChot&&r.status!=='Mất lead'),rptSlNgayTao);
       const tong=top.reduce((s,r)=>s+(r.potential||0),0);
       return `<div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">Top khách hàng tiềm năng</div><div class="tbl-count">${num(top.length)}</div>
@@ -3178,7 +3212,8 @@ function rptSlRowStatus(r){return r.isChot?'Chốt đơn':(r.manualStatus||'(ch�
 const RPT_SL_PILL={
   'Chốt đơn':['var(--green-l)','var(--green)'],
   'Đang chăm sóc':['rgba(234,179,8,.16)','#a16207'],
-  'Chăm sóc dài hạn':['var(--accent-l)','var(--accent)'],
+  'Chưa liên hệ được':['rgba(249,115,22,.14)','#c2410c'],
+  'Chăm sóc dài hạn':['var(--accent-l)','var(--accent)'],   // giá trị cũ, còn 1 dòng đang dùng -- giữ màu để không vỡ
   'Mất lead':['rgba(239,68,68,.13)','var(--red)'],
 };
 // Nguồn của 1 dòng: đơn Pancake (tự động) hay Sale nhập tay ở Data Hub.
@@ -3201,7 +3236,23 @@ function rptSlRowDate(r){
   if(r.kords&&r.kords.length)return String(r.kords[r.kords.length-1].purchase_date||'').slice(0,10);
   return (r.isChot&&r.closeDate?r.closeDate:r.created)||'';
 }
-function rptSlSortNew(list){return list.slice().sort((a,b)=>String(rptSlRowDate(b)).localeCompare(String(rptSlRowDate(a)))||String(b.lastTouch).localeCompare(String(a.lastTouch)));}
+// XẾP BẢNG (người dùng chốt 21/9/2026): "thứ tự ngày => khách tiềm năng => khách chốt đơn".
+//  1. Ngày MỚI NHẤT lên trên -- và phải là ĐÚNG cột ngày đang hiện ở bảng đó, nên mỗi bảng truyền hàm
+//     lấy ngày riêng (Master/Nhập Liệu: Ngày tạo · CRM: Ngày chăm sóc).
+//  2. Cùng ngày: khách TIỀM NĂNG (còn phải chăm) lên trước, khách ĐÃ CHỐT ĐƠN xuống dưới.
+//  3. Cùng nữa: lần chạm gần nhất mới hơn lên trước.
+const RPT_SL_STATUS_RANK={'(chưa cập nhật)':0,'Đang chăm sóc':1,'Chưa liên hệ được':2,'Chăm sóc dài hạn':2,'Chốt đơn':3,'Mất lead':4};
+function rptSlStatusRank(r){const v=RPT_SL_STATUS_RANK[rptSlRowStatus(r)];return v===undefined?0:v;}
+function rptSlSortNew(list,ngay){
+  const d=ngay||rptSlRowDate;
+  return list.slice().sort((a,b)=>
+    String(d(b)||'').localeCompare(String(d(a)||''))
+    ||rptSlStatusRank(a)-rptSlStatusRank(b)
+    ||String(b.lastTouch).localeCompare(String(a.lastTouch)));
+}
+// Ngày hiện ở cột đầu từng bảng -- dùng làm khoá xếp để bảng nhìn vào là thấy đúng thứ tự.
+function rptSlNgayTao(r){return r.created||'';}
+function rptSlNgayCham(r){return r.careDate||r.created||'';}
 function rptSlInRange(r){
   const M=rptSlMod();
   if(r.kords&&r.kords.length)return r.kords.some(i=>modInRange(M,String(i.purchase_date).slice(0,10)));
@@ -3445,7 +3496,7 @@ function rptSlEmptyHtml(coFilter){
 }
 function rptSlMasterHtml(){
   const allRaw=rptSlPeriod();
-  const all=rptSlSortNew(rptSlApplyF('master',allRaw));
+  const all=rptSlSortNew(rptSlApplyF('master',allRaw),rptSlNgayTao);
   const q=(window._rptSlMasterQ||'').trim().toLowerCase();
   let list=all;
   if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||((r.phones||[]).some(p=>p.so.includes(q))||(r.phone||'').includes(q))||(r.kh||'').toLowerCase().includes(q)||(r.kiotName||'').toLowerCase().includes(q)||(r.leadId||'').toLowerCase().includes(q));
@@ -3589,7 +3640,7 @@ async function rptSlSaveKH(leadId,val,el){
   }
 }
 function rptSlTodoBuckets(){
-  const all=rptSlSortNew(rptSlBuildMaster());
+  const all=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao);
   return{
     all,
     // 1. Đã chốt nhưng chưa có Mã KH -> mất doanh thu. Kể cả ca app khớp được SĐT vẫn phải điền.
@@ -3734,7 +3785,7 @@ function rptSlInputHtml(){
 function rptSlSetCrmPage(p){window._rptSlCrmPage=p;rptSlRender();}
 function rptSlCrmHtml(){
   const allRaw=rptSlPeriod();
-  const all=rptSlSortNew(rptSlApplyF('crm',allRaw));
+  const all=rptSlSortNew(rptSlApplyF('crm',allRaw),rptSlNgayCham);
   const q=(window._rptSlCrmQ||'').trim().toLowerCase();
   let list=all;
   if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||((r.phones||[]).some(p=>p.so.includes(q))||(r.phone||'').includes(q))||(r.kh||'').toLowerCase().includes(q)||(r.content||'').toLowerCase().includes(q));
