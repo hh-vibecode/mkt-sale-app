@@ -3494,6 +3494,45 @@ function rptSlShowCustomer(key){
 // Trạng thái đơn POS Cake (bước B3) giờ do JOB ĐỒNG BỘ tự đổi (xem autoB3 trong scripts/sync-datahub-pancake.js):
 // khách tiềm năng -> "Đã xác nhận", khách chốt -> "Đã gửi hàng". Sale không phải vào Pancake sửa tay nữa,
 // nên tab Nhập Liệu bỏ mục này.
+// ĐIỀN MÃ KH ở tab Nhập Liệu -> app làm trọn gói trong 1 lần bấm, qua Edge Function 'pancake-note'
+// (token Pancake nằm ở server, không nhúng vào file này):
+//   1. Ghi Mã KH vào GHI CHÚ NỘI BỘ đơn Pancake (nối thêm, không ghi đè; bỏ qua nếu mã đã có)
+//   2. Đẩy TRẠNG THÁI ĐƠN: khách đã chốt -> "Đã gửi hàng", khách tiềm năng -> "Đã xác nhận"
+//   3. Nếu khách vẫn còn thẻ TIỀM NĂNG thì đổi thẻ sang CHỐT ĐƠN
+//   4. Nạp lại dữ liệu để báo cáo trong app cập nhật ngay (doanh thu, ngày chốt, trạng thái)
+// Pancake vẫn là nguồn sự thật -- app chỉ là chỗ nhập cho nhanh.
+const DH_ORDER_STATUS={'0':'Mới','1':'Đã xác nhận','2':'Đã gửi hàng','3':'Đã nhận','6':'Đã huỷ'};
+function dhOrderStatusLabel(v){return DH_ORDER_STATUS[String(v)]||('mã '+v);}
+async function rptSlSaveKH(leadId,val,el){
+  const ma=String(val||'').trim();
+  if(!ma){if(el)el.focus();return;}
+  const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
+  const o=r&&(r.orders||[]).slice(-1)[0];   // dán vào đơn Pancake mới nhất của khách
+  if(!o){alert('Khách này không có đơn Pancake để dán mã — dòng nhập tay thì điền bên Data Hub.');return;}
+  const btn=el&&el.nextElementSibling;
+  if(btn){btn.disabled=true;btn.textContent='Đang lưu...';}
+  try{
+    const conTiem=/TIỀM NĂNG/i.test(o.customer_tags||'');
+    const res=await fetch(`${SUPABASE_URL}/functions/v1/pancake-note`,{method:'POST',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({shop_id:o.shop_id,order_id:o.order_id,code:ma,
+        status:r.isChot?2:1,           // chốt -> Đã gửi hàng · tiềm năng -> Đã xác nhận
+        chot:r.isChot&&conTiem,        // còn thẻ tiềm năng thì đổi sang CHỐT ĐƠN
+        who:logWho()})});
+    const d=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(d.error||('lỗi '+res.status));
+    logAct('U','datahub_orders','#'+o.system_id,r.name,'Mã KH',o.internal_note||'',d.note||d.ma);
+    if(d.status!==undefined)logAct('U','datahub_orders','#'+o.system_id,r.name,'Trạng thái đơn',dhOrderStatusLabel(o.order_status),dhOrderStatusLabel(d.status));
+    if(d.tags)logAct('U','datahub_orders','#'+o.system_id,r.name,'Thẻ khách',(d.tags_cu||[]).join(', '),d.tags.join(', '));
+    await dhLoadOrders(true);          // nạp lại để doanh thu/ngày chốt hiện ngay trong app
+    window._kiotOrdByCode=null;
+    rptSlRender();
+  }catch(e){
+    alert('Chưa lưu được sang Pancake: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='Lưu';}
+    if(el)el.style.borderColor='var(--red)';
+  }
+}
 function rptSlTodoBuckets(){
   const all=rptSlSortNew(rptSlBuildMaster());
   return{
