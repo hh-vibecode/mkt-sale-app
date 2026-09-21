@@ -2619,6 +2619,23 @@ function rptSlSaleIsHuman(n){
 // Cột "Sales" hiển thị: tên Sale thật, hoặc nói rõ đơn đang gán cho tài khoản chung / chưa gán ai.
 // Bấm TÊN KHÁCH -> mở thẳng hội thoại Pancake với chính khách đó (tab mới).
 // id hội thoại lấy từ đơn Pancake (cột conversation_id, dạng "{page_id}_{psid}").
+// SĐT của 1 khách có thể có NHIỀU số: số khách nhắn trên Pancake và số ghi trong sổ Kiot khác nhau
+// (vd KH007468 Nhất Tâm - Quy Nhơn: Pancake 0902388395, Kiot 0942688567). Giữ CẢ HAI, khử trùng theo
+// 9 số cuối, hiện mỗi số 1 dòng -- số lấy từ Kiot ghi nhạt hơn để biết nguồn.
+function rptSlGomSdt(dsPancake,kiotCusts){
+  const ra=[],co={};
+  const them=(so,tuKiot)=>{const k=rptSlLast9(so);if(!so||!k||co[k])return;co[k]=1;ra.push({so:String(so).trim(),tuKiot});};
+  (dsPancake||[]).forEach(p=>them(p,false));
+  (kiotCusts||[]).forEach(c=>them(c.phone||c.phone_key,true));
+  return ra;
+}
+function rptSlSdtHtml(r,khiTrong){
+  const ds=r.phones||[];
+  if(!ds.length)return khiTrong||'<span style="color:var(--muted)">—</span>';
+  return ds.map(p=>p.tuKiot
+    ?'<span style="color:var(--muted)" title="Số ghi trong sổ Kiot">'+p.so+'</span>'
+    :'<span>'+p.so+'</span>').join('<br>');
+}
 function rptSlChatUrl(r){
   if(!r||!r.convId)return'';
   return 'https://pancake.vn/'+(r.pageId||String(r.convId).split('_')[0])+'?c_id='+encodeURIComponent(r.convId);
@@ -3283,6 +3300,7 @@ function rptSlBuildMaster(){
       // SĐT: Pancake thường bỏ trống (chỉ 110/158 khách có), nhưng khách ĐÃ NỐI được Kiot thì bên Kiot
       // gần như luôn có số (6.264/6.479 khách lẻ). Bù sang để không hiển thị "—" oan.
       name:pick(o=>o.customer_name)||'—',
+      phones:rptSlGomSdt(orders.map(o=>o.phone),kiotCusts),
       phone:phone||kiotCusts.map(c=>c.phone||c.phone_key).filter(Boolean)[0]||'',
       phoneFromKiot:!phone,
       created:orders[0].order_date,brand:last.brand,shop:last.shop_name,
@@ -3325,7 +3343,8 @@ function rptSlBuildMaster(){
       manualKH:r.kiot_code||null,noteKH:null,kiotCusts:kc?[kc]:[],leadId,suggest:[],isManual:true,
       manualStatus:mn.status||'',note:mn.note||r.note||'',
       potential:Number(mn.potential_value||0), careDate:mn.care_date||'',careAuto:false,careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
-      name:r.customer_name||'—',phone:r.phone||(kc?(kc.phone||kc.phone_key||''):''),phoneFromKiot:!r.phone,
+      name:r.customer_name||'—',phones:rptSlGomSdt([r.phone],kc?[kc]:[]),
+      phone:r.phone||(kc?(kc.phone||kc.phone_key||''):''),phoneFromKiot:!r.phone,
       created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staffRaw:r.staff_name||'',staff:(x=>rptSlSaleIsHuman(x)?rptSlSaleName(x):'')(r.staff_name),adId:'',
       nguon:r.nguon||'Online',kenh:rptSlKenhNorm(r.kenh)||'(nhập tay)',diaChi:rptSlDiaChiKiot(kc?[kc]:[]),
       kiotName:kc?kc.name:'',saleType:r.sale_type||'Lẻ',
@@ -3348,7 +3367,7 @@ function rptSlBuildMaster(){
       .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
     keep.revenue=keep.kords.reduce((s,i)=>s+Number(i.total||0),0);
     keep.phone=keep.phone||rest.map(r=>r.phone).filter(Boolean)[0]||'';
-    keep.phones=[...new Set(g.map(r=>r.phone).filter(Boolean))];
+    {const co={};keep.phones=g.flatMap(r=>r.phones||[]).filter(p=>{const k=rptSlLast9(p.so);return co[k]?false:(co[k]=true);});}
     keep.isChot=g.some(r=>r.isChot);
     keep.mergedFrom=rest.map(r=>r.leadId);
     ['staff','kenh','diaChi','content','careDate','manualStatus'].forEach(f=>{
@@ -3403,7 +3422,7 @@ function rptSlMasterRow(r){
     <td style="font-size:11px">${r.kenh||'—'}</td>
     <td>${rptSlStaffHtml(r)}</td>
     <td class="name">${rptSlTenKhach(r)}</td>
-    <td>${r.phone||'<span style="color:var(--muted)">—</span>'}</td>
+    <td style="white-space:nowrap">${rptSlSdtHtml(r)}</td>
     <td>${rptSlStatusPill(rptSlRowStatus(r))}</td>
     <td class="num">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.potential?vnd(r.potential):'<span style="color:var(--muted)">—</span>')}</td>
     <td>${dmy(r.lastTouch)||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
@@ -3429,7 +3448,7 @@ function rptSlMasterHtml(){
   const all=rptSlSortNew(rptSlApplyF('master',allRaw));
   const q=(window._rptSlMasterQ||'').trim().toLowerCase();
   let list=all;
-  if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.kiotName||'').toLowerCase().includes(q)||(r.leadId||'').toLowerCase().includes(q));
+  if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||((r.phones||[]).some(p=>p.so.includes(q))||(r.phone||'').includes(q))||(r.kh||'').toLowerCase().includes(q)||(r.kiotName||'').toLowerCase().includes(q)||(r.leadId||'').toLowerCase().includes(q));
   const pageSize=50,page=window._rptSlMasterPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   // Bảng chỉ giữ các trường Sale dùng hàng ngày; mọi trường còn lại (Brand, Nhóm KH, Trạng thái, Mã KH,
   // Nối bằng, Tên Kiot, hoá đơn, lịch sử đơn...) nằm trong modal "Chi tiết" ở cột cuối.
@@ -3513,7 +3532,7 @@ function rptSlShowCustomer(key){
         <span style="width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:21px;color:var(--muted);flex:0 0 auto"></span>
         <div style="min-width:0">
           <div style="font-size:16px;font-weight:800;color:var(--text)">${esc(r.name)}</div>
-          <div style="font-size:12px;color:var(--muted);font-weight:600">${esc(r.phone||'chưa có SĐT')} · ${esc(r.kenh)} · ${esc(r.staff||'chưa có sales')}</div>
+          <div style="font-size:12px;color:var(--muted);font-weight:600">${(r.phones||[]).length?(r.phones||[]).map(p=>esc(p.so)).join(' · '):'chưa có SĐT'} · ${esc(r.kenh)} · ${esc(r.staff||'chưa có sales')}</div>
         </div>
         <button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text);flex:0 0 auto">✕</button>
       </div>
@@ -3649,7 +3668,7 @@ function rptSlInputHtml(){
   const info=r=>`<td>${dmy(r.created)||'—'}</td>
     <td>${rptSlSrcBadge(r)}</td>
     <td class="name">${rptSlTenKhach(r)}</td>
-    <td>${r.phone||'<span style="color:var(--red);font-size:11px">chưa có SĐT</span>'}</td>
+    <td style="white-space:nowrap">${rptSlSdtHtml(r,'<span style="color:var(--red);font-size:11px">chưa có SĐT</span>')}</td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
     <td>${rptSlStaffHtml(r)}</td>`;
   const HEAD='<th>Ngày tạo</th><th>Nguồn</th><th>Họ tên</th><th>SĐT</th><th>Kênh</th><th>Sales</th>';
@@ -3718,7 +3737,7 @@ function rptSlCrmHtml(){
   const all=rptSlSortNew(rptSlApplyF('crm',allRaw));
   const q=(window._rptSlCrmQ||'').trim().toLowerCase();
   let list=all;
-  if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||(r.phone||'').includes(q)||(r.kh||'').toLowerCase().includes(q)||(r.content||'').toLowerCase().includes(q));
+  if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||((r.phones||[]).some(p=>p.so.includes(q))||(r.phone||'').includes(q))||(r.kh||'').toLowerCase().includes(q)||(r.content||'').toLowerCase().includes(q));
   const pageSize=50,page=window._rptSlCrmPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
   // Ô Sale PHẢI thao tác -> nền xanh lá nhạt, nhìn là biết chỗ nào cần điền. Ô chỉ đọc giữ nền trắng.
