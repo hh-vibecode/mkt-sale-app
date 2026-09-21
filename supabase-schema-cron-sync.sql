@@ -29,9 +29,9 @@ select cron.unschedule(jobname) from cron.job
  where jobname in ('sync-datahub-10p','sync-kiot-15p','sync-datahub-30p','sync-kiot-30p','sync-backfill-datahub','sync-backfill-kiot','sync-mkt-3lan');
 
 -- Pancake: mỗi 10 phút (kéo đơn + tự gắn thẻ CHỐT ĐƠN + tự đổi trạng thái đơn B3)
-select cron.schedule('sync-datahub-10p','*/10 * * * *', $select public.goi_sync('datahub')$);
+select cron.schedule('sync-datahub-10p','*/10 * * * *', $$select public.goi_sync('datahub')$$);
 -- KiotViet: mỗi 15 phút, lệch 5 phút để 2 job không chen nhau
-select cron.schedule('sync-kiot-15p','5,20,35,50 * * * *', $select public.goi_sync('kiot')$);
+select cron.schedule('sync-kiot-15p','5,20,35,50 * * * *', $$select public.goi_sync('kiot')$$);
 -- Quét lại toàn bộ từ 1/6: 7h05 và 7h20 giờ VN
 select cron.schedule('sync-backfill-datahub','5 0 * * *',  $$select public.goi_sync('datahub', true)$$);
 select cron.schedule('sync-backfill-kiot','20 0 * * *',    $$select public.goi_sync('kiot', true)$$);
