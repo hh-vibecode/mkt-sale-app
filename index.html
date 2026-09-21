@@ -3687,7 +3687,10 @@ function rptSlTienKhop(r){
 function rptSlMaNgo(all){
   return all.filter(r=>{
     if(!r.kh||!r.kiotCusts.length)return false;
-    if((rptSlManual[r.leadId]||{}).ma_ok)return false;     // Sale đã bấm "Đúng khách rồi"
+    // Sale đã xác nhận đúng khách -> thôi báo. Ghi kèm CHÍNH MÃ đã xác nhận: sau này ai dán mã khác
+    // vào khách đó thì cảnh báo bật lại, không im luôn vĩnh viễn.
+    const xn=rptSlManual[r.leadId]||{};
+    if(xn.ma_ok&&(!xn.ma_ok_code||xn.ma_ok_code===r.kh))return false;
     if(rptSlTienKhop(r))return false;                      // tiền khớp số dự kiến -> khỏi soi
     const kc=r.kiotCusts[0];
     const sdtKH=(r.phones||[]).filter(p=>!p.tuKiot).map(p=>rptSlLast9(p.so)).filter(Boolean);
@@ -3715,7 +3718,8 @@ function rptSlMaNgo(all){
 async function rptSlMaOk(leadId,ten){
   if(!confirm('Xác nhận Mã KH này đang gán ĐÚNG khách "'+(ten||'')+'"?\nSau khi xác nhận, app sẽ không cảnh báo dòng này nữa.'))return;
   try{
-    await rptSlSaveManual(leadId,{ma_ok:true});
+    const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
+    await rptSlSaveManual(leadId,{ma_ok:true,ma_ok_code:r?r.kh:null});
     logAct('U','saleretail_manual',leadId,ten,'Mã KH nghi gán nhầm','đang cảnh báo','Sale xác nhận đúng khách');
     rptSlRender();
   }catch(e){alert('Chưa lưu được: '+e.message);}
