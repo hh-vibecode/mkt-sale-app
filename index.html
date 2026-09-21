@@ -3673,9 +3673,18 @@ async function rptSlSaveKH(leadId,val,el){
 //   a) Một Mã KH bị gán cho nhiều khách mang SĐT khác nhau
 //   b) Khách và khách bên Kiot lệch SĐT, và tên cũng không dính nhau (Kiot hay ghi kiểu
 //      "KB ANH SĨ - ĐÀ NẴNG" trong khi Pancake là tên Facebook nên chỉ lệch tên thì bỏ qua).
+// Doanh thu Kiot có "same same" với số Sale dự kiến không -> lệch dưới 30% coi như đúng khách,
+// khỏi bắt Sale kiểm tra lại (người dùng chốt 21/9/2026: "doanh thu same same thì auke").
+function rptSlTienKhop(r){
+  const dk=Number(r.potential||0),dt=Number(r.revenue||0);
+  if(!dk||!dt)return false;
+  return Math.abs(dt-dk)<=Math.max(dk,dt)*0.3;
+}
 function rptSlMaNgo(all){
   return all.filter(r=>{
     if(!r.kh||!r.kiotCusts.length)return false;
+    if((rptSlManual[r.leadId]||{}).ma_ok)return false;     // Sale đã bấm "Đúng khách rồi"
+    if(rptSlTienKhop(r))return false;                      // tiền khớp số dự kiến -> khỏi soi
     const kc=r.kiotCusts[0];
     const sdtKH=(r.phones||[]).filter(p=>!p.tuKiot).map(p=>rptSlLast9(p.so)).filter(Boolean);
     const sdtKiot=rptSlLast9(kc.phone||kc.phone_key||'');
@@ -3694,6 +3703,15 @@ function rptSlMaNgo(all){
 }
 // Bấm "Xem N khách" ở mục "Mã KH nghi gán nhầm" -> liệt kê từng khách đang dùng chung mã đó,
 // kèm khách thật bên Kiot, để Sale đối chiếu xem mã thuộc về ai rồi dán lại mã đúng.
+// Sale kiểm tra xong thấy đúng người -> đánh dấu để thôi báo. Ghi vào nhật ký để còn truy lại.
+async function rptSlMaOk(leadId,ten){
+  if(!confirm('Xác nhận Mã KH này đang gán ĐÚNG khách "'+(ten||'')+'"?\nSau khi xác nhận, app sẽ không cảnh báo dòng này nữa.'))return;
+  try{
+    await rptSlSaveManual(leadId,{ma_ok:true});
+    logAct('U','saleretail_manual',leadId,ten,'Mã KH nghi gán nhầm','đang cảnh báo','Sale xác nhận đúng khách');
+    rptSlRender();
+  }catch(e){alert('Chưa lưu được: '+e.message);}
+}
 function rptSlShowTrungMa(key){
   const r=rptSlBuildMaster().find(x=>x.key===key);
   if(!r)return;
@@ -3821,7 +3839,9 @@ function rptSlInputHtml(){
       <td style="font-size:11px">${(kc.name||'—').replace(/</g,'&lt;')}${kc.phone?' · '+kc.phone:''}</td>
       <td style="font-size:11px;color:var(--red);font-weight:700" onclick="rptSlStop(event)">${r.ngoVi||''}
         <button onclick="rptSlShowTrungMa('${r.key.replace(/'/g,"\\'")}')" title="Xem thông tin từng khách đang dùng mã này"
-          style="display:block;margin-top:4px;border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:24px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">Xem ${num(1+(r.mergedRows||[]).length)} khách</button></td>
+          style="display:block;margin-top:4px;border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:24px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">Xem ${num(1+(r.mergedRows||[]).length)} khách</button>
+        <button onclick="rptSlMaOk('${r.leadId}','${String(r.name||'').replace(/'/g,"\\'")}')" title="Đã kiểm tra, mã gán đúng người"
+          style="display:block;margin-top:4px;border:1.5px solid var(--green);background:var(--surface);color:var(--green);border-radius:7px;height:24px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">Đúng khách rồi</button></td>
       <td class="num" style="font-weight:800">${r.revenue>0?vnd(r.revenue):'—'}</td>${maO(r)}</tr>`;}).join(''));
   const ttSel=r=>`<td onclick="rptSlStop(event)"><select onchange="rptSlSetField('${r.leadId}','status',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid var(--yellow);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">
       <option value="">— chọn —</option>${RPT_SL_STATUS_OPTS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></td>`;
