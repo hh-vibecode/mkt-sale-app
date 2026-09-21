@@ -274,6 +274,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     <div class="sb-section" id="sec-report-label" style="margin-top:12px">Báo cáo</div>
     <nav id="sec-report">
       <div class="nav-item" onclick="switchPage('report-saleretail')" id="nav-report-saleretail"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg></span><span class="nav-label">Báo cáo Sale Lẻ</span></div>
+      <div class="nav-item" onclick="switchPage('report-salesi')" id="nav-report-salesi"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h13l2 5H3zM3 7V5m0 7v5h14m-9 3a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0m6 0a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0"/></svg></span><span class="nav-label">Báo cáo Sale Sỉ</span></div>
     </nav>
     <!-- Phân quyền + Nhật ký là việc của admin, không phải việc hằng ngày -> gom vào 1 nút cờ lê
          ghim đáy sidebar, bấm mới bung menu. Giữ id nav-settings/nav-log để applyRole() vẫn ẩn/hiện được. -->
@@ -296,6 +297,9 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
     <div class="tab-page" id="page-report-saleretail">
+      <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
+    </div>
+    <div class="tab-page" id="page-report-salesi">
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
     <div class="tab-page" id="page-report-tonghop">
@@ -606,7 +610,7 @@ function switchPage(p){
   // Chặn cả khi gõ tay vào console / link cũ: không có quyền thì không mở trang.
   // Data Hub mở được nếu có 1 trong 2 mức quyền; bên trong renderDataHub sẽ khoá tiếp tab data thô.
   if(!dashCan(p)&&!(p==='datahub'&&dashCan('datahub-manual')))return;
-  ['datahub','settings','report-saleretail','report-tonghop','log'].forEach(x=>{
+  ['datahub','settings','report-saleretail','report-salesi','report-tonghop','log'].forEach(x=>{
     const el=document.getElementById('page-'+x);if(el)el.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);if(nav)nav.classList.toggle('active',x===p);
   });
@@ -614,6 +618,7 @@ function switchPage(p){
   if(p==='log')renderLog();
   if(p==='datahub')renderDataHub();
   if(p==='report-saleretail')renderReportSaleLe();
+  if(p==='report-salesi')renderReportSaleSi();
   if(p==='report-tonghop')renderReportTongHop();
 }
 
@@ -1998,14 +2003,16 @@ async function kiotLoadInvoices(force){
 // Nối Pancake <-> Kiot theo ĐÚNG thứ tự của script cũ (syncLeadSalesOnline): 9 SỐ CUỐI SĐT trước, hết cách
 // mới dùng Mã KH Sale gõ trong ghi chú nội bộ. Chỉ nhận khách Kiot đúng nhóm "Khách lẻ".
 function kiotRetailByPhone(){
-  if(window._kiotRetailByPhone)return window._kiotRetailByPhone;
+  const grp=(typeof rptSlCfg==='function'?rptSlCfg().group:'khách lẻ');
+  window._kiotRetailByPhone=window._kiotRetailByPhone||{};
+  if(window._kiotRetailByPhone[grp])return window._kiotRetailByPhone[grp];
   const m={};
   kiotCustomers.forEach(c=>{
     if(!c.phone_key)return;
-    if((c.customer_group||'').trim().toLowerCase()!=='khách lẻ')return;
+    if(!(c.customer_group||'').toLowerCase().includes(grp))return;
     (m[c.phone_key]=m[c.phone_key]||[]).push(c);
   });
-  return window._kiotRetailByPhone=m;
+  return window._kiotRetailByPhone[grp]=m;
 }
 function kiotCustByCode(){
   if(window._kiotCustByCode)return window._kiotCustByCode;
@@ -2200,7 +2207,7 @@ function dhManualForm(){
   const inp='height:30px;box-sizing:border-box;padding:3px 9px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:600;font-family:var(--font);outline:none;width:100%';
   const fld=(l,h)=>`<div style="min-width:0"><div style="font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:3px;text-transform:uppercase">${l}</div>${h}</div>`;
   return `<div class="tbl-card" style="padding:16px 18px;margin-bottom:16px">
-    <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ Thêm khách nhập tay</div>
+    <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ Thêm khách nhập tay — <span style="color:var(--accent)">khách ${dhManualType()}</span></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:11px 13px">
       ${fld('Ngày tạo *',`<input type="date" id="dhmDate" value="${todayISO()}" style="${inp}">`)}
       ${fld('Họ tên khách *',`<input id="dhmName" placeholder="VD: Chị Lưu" style="${inp}">`)}
@@ -2231,7 +2238,7 @@ async function dhManualAdd(){
   const row={
     created_date:g('dhmDate'),customer_name:g('dhmName').trim(),phone:g('dhmPhone').trim()||null,
     nguon:g('dhmNguon'),kenh:kenh||null,brand:dhManualBrand(kenh),
-    staff_name:g('dhmStaff').trim()||null,kiot_code:g('dhmKh').trim().toUpperCase()||null,
+    sale_type:dhManualType(),staff_name:g('dhmStaff').trim()||null,kiot_code:g('dhmKh').trim().toUpperCase()||null,
     created_by:localStorage.getItem('dashUser')||localStorage.getItem('dashRole')||'app',
   };
   if(!row.created_date||!row.customer_name){msg.innerHTML='<span style="color:var(--red)">Cần ít nhất Ngày tạo và Họ tên</span>';return;}
@@ -2276,10 +2283,15 @@ function dhManualRev(){
   const inv={};Object.entries(kiotOrdByCode()).forEach(([c,a])=>{inv[c]=a.reduce((t,o)=>t+Number(o.total||0),0);});
   return inv;
 }
+// Data Nhập Tay chia theo LOẠI KHÁCH: tab "Nhập tay Lẻ" và "Nhập tay Sỉ" là 2 quyền riêng,
+// Sale Lẻ không thấy data Sỉ và ngược lại. Dòng thêm mới mang đúng sale_type của tab đang mở.
+function dhManualType(){return window._dhManualType==='Sỉ'?'Sỉ':'Lẻ';}
 function dhManualHtml(){
+  const T=dhManualType();
   const byCode=kiotCustByCode(),inv=dhManualRev();
+  const mine=dhManual.filter(r=>(r.sale_type||'Lẻ')===T);
   const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none';
-  const rows=dhManual.filter(r=>dashSeeSale(r.staff_name)&&dashSeeType(r.sale_type||'Lẻ')).slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
+  const rows=mine.filter(r=>dashSeeSale(r.staff_name)&&dashSeeType(r.sale_type||'Lẻ')).slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
     const v=inv[r.kiot_code]||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
     return `<tr>
       <td>${dmy(r.created_date)||'—'}</td>
@@ -2295,15 +2307,15 @@ function dhManualHtml(){
       <td style="font-size:11px;color:var(--muted)">${r.created_by||"—"}</td>
       <td><button onclick="dhManualDel(${r.id})" style="border:none;background:var(--bg2);color:var(--red);border-radius:7px;width:26px;height:26px;cursor:pointer;font-size:13px">✕</button></td>
     </tr>`;}).join('');
-  const tong=dhManual.reduce((s,r)=>s+(inv[r.kiot_code]||0),0);
+  const tong=mine.reduce((s,r)=>s+(inv[r.kiot_code]||0),0);
   return dhManualForm()+`
     <div class="kpi-grid" style="margin-bottom:14px">
-      ${mkKpi(ic('clipboard'),'Data nhập tay',num(dhManual.length),'','g-blue')}
-      ${mkKpi(ic('check'),'Đã có Mã KH',num(dhManual.filter(r=>r.kiot_code).length),'','g-green')}
+      ${mkKpi(ic('clipboard'),'Data nhập tay '+T,num(mine.length),'','g-blue')}
+      ${mkKpi(ic('check'),'Đã có Mã KH',num(mine.filter(r=>r.kiot_code).length),'','g-green')}
       ${mkKpi(ic('cash'),'Doanh thu',vnd(tong),'','g-teal')}
     </div>
     <div class="tbl-card">
-      <div class="tbl-head"><div class="tbl-title">Data nhập tay</div><div class="tbl-count">${num(dhManual.length)}</div></div>
+      <div class="tbl-head"><div class="tbl-title">Data nhập tay — khách ${T}</div><div class="tbl-count">${num(mine.length)}</div></div>
       <div class="tbl-scroll"><table>
         <thead><tr><th>Ngày tạo</th><th>Họ tên khách</th><th>SĐT</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Mã KH</th><th>Tên bên Kiot</th><th>Doanh thu</th><th>Người tạo</th><th></th></tr></thead>
         <tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Chưa có dòng nào — dùng form phía trên để thêm</td></tr>'}</tbody>
@@ -2386,17 +2398,24 @@ async function renderDataHub(){
   if(!el)return;
   // Chỉ có quyền 'datahub-manual' -> không được xem data thô Pancake: khoá cứng ở tab Data Nhập Tay,
   // không hiện nút Tổng Quan (đổi localStorage cũng không vào được vì mode bị ép lại ở đây).
-  const onlyManual=!dashCan('datahub')&&dashCan('datahub-manual');
-  const mode=onlyManual?'manual':dhViewMode();
+  // Quyền từng tab: 'datahub' = data thô Pancake · 'datahub-manual' = nhập tay LẺ · 'datahub-manual-si' = nhập tay SỈ.
+  const canRaw=dashCan('datahub'),canLe=canRaw||dashCan('datahub-manual'),canSi=canRaw||dashCan('datahub-manual-si');
+  let mode=dhViewMode();
+  if(mode==='overview'&&!canRaw)mode=canLe?'manual':'manual-si';
+  if(mode==='manual'&&!canLe)mode=canSi?'manual-si':(canRaw?'overview':'manual');
+  if(mode==='manual-si'&&!canSi)mode=canLe?'manual':(canRaw?'overview':'manual-si');
+  window._dhManualType=(mode==='manual-si'?'Sỉ':'Lẻ');
   const tabBtn=(m,label)=>`<button onclick="dhSetViewMode('${m}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode===m?'var(--accent)':'var(--surface)'};color:${mode===m?'#fff':'var(--text2)'}">${label}</button>`;
   const header=`
     ${modHeader('Data Hub','','datahub','renderDataHub')}
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
-        ${onlyManual?'':tabBtn('overview','📊 Tổng Quan')}${tabBtn('manual','✍️ Data Nhập Tay ('+dhManual.length+')')}
+        ${canRaw?tabBtn('overview','📊 Tổng Quan'):''}
+        ${canLe?tabBtn('manual','✍️ Nhập tay Lẻ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')!=='Sỉ').length+')'):''}
+        ${canSi?tabBtn('manual-si','📦 Nhập tay Sỉ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')==='Sỉ').length+')'):''}
       </span>
     </div>`;
-  if(mode==='manual'){el.innerHTML=header+dhManualHtml();return;}
+  if(mode==='manual'||mode==='manual-si'){el.innerHTML=header+dhManualHtml();return;}
   el.innerHTML=header+pancakeOrdersHtml+dhExcludedHtml();
   dhRenderTable();
 }
@@ -2412,7 +2431,10 @@ async function renderDataHub(){
 // Hiện có tab "Sale Lẻ" (trước đây là tab Tổng Quan nằm trong trang Báo cáo Sale Lẻ -- đã chuyển sang đây
 // để trang kia chỉ còn phần Sale thao tác hằng ngày: Master / CRM / Nhập Liệu).
 // Thêm mảng mới (Sale Sỉ, MKT, Đối soát...) thì bổ sung 1 dòng vào RPT_TH_TABS.
-const RPT_TH_TABS=[['sale-le','🛍️ Sale Lẻ',()=>rptSlOverviewHtml()]];
+const RPT_TH_TABS=[
+  ['sale-le','🛍️ Sale Lẻ',()=>{window._rptSlType='Lẻ';return rptSlOverviewHtml();}],
+  ['sale-si','📦 Sale Sỉ',()=>{window._rptSlType='Sỉ';return rptSlOverviewHtml();}],
+];
 function rptThTab(){const t=localStorage.getItem('rptThTab')||RPT_TH_TABS[0][0];return RPT_TH_TABS.some(x=>x[0]===t)?t:RPT_TH_TABS[0][0];}
 function rptThSetTab(t){localStorage.setItem('rptThTab',t);renderReportTongHop();}
 async function renderReportTongHop(){
@@ -2433,13 +2455,26 @@ async function renderReportTongHop(){
     <div id="rptThBody"></div>`;
   window._rptSlMod='tonghop';
   try{document.getElementById('rptThBody').innerHTML=(RPT_TH_TABS.find(x=>x[0]===cur)||RPT_TH_TABS[0])[2]();}
-  finally{window._rptSlMod=null;}
+  finally{window._rptSlMod=null;window._rptSlType='Lẻ';}
 }
 // ── Báo cáo · Sale Lẻ: trang tổng hợp CHỈ ĐỌC (không ghi bảng nào) từ CRM v2 (customers/leads/crm_activities/
 // orders) + Data Hub (datahub_orders) -- không phải nơi Sale thao tác hàng ngày, xem trang Customers/Workspace.
 // Tab "Tổng Quan" đã chuyển sang trang Báo cáo tổng hợp -> ai còn lưu mode cũ thì rơi về Master Data.
-function rptSlViewMode(){const m=localStorage.getItem('rptSlViewMode')||'master';return m==='overview'?'master':m;}
-function rptSlSetViewMode(m){localStorage.setItem('rptSlViewMode',m);renderReportSaleLe();}
+// BÁO CÁO SALE LẺ và SALE SỈ dùng CHUNG toàn bộ code (Master / CRM / Nhập Liệu / Tổng quan).
+// Khác nhau đúng 1 thứ: lọc theo LOẠI KHÁCH -- thẻ "KH SỈ" trên đơn Pancake, nhóm khách bên Kiot,
+// và cột sale_type của dòng nhập tay. Mọi thứ còn lại (nối Mã KH, doanh thu theo đơn đặt hàng Kiot,
+// ngày chốt, khoá khách đã chốt, việc cần làm...) giữ y hệt.
+const RPT_SL_CFG={
+  'Lẻ':{page:'report-saleretail',mod:'saleretail',title:'Sale Lẻ',render:'renderReportSaleLe',group:'khách lẻ'},
+  'Sỉ':{page:'report-salesi',    mod:'salesi',    title:'Sale Sỉ',render:'renderReportSaleSi',group:'khách buôn'},
+};
+function rptSlType(){return window._rptSlType==='Sỉ'?'Sỉ':'Lẻ';}
+function rptSlCfg(){return RPT_SL_CFG[rptSlType()];}
+// Đơn "Chưa phân loại" (không có thẻ KH LẺ/KH SỈ) vẫn tính vào Lẻ như trước, không rơi vào Sỉ.
+function rptSlInType(t){return rptSlType()==='Sỉ'?t==='Sỉ':t!=='Sỉ';}
+function rptSlRender(){const f=window[rptSlCfg().render];if(typeof f==='function')f();}
+function rptSlViewMode(){const m=localStorage.getItem('rptSlViewMode_'+rptSlType())||'master';return m==='overview'?'master':m;}
+function rptSlSetViewMode(m){localStorage.setItem('rptSlViewMode_'+rptSlType(),m);rptSlRender();}
 function rptSlLast9(s){const d=(s||'').toString().replace(/\D/g,'');return d.length>=9?d.slice(-9):d;}
 const RPT_SL_MIN_DATE='2026-06-01';
 // DANH SÁCH SALE THẬT -- dùng cho MỌI dropdown và bảng "Hiệu quả theo Sales".
@@ -2534,7 +2569,7 @@ async function rptSlSaveContent(leadId){
   try{
     await rptSlSaveManual(leadId,{content:box.value.trim()||null});
     logAct('U','saleretail_manual',leadId,null,'content',null,box.value.trim());
-    qcCloseModal();renderReportSaleLe();
+    qcCloseModal();rptSlRender();
   }catch(e){if(msg)msg.innerHTML='<span style="color:var(--red)">Chưa lưu được: '+e.message+'</span>';}
 }
 // Giá trị tiền Sale gõ tự do -> số nguyên VND; trả NaN nếu không hiểu được.
@@ -2626,7 +2661,7 @@ async function rptSlSaveRow(leadId){
   try{
     if(msg)msg.textContent='Đang lưu…';
     await rptSlSaveManual(leadId,patch);
-    qcCloseModal();renderReportSaleLe();
+    qcCloseModal();rptSlRender();
   }catch(e){if(msg)msg.innerHTML='<span style="color:var(--red)">Chưa lưu được: '+e.message+'</span>';}
 }
 async function rptSlSetPotential(leadId,raw,el){
@@ -2649,19 +2684,19 @@ async function rptSlExclude(leadId,name){
   if(why===null)return;
   try{
     await rptSlSaveManual(leadId,{excluded:true,excluded_reason:(why||'').trim()||null});
-    renderReportSaleLe();
+    rptSlRender();
   }catch(e){alert('Chưa gỡ được: '+e.message);}
 }
 async function rptSlUnexclude(leadId){
   try{
     await rptSlSaveManual(leadId,{excluded:false,excluded_reason:null});
     const dh=document.getElementById('page-datahub');
-    if(dh&&dh.classList.contains('active'))renderDataHub();else renderReportSaleLe();
+    if(dh&&dh.classList.contains('active'))renderDataHub();else rptSlRender();
   }catch(e){alert('Chưa khôi phục được: '+e.message);}
 }
 function rptSlToggleEdit(leadId){
   window._rptSlEditRow=(window._rptSlEditRow===leadId)?null:leadId;
-  renderReportSaleLe();
+  rptSlRender();
 }
 async function rptSlSetFieldRaw(leadId,patch,el){
   // Chặn ở tầng ghi: mọi đường vào (bảng, popup, gọi tay) đều không sửa được khách đã chốt.
@@ -2671,14 +2706,18 @@ async function rptSlSetFieldRaw(leadId,patch,el){
   try{
     await rptSlSaveManual(leadId,patch);
     if(el){el.style.borderColor='var(--green)';setTimeout(()=>{el.style.borderColor=old;},900);}
-    renderReportSaleLe();
+    rptSlRender();
   }catch(err){alert('Chưa lưu được: '+err.message);if(el)el.style.borderColor='var(--red)';}
 }
 async function rptSlSetField(leadId,field,value,el){
   return rptSlSetFieldRaw(leadId,{[field]:String(value==null?'':value).trim()||null},el);
 }
-async function renderReportSaleLe(){
-  const el=document.getElementById('page-report-saleretail');
+function renderReportSaleLe(){return rptSlRenderPage('Lẻ');}
+function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
+async function rptSlRenderPage(type){
+  window._rptSlType=(type==='Sỉ'?'Sỉ':'Lẻ');
+  const cfg=rptSlCfg();
+  const el=document.getElementById('page-'+cfg.page);
   if(!el)return;
   await dhLoadOrders();
   await kiotLoadInvoices();
@@ -2690,8 +2729,8 @@ async function renderReportSaleLe(){
     ${mode==='input'
       // Tab Nhập Liệu là danh sách VIỆC CẦN LÀM -> không lọc theo ngày (lọc ngày sẽ giấu mất việc tồn đọng),
       // nên ẩn luôn thanh chọn ngày cho khỏi hiểu nhầm là đang lọc.
-      ?`<div class="page-title" style="margin-bottom:14px">Báo cáo · Sale Lẻ</div>`
-      :modHeader('Báo cáo · Sale Lẻ','','saleretail','renderReportSaleLe')}
+      ?`<div class="page-title" style="margin-bottom:14px">Báo cáo · ${cfg.title}</div>`
+      :modHeader('Báo cáo · '+cfg.title,'',cfg.mod,cfg.render)}
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         <button onclick="rptSlSetViewMode('master')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='master'?'var(--accent)':'var(--surface)'};color:${mode==='master'?'#fff':'var(--text2)'}">👤 Master Data</button>
@@ -2717,7 +2756,7 @@ async function renderReportSaleLe(){
 function rptSlOverviewHtml(){
   // Áp bộ lọc ngày RIÊNG của báo cáo: khách lọc theo NGÀY TẠO, đơn thô lọc theo NGÀY ĐƠN.
   const master=rptSlPeriod();
-  const le=dhOrders.filter(o=>dhSaleTypeOrder(o)!=="Sỉ"&&dashSeeSale(o.staff_name)&&modInRange(rptSlMod(),o.order_date));
+  const le=dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))&&dashSeeSale(o.staff_name)&&modInRange(rptSlMod(),o.order_date));
   const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
   const dat=le.filter(o=>tag(o,'LEAD ĐẠT')||dhIsQualified(o));
   // Phễu phải CỘNG DỒN: đơn đã chốt thì trước đó đương nhiên cũng là tiềm năng. Nếu chỉ đếm đơn còn
@@ -2941,11 +2980,11 @@ const RPT_SL_STATUS_COLOR={'Chốt đơn':'var(--green)','Bàn giao':'var(--teal
 // khách; chọn "Tất cả" trên thanh lọc để xem toàn bộ.
 // ── BỘ LỌC CHUNG cho Master + CRM ──
 // Chỉ có 4 brand (CT / HT / Shidai / TTV); shop TikTok Hoàng Dương đã gom về CT lúc nạp dữ liệu.
-function rptSlF(tab,k){return (window['_rptSlF_'+tab]||{})[k]||'';}
+function rptSlF(tab,k){return (window['_rptSlF_'+rptSlType()+tab]||{})[k]||'';}
 function rptSlSetF(tab,k,v){
-  window['_rptSlF_'+tab]=Object.assign({},window['_rptSlF_'+tab],{[k]:v});
+  window['_rptSlF_'+rptSlType()+tab]=Object.assign({},window['_rptSlF_'+rptSlType()+tab],{[k]:v});
   window[tab==='master'?'_rptSlMasterPage':'_rptSlCrmPage']=1;
-  renderReportSaleLe();
+  rptSlRender();
 }
 // Trạng thái hiển thị của 1 khách: đã chốt thì luôn "Chốt đơn", còn lại lấy trạng thái Sale chọn.
 function rptSlRowStatus(r){return r.isChot?'Chốt đơn':(r.manualStatus||'(chưa cập nhật)');}
@@ -2969,7 +3008,7 @@ function rptSlSrcBadge(r){
 // Khách có thẻ chốt nhưng chưa có đơn Kiot -> xét theo ngày chốt Pancake; chưa chốt -> ngày tạo.
 // Bộ lọc ngày đang áp dụng: trang Sale Lẻ dùng 'saleretail', trang Báo cáo tổng hợp dùng 'tonghop'
 // (mặc định tháng này) -- cùng một hàm dựng số liệu, chỉ khác mốc ngày.
-function rptSlMod(){return window._rptSlMod||'saleretail';}
+function rptSlMod(){return window._rptSlMod||rptSlCfg().mod;}
 // Ngày ĐẠI DIỆN của 1 khách -- đúng cái ngày mà bộ lọc kỳ đang xét: khách đã chốt lấy NGÀY CHỐT,
 // khách chưa chốt lấy NGÀY TẠO. Bảng xếp theo ngày này giảm dần -> việc mới nhất nằm trên cùng.
 function rptSlRowDate(r){
@@ -3028,7 +3067,7 @@ function rptSlBuildMaster(){
   const byPhone=kiotRetailByPhone(),byCode=kiotCustByCode();
   const byKey={};
   // Báo cáo SALE LẺ -> loại hẳn đơn gắn thẻ KH SỈ. (Bên Kiot cũng chỉ nhận nhóm "Khách lẻ", xem kiotRetailByPhone.)
-  dhOrders.filter(o=>dhSaleTypeOrder(o)!=='Sỉ').forEach(o=>{(byKey[rptSlCustKey(o)]=byKey[rptSlCustKey(o)]||[]).push(o);});
+  dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))).forEach(o=>{(byKey[rptSlCustKey(o)]=byKey[rptSlCustKey(o)]||[]).push(o);});
   // Chỉ giữ khách ĐỦ ĐIỀU KIỆN (xem dhIsQualified). Gom theo khách TRƯỚC rồi mới lọc, để khách có
   // 3 đơn mà chỉ 1 đơn chốt vẫn giữ nguyên lịch sử cả 3 đơn.
   Object.keys(byKey).forEach(k=>{if(!byKey[k].some(dhIsQualified))delete byKey[k];});
@@ -3098,7 +3137,7 @@ function rptSlBuildMaster(){
   });
   // Data NHẬP TAY (khách không có đơn Pancake) cũng là khách Sale Lẻ -> gộp vào Master cùng một dạng dòng.
   // Nhóm này không có đơn Pancake nên không có thẻ; coi là ĐÃ CHỐT khi Mã KH có ĐƠN ĐẶT HÀNG Kiot (không huỷ).
-  (typeof dhManual!=='undefined'?dhManual:[]).filter(r=>(r.sale_type||'Lẻ')!=='Sỉ').forEach(r=>{
+  (typeof dhManual!=='undefined'?dhManual:[]).filter(r=>rptSlInType(r.sale_type||'Lẻ')).forEach(r=>{
     const leadId=dhManualLeadId(r);
     const kc=r.kiot_code?byCode[r.kiot_code]:null;
     const kords=(kc?(ordByCode[kc.code]||[]):[]).slice();
@@ -3172,7 +3211,7 @@ function rptSlBuildMaster(){
   });
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
 }
-function rptSlSetMasterPage(p){window._rptSlMasterPage=p;renderReportSaleLe();}
+function rptSlSetMasterPage(p){window._rptSlMasterPage=p;rptSlRender();}
 function rptSlMasterSearch(){return(document.getElementById('rptSlMasterSearch')||{}).value||'';}
 // 1 dòng của bảng Master -- dùng chung cho tab Master Data và bảng "Top khách tiềm năng" ở Tổng quan,
 // để 2 chỗ luôn hiện cùng bộ cột, sửa 1 chỗ là cả 2 đổi theo.
@@ -3217,7 +3256,7 @@ function rptSlMasterHtml(){
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-end">
       ${rptSlFilterBar('master')}
-      <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(renderReportSaleLe,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
+      <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(rptSlRender,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
     </div>
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">Master Data — hồ sơ khách</div><div class="tbl-count">${num(list.length)}</div>
@@ -3429,7 +3468,7 @@ function rptSlInputHtml(){
 // Bộ cột lấy đúng sheet: Ngày chăm sóc · Kênh · Sales · Họ tên · Nội dung trao đổi · Giá trị tiềm năng
 // · Trạng thái · Nhóm nguyên nhân mất lead · Ngày chốt · Doanh thu · Mã KH.
 // Master giữ phần định danh, CRM thêm phần con người đánh giá. Tất cả ghi vào saleretail_manual.
-function rptSlSetCrmPage(p){window._rptSlCrmPage=p;renderReportSaleLe();}
+function rptSlSetCrmPage(p){window._rptSlCrmPage=p;rptSlRender();}
 function rptSlCrmHtml(){
   const allRaw=rptSlPeriod();
   const all=rptSlSortNew(rptSlApplyF('crm',allRaw));
@@ -3493,7 +3532,7 @@ function rptSlCrmHtml(){
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;justify-content:flex-end">
       ${rptSlFilterBar('crm')}
-      <input value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(renderReportSaleLe,350)" style="${inp};height:30px;min-width:250px">
+      <input value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(rptSlRender,350)" style="${inp};height:30px;min-width:250px">
     </div>
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div></div>
@@ -3516,19 +3555,21 @@ function rptSlCrmHtml(){
 const CRM_PERMISSION_GROUPS=[
 
   ['Toàn quyền',[[PERM_ALL,'Mọi trang, kể cả module thêm sau này']]],
-  ['Báo cáo',[['report-saleretail','Sale Lẻ'],['report-tonghop','Báo cáo tổng hợp (quản lý)']]],
-  ['Data Hub',[['datahub','Toàn bộ Data Hub'],['datahub-manual','Chỉ tab Data Nhập Tay']]],
+  ['Báo cáo',[['report-saleretail','Sale Lẻ'],['report-salesi','Sale Sỉ'],['report-tonghop','Báo cáo tổng hợp (quản lý)']]],
+  ['Data Hub',[['datahub','Toàn bộ Data Hub'],['datahub-manual','Nhập tay — khách Lẻ'],['datahub-manual-si','Nhập tay — khách Sỉ']]],
   ['Quản trị',[['settings','Phân quyền'],['log','Nhật ký thao tác']]],
 ];
 const CRM_PERMISSION_PAGES=CRM_PERMISSION_GROUPS.flatMap(([,items])=>items);
 const CRM_POSITION_DEFAULTS={
   supreme:[PERM_ALL],                                                                                // Supreme Leader: trên cả admin, luôn có mọi thứ
-  admin:['report-saleretail','report-tonghop','datahub','datahub-manual','settings','log'],          // tick sẵn mọi trang HIỆN CÓ, module mới vẫn phải cấp thêm
-  manager:['report-saleretail','report-tonghop','datahub'],                                          // xem hết số liệu, không quản tài khoản
-  sales:['report-saleretail','datahub-manual'],                                  // báo cáo Sale + điền khách ngoài Pancake
+  'sale-le':['report-saleretail','datahub-manual'],                                                  // Sale Lẻ: báo cáo Lẻ + nhập tay Lẻ
+  'sale-si':['report-salesi','datahub-manual-si'],                                                   // Sale Sỉ: báo cáo Sỉ + nhập tay Sỉ
+  admin:['report-saleretail','report-salesi','report-tonghop','datahub','datahub-manual','datahub-manual-si','settings','log'], // tick sẵn mọi trang HIỆN CÓ, module mới vẫn phải cấp thêm
+  manager:['report-saleretail','report-salesi','report-tonghop','datahub'],                                          // xem hết số liệu, không quản tài khoản
+  sales:['report-saleretail','datahub-manual'],                                  // (giữ cho tài khoản cũ) tương đương Sale Lẻ
   mkt:['overview','datahub'],                                                    // chỉ số liệu MKT + nguồn data
 };
-const CRM_POSITION_LABEL={supreme:'Supreme Leader',admin:'Admin',manager:'Quản lý',sales:'Sales',mkt:'Marketing'};
+const CRM_POSITION_LABEL={supreme:'Supreme Leader',admin:'Admin',manager:'Quản lý','sale-le':'Sale Lẻ','sale-si':'Sale Sỉ',sales:'Sales (cũ)',mkt:'Marketing'};
 // ── NHẬT KÝ THAO TÁC ──
 // Ghi ai sửa gì, đặc biệt là XOÁ. Bảng activity_log chỉ giữ 7 ngày gần nhất, Supabase tự dọn
 // bằng pg_cron lúc 02:15 sáng (xem supabase-schema-activity-log.sql).
@@ -3728,6 +3769,9 @@ function crmAcctApplyDefaults(){
   const pos=document.getElementById('crmAcctPosition')?.value;
   const defaults=CRM_POSITION_DEFAULTS[pos]||[];
   document.querySelectorAll('#crmAcctPerms input[name="perm"]').forEach(cb=>{cb.checked=defaults.includes(cb.value);});
+  // Vị trí Sale Lẻ / Sale Sỉ thì tick luôn loại khách tương ứng, khỏi phải nhớ tick tay.
+  const t=pos==='sale-le'?'Lẻ':pos==='sale-si'?'Sỉ':null;
+  document.querySelectorAll('input[name="dtype"]').forEach(cb=>{cb.checked=t?cb.value===t:false;});
 }
 async function submitCrmAddAccount(){
   const f=document.getElementById('crmAddAcctForm');
