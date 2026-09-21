@@ -17,7 +17,9 @@ const KIOT_RETAILER = 'sieuthidotho285';
 const CLIENT_ID = process.env.KIOT_CLIENT_ID;
 const CLIENT_SECRET = process.env.KIOT_CLIENT_SECRET;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const MIN_PURCHASE_DATE = '2026-06-01';
+// LẤY FULL LỊCH SỬ: báo cáo Sale Sỉ cần đơn từ những năm trước (khách buôn mua từ 2021), mà cả kho
+// đơn đặt hàng chỉ ~3.100 đơn nên lấy hết vẫn nhẹ. Báo cáo Sale Lẻ tự chặn mốc 1/6/2026 ở phía app.
+const MIN_PURCHASE_DATE = '2021-01-01';
 const PAGE_SIZE = 100;
 
 const vnTime = s => (s ? (/[zZ]|[+-]\d\d:\d\d$/.test(s) ? s : s + '+07:00') : null);

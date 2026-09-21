@@ -2059,14 +2059,24 @@ function kiotPickOrderFor(inv,chotOrders){
 // chính đơn đặt hàng (chưa giao) -> vẫn tính.
 // BÙ: hoá đơn BÁN THẲNG (hoá đơn hoàn thành không gắn order_code, vd KH007624 18,46tr ngày 08/09) vì
 // không có đơn đặt hàng nào đại diện. Hoá đơn sinh ra TỪ đơn đặt hàng thì bỏ qua, không cộng 2 lần.
-function kiotOrdByCode(){
-  if(window._kiotOrdByCode)return window._kiotOrdByCode;
+// MỐC DỮ LIỆU KHÁC NHAU GIỮA 2 BÁO CÁO (người dùng chốt 21/9/2026):
+//  - Sale LẺ: chỉ tính đơn Kiot từ 1/6/2026. Trước mốc đó chưa có data Pancake để đối chiếu,
+//    kéo vào chỉ làm loạn số.
+//  - Sale SỈ: lấy FULL lịch sử như dashboard cũ -- khách buôn mua từ 2021, cắt mốc là mất doanh số.
+const KIOT_MOC_LE='2026-06-01';
+function kiotMocNgay(){return rptSlType()==='Sỉ'?'':KIOT_MOC_LE;}
+// moc: '' = lấy tất cả. Bỏ trống thì theo báo cáo đang mở.
+function kiotOrdByCode(moc){
+  const m0=moc===undefined?kiotMocNgay():moc;
+  const kho=window._kiotOrdByCode&&typeof window._kiotOrdByCode==='object'?window._kiotOrdByCode:(window._kiotOrdByCode={});
+  if(kho[m0])return kho[m0];
+  const sau=o=>!m0||String(o.purchase_date||'').slice(0,10)>=m0;
   const m={};
-  kiotOrders.forEach(o=>{if(o.customer_code&&o.status!==4)(m[o.customer_code]=m[o.customer_code]||[]).push(o);});
-  kiotInvoices.forEach(i=>{if(i.customer_code&&i.status===1&&!i.order_code)
+  kiotOrders.forEach(o=>{if(o.customer_code&&o.status!==4&&sau(o))(m[o.customer_code]=m[o.customer_code]||[]).push(o);});
+  kiotInvoices.forEach(i=>{if(i.customer_code&&i.status===1&&!i.order_code&&sau(i))
     (m[i.customer_code]=m[i.customer_code]||[]).push(Object.assign({},i,{direct:true,status_value:'HĐ bán thẳng'}));});
   Object.values(m).forEach(a=>a.sort((x,y)=>String(x.purchase_date).localeCompare(String(y.purchase_date))));
-  return window._kiotOrdByCode=m;
+  return kho[m0]=m;
 }
 function dhExtractKH(note){
   const m=/KH\s*0*(\d{3,7})/i.exec(note||'');
@@ -2304,8 +2314,9 @@ async function dhManualSet(id,field,value,el){
 }
 function dhManualRev(){
   // Doanh thu Sale = tổng ĐƠN ĐẶT HÀNG Kiot (không huỷ), không phải hoá đơn.
-  const inv={};Object.entries(kiotOrdByCode()).forEach(([c,a])=>{inv[c]=a.reduce((t,o)=>t+Number(o.total||0),0);});
-  return inv;
+  // Dòng Sỉ tính full lịch sử, dòng Lẻ chỉ từ mốc 1/6 -- giống hệt 2 báo cáo.
+  const cong=map=>{const o={};Object.entries(map).forEach(([c,a])=>{o[c]=a.reduce((t,x)=>t+Number(x.total||0),0);});return o;};
+  return{'Lẻ':cong(kiotOrdByCode(KIOT_MOC_LE)),'Sỉ':cong(kiotOrdByCode(''))};
 }
 // Data Nhập Tay chia theo LOẠI KHÁCH: tab "Nhập tay Lẻ" và "Nhập tay Sỉ" là 2 quyền riêng,
 // Sale Lẻ không thấy data Sỉ và ngược lại. Dòng thêm mới mang đúng sale_type của tab đang mở.
@@ -2416,7 +2427,7 @@ function dhManualHtml(){
   const mine=dhManual.filter(r=>(r.sale_type||'Lẻ')===T);
   const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none';
   const rows=mine.filter(r=>dashSeeSale(rptSlSaleName(r.staff_name))&&dashSeeType(r.sale_type||'Lẻ')).slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
-    const v=inv[r.kiot_code]||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
+    const v=((inv[r.sale_type==='Sỉ'?'Sỉ':'Lẻ']||{})[r.kiot_code])||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
     return `<tr>
       <td>${dmy(r.created_date)||'—'}</td>
       <td class="name">${r.customer_name}</td>
@@ -2695,9 +2706,20 @@ async function rptSlLoadManual(force){
 // lead, giá trị tiềm năng) không còn nghĩa nữa, và nếu để lại thì lúc nào đó sẽ trồi lên gây sai số.
 // Quét mỗi lần mở báo cáo, dọn 1 lần rồi thôi (dọn xong không còn ca nào để quét).
 // GIỮ LẠI: Ngày chăm sóc, Nội dung trao đổi, Mã KH -- chốt rồi vẫn còn nguyên giá trị.
+// Khách đã chốt thì xoá trạng thái/giá trị tiềm năng Sale nhập trước đó -- chốt rồi thì 2 ô này vô nghĩa.
+// PHẢI soi theo DÒNG ĐÃ LƯU (rptSlManual) chứ không soi theo dòng hiển thị: 1 khách có thể gộp từ nhiều
+// Lead ID (trùng Mã KH), dòng hiển thị mượn trạng thái của Lead ID khác -> dọn nhầm Lead ID thì lần render
+// sau vẫn thấy "chưa dọn" và chạy lại mãi, đẻ ra hàng trăm dòng nhật ký trùng (ca Khương Thuỷ 21/9/2026).
 async function rptSlLockChot(){
-  const stale=rptSlBuildMaster().filter(r=>r.isChot&&
-    (r.manualStatus||r.potential));
+  const stale=[];
+  rptSlBuildMaster().filter(r=>r.isChot).forEach(r=>{
+    [r.leadId,...(r.mergedFrom||[])].forEach(id=>{
+      const mn=rptSlManual[id];
+      if(!mn||!(mn.status||mn.potential_value))return;
+      stale.push({leadId:id,name:r.name,
+        manualStatus:mn.status||'',potential:Number(mn.potential_value||0)});
+    });
+  });
   if(!stale.length)return;
   const body=stale.map(r=>({lead_id:r.leadId,status:null,lost_group:null,lost_reason:null,
     potential_value:null,updated_by:'auto-khoa-chot',updated_at:new Date().toISOString()}));
@@ -3421,6 +3443,7 @@ function rptSlBuildMaster(){
     {const co={};keep.phones=g.flatMap(r=>r.phones||[]).filter(p=>{const k=rptSlLast9(p.so);return co[k]?false:(co[k]=true);});}
     keep.isChot=g.some(r=>r.isChot);
     keep.mergedFrom=rest.map(r=>r.leadId);
+    keep.mergedRows=rest.map(r=>({leadId:r.leadId,name:r.name,phone:r.phone}));
     ['staff','kenh','diaChi','content','careDate','manualStatus'].forEach(f=>{
       if(!keep[f])keep[f]=rest.map(r=>r[f]).filter(Boolean)[0]||keep[f];
     });
@@ -3639,6 +3662,29 @@ async function rptSlSaveKH(leadId,val,el){
     if(el)el.style.borderColor='var(--red)';
   }
 }
+// BỌC ĐẦU CHO MÃ KH: mã gõ sai vẫn có thể TRÙNG một khách có thật bên Kiot -> app nối vào và ăn nhầm
+// doanh thu của người khác. Không chặn cứng được (Sale mới là người biết khách nào là khách nào), nên
+// app soi 2 dấu hiệu rồi đẩy sang tab Nhập Liệu cho Sale kiểm tra:
+//   a) Một Mã KH bị gán cho NHIỀU khách khác nhau (khác SĐT / tên không dính nhau)
+//   b) Khách và khách bên Kiot LỆCH CẢ SĐT LẪN TÊN -- chỉ lệch tên thì thôi, vì Kiot hay ghi kiểu
+//      "KB ANH SĨ - ĐÀ NẴNG" trong khi Pancake là tên Facebook.
+function rptSlMaNgo(all){
+  return all.filter(r=>{
+    if(!r.kh||!r.kiotCusts.length)return false;
+    const kc=r.kiotCusts[0];
+    const sdtKH=(r.phones||[]).filter(p=>!p.tuKiot).map(p=>rptSlLast9(p.so)).filter(Boolean);
+    const sdtKiot=rptSlLast9(kc.phone||kc.phone_key||'');
+    const lechSdt=sdtKH.length&&sdtKiot&&!sdtKH.includes(sdtKiot);
+    const lechTen=dhNameMismatch(r.name,kc.name||'');
+    const nhieuKhach=(r.mergedRows||[]).some(x=>{
+      const a=rptSlLast9(x.phone||'');
+      return (a&&sdtKH.length&&!sdtKH.includes(a))||dhNameMismatch(x.name||'',r.name||'');
+    });
+    r.ngoVi=nhieuKhach?'Mã này đang gán cho nhiều khách khác nhau'
+      :(lechSdt&&lechTen?'Khách bên Kiot khác cả SĐT lẫn tên':'');
+    return!!r.ngoVi;
+  });
+}
 function rptSlTodoBuckets(){
   const all=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao);
   return{
@@ -3647,6 +3693,8 @@ function rptSlTodoBuckets(){
     thieuMa:all.filter(r=>r.isChot&&!r.kh),
     // 2. Mã KH đã điền nhưng sai (không tồn tại bên Kiot).
     maSai:all.filter(r=>r.manualKH&&!r.kiotCusts.length),
+    // 2b. Mã KH có thật nhưng nghi gán nhầm người -> doanh thu đang tính sang khách khác.
+    maNgo:rptSlMaNgo(all),
     // 3. Chưa cập nhật trạng thái (chỉ nhóm chưa chốt -- nhóm chốt đã khoá cứng).
     chuaTT:all.filter(r=>!r.isChot&&!r.manualStatus),
     // 4. Đã chọn Mất lead nhưng chưa ghi nhóm nguyên nhân.
@@ -3743,6 +3791,12 @@ function rptSlInputHtml(){
     b.thieuMa.map(r=>`<tr>${info(r)}${maO(r)}${goiY(r)}<td class="num" style="color:var(--red);font-weight:800">chưa tính được</td></tr>`).join(''));
   const s2=tbl(HEAD+'<th>Mã đang điền</th><th>Vấn đề</th><th style="'+RPT_SL_TH_EDIT+'">Dán lại mã đúng</th>',
     b.maSai.map(r=>`<tr>${info(r)}${maInput(r)}<td style="font-size:11px;color:var(--red);font-weight:700">Mã <code>${r.manualKH}</code> không có bên Kiot</td>${maO(r)}</tr>`).join(''));
+  const s2b=tbl(HEAD+'<th>Mã đang dùng</th><th>Khách bên Kiot</th><th>Vì sao nghi</th><th>Doanh thu đang tính</th><th style="'+RPT_SL_TH_EDIT+'">Dán lại mã đúng</th>',
+    b.maNgo.map(r=>{const kc=r.kiotCusts[0]||{};
+      return `<tr>${info(r)}<td style="font-size:11px"><code>${r.kh}</code></td>
+      <td style="font-size:11px">${(kc.name||'—').replace(/</g,'&lt;')}${kc.phone?' · '+kc.phone:''}</td>
+      <td style="font-size:11px;color:var(--red);font-weight:700">${r.ngoVi||''}</td>
+      <td class="num" style="font-weight:800">${r.revenue>0?vnd(r.revenue):'—'}</td>${maO(r)}</tr>`;}).join(''));
   const ttSel=r=>`<td onclick="rptSlStop(event)"><select onchange="rptSlSetField('${r.leadId}','status',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid var(--yellow);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">
       <option value="">— chọn —</option>${RPT_SL_STATUS_OPTS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></td>`;
   const s3=tbl(HEAD+'<th>Thẻ Pancake</th><th style="'+RPT_SL_TH_EDIT+'">Trạng thái</th>',
@@ -3760,7 +3814,7 @@ function rptSlInputHtml(){
       <td>${dmy(r.careDate)||'—'}</td>
       <td onclick="rptSlStop(event)"><button onclick="rptSlEditRow('${r.leadId}')"
         style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">✏️ Ghi nội dung</button></td></tr>`).join(''));
-  const tong=b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuGT.length+b.thieuND.length;
+  const tong=b.thieuMa.length+b.maSai.length+b.maNgo.length+b.chuaTT.length+b.thieuGT.length+b.thieuND.length;
   return `
     ${rptSlViewAsBar()}
     <div class="kpi-grid" style="margin-bottom:14px">
@@ -3771,6 +3825,7 @@ function rptSlInputHtml(){
     </div>
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
     ${rptSlInputSec('s2','','Mã KH đã điền nhưng không tồn tại bên Kiot','dán lại mã đúng, app ghi sang Pancake',b.maSai.length,'var(--yellow)',s2,true)}
+    ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
     ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
     ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
     ${rptSlInputSec('s8','','Chưa ghi nội dung trao đổi','app không tự suy được phần này',b.thieuND.length,'var(--accent)',s8)}
