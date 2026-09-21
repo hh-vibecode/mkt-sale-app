@@ -3367,20 +3367,23 @@ function rptSlBuildMaster(){
   rows=rows.filter(r=>!(rptSlManual[r.leadId]||{}).excluded);
   // PHẠM VI DỮ LIỆU: tài khoản chỉ được xem khách của những Sale được gán (và đúng loại Sỉ/Lẻ).
   rows=rows.filter(r=>dashSeeSale(r.staff)&&dashSeeType(r.saleType||'Lẻ'));
-  // DOANH SỐ CHỐT = mọi đơn trong CÙNG THÁNG với đơn Kiot đầu tiên (người dùng chốt 17/9/2026: "mua liên
-  // tục trong tháng thì vẫn tính là mua lần đầu", vd Thanh Chương 01/7 + 14/7 = 88.535.000đ).
-  // Đơn từ tháng SAU trở đi là MUA LẠI -> tách ra repeatOrds, không cộng vào doanh số chốt của Sale.
+  // DOANH SỐ CHỐT = mọi đơn trong VÒNG 1 THÁNG kể từ ĐƠN KIOT ĐẦU TIÊN (người dùng chốt 21/9/2026:
+  // "đơn khách lần đầu trong phạm vi 1 tháng đều được tính, đơn phát sinh quá 1 tháng mới không tính").
+  // Là 1 tháng TRÒN tính từ ngày đơn đầu, KHÔNG phải hết tháng dương lịch -- khách đặt 29/7 thì các đơn
+  // 01/8, 08/8, 20/8 vẫn là mua lần đầu (vd KH007462 Nam Vĩnh Phúc).
+  // Đơn phát sinh sau mốc đó là MUA LẠI -> tách ra repeatOrds, không cộng vào doanh số chốt của Sale.
   rows.forEach(r=>{
     const all=r.kords||[];
     if(!all.length){r.repeatOrds=[];r.staleOrds=[];r.repeatRevenue=0;return;}
-    const mo=String(all[0].purchase_date).slice(0,7);
-    let first=all.filter(o=>String(o.purchase_date).slice(0,7)===mo);
-    // PHIẾU TREO: tháng đầu đã có đơn Hoàn thành thì bỏ đơn Phiếu tạm (status 1) cùng tháng -- đó là phiếu
+    const han=new Date(String(all[0].purchase_date).slice(0,10));han.setMonth(han.getMonth()+1);
+    const trongHan=o=>new Date(String(o.purchase_date).slice(0,10))<han;
+    let first=all.filter(trongHan);
+    // PHIẾU TREO: trong hạn đã có đơn Hoàn thành thì bỏ đơn Phiếu tạm (status 1) cùng hạn -- đó là phiếu
     // cũ Sale quên huỷ khi khách đổi hàng (vd Kiều Trang DH002322 225,5tr bị thay bởi DH002343 221,8tr).
     const treo=first.some(o=>o.status===3)?first.filter(o=>o.status===1&&!o.direct):[];
     first=first.filter(o=>!treo.includes(o));
     r.kords=first;r.staleOrds=treo;
-    r.repeatOrds=all.filter(o=>String(o.purchase_date).slice(0,7)!==mo);
+    r.repeatOrds=all.filter(o=>!trongHan(o));
     r.revenue=r.kords.reduce((s,o)=>s+Number(o.total||0),0);
     r.repeatRevenue=r.repeatOrds.reduce((s,o)=>s+Number(o.total||0),0);
     r.lastKiotDate=String(r.kords[r.kords.length-1].purchase_date).slice(0,10);
@@ -3479,7 +3482,7 @@ function rptSlShowCustomer(key){
     fld('Số đơn Pancake',num(r.orders.length)),
     fld('Số đơn đặt hàng Kiot',num(r.kords.length)),
     fld('Doanh thu chốt (tháng đầu)',r.revenue>0?vnd(r.revenue):'—',r.revenue>0?'var(--green)':''),
-    fld('Mua lại (tháng sau)',r.repeatRevenue>0?vnd(r.repeatRevenue)+' · '+num(r.repeatOrds.length)+' đơn':''),
+    fld('Mua lại (quá 1 tháng)',r.repeatRevenue>0?vnd(r.repeatRevenue)+' · '+num(r.repeatOrds.length)+' đơn':''),
     fld('Tên bên Kiot',esc(r.kiotName)),
     fld('Ngày đặt hàng gần nhất',esc(dmy(r.lastKiotDate))),
     fld('Hội thoại',rptSlChatUrl(r)?'<a href="'+rptSlChatUrl(r)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat Pancake</a>':''),
