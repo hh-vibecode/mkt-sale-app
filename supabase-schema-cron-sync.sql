@@ -26,14 +26,16 @@ end;$$;
 
 -- Bỏ lịch cũ nếu chạy lại file này
 select cron.unschedule(jobname) from cron.job
- where jobname in ('sync-datahub-10p','sync-kiot-15p','sync-datahub-30p','sync-kiot-30p','sync-backfill-datahub','sync-backfill-kiot','sync-mkt-3lan');
+ where jobname in ('sync-datahub-10p','sync-kiot-15p','sync-datahub-30p','sync-kiot-30p','sync-backfill-datahub','sync-backfill-kiot','sync-backfill-trua','sync-backfill-chieu','sync-mkt-3lan');
 
 -- Pancake: mỗi 10 phút (kéo đơn + tự gắn thẻ CHỐT ĐƠN + tự đổi trạng thái đơn B3)
 select cron.schedule('sync-datahub-10p','*/10 * * * *', $$select public.goi_sync('datahub')$$);
 -- KiotViet: mỗi 15 phút, lệch 5 phút để 2 job không chen nhau
 select cron.schedule('sync-kiot-15p','5,20,35,50 * * * *', $$select public.goi_sync('kiot')$$);
--- Quét lại toàn bộ từ 1/6: 7h05 và 7h20 giờ VN
+-- Quét lại toàn bộ từ 1/6: Pancake 7h05 · 12h30 · 18h00, Kiot 7h20 (giờ VN)
 select cron.schedule('sync-backfill-datahub','5 0 * * *',  $$select public.goi_sync('datahub', true)$$);
 select cron.schedule('sync-backfill-kiot','20 0 * * *',    $$select public.goi_sync('kiot', true)$$);
+select cron.schedule('sync-backfill-trua','30 5 * * *',    $$select public.goi_sync('datahub', true)$$);
+select cron.schedule('sync-backfill-chieu','0 11 * * *',   $$select public.goi_sync('datahub', true)$$);
 -- Meta Ads: 7h05 · 12h05 · 15h05 giờ VN
 select cron.schedule('sync-mkt-3lan','5 0,5,8 * * *',      $$select public.goi_sync('mkt')$$);
