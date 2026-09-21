@@ -548,7 +548,9 @@ const modRanges={};
 // Mặc định riêng theo module: trang tổng hợp cho quản lý xem cả THÁNG NÀY, trang thao tác hằng ngày
 // thì hôm qua -> hôm nay (xem modDateDefault).
 function modDefaultFor(mod){
-  if(mod==='tonghop'){const t=todayISO();return{from:t.slice(0,8)+'01',to:t};}
+  // Trang tổng hợp và báo cáo Sale Sỉ xem theo THÁNG NÀY: tổng hợp là để nhìn bức tranh chung, còn Sỉ
+  // data rất thưa (cả tháng 9 mới 15 khách) nên mặc định 2 ngày sẽ ra bảng trắng, tưởng lỗi.
+  if(mod==='tonghop'||mod==='salesi'){const t=todayISO();return{from:t.slice(0,8)+'01',to:t};}
   return modDateDefault();
 }
 function modRange(mod){return modRanges[mod]||modDefaultFor(mod);}
@@ -3323,6 +3325,17 @@ function rptSlMasterRow(r){
       <span style="font-size:11.5px;font-weight:700;color:var(--accent)">Chi tiết</span></span></td>
   </tr>`;
 }
+// Bảng trống thường là do BỘ LỌC NGÀY chứ không phải hết data -> nói thẳng và cho nhảy kỳ ngay.
+function rptSlEmptyHtml(coFilter){
+  const mod=rptSlMod(),cb=rptSlCfg().render;
+  const tong=rptSlBuildMaster().length;
+  const nut=(v,l)=>'<button onclick="modQuick(\''+mod+'\',\''+v+'\',\''+cb+'\')" style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:8px;height:28px;padding:0 12px;margin:0 4px;cursor:pointer;font-size:11.5px;font-weight:700">'+l+'</button>';
+  return '<div style="padding:26px;text-align:center">'
+    +'<div style="font-size:12.5px;font-weight:700;color:var(--text2)">Không có khách nào trong kỳ đang lọc'
+    +(coFilter?' (và bộ lọc đang bật)':'')+'</div>'
+    +'<div style="font-size:11.5px;color:var(--muted);margin:5px 0 10px">Toàn bộ dữ liệu có '+num(tong)+' khách — thử mở rộng kỳ xem</div>'
+    +nut('thismonth','Tháng này')+nut('30days','30 ngày')+nut('all','Tất cả thời gian')+'</div>';
+}
 function rptSlMasterHtml(){
   const allRaw=rptSlPeriod();
   const all=rptSlSortNew(rptSlApplyF('master',allRaw));
@@ -3352,7 +3365,7 @@ function rptSlMasterHtml(){
         <span style="margin-left:auto;font-size:11px;color:var(--muted)">Doanh thu trong bộ lọc: <b style="color:var(--green)">${vnd(rev)}</b></span></div>
       <div class="tbl-scroll"><table>
         <thead><tr><th>Ngày tạo</th><th>Nguồn</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="12" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
+        <tbody>${rows||'<tr><td colspan="12">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetMasterPage(${page-1})">‹ Trước</button>
@@ -3627,7 +3640,7 @@ function rptSlCrmHtml(){
       <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
         <thead><tr><th>Ngày chăm sóc</th><th>Nguồn</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái</th><th style="${RPT_SL_TH_EDIT}">Nhóm nguyên nhân mất lead</th><th>Ngày chốt</th><th>Doanh thu</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Không có khách nào khớp bộ lọc</td></tr>'}</tbody>
+        <tbody>${rows||'<tr><td colspan="11">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetCrmPage(${page-1})">‹ Trước</button>
