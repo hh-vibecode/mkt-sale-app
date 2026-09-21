@@ -3460,6 +3460,32 @@ function rptSlB3Issues(rows){
   });
   return out.sort((a,b)=>String(b.o.order_date).localeCompare(String(a.o.order_date)));
 }
+// ĐIỀN MÃ KH: ghi THẲNG vào ghi chú nội bộ đơn Pancake qua Edge Function 'pancake-note' (token ở server).
+// Pancake vẫn là nguồn sự thật -- app chỉ là chỗ nhập cho nhanh, không tạo nguồn thứ hai.
+// Function tự chuẩn hoá mã, NỐI THÊM chứ không ghi đè ghi chú cũ, bỏ qua nếu mã đã có sẵn.
+async function rptSlSaveKH(leadId,val,el){
+  const ma=String(val||'').trim();
+  if(!ma){if(el)el.focus();return;}
+  const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
+  const o=r&&(r.orders||[]).slice(-1)[0];       // dán vào đơn Pancake mới nhất của khách
+  if(!o){alert('Khách này không có đơn Pancake để dán mã — dòng nhập tay thì điền bên Data Hub.');return;}
+  const btn=el&&el.nextElementSibling;
+  if(btn){btn.disabled=true;btn.textContent='Đang lưu...';}
+  try{
+    const res=await fetch(`${SUPABASE_URL}/functions/v1/pancake-note`,{method:'POST',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({shop_id:o.shop_id,order_id:o.order_id,code:ma,who:logWho()})});
+    const d=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(d.error||('lỗi '+res.status));
+    logAct('U','datahub_orders','#'+o.system_id,r.name,'internal_note',o.internal_note||'',d.note||d.ma);
+    await dhLoadOrders(true);                   // nạp lại để bảng cập nhật ngay
+    rptSlRender();
+  }catch(e){
+    alert('Chưa lưu được sang Pancake: '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='Lưu';}
+    if(el)el.style.borderColor='var(--red)';
+  }
+}
 function rptSlTodoBuckets(){
   const all=rptSlSortNew(rptSlBuildMaster());
   return{
@@ -3486,12 +3512,21 @@ function rptSlTodoCount(){
   const b=rptSlTodoBuckets();
   return b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length+b.thieuGT.length+b.saiB3.length+b.thieuND.length;
 }
-function rptSlInputSec(id,icon,title,desc,count,color,body){
-  return `<div class="tbl-card" style="margin-bottom:16px">
-    <div class="tbl-head" style="border-left:4px solid ${color}">
-      <div class="tbl-title">${icon} ${title}</div><div class="tbl-count" style="background:${color};color:#fff">${num(count)}</div>
-      <span style="margin-left:auto;font-size:11px;color:var(--muted)">${desc}</span></div>
-    ${count?body:'<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không còn việc nào</div>'}
+// 3 mục QUAN TRỌNG NHẤT luôn mở sẵn data lỗi; các mục còn lại gập lại, bấm tiêu đề mới bung ra.
+function rptSlSecOpen(id){return !!(window._rptSlSecOpen||{})[id];}
+function rptSlSecToggle(id){
+  const o=window._rptSlSecOpen=window._rptSlSecOpen||{};
+  o[id]=!rptSlSecOpen(id);rptSlRender();
+}
+function rptSlInputSec(id,icon,title,desc,count,color,body,luonMo){
+  const mo=luonMo||rptSlSecOpen(id);
+  const than=count?body:'<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không còn việc nào</div>';
+  return `<div class="tbl-card" style="margin-bottom:${mo?16:8}px">
+    <div class="tbl-head" style="border-left:4px solid ${color}${luonMo?'':';cursor:pointer'}"${luonMo?'':' onclick="rptSlSecToggle(\''+id+'\')"'}>
+      ${luonMo?'':'<span style="color:var(--muted);font-size:10px;margin-right:4px">'+(mo?'▼':'▶')+'</span>'}
+      <div class="tbl-title">${title}</div><div class="tbl-count" style="background:${color};color:#fff">${num(count)}</div>
+      <span style="margin-left:auto;font-size:11px;color:var(--muted)">${luonMo?desc:(mo?'bấm để thu lại':'bấm để mở bảng nhập'+(desc?' — '+desc:''))}</span></div>
+    ${mo?than:''}
   </div>`;
 }
 function rptSlInputHtml(){
@@ -3513,12 +3548,16 @@ function rptSlInputHtml(){
         +((ordBy[c.code]||[]).map(o=>'<span style="color:var(--green);font-weight:700">'+o.code+' '+dmy(String(o.purchase_date).slice(0,10))+' '+vnd(o.total)+'</span>').join(', ')||'<span style="color:var(--muted)">chưa có đơn đặt hàng</span>')+'</div>').join('')
     : '<span style="color:var(--muted)">không có gợi ý</span>'}</td>`;
 
-  const goNut=r=>`<td onclick="rptSlStop(event)"><button onclick="rptSlExclude('${r.leadId}','${String(r.name||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" title="Gỡ khách này khỏi báo cáo (khôi phục được)"
-    style="border:1.5px solid var(--border);background:var(--surface);color:var(--muted);border-radius:7px;height:24px;padding:0 8px;cursor:pointer;font-size:10.5px;font-weight:700">Gỡ</button></td>`;
-  const s1=tbl(HEAD+'<th>Mã KH Kiot</th><th>Gợi ý theo SĐT (tra bên Kiot)</th><th>Doanh thu</th><th></th>',
-    b.thieuMa.map(r=>`<tr>${info(r)}${maInput(r)}${goiY(r)}<td class="num" style="color:var(--red);font-weight:800">chưa tính được</td>${goNut(r)}</tr>`).join(''));
-  const s2=tbl(HEAD+'<th>Mã đang điền</th><th>Vấn đề</th>',
-    b.maSai.map(r=>`<tr>${info(r)}${maInput(r)}<td style="font-size:11px;color:var(--red);font-weight:700">Mã <code>${r.manualKH}</code> không có bên Kiot</td></tr>`).join(''));
+  // Ô nhập Mã KH + nút Lưu -> ghi thẳng sang ghi chú nội bộ đơn Pancake.
+  const maO=r=>`<td onclick="rptSlStop(event)" style="white-space:nowrap">
+    <input placeholder="KH007620" onkeydown="if(event.key==='Enter')rptSlSaveKH('${r.leadId}',this.value,this)"
+      style="height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--accent);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;width:104px">
+    <button onclick="rptSlSaveKH('${r.leadId}',this.previousElementSibling.value,this.previousElementSibling)"
+      style="margin-left:5px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:700">Lưu</button></td>`;
+  const s1=tbl(HEAD+'<th style="'+RPT_SL_TH_EDIT+'">Điền Mã KH Kiot</th><th>Gợi ý theo SĐT (tra bên Kiot)</th><th>Doanh thu</th>',
+    b.thieuMa.map(r=>`<tr>${info(r)}${maO(r)}${goiY(r)}<td class="num" style="color:var(--red);font-weight:800">chưa tính được</td></tr>`).join(''));
+  const s2=tbl(HEAD+'<th>Mã đang điền</th><th>Vấn đề</th><th style="'+RPT_SL_TH_EDIT+'">Dán lại mã đúng</th>',
+    b.maSai.map(r=>`<tr>${info(r)}${maInput(r)}<td style="font-size:11px;color:var(--red);font-weight:700">Mã <code>${r.manualKH}</code> không có bên Kiot</td>${maO(r)}</tr>`).join(''));
   const ttSel=r=>`<td onclick="rptSlStop(event)"><select onchange="rptSlSetField('${r.leadId}','status',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid var(--yellow);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">
       <option value="">— chọn —</option>${RPT_SL_STATUS_OPTS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></td>`;
   const s3=tbl(HEAD+'<th>Thẻ Pancake</th><th style="'+RPT_SL_TH_EDIT+'">Trạng thái</th>',
@@ -3555,13 +3594,13 @@ function rptSlInputHtml(){
       ${mkKpi(ic('check'),'Đơn chốt đã nối',num(b.all.filter(r=>r.isChot&&r.kh).length)+'/'+num(b.all.filter(r=>r.isChot).length),'nối bằng Mã KH','g-green')}
       ${mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow')}
     </div>
-    ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','sửa trong Pancake (ghi chú nội bộ) hoặc Kiot — app chỉ báo',b.thieuMa.length,'var(--red)',s1)}
-    ${rptSlInputSec('s2','','Mã KH đã điền nhưng không tồn tại bên Kiot','',b.maSai.length,'var(--yellow)',s2)}
+    ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
+    ${rptSlInputSec('s2','','Mã KH đã điền nhưng không tồn tại bên Kiot','dán lại mã đúng, app ghi sang Pancake',b.maSai.length,'var(--yellow)',s2,true)}
+    ${rptSlInputSec('s7','','Đơn POS Cake chưa đổi trạng thái (bước B3)','tiềm năng → Đã xác nhận · chốt đơn → Đã gửi hàng — sửa trong Pancake',b.saiB3.length,'var(--orange,#f97316)',s7,true)}
     ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
     ${rptSlInputSec('s4','','Mất lead nhưng chưa ghi nhóm nguyên nhân','',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}
     ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
-    ${rptSlInputSec('s8','','Chưa ghi nội dung trao đổi','bấm để mở bảng nhập — app không tự suy được phần này',b.thieuND.length,'var(--accent)',s8)}
-    ${rptSlInputSec('s7','','Đơn POS Cake chưa đổi trạng thái (bước B3)','tiềm năng → Đã xác nhận · chốt đơn → Đã gửi hàng — sửa trong Pancake',b.saiB3.length,'var(--orange,#f97316)',s7)}
+    ${rptSlInputSec('s8','','Chưa ghi nội dung trao đổi','app không tự suy được phần này',b.thieuND.length,'var(--accent)',s8)}
 `;
 }
 // ── CRM: TOÀN BỘ khách chốt + tiềm năng từ Master đổ sang, mỗi khách 1 DÒNG.
