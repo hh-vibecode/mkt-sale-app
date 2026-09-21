@@ -2316,6 +2316,15 @@ const DH_CRON=[
    lich:'2h15 hằng ngày (chạy trên Supabase)',
    viec:['Xoá log cũ hơn 7 ngày']},
 ];
+// Những thứ KHÔNG chạy theo lịch mà cập nhật NGAY -- hay bị hỏi "cái này bao lâu mới lên?".
+const DH_LIVE=[
+  ['Tạo tài khoản / sửa quyền','Ghi thẳng vào Supabase, KHÔNG qua job đồng bộ — đo thật: tạo xong 0,5 giây sau đã đăng nhập được. Người đang mở sẵn app thì F5 là nhận quyền mới.'],
+  ['Quyền + phạm vi dữ liệu của tài khoản','Mỗi lần mở app hoặc F5, app đọc lại quyền từ server. Admin sửa quyền xong người dùng chỉ cần tải lại trang, không phải đăng xuất. Tài khoản bị khoá cũng bị đá ra ngay lần mở kế tiếp.'],
+  ['Bản app trên web (giao diện, tính năng mới)','Mỗi lần đẩy mã nguồn lên GitHub, bản live tự dựng lại trong khoảng 40 giây. Người dùng F5 (hoặc Ctrl+F5 nếu trình duyệt còn giữ bản cũ) là thấy.'],
+  ['Ô Sale nhập trong CRM / Nhập Liệu','Bấm Lưu là ghi thẳng Supabase, mọi người có quyền thấy ngay, không chờ job.'],
+  ['Mã KH điền trong app','Ghi thẳng sang ghi chú nội bộ đơn Pancake ngay lúc bấm Lưu, đồng thời cập nhật bản sao trong Supabase.'],
+  ['Số liệu báo cáo','Đọc thẳng Supabase mỗi lần mở trang hoặc bấm Tải lại. Muốn số mới từ Pancake/Kiot thì bấm Chạy ngay ở trên.'],
+];
 // Những việc máy TỰ LÀM, kèm giới hạn an toàn -- ghi ra đây để khỏi phải nhớ.
 const DH_AUTO=[
   ['Đổi trạng thái đơn Pancake (B3)','Chỉ khách LẺ · chỉ đẩy TỚI, không bao giờ hạ · chỉ từ trạng thái Mới hoặc Đã xác nhận · bỏ qua đơn đã huỷ · chỉ đơn từ 1/6'],
@@ -2359,16 +2368,20 @@ function dhCronHtml(log){
           +' · <span style="color:'+mau+';font-weight:800">'+(l.status==='success'?'OK':l.status==='failed'?'Lỗi':l.status)+'</span>'
         :'Không ghi log riêng'}</div>
     </div>`;};
-  const auto=DH_AUTO.map(([t,d])=>`<div style="display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--border)">
-    <div style="flex:0 0 230px;font-size:11.5px;font-weight:800;color:${t==='KHÔNG tự làm'?'var(--red)':'var(--text)'}">${t}</div>
-    <div style="flex:1;font-size:11px;color:var(--muted);line-height:1.6">${d}</div></div>`).join('');
+  const dong=(t,d,mau)=>`<div style="display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--border)">
+    <div style="flex:0 0 230px;font-size:11.5px;font-weight:800;color:${mau||'var(--text)'}">${t}</div>
+    <div style="flex:1;font-size:11px;color:var(--muted);line-height:1.6">${d}</div></div>`;
+  const auto=DH_AUTO.map(([t,d])=>dong(t,d,t==='KHÔNG tự làm'?'var(--red)':null)).join('');
+  const live=DH_LIVE.map(([t,d])=>dong(t,d,'var(--green)')).join('');
   return `<div class="tbl-card" style="margin-bottom:16px">
     <div class="tbl-head" style="border-left:4px solid var(--accent)">
       <div class="tbl-title">Lịch chạy tự động</div><div class="tbl-count">${num(DH_CRON.length)}</div>
       <span style="margin-left:auto;font-size:11px;color:var(--muted)">chỉ Supreme Leader thấy mục này</span></div>
     <div style="padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px">${DH_CRON.map(card).join('')}</div>
     <div style="padding:0 14px 14px">
-      <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px">Máy tự xử lý những gì</div>
+      <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px">Cập nhật ngay, không chờ lịch</div>
+      ${live}
+      <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 2px">Máy tự xử lý những gì</div>
       ${auto}
       <div style="font-size:10.5px;color:var(--muted);margin-top:9px">GitHub Actions thường giãn lịch dưới 1 giờ thành 2-5 tiếng — cần số tươi thì bấm Chạy ngay (job đang chạy thì sẽ báo).</div>
     </div>
@@ -3910,7 +3923,9 @@ async function submitCrmAddAccount(){
     document.getElementById('crmAddAcctModal').style.display='none';
     await loadCrmFromSupabase();
     renderSettings();
-    alert('Đã tạo tài khoản. Nhắc người dùng đăng nhập bằng username/mật khẩu vừa tạo.');
+    alert('Đã tạo tài khoản — DÙNG ĐƯỢC NGAY, không phải chờ đồng bộ.
+
+Nhắc người dùng đăng nhập bằng username/mật khẩu vừa tạo. Nếu họ đang mở sẵn app thì F5 là nhận quyền mới.');
   }catch(e){errEl.textContent='Lỗi: '+e.message;errEl.style.display='block';}
   finally{btn.disabled=false;btn.textContent='Tạo tài khoản';}
 }
