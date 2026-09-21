@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22></text></svg>">
 <title>APP MKT/SALE</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -631,7 +631,7 @@ async function loadData(){
   document.getElementById('btnLoad').disabled=true;
   try{
     setStatus('Đang tải dữ liệu...');
-    const crmOk=await loadCrmFromSupabase().then(()=>true).catch(e=>{setStatus('⚠️ CRM v2 (Supabase) lỗi: '+e.message);return false;});
+    const crmOk=await loadCrmFromSupabase().then(()=>true).catch(e=>{setStatus('CRM v2 (Supabase) lỗi: '+e.message);return false;});
     document.getElementById('btnLoad').disabled=false;
     setStatus('Đang render...');
     {if(document.getElementById('page-datahub').classList.contains('active'))renderDataHub();if(document.getElementById('page-report-saleretail').classList.contains('active'))renderReportSaleLe();}
@@ -1032,7 +1032,7 @@ function shortAdId(id){id=(id||'').toString().trim();return id.length<=8?id:id.s
 // Gắn Tên QC (đối chiếu Chi Tiết MKT qua adNameMap) bên cạnh Ads ID rút gọn — dùng cho mọi báo cáo có hiện Ads ID của khách
 function adIdNote(id){
   const v=(id||'').toString().trim();
-  if(!v)return'<b style="color:#e11d48">⚠️ Thiếu Ads ID</b>';
+  if(!v)return'<b style="color:#e11d48">Thiếu Ads ID</b>';
   const nm=(typeof adNameMap==='function'?adNameMap()[v]:null);
   const short=shortAdId(v);
   if(nm)return`${nm} <span style="color:var(--muted)" title="${v}">(${short})</span>`;
@@ -1315,10 +1315,10 @@ function curPeriodLabel(){
 // này thay vì gọi tên field cố định. matchCampaign = khớp tên chiến dịch MKT (Ads); matchText = khớp text
 // Kênh/Sản phẩm bên CRM Sale Online (2 nguồn text khác nhau nên vẫn giữ 2 regex riêng cho chính xác).
 const BRAND_LIST=[
-  {key:'TTV',label:'Tự Tại Viên',abbr:'TTV',color:'#0abf7a',icon:'🕯️',matchCampaign:/tự tại viên|tu tai vien|nến bơ|nen bo/i,matchText:/tự tại viên|tu tai vien|nến bơ|nen bo/i},
-  {key:'HT',label:'Hiền Thuỷ',abbr:'HT',color:'#f59e0b',icon:'🌊',matchCampaign:/^HT[\s\-–]|^HT$|hiền thu[ỷy]|hiến thu[ỷy]|hien thuy/i,matchText:/hiền th|hien th|\bHT\b/i},
-  {key:'Shidai',label:'Shidai',abbr:'SD',color:'#8b5cf6',icon:'🐉',matchCampaign:/shidai/i,matchText:/shidai|thời đại|thoi dai/i},
-  {key:'CT',label:'Chánh Tâm',abbr:'CT',color:'#3b82f6',icon:'🏮',matchCampaign:/chánh tâm|chanh tam|^CT[\s\-–]/i,matchText:/chánh tâm|chanh tam|\bCT\b/i},
+  {key:'TTV',label:'Tự Tại Viên',abbr:'TTV',color:'#0abf7a',icon:'',matchCampaign:/tự tại viên|tu tai vien|nến bơ|nen bo/i,matchText:/tự tại viên|tu tai vien|nến bơ|nen bo/i},
+  {key:'HT',label:'Hiền Thuỷ',abbr:'HT',color:'#f59e0b',icon:'',matchCampaign:/^HT[\s\-–]|^HT$|hiền thu[ỷy]|hiến thu[ỷy]|hien thuy/i,matchText:/hiền th|hien th|\bHT\b/i},
+  {key:'Shidai',label:'Shidai',abbr:'SD',color:'#8b5cf6',icon:'',matchCampaign:/shidai/i,matchText:/shidai|thời đại|thoi dai/i},
+  {key:'CT',label:'Chánh Tâm',abbr:'CT',color:'#3b82f6',icon:'',matchCampaign:/chánh tâm|chanh tam|^CT[\s\-–]/i,matchText:/chánh tâm|chanh tam|\bCT\b/i},
 ];
 const BRAND_DEFAULT_KEY='CT';
 function emptyBrandTotals(){const o={};BRAND_LIST.forEach(b=>{o[b.key]={leads:0,orders:0,revenue:0};});return o;}
@@ -1362,7 +1362,7 @@ function siPersonName(rep,store){
 function siNameCell(mainName,store){
   const nm=(mainName||'').toString().trim()||'—';
   const st=(store||'').toString().trim();
-  const sub=st&&st.toUpperCase()!==nm.toUpperCase()?`<div style="font-size:11px;color:var(--muted);font-weight:500;white-space:normal">🏪 ${st}</div>`:'';
+  const sub=st&&st.toUpperCase()!==nm.toUpperCase()?`<div style="font-size:11px;color:var(--muted);font-weight:500;white-space:normal">${st}</div>`:'';
   return `<div style="white-space:normal;line-height:1.35"><div style="font-weight:700">${nm}</div>${sub}</div>`;
 }
 // Data hợp lệ để hiển thị ở các dashboard Sỉ: phải có Nguồn (Online/Offline) + Tên KH — loại data thô chưa ai đụng vào
@@ -1456,8 +1456,8 @@ function buildOnlineCampTable(){
   });
   // Lý do 1 đơn chốt không (hoặc có) khớp được chiến dịch — dùng cho modal drill-down khi bấm vào cột Chốt Đơn
   const chotReasonOf=(camp,adId,rescued)=>{
-    if(camp==='Data chưa phân loại')return'<span style="color:#ca8a04;font-weight:700">⚠️ Chưa nhập Ads ID ở Data Hub, cũng không tìm thấy bên Sale Online/CRM Sỉ</span>';
-    if(camp==='ID chưa khớp chiến dịch')return`<span style="color:#e11d48;font-weight:700">⚠️ Ads ID "${adId}" không khớp chiến dịch nào trong Ads Manager</span>`;
+    if(camp==='Data chưa phân loại')return'<span style="color:#ca8a04;font-weight:700">Chưa nhập Ads ID ở Data Hub, cũng không tìm thấy bên Sale Online/CRM Sỉ</span>';
+    if(camp==='ID chưa khớp chiến dịch')return`<span style="color:#e11d48;font-weight:700">Ads ID "${adId}" không khớp chiến dịch nào trong Ads Manager</span>`;
     if(rescued)return`<span style="color:var(--green)">✓ Ads ID lấy từ Sale Online/CRM Sỉ: ${adId} (Data Hub bị thiếu)</span>`;
     return`<span style="color:var(--green)">✓ Đã khớp Ads ID ${adId}</span>`;
   };
@@ -1551,7 +1551,7 @@ function buildOnlineCampTable(){
     </tr>`;
     return brandRow+subRows;
   }).join('');
-  return`<div class="sec-label">Kết Quả Online Theo Chiến Dịch <span style="font-weight:400;color:var(--muted);font-size:11px">(${grand.total} data · theo Ad ID · click thương hiệu để xem chiến dịch · click số Chốt Đơn để xem chi tiết đơn + Ads ID + lý do · 📅 ${curPeriodLabel()})</span></div>
+  return`<div class="sec-label">Kết Quả Online Theo Chiến Dịch <span style="font-weight:400;color:var(--muted);font-size:11px">(${grand.total} data · theo Ad ID · click thương hiệu để xem chiến dịch · click số Chốt Đơn để xem chi tiết đơn + Ads ID + lý do · ${curPeriodLabel()})</span></div>
   <div class="tov-card"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
     <thead><tr style="background:var(--bg2);border-bottom:2px solid var(--border)">
       <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--muted)">THƯƠNG HIỆU</th>
@@ -1623,31 +1623,31 @@ function dataModal(d){
 const QC_CMP_FLOOR='2026-06-01'; // ngày bắt đầu có data chi phí ads, không cho chọn trước mốc này
 const QC_CMP_GROUPS=[
   {name:'MKT PERFORMANCE',color:'#4361ee',cols:[
-    {key:'totalSpend',label:'Tổng Chi Phí',icon:'💰',type:'vnd'},
-    {key:'totalMess',label:'Tổng Mess',icon:'💬',type:'num'},
-    {key:'nTiem',label:'Số Data Tiềm Năng',icon:'🧑‍🤝‍🧑',type:'num',expandKey:'tiemSrc',expandCols:[
-      {key:'nTiemLe',label:'Tiềm Năng Lẻ',icon:'🌐',type:'num'},
-      {key:'nTiemSi',label:'Tiềm Năng Sỉ (nguồn Online)',icon:'🏪',type:'num'},
+    {key:'totalSpend',label:'Tổng Chi Phí',icon:'',type:'vnd'},
+    {key:'totalMess',label:'Tổng Mess',icon:'',type:'num'},
+    {key:'nTiem',label:'Số Data Tiềm Năng',icon:'‍‍',type:'num',expandKey:'tiemSrc',expandCols:[
+      {key:'nTiemLe',label:'Tiềm Năng Lẻ',icon:'',type:'num'},
+      {key:'nTiemSi',label:'Tiềm Năng Sỉ (nguồn Online)',icon:'',type:'num'},
     ]},
-    {key:'costPerMess',label:'CP / Mess',icon:'📌',type:'vnd',lowerBetter:true,expandKey:'cost',expandCols:[
-      {key:'costPerDat',label:'CP / Data Đạt',icon:'🎯',type:'vnd',lowerBetter:true},
-      {key:'costPerTiem',label:'CP / Tiềm Năng',icon:'🧲',type:'vnd',lowerBetter:true},
+    {key:'costPerMess',label:'CP / Mess',icon:'',type:'vnd',lowerBetter:true,expandKey:'cost',expandCols:[
+      {key:'costPerDat',label:'CP / Data Đạt',icon:'',type:'vnd',lowerBetter:true},
+      {key:'costPerTiem',label:'CP / Tiềm Năng',icon:'',type:'vnd',lowerBetter:true},
     ]},
-    {key:'adsDs',label:'ADS/DS',icon:'📊',type:'pct',lowerBetter:true},
+    {key:'adsDs',label:'ADS/DS',icon:'',type:'pct',lowerBetter:true},
   ]},
   {name:'SALE PERFORMANCE',color:'#0abf7a',cols:[
-    {key:'combRevenue',label:'Doanh Số',icon:'💵',type:'vnd',expandKey:'dsRoot'},
-    {key:'combOrders',label:'Số Đơn Chốt',icon:'🛍️',type:'num',expandKey:'orders',expandCols:[
-      {key:'leOrders',label:'Đơn Lẻ',icon:'🌐',type:'num'},
-      {key:'siOrders',label:'Đơn Sỉ (nguồn Online)',icon:'🏪',type:'num'},
+    {key:'combRevenue',label:'Doanh Số',icon:'',type:'vnd',expandKey:'dsRoot'},
+    {key:'combOrders',label:'Số Đơn Chốt',icon:'',type:'num',expandKey:'orders',expandCols:[
+      {key:'leOrders',label:'Đơn Lẻ',icon:'',type:'num'},
+      {key:'siOrders',label:'Đơn Sỉ (nguồn Online)',icon:'',type:'num'},
     ]},
-    {key:'dsPerOrder',label:'DS TB/Đơn',icon:'📦',type:'vnd',expandKey:'dsPerOrder',expandCols:[
-      {key:'dsPerOrderLe',label:'DS TB/Đơn Lẻ',icon:'🌐',type:'vnd'},
-      {key:'dsPerOrderSi',label:'DS TB/Đơn Sỉ (nguồn Online)',icon:'🏪',type:'vnd'},
+    {key:'dsPerOrder',label:'DS TB/Đơn',icon:'',type:'vnd',expandKey:'dsPerOrder',expandCols:[
+      {key:'dsPerOrderLe',label:'DS TB/Đơn Lẻ',icon:'',type:'vnd'},
+      {key:'dsPerOrderSi',label:'DS TB/Đơn Sỉ (nguồn Online)',icon:'',type:'vnd'},
     ]},
-    {key:'closeRate',label:'Tỷ Lệ Chốt',icon:'🎯',type:'pct',expandKey:'closeRateSrc',expandCols:[
-      {key:'closeRateLe',label:'Tỷ Lệ Chốt Lẻ',icon:'🌐',type:'pct'},
-      {key:'closeRateSi',label:'Tỷ Lệ Chốt Sỉ (nguồn Online)',icon:'🏪',type:'pct'},
+    {key:'closeRate',label:'Tỷ Lệ Chốt',icon:'',type:'pct',expandKey:'closeRateSrc',expandCols:[
+      {key:'closeRateLe',label:'Tỷ Lệ Chốt Lẻ',icon:'',type:'pct'},
+      {key:'closeRateSi',label:'Tỷ Lệ Chốt Sỉ (nguồn Online)',icon:'',type:'pct'},
     ]},
   ]},
 ];
@@ -1659,25 +1659,25 @@ const QC_CMP_GROUPS=[
 // Tính trực tiếp từ data đã tải trong dashboard (không gọi AI, không phụ thuộc file ngoài).
 // Sỉ ở đây CHỈ tính Bắc+Nam (saleSiRows/saleSiCrmRows) — xem project_si-mien-trung, chưa gộp Miền Trung.
 const DG_MESS_METRICS=[
-  {key:'totalSpend',label:'Tổng Chi Phí',icon:'💰',type:'vnd'},
-  {key:'totalMess',label:'Tổng Mess',icon:'💬',type:'num'},
-  {key:'costPerMess',label:'CP / Mess',icon:'📌',type:'vnd',lowerBetter:true},
-  {key:'nDat',label:'Data Đạt',icon:'✅',type:'num'},
-  {key:'datRate',label:'Tỷ Lệ Mess → Đạt',icon:'📈',type:'pct'},
-  {key:'costPerDat',label:'CP / Data Đạt',icon:'🎯',type:'vnd',lowerBetter:true},
-  {key:'nTiem',label:'Data Tiềm Năng',icon:'🧑‍🤝‍🧑',type:'num'},
-  {key:'tiemRate',label:'Tỷ Lệ Mess → Tiềm Năng',icon:'📈',type:'pct'},
-  {key:'costPerTiem',label:'CP / Tiềm Năng',icon:'🧲',type:'vnd',lowerBetter:true},
+  {key:'totalSpend',label:'Tổng Chi Phí',icon:'',type:'vnd'},
+  {key:'totalMess',label:'Tổng Mess',icon:'',type:'num'},
+  {key:'costPerMess',label:'CP / Mess',icon:'',type:'vnd',lowerBetter:true},
+  {key:'nDat',label:'Data Đạt',icon:'',type:'num'},
+  {key:'datRate',label:'Tỷ Lệ Mess → Đạt',icon:'',type:'pct'},
+  {key:'costPerDat',label:'CP / Data Đạt',icon:'',type:'vnd',lowerBetter:true},
+  {key:'nTiem',label:'Data Tiềm Năng',icon:'‍‍',type:'num'},
+  {key:'tiemRate',label:'Tỷ Lệ Mess → Tiềm Năng',icon:'',type:'pct'},
+  {key:'costPerTiem',label:'CP / Tiềm Năng',icon:'',type:'vnd',lowerBetter:true},
 ];
 const DG_ONL_METRICS=[
-  {key:'onlLeadsCreated',label:'Lead Tạo Mới',icon:'🆕',type:'num'},
-  {key:'onlErrRate',label:'Tỷ Lệ Lead Lỗi Data',icon:'⚠️',type:'pct',lowerBetter:true},
-  {key:'onlLostRate',label:'Tỷ Lệ Mất Lead',icon:'❌',type:'pct',lowerBetter:true},
+  {key:'onlLeadsCreated',label:'Lead Tạo Mới',icon:'',type:'num'},
+  {key:'onlErrRate',label:'Tỷ Lệ Lead Lỗi Data',icon:'',type:'pct',lowerBetter:true},
+  {key:'onlLostRate',label:'Tỷ Lệ Mất Lead',icon:'',type:'pct',lowerBetter:true},
 ];
 const DG_SI_METRICS=[
-  {key:'siLeadsCreated',label:'Lead Tạo Mới',icon:'🆕',type:'num'},
-  {key:'siErrRate',label:'Tỷ Lệ Lead Lỗi Data',icon:'⚠️',type:'pct',lowerBetter:true},
-  {key:'siCaredRate',label:'Tỷ Lệ Đã Chăm Sóc',icon:'🤝',type:'pct'},
+  {key:'siLeadsCreated',label:'Lead Tạo Mới',icon:'',type:'num'},
+  {key:'siErrRate',label:'Tỷ Lệ Lead Lỗi Data',icon:'',type:'pct',lowerBetter:true},
+  {key:'siCaredRate',label:'Tỷ Lệ Đã Chăm Sóc',icon:'',type:'pct'},
 ];
 
 // ── Gom dữ liệu tuần: MKT/Sale (mktMetricsForRange), chất lượng mess+xử lý data (dgQualityMetricsForRange) ──
@@ -1724,7 +1724,7 @@ function calcKPI(rows){
 // ── Helpers ──
 function mkKpi(icon,label,val,sub,grad){return`<div class="kpi ${grad}"><div class="kpi-icon">${icon}</div><div class="kpi-lbl">${label}</div><div class="kpi-val">${val}</div><div class="kpi-sub">${sub}</div></div>`;}
 // Icon SVG thật (họ Heroicons outline, cùng style với sidebar) dùng cho .kpi-icon thay emoji -- giữ lại
-// emoji riêng cho 4 brand (🕯️🐉🏮🌊) vì đó là tín hiệu nhận diện màu sắc theo từng brand, đổi sang icon
+// emoji riêng cho 4 brand () vì đó là tín hiệu nhận diện màu sắc theo từng brand, đổi sang icon
 // đơn sắc sẽ mất tác dụng phân biệt nhanh bằng mắt.
 const ICONS={
   cash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M6 10h.01M18 14h.01"/></svg>',
@@ -1749,9 +1749,9 @@ const ICONS={
   chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg>',
 };
 function ic(key){return ICONS[key]||'';}
-const THINK_PHRASES=['🔌 Đang kết nối dữ liệu...','🧮 Đang tạo công thức...','🧠 Đang suy đoán logic...','🔍 Đang dò quét mẫu hình ẩn...','⚙️ Đang tối ưu hoá thuật toán...','📡 Đang đồng bộ hoá đa nguồn...','🧬 Đang phân tích tương quan...','🎯 Đang tính toán xác suất...','🗺️ Đang mô phỏng kịch bản...','💾 Đang truy xuất bộ nhớ...','🔗 Đang biên dịch chuỗi suy luận...','📊 Đang dựng mô hình dự đoán...'];
+const THINK_PHRASES=['Đang kết nối dữ liệu...','Đang tạo công thức...','Đang suy đoán logic...','Đang dò quét mẫu hình ẩn...','Đang tối ưu hoá thuật toán...','Đang đồng bộ hoá đa nguồn...','Đang phân tích tương quan...','Đang tính toán xác suất...','Đang mô phỏng kịch bản...','Đang truy xuất bộ nhớ...','Đang biên dịch chuỗi suy luận...','Đang dựng mô hình dự đoán...'];
 function showLoading(){
-  const l='<div class="loading"><div class="spin"></div><br><span style="font-size:13px;font-weight:700;color:var(--text2)">🤔 Thinking…</span><br><span id="loadStatus" style="font-size:11px;color:var(--muted);margin-top:6px;display:block"></span></div>';
+  const l='<div class="loading"><div class="spin"></div><br><span style="font-size:13px;font-weight:700;color:var(--text2)">Thinking…</span><br><span id="loadStatus" style="font-size:11px;color:var(--muted);margin-top:6px;display:block"></span></div>';
   // Trang nào ĐANG mở thì hiện trạng thái đang tải ở đó (trước đây ghi cứng vào page-overview/page-detail,
   // 2 trang này đã xoá nên gọi thẳng sẽ ném lỗi null).
   const act=document.querySelector('.tab-page.active');if(act)act.innerHTML=l;
@@ -1763,7 +1763,7 @@ function showLoading(){
 }
 function stopThinking(){if(window._thinkInterval){clearInterval(window._thinkInterval);window._thinkInterval=null;}}
 function setStatus(msg){console.log('[STATUS]',msg);}
-function showErr(msg){const e=`<div class="err-box">❌ ${msg}</div>`;const act=document.querySelector('.tab-page.active');if(act)act.innerHTML=e;}
+function showErr(msg){const e=`<div class="err-box">${msg}</div>`;const act=document.querySelector('.tab-page.active');if(act)act.innerHTML=e;}
 function parseDate(v){
   if(!v)return null;const s=String(v).trim();
   const iso=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(iso)return new Date(+iso[1],+iso[2]-1,+iso[3]);
@@ -2208,7 +2208,7 @@ function dhManualForm(){
   const inp='height:30px;box-sizing:border-box;padding:3px 9px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:600;font-family:var(--font);outline:none;width:100%';
   const fld=(l,h)=>`<div style="min-width:0"><div style="font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:3px;text-transform:uppercase">${l}</div>${h}</div>`;
   return `<div class="tbl-card" style="padding:16px 18px;margin-bottom:16px">
-    <div style="font-size:13px;font-weight:800;margin-bottom:12px">➕ Thêm khách nhập tay — <span style="color:var(--accent)">khách ${dhManualType()}</span></div>
+    <div style="font-size:13px;font-weight:800;margin-bottom:12px">Thêm khách nhập tay — <span style="color:var(--accent)">khách ${dhManualType()}</span></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:11px 13px">
       ${fld('Ngày tạo *',`<input type="date" id="dhmDate" value="${todayISO()}" style="${inp}">`)}
       ${fld('Họ tên khách *',`<input id="dhmName" placeholder="VD: Chị Lưu" style="${inp}">`)}
@@ -2316,7 +2316,7 @@ function dhCronHtml(log){
     return m<60?m+' phút trước':Math.floor(m/60)+' giờ '+(m%60)+' phút trước';};
   return `<div class="tbl-card" style="margin-bottom:16px">
     <div class="tbl-head" style="border-left:4px solid var(--accent)">
-      <div class="tbl-title">⏱️ Đồng bộ dữ liệu</div>
+      <div class="tbl-title">Đồng bộ dữ liệu</div>
       <span style="margin-left:auto;font-size:11px;color:var(--muted)">chỉ Supreme Leader thấy mục này</span></div>
     <div class="tbl-scroll"><table>
       <thead><tr><th>Nguồn</th><th>Lịch tự chạy</th><th>Lần cuối</th><th>Kết quả</th><th></th></tr></thead>
@@ -2382,7 +2382,7 @@ function dhExcludedHtml(){
     .sort((a,b)=>String(b.created||'').localeCompare(String(a.created||'')));
   return `<div class="tbl-card" style="margin-bottom:16px">
     <div class="tbl-head" style="border-left:4px solid var(--muted)">
-      <div class="tbl-title">🚫 Data đã gỡ khỏi báo cáo Sale</div><div class="tbl-count">${num(list.length)}</div>
+      <div class="tbl-title">Data đã gỡ khỏi báo cáo Sale</div><div class="tbl-count">${num(list.length)}</div>
       <span style="margin-left:auto;font-size:11px;color:var(--muted)">không tính vào báo cáo Sale -- bấm Khôi phục để đưa lại</span></div>
     ${list.length?`<div class="tbl-scroll"><table>
       <thead><tr><th>Ngày tạo</th><th>Họ tên</th><th>Brand</th><th>Kênh</th><th>Sales</th><th>Thẻ Pancake</th><th>Lý do gỡ</th><th>Người gỡ</th><th></th></tr></thead>
@@ -2415,7 +2415,7 @@ async function renderDataHub(){
   }catch(e){}
   const pancakeOrdersHtml=`
     <div class="tbl-card" style="margin-bottom:16px">
-      <div class="tbl-head"><div class="tbl-title">🟢 Pancake POS — Đơn hàng (tự động thật)</div><span class="tbl-count" style="margin-left:auto">Đồng bộ lần cuối: ${dhSyncLabel}</span></div>
+      <div class="tbl-head"><div class="tbl-title">Pancake POS — Đơn hàng (tự động thật)</div><span class="tbl-count" style="margin-left:auto">Đồng bộ lần cuối: ${dhSyncLabel}</span></div>
       <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:16px 16px 0">Data</div>
       <div class="kpi-grid" style="padding:12px 16px 16px">
         ${mkKpi(ic('tag'),'SL Data',num(dhOrders.length),'tổng data thô','g-orange')}
@@ -2437,7 +2437,7 @@ async function renderDataHub(){
         <input id="dhDateFrom" type="date" onchange="dhFilterChange()" style="height:30px;padding:3px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px">
         <span style="font-size:11px;color:var(--muted)">→</span>
         <input id="dhDateTo" type="date" onchange="dhFilterChange()" style="height:30px;padding:3px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px">
-        <input id="dhSearch" placeholder="🔎 Mã đơn / Tên / SĐT / Ad ID…" oninput="dhFilterChange()" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:210px;outline:none">
+        <input id="dhSearch" placeholder="Mã đơn / Tên / SĐT / Ad ID…" oninput="dhFilterChange()" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:210px;outline:none">
         <button class="refresh-btn" onclick="dhRefresh()" title="Tải lại từ Supabase">↺ Tải lại</button>
       </div>
       <div id="dhTableWrap"></div>
@@ -2458,9 +2458,9 @@ async function renderDataHub(){
     ${modHeader('Data Hub','','datahub','renderDataHub')}
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
-        ${canRaw?tabBtn('overview','📊 Tổng Quan'):''}
-        ${canLe?tabBtn('manual','✍️ Nhập tay Lẻ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')!=='Sỉ').length+')'):''}
-        ${canSi?tabBtn('manual-si','📦 Nhập tay Sỉ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')==='Sỉ').length+')'):''}
+        ${canRaw?tabBtn('overview','Tổng Quan'):''}
+        ${canLe?tabBtn('manual','Nhập tay Lẻ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')!=='Sỉ').length+')'):''}
+        ${canSi?tabBtn('manual-si','Nhập tay Sỉ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')==='Sỉ').length+')'):''}
       </span>
     </div>`;
   if(mode==='manual'||mode==='manual-si'){el.innerHTML=header+dhManualHtml();return;}
@@ -2480,8 +2480,8 @@ async function renderDataHub(){
 // để trang kia chỉ còn phần Sale thao tác hằng ngày: Master / CRM / Nhập Liệu).
 // Thêm mảng mới (Sale Sỉ, MKT, Đối soát...) thì bổ sung 1 dòng vào RPT_TH_TABS.
 const RPT_TH_TABS=[
-  ['sale-le','🛍️ Sale Lẻ',()=>{window._rptSlType='Lẻ';return rptSlOverviewHtml();}],
-  ['sale-si','📦 Sale Sỉ',()=>{window._rptSlType='Sỉ';return rptSlOverviewHtml();}],
+  ['sale-le','Sale Lẻ',()=>{window._rptSlType='Lẻ';return rptSlOverviewHtml();}],
+  ['sale-si','Sale Sỉ',()=>{window._rptSlType='Sỉ';return rptSlOverviewHtml();}],
 ];
 function rptThTab(){const t=localStorage.getItem('rptThTab')||RPT_TH_TABS[0][0];return RPT_TH_TABS.some(x=>x[0]===t)?t:RPT_TH_TABS[0][0];}
 function rptThSetTab(t){localStorage.setItem('rptThTab',t);renderReportTongHop();}
@@ -2589,7 +2589,7 @@ function rptSlEditContent(leadId){
   m.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)qcCloseModal()">
     <div style="background:var(--surface);border-radius:16px;max-width:640px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">
       <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border)">
-        <span style="width:38px;height:38px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted);flex:0 0 auto">👤</span>
+        <span style="width:38px;height:38px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted);flex:0 0 auto"></span>
         <div style="min-width:0">
           <div style="font-size:15px;font-weight:800">${esc(r.name)}</div>
           <div style="font-size:11.5px;color:var(--muted);font-weight:600">${esc(r.phone||'chưa có SĐT')} · ${esc(r.kenh)} · ${esc(r.staff||'chưa có sales')}</div>
@@ -2781,9 +2781,9 @@ async function rptSlRenderPage(type){
       :modHeader('Báo cáo · '+cfg.title,'',cfg.mod,cfg.render)}
     <div class="period-bar">
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
-        <button onclick="rptSlSetViewMode('master')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='master'?'var(--accent)':'var(--surface)'};color:${mode==='master'?'#fff':'var(--text2)'}">👤 Master Data</button>
-        <button onclick="rptSlSetViewMode('crm')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='crm'?'var(--accent)':'var(--surface)'};color:${mode==='crm'?'#fff':'var(--text2)'}">📋 CRM</button>
-        <button onclick="rptSlSetViewMode('input')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='input'?'var(--accent)':'var(--surface)'};color:${mode==='input'?'#fff':'var(--text2)'}">📝 Nhập Liệu${(()=>{const n=rptSlTodoCount();return n?' <span style="background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+n+'</span>':'';})()}</button>
+        <button onclick="rptSlSetViewMode('master')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='master'?'var(--accent)':'var(--surface)'};color:${mode==='master'?'#fff':'var(--text2)'}">Master Data</button>
+        <button onclick="rptSlSetViewMode('crm')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='crm'?'var(--accent)':'var(--surface)'};color:${mode==='crm'?'#fff':'var(--text2)'}">CRM</button>
+        <button onclick="rptSlSetViewMode('input')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='input'?'var(--accent)':'var(--surface)'};color:${mode==='input'?'#fff':'var(--text2)'}">Nhập Liệu${(()=>{const n=rptSlTodoCount();return n?' <span style="background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+n+'</span>':'';})()}</button>
       </span>
     </div>
     <div id="rptSlBody"></div>`;
@@ -3278,7 +3278,7 @@ function rptSlMasterRow(r){
     <td>${dmy(r.lastTouch)||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
     <td class="num" style="font-weight:800;color:${r.revenue+r.repeatRevenue>0?'var(--green)':'inherit'}">${r.revenue+r.repeatRevenue>0?vnd(r.revenue+r.repeatRevenue):'—'}</td>
     <td><span style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap">
-      <span style="width:26px;height:26px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;flex:0 0 auto">👤</span>
+      <span style="width:26px;height:26px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;flex:0 0 auto"></span>
       <span style="font-size:11.5px;font-weight:700;color:var(--accent)">Chi tiết</span></span></td>
   </tr>`;
 }
@@ -3304,7 +3304,7 @@ function rptSlMasterHtml(){
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-end">
       ${rptSlFilterBar('master')}
-      <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(rptSlRender,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
+      <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(rptSlRender,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
     </div>
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">Master Data — hồ sơ khách</div><div class="tbl-count">${num(list.length)}</div>
@@ -3368,7 +3368,7 @@ function rptSlShowCustomer(key){
   m.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)qcCloseModal()">
     <div style="background:var(--surface);border-radius:16px;max-width:1000px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">
       <div style="display:flex;align-items:center;gap:13px;padding:16px 20px;border-bottom:1px solid var(--border)">
-        <span style="width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:21px;color:var(--muted);flex:0 0 auto">👤</span>
+        <span style="width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:21px;color:var(--muted);flex:0 0 auto"></span>
         <div style="min-width:0">
           <div style="font-size:16px;font-weight:800;color:var(--text)">${esc(r.name)}</div>
           <div style="font-size:12px;color:var(--muted);font-weight:600">${esc(r.phone||'chưa có SĐT')} · ${esc(r.kenh)} · ${esc(r.staff||'chưa có sales')}</div>
@@ -3501,13 +3501,13 @@ function rptSlInputHtml(){
       ${mkKpi(ic('check'),'Đơn chốt đã nối',num(b.all.filter(r=>r.isChot&&r.kh).length)+'/'+num(b.all.filter(r=>r.isChot).length),'nối bằng Mã KH','g-green')}
       ${mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow')}
     </div>
-    ${rptSlInputSec('s1','🔴','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','sửa trong Pancake (ghi chú nội bộ) hoặc Kiot — app chỉ báo',b.thieuMa.length,'var(--red)',s1)}
-    ${rptSlInputSec('s2','⚠️','Mã KH đã điền nhưng không tồn tại bên Kiot','',b.maSai.length,'var(--yellow)',s2)}
-    ${rptSlInputSec('s3','📝','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
-    ${rptSlInputSec('s4','❓','Mất lead nhưng chưa ghi nhóm nguyên nhân','',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}
-    ${rptSlInputSec('s5','💰','Khách tiềm năng chưa có giá trị dự kiến','',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
-    ${rptSlInputSec('s8','💬','Chưa ghi nội dung trao đổi','bấm để mở bảng nhập — app không tự suy được phần này',b.thieuND.length,'var(--accent)',s8)}
-    ${rptSlInputSec('s7','🔄','Đơn POS Cake chưa đổi trạng thái (bước B3)','tiềm năng → Đã xác nhận · chốt đơn → Đã gửi hàng — sửa trong Pancake',b.saiB3.length,'var(--orange,#f97316)',s7)}
+    ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','sửa trong Pancake (ghi chú nội bộ) hoặc Kiot — app chỉ báo',b.thieuMa.length,'var(--red)',s1)}
+    ${rptSlInputSec('s2','','Mã KH đã điền nhưng không tồn tại bên Kiot','',b.maSai.length,'var(--yellow)',s2)}
+    ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
+    ${rptSlInputSec('s4','','Mất lead nhưng chưa ghi nhóm nguyên nhân','',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}
+    ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
+    ${rptSlInputSec('s8','','Chưa ghi nội dung trao đổi','bấm để mở bảng nhập — app không tự suy được phần này',b.thieuND.length,'var(--accent)',s8)}
+    ${rptSlInputSec('s7','','Đơn POS Cake chưa đổi trạng thái (bước B3)','tiềm năng → Đã xác nhận · chốt đơn → Đã gửi hàng — sửa trong Pancake',b.saiB3.length,'var(--orange,#f97316)',s7)}
 `;
 }
 // ── CRM: TOÀN BỘ khách chốt + tiềm năng từ Master đổ sang, mỗi khách 1 DÒNG.
@@ -3560,7 +3560,7 @@ function rptSlCrmHtml(){
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
     <td onclick="rptSlStop(event)" style="white-space:nowrap">
       <button onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')" title="Xem hồ sơ đầy đủ"
-        style="border:1.5px solid var(--border);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">👤 Chi tiết</button></td>
+        style="border:1.5px solid var(--border);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">Chi tiết</button></td>
   </tr>`;}).join('');
   // 6 dash theo khung CRM của dashboard cũ: hàng 1 về KHÁCH, hàng 2 về KẾT QUẢ.
   const daCham=all.filter(r=>r.careDate||r.content);
@@ -3580,7 +3580,7 @@ function rptSlCrmHtml(){
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;justify-content:flex-end">
       ${rptSlFilterBar('crm')}
-      <input value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="🔎 Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(rptSlRender,350)" style="${inp};height:30px;min-width:250px">
+      <input value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(rptSlRender,350)" style="${inp};height:30px;min-width:250px">
     </div>
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div></div>
@@ -3694,7 +3694,7 @@ async function renderLog(){
   const head=`
     ${modHeader('Nhật ký','','log','renderLog')}
     <div class="period-bar"><span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
-      ${tb('user','👤 Thao tác người dùng')}${tb('sync','🔄 Lịch sử đồng bộ')}</span></div>`;
+      ${tb('user','Thao tác người dùng')}${tb('sync','Lịch sử đồng bộ')}</span></div>`;
   if(tab==='sync'){el.innerHTML=head+'<div style="padding:40px;text-align:center;color:var(--muted)">Đang tải…</div>';el.innerHTML=head+await logSyncHtml();return;}
   await logLoad(true);
   const f=logFilter();
@@ -3725,7 +3725,7 @@ async function renderLog(){
       ${mkKpi(ic('clock'),'Hôm nay',num(logRows.filter(r=>String(r.at).slice(0,10)===today).length),'','g-teal')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center">
-      ${chip('all','Tất cả')}${chip('del','🔴 Chỉ lượt XOÁ')}${whos.map(w=>chip(w,w)).join('')}
+      ${chip('all','Tất cả')}${chip('del','Chỉ lượt XOÁ')}${whos.map(w=>chip(w,w)).join('')}
     </div>
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">Nhật ký</div><div class="tbl-count">${num(list.length)}</div>
@@ -3754,7 +3754,7 @@ async function renderSettings(){
       <td class="name">${a.name}</td>
       <td><code>${a.username||'—'}</code></td>
       <td>${a.position_title==='supreme'
-        ?'<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:800;color:#fff;background:linear-gradient(135deg,#f59e0b,#ef4444)">👑 Supreme Leader</span>'
+        ?'<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:800;color:#fff;background:linear-gradient(135deg,#f59e0b,#ef4444)">Supreme Leader</span>'
         :(CRM_POSITION_LABEL[a.position_title]||a.position_title||'—')}</td>
       <td>${a.department||'—'}</td>
       <td style="font-size:11px">${(()=>{
@@ -3777,8 +3777,8 @@ async function renderSettings(){
     <div class="page-title">Phân quyền — Quản lý tài khoản</div>
     
     <div class="period-bar">
-      <span class="stat-chip">👥 ${accounts.filter(a=>a.status==='active').length} tài khoản đang hoạt động</span>
-      <button class="refresh-btn" onclick="openCrmAddAccount()">➕ Tạo tài khoản</button>
+      <span class="stat-chip">${accounts.filter(a=>a.status==='active').length} tài khoản đang hoạt động</span>
+      <button class="refresh-btn" onclick="openCrmAddAccount()">Tạo tài khoản</button>
     </div>
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">Danh sách tài khoản</div><div class="tbl-count">${accounts.length}</div></div>
@@ -3811,7 +3811,7 @@ function openCrmAddAccount(){
       <div id="crmAddAcctErr" style="color:var(--red);font-size:12px;font-weight:600;margin-bottom:8px;display:none"></div>
       <button type="submit" class="btn" style="width:100%;padding:10px;font-size:13px">Tạo tài khoản</button>
     </form>`;
-  crmModalShell('crmAddAcctModal','⚙️ Tạo Tài Khoản','linear-gradient(135deg,#334155,#0f172a)',body);
+  crmModalShell('crmAddAcctModal','Tạo Tài Khoản','linear-gradient(135deg,#334155,#0f172a)',body);
 }
 function crmAcctApplyDefaults(){
   const pos=document.getElementById('crmAcctPosition')?.value;
@@ -3883,7 +3883,7 @@ function openCrmEditAccount(userId){
       <div id="crmEditAcctErr" style="display:none;color:var(--red);font-size:12px;font-weight:700;margin-bottom:8px"></div>
       <button type="submit" class="refresh-btn" style="width:100%;padding:10px">Lưu thay đổi</button>
     </form>`;
-  crmModalShell('crmEditAcctModal','⚙️ Sửa tài khoản','linear-gradient(135deg,#334155,#0f172a)',body);
+  crmModalShell('crmEditAcctModal','Sửa tài khoản','linear-gradient(135deg,#334155,#0f172a)',body);
 }
 async function submitCrmEditAccount(userId){
   const f=document.getElementById('crmEditAcctForm');
