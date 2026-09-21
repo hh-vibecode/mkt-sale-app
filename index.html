@@ -3392,14 +3392,14 @@ function rptSlBuildMaster(){
     const lastTouch=touches[touches.length-1]||'';
     rows.push({key:'M'+r.id,orders:[],kords,kh:kc?kc.code:null,revenue,linkBy:kc?'Nhập tay':'',
       manualKH:r.kiot_code||null,noteKH:null,kiotCusts:kc?[kc]:[],leadId,suggest:[],isManual:true,
-      manualStatus:mn.status||'',note:mn.note||r.note||'',
+      manualStatus:mn.status||r.status||'',note:mn.note||r.note||'',
       potential:Number(mn.potential_value||0), careDate:mn.care_date||'',careAuto:false,careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
       name:r.customer_name||'—',phones:rptSlGomSdt([r.phone],kc?[kc]:[]),
       phone:r.phone||(kc?(kc.phone||kc.phone_key||''):''),phoneFromKiot:!r.phone,
       created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staffRaw:r.staff_name||'',staff:(x=>rptSlSaleIsHuman(x)?rptSlSaleName(x):'')(r.staff_name),adId:'',
       nguon:r.nguon||'Online',kenh:rptSlKenhNorm(r.kenh)||'(nhập tay)',diaChi:rptSlDiaChiKiot(kc?[kc]:[]),
       kiotName:kc?kc.name:'',saleType:r.sale_type||'Lẻ',
-      status:kords.length?'Chốt đơn':(mn.status||''),tagStatus:'Nhập tay',
+      status:kords.length?'Chốt đơn':(mn.status||r.status||''),tagStatus:'Nhập tay',
       isChot:kords.length>0,closeDate:kords.length?(kords[0].purchase_date||'').slice(0,10):'',
       lastKiotDate:kords.length?(kords[kords.length-1].purchase_date||'').slice(0,10):'',
       lastTouch,daysIdle:lastTouch?Math.floor((new Date()-new Date(lastTouch))/86400000):null});
