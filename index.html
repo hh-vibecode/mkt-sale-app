@@ -3634,35 +3634,53 @@ function rptSlShowCustomer(key){
 // Pancake vẫn là nguồn sự thật -- app chỉ là chỗ nhập cho nhanh.
 const DH_ORDER_STATUS={'0':'Mới','1':'Đã xác nhận','2':'Đã gửi hàng','3':'Đã nhận','6':'Đã huỷ'};
 function dhOrderStatusLabel(v){return DH_ORDER_STATUS[String(v)]||('mã '+v);}
+// ĐIỀN MÃ KH -> DÒNG BIẾN MẤT NGAY, việc còn lại chạy ngầm.
+// Trước đây phải chờ Edge Function đi 4-5 lượt sang Pancake (ghi ghi chú, đọc lại, đổi trạng thái, đổi thẻ)
+// rồi còn nạp lại toàn bộ đơn -> nút đứng "Đang lưu..." mấy giây, Sale tưởng treo.
+// Giờ: kiểm mã ngay tại máy (không gọi mạng) -> đánh dấu dòng "đang xử lý" để bảng bỏ nó ra -> render luôn,
+// rồi mới gọi Pancake ở nền. Xong thì vá thẳng vào dữ liệu đang giữ trong bộ nhớ (khỏi tải lại 2.5k đơn).
+// Hỏng thì trả dòng về bảng và báo, nên không sợ mất việc.
+const RPT_SL_DANG_LUU=new Set();
 async function rptSlSaveKH(leadId,val,el){
   const ma=String(val||'').trim();
   if(!ma){if(el)el.focus();return;}
   const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
   const o=r&&(r.orders||[]).slice(-1)[0];   // dán vào đơn Pancake mới nhất của khách
   if(!o){alert('Khách này không có đơn Pancake để dán mã — dòng nhập tay thì điền bên Data Hub.');return;}
-  const btn=el&&el.nextElementSibling;
-  if(btn){btn.disabled=true;btn.textContent='Đang lưu...';}
-  try{
-    const conTiem=/TIỀM NĂNG/i.test(o.customer_tags||'');
-    const res=await fetch(`${SUPABASE_URL}/functions/v1/pancake-note`,{method:'POST',
-      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({shop_id:o.shop_id,order_id:o.order_id,code:ma,
-        status:r.isChot?2:1,           // chốt -> Đã gửi hàng · tiềm năng -> Đã xác nhận
-        chot:r.isChot&&conTiem,        // còn thẻ tiềm năng thì đổi sang CHỐT ĐƠN
-        who:logWho()})});
-    const d=await res.json().catch(()=>({}));
-    if(!res.ok)throw new Error(d.error||('lỗi '+res.status));
-    logAct('U','datahub_orders','#'+o.system_id,r.name,'Mã KH',o.internal_note||'',d.note||d.ma);
-    if(d.status!==undefined)logAct('U','datahub_orders','#'+o.system_id,r.name,'Trạng thái đơn',dhOrderStatusLabel(o.order_status),dhOrderStatusLabel(d.status));
-    if(d.tags)logAct('U','datahub_orders','#'+o.system_id,r.name,'Thẻ khách',(d.tags_cu||[]).join(', '),d.tags.join(', '));
-    await dhLoadOrders(true);          // nạp lại để doanh thu/ngày chốt hiện ngay trong app
-    window._kiotOrdByCode=null;
-    rptSlRender();
-  }catch(e){
-    alert('Chưa lưu được sang Pancake: '+e.message);
-    if(btn){btn.disabled=false;btn.textContent='Lưu';}
-    if(el)el.style.borderColor='var(--red)';
-  }
+  // kiểm tại chỗ: sai dạng hoặc không có bên Kiot thì báo ngay, khỏi đi mạng
+  const m=/^\s*(?:kh)?\s*0*(\d{3,7})\s*$/i.exec(ma);
+  if(!m){alert('Mã KH không đúng dạng. Ví dụ đúng: KH007620');if(el)el.focus();return;}
+  const maChuan='KH'+m[1].padStart(6,'0');
+  if(!kiotCustByCode()[maChuan]){alert('Bên Kiot không có mã '+maChuan+'. Kiểm tra lại mã giúp em.');if(el){el.focus();el.select&&el.select();}return;}
+
+  RPT_SL_DANG_LUU.add(leadId);
+  rptSlRender();                      // dòng biến khỏi bảng NGAY
+  const conTiem=/TIỀM NĂNG/i.test(o.customer_tags||'');
+  (async()=>{
+    try{
+      const res=await fetch(`${SUPABASE_URL}/functions/v1/pancake-note`,{method:'POST',
+        headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({shop_id:o.shop_id,order_id:o.order_id,code:maChuan,
+          status:r.isChot?2:1,           // chốt -> Đã gửi hàng · tiềm năng -> Đã xác nhận
+          chot:r.isChot&&conTiem,        // còn thẻ tiềm năng thì đổi sang CHỐT ĐƠN
+          who:logWho()})});
+      const d=await res.json().catch(()=>({}));
+      if(!res.ok)throw new Error(d.error||('lỗi '+res.status));
+      logAct('U','datahub_orders','#'+o.system_id,r.name,'Mã KH',o.internal_note||'',d.note||d.ma);
+      if(d.status!==undefined)logAct('U','datahub_orders','#'+o.system_id,r.name,'Trạng thái đơn',dhOrderStatusLabel(o.order_status),dhOrderStatusLabel(d.status));
+      if(d.tags)logAct('U','datahub_orders','#'+o.system_id,r.name,'Thẻ khách',(d.tags_cu||[]).join(', '),d.tags.join(', '));
+      // vá ngay vào dữ liệu trong bộ nhớ -> doanh thu/ngày chốt hiện đúng mà không phải tải lại
+      o.internal_note=d.note||maChuan;
+      if(d.status!==undefined)o.order_status=String(d.status);
+      if(d.tags)o.customer_tags=d.tags.join(', ');
+      window._kiotOrdByCode=null;
+    }catch(e){
+      alert('Chưa lưu được "'+maChuan+'" sang Pancake: '+e.message+'\nDòng đã được trả lại bảng, thử lại giúp em.');
+    }finally{
+      RPT_SL_DANG_LUU.delete(leadId);
+      rptSlRender();
+    }
+  })();
 }
 // BỌC ĐẦU CHO MÃ KH: mã gõ sai vẫn có thể TRÙNG một khách có thật bên Kiot -> app nối vào và ăn nhầm
 // doanh thu của người khác. Không chặn cứng được (Sale mới là người biết khách nào là khách nào), nên
@@ -3746,7 +3764,8 @@ function rptSlShowTrungMa(key){
     cols:['Lead ID','Ngày tạo','Họ tên / Mã đơn','SĐT / Tiền','Kênh / Mặt hàng','Sales','Đơn Pancake','Trạng thái','Hội thoại'],rows});
 }
 function rptSlTodoBuckets(){
-  const all=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao);
+  const all=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao)
+    .filter(r=>!RPT_SL_DANG_LUU.has(r.leadId));   // dòng vừa điền mã: giấu đi trong lúc chạy ngầm
   return{
     all,
     // 1. Đã chốt nhưng chưa có Mã KH -> mất doanh thu. Kể cả ca app khớp được SĐT vẫn phải điền.
