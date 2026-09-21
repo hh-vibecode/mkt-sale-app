@@ -3923,9 +3923,7 @@ async function submitCrmAddAccount(){
     document.getElementById('crmAddAcctModal').style.display='none';
     await loadCrmFromSupabase();
     renderSettings();
-    alert('Đã tạo tài khoản — DÙNG ĐƯỢC NGAY, không phải chờ đồng bộ.
-
-Nhắc người dùng đăng nhập bằng username/mật khẩu vừa tạo. Nếu họ đang mở sẵn app thì F5 là nhận quyền mới.');
+    alert(['Đã tạo tài khoản — DÙNG ĐƯỢC NGAY, không phải chờ đồng bộ.','','Nhắc người dùng đăng nhập bằng username/mật khẩu vừa tạo. Nếu họ đang mở sẵn app thì F5 là nhận quyền mới.'].join(String.fromCharCode(10)));
   }catch(e){errEl.textContent='Lỗi: '+e.message;errEl.style.display='block';}
   finally{btn.disabled=false;btn.textContent='Tạo tài khoản';}
 }
