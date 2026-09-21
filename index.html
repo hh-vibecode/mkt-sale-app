@@ -3425,53 +3425,9 @@ function rptSlShowCustomer(key){
 }
 // ── TAB NHẬP LIỆU: chia data thành các phần việc riêng để Sale nhìn là biết phải làm gì ──
 // Mọi thao tác ở đây ghi vào saleretail_manual -> Master Data đọc lại ngay, không phải nhập 2 nơi.
-// TRẠNG THÁI ĐƠN POS CAKE (cột order_status của datahub_orders) -- bước B3 trong quy trình Sale:
-//   khách TIỀM NĂNG -> đơn phải chuyển "Đã xác nhận"; khách CHỐT ĐƠN -> đơn phải chuyển "Đã gửi hàng".
-// Đối chiếu dữ liệu thật 18/9/2026 khớp đúng: thẻ CHỐT ĐƠN 122/131 đơn ở status 2, thẻ TIỀM NĂNG 20 đơn
-// ở status 1, phần còn lại ở status 0 = chưa ai đụng vào.
-const DH_ORDER_STATUS={'0':'Mới / chưa xử lý','1':'Đã xác nhận','2':'Đã gửi hàng','3':'Đã nhận hàng'};
-function dhOrderStatusLabel(v){return DH_ORDER_STATUS[String(v)]||('mã '+v);}
-// Đơn sai bước B3. CHỈ so Pancake với Pancake (thẻ khách vs trạng thái đơn) -> đúng phạm vi việc của Sale.
-function rptSlB3Issues(rows){
-  const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
-  const out=[];
-  rows.forEach(r=>{
-    (r.orders||[]).forEach(o=>{
-      const st=String(o.order_status);
-      const chot=dhIsOrder(o),tiem=tag(o,'TIỀM NĂNG')||tag(o,'BÀN GIAO');
-      if(chot&&st!=='2')out.push({r,o,can:'Đã gửi hàng'});
-      else if(tiem&&!chot&&st!=='1'&&st!=='2')out.push({r,o,can:'Đã xác nhận'});
-      else if(!chot&&st==='2')out.push({r,o,can:'gắn thẻ CHỐT ĐƠN'});
-    });
-  });
-  return out.sort((a,b)=>String(b.o.order_date).localeCompare(String(a.o.order_date)));
-}
-// ĐIỀN MÃ KH: ghi THẲNG vào ghi chú nội bộ đơn Pancake qua Edge Function 'pancake-note' (token ở server).
-// Pancake vẫn là nguồn sự thật -- app chỉ là chỗ nhập cho nhanh, không tạo nguồn thứ hai.
-// Function tự chuẩn hoá mã, NỐI THÊM chứ không ghi đè ghi chú cũ, bỏ qua nếu mã đã có sẵn.
-async function rptSlSaveKH(leadId,val,el){
-  const ma=String(val||'').trim();
-  if(!ma){if(el)el.focus();return;}
-  const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
-  const o=r&&(r.orders||[]).slice(-1)[0];       // dán vào đơn Pancake mới nhất của khách
-  if(!o){alert('Khách này không có đơn Pancake để dán mã — dòng nhập tay thì điền bên Data Hub.');return;}
-  const btn=el&&el.nextElementSibling;
-  if(btn){btn.disabled=true;btn.textContent='Đang lưu...';}
-  try{
-    const res=await fetch(`${SUPABASE_URL}/functions/v1/pancake-note`,{method:'POST',
-      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({shop_id:o.shop_id,order_id:o.order_id,code:ma,who:logWho()})});
-    const d=await res.json().catch(()=>({}));
-    if(!res.ok)throw new Error(d.error||('lỗi '+res.status));
-    logAct('U','datahub_orders','#'+o.system_id,r.name,'internal_note',o.internal_note||'',d.note||d.ma);
-    await dhLoadOrders(true);                   // nạp lại để bảng cập nhật ngay
-    rptSlRender();
-  }catch(e){
-    alert('Chưa lưu được sang Pancake: '+e.message);
-    if(btn){btn.disabled=false;btn.textContent='Lưu';}
-    if(el)el.style.borderColor='var(--red)';
-  }
-}
+// Trạng thái đơn POS Cake (bước B3) giờ do JOB ĐỒNG BỘ tự đổi (xem autoB3 trong scripts/sync-datahub-pancake.js):
+// khách tiềm năng -> "Đã xác nhận", khách chốt -> "Đã gửi hàng". Sale không phải vào Pancake sửa tay nữa,
+// nên tab Nhập Liệu bỏ mục này.
 function rptSlTodoBuckets(){
   const all=rptSlSortNew(rptSlBuildMaster());
   return{
@@ -3486,7 +3442,6 @@ function rptSlTodoBuckets(){
     // 5. Khách tiềm năng (chưa chốt, chưa mất) nhưng chưa có giá trị dự kiến.
     thieuGT:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!r.potential),
     // 6. Bước B3 quy trình Sale: đơn trên POS Cake chưa đổi trạng thái cho khớp thẻ khách.
-    saiB3:rptSlB3Issues(all),
     // 7. Chưa ghi nội dung trao đổi -- thứ DUY NHẤT không hệ thống nào suy ra được, phải Sale ghi.
     //    Khách đã chốt thì hồ sơ đã khoá, không sửa được nữa -> không nhắc.
     thieuND:all.filter(r=>!r.isChot&&!String(r.content||'').trim()),
@@ -3495,7 +3450,7 @@ function rptSlTodoBuckets(){
 function rptSlTodoCount(){
   if(!rptSlManualLoaded||!dhLoaded||!kiotLoaded)return 0;
   const b=rptSlTodoBuckets();
-  return b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuGT.length+b.saiB3.length+b.thieuND.length;
+  return b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuGT.length+b.thieuND.length;
 }
 // 3 mục QUAN TRỌNG NHẤT luôn mở sẵn data lỗi; các mục còn lại gập lại, bấm tiêu đề mới bung ra.
 function rptSlSecOpen(id){return !!(window._rptSlSecOpen||{})[id];}
@@ -3553,13 +3508,6 @@ function rptSlInputHtml(){
       <td class="num" onclick="rptSlStop(event)"><input inputmode="numeric" placeholder="vd 15tr, 500k"
         onkeydown="if(event.key==='Enter')this.blur()" onblur="if(this.value.trim())rptSlSetPotential('${r.leadId}',this.value,this)"
         style="height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--accent);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;width:120px;text-align:right"></td></tr>`).join(''));
-  const s7=tbl('<th>Ngày đơn</th><th>Đơn Pancake</th><th>Họ tên</th><th>Sales</th><th>Thẻ khách</th><th>Trạng thái đơn hiện tại</th><th>Cần đổi thành</th>',
-    b.saiB3.map(({r,o,can})=>`<tr><td>${dmy(o.order_date)||'—'}</td>
-      <td style="font-size:11px"><code>#${o.system_id}</code> ${DH_BRAND_LABEL[o.brand]||o.brand||''}</td>
-      <td class="name">${r.name}</td><td>${r.staff||'—'}</td>
-      <td style="font-size:10.5px;color:var(--muted)">${o.customer_tags||'—'}</td>
-      <td style="font-size:11px;color:var(--red);font-weight:700">${dhOrderStatusLabel(o.order_status)}</td>
-      <td style="font-size:11px;color:var(--green);font-weight:800">${can}</td></tr>`).join(''));
   // Nội dung trao đổi thường dài -> không nhét ô input vào bảng, bấm nút mở popup sửa cả hàng.
   const s8=tbl(HEAD+'<th>Trạng thái</th><th>Ngày chăm sóc</th><th style="'+RPT_SL_TH_EDIT+'">Nội dung trao đổi</th>',
     b.thieuND.map(r=>`<tr>${info(r)}
@@ -3567,7 +3515,7 @@ function rptSlInputHtml(){
       <td>${dmy(r.careDate)||'—'}</td>
       <td onclick="rptSlStop(event)"><button onclick="rptSlEditRow('${r.leadId}')"
         style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">✏️ Ghi nội dung</button></td></tr>`).join(''));
-  const tong=b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuGT.length+b.saiB3.length+b.thieuND.length;
+  const tong=b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuGT.length+b.thieuND.length;
   return `
     <div class="kpi-grid" style="margin-bottom:14px">
       ${mkKpi(ic('clipboard'),'Tổng việc cần làm',num(tong),'','g-purple')}
@@ -3577,7 +3525,6 @@ function rptSlInputHtml(){
     </div>
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
     ${rptSlInputSec('s2','','Mã KH đã điền nhưng không tồn tại bên Kiot','dán lại mã đúng, app ghi sang Pancake',b.maSai.length,'var(--yellow)',s2,true)}
-    ${rptSlInputSec('s7','','Đơn POS Cake chưa đổi trạng thái (bước B3)','tiềm năng → Đã xác nhận · chốt đơn → Đã gửi hàng — sửa trong Pancake',b.saiB3.length,'var(--orange,#f97316)',s7,true)}
     ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
     ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
     ${rptSlInputSec('s8','','Chưa ghi nội dung trao đổi','app không tự suy được phần này',b.thieuND.length,'var(--accent)',s8)}

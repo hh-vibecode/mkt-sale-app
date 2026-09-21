@@ -132,6 +132,54 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
   }).catch(e => console.warn('Ghi sync_log lỗi (bỏ qua, không chặn job chính):', e.message));
 }
 
+// ── BƯỚC B3 TỰ ĐỘNG ──────────────────────────────────────────────────────────────────────────────
+// Quy trình Sale: khách TIỀM NĂNG -> đơn phải là "Đã xác nhận"; khách CHỐT ĐƠN -> "Đã gửi hàng".
+// Trước đây app chỉ liệt kê đơn sai để Sale vào Pancake sửa tay. Nay đổi luôn hộ, vì API cho ghi:
+//   PUT https://pos.pages.fm/api/v1/shops/{shop_id}/orders/{order_id}  body {status}
+// LƯU Ý: Pancake CHỈ CHO TIẾN, không cho lùi (đo 21/9/2026: lùi -> 422). Nên chỉ đẩy tới, không bao giờ
+// hạ trạng thái, và chỉ đụng đơn từ MIN_ORDER_DATE trở lại đây.
+// Tắt bằng biến môi trường AUTO_B3=0.
+const ST = { MOI: 0, XAC_NHAN: 1, GUI_HANG: 2 };
+function b3Target(tags) {
+  const t = (tags || '').toUpperCase();
+  // CHỈ áp cho khách LẺ -- quy trình B3 là của Sale Lẻ. Đơn KH SỈ để nguyên, khi nào team Sỉ chốt
+  // quy trình riêng thì mở rộng sau.
+  if (t.includes('KH SỈ') || !t.includes('KH LẺ')) return null;
+  if (t.includes('CHỐT ĐƠN')) return ST.GUI_HANG;
+  if (t.includes('TIỀM NĂNG') || t.includes('BÀN GIAO')) return ST.XAC_NHAN;
+  return null;
+}
+async function autoB3() {
+  if (process.env.AUTO_B3 === '0') return 'Bỏ qua bước B3 (AUTO_B3=0).';
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/datahub_orders?select=shop_id,order_id,system_id,customer_tags,order_status&order_date=gte.${MIN_ORDER_DATE}`,
+    { headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY } });
+  if (!res.ok) return 'Không đọc được đơn để chạy B3.';
+  const rows = await res.json();
+  const can = rows.filter(r => {
+    const dich = b3Target(r.customer_tags);
+    return dich !== null && Number(r.order_status) < dich;   // chỉ đẩy TỚI
+  });
+  if (!can.length) return 'B3: không đơn nào cần đổi trạng thái.';
+  let ok = 0; const loi = [];
+  for (const r of can) {
+    const dich = b3Target(r.customer_tags);
+    try {
+      const put = await fetch(`https://pos.pages.fm/api/v1/shops/${r.shop_id}/orders/${r.order_id}?access_token=${SESSION_TOKEN}`,
+        { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: dich }) });
+      if (put.ok) {
+        ok++;
+        await fetch(`${SUPABASE_URL}/rest/v1/datahub_orders?shop_id=eq.${r.shop_id}&order_id=eq.${r.order_id}`,
+          { method: 'PATCH', headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_status: String(dich) }) }).catch(() => {});
+      } else {
+        loi.push('#' + r.system_id + ' ' + put.status);
+      }
+    } catch (e) { loi.push('#' + r.system_id + ' ' + e.message); }
+    await new Promise(r2 => setTimeout(r2, 120));
+  }
+  return `B3: đã đổi trạng thái ${ok}/${can.length} đơn` + (loi.length ? ` (lỗi: ${loi.slice(0, 5).join(', ')})` : '') + '.';
+}
+
 (async () => {
   if (!SESSION_TOKEN || !SERVICE_ROLE_KEY) {
     console.error('Thiếu PANCAKE_SESSION_TOKEN hoặc SUPABASE_SERVICE_ROLE_KEY');
@@ -157,7 +205,8 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
       errors.push(`Shop ${shop.id} (${shop.brand}): ${e.message}`);
     }
   }
-  console.log(`XONG. Tổng ${grandTotal} đơn đã đồng bộ.`);
+  const b3 = await autoB3();
+  console.log(`XONG. Tổng ${grandTotal} đơn đã đồng bộ.` + (b3 ? ' ' + b3 : ''));
   await logSyncEnd(logId, {
     status: errors.length ? 'failed' : 'success',
     recordsCreated: grandTotal,
