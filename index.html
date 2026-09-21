@@ -2576,7 +2576,6 @@ function rptSlSaleName(x){
 // Tách riêng khỏi datahub_orders/kiot_* vì 2 bảng đó bị job sync ghi đè mỗi lần chạy.
 let rptSlManual={},rptSlManualLoaded=false;
 const RPT_SL_STATUS_OPTS=['Đang chăm sóc','Chăm sóc dài hạn','Mất lead'];
-const RPT_SL_LOST_OPTS=['Không phản hồi','Giá cao','Chọn nơi khác','Chưa có nhu cầu','Sai nhu cầu / sai sản phẩm','Ở xa, không giao được','Khác'];
 async function rptSlLoadManual(force){
   if(rptSlManualLoaded&&!force)return;
   const rows=await sbFetchAll('saleretail_manual','select=*');
@@ -2590,7 +2589,7 @@ async function rptSlLoadManual(force){
 // GIỮ LẠI: Ngày chăm sóc, Nội dung trao đổi, Mã KH -- chốt rồi vẫn còn nguyên giá trị.
 async function rptSlLockChot(){
   const stale=rptSlBuildMaster().filter(r=>r.isChot&&
-    (r.manualStatus||r.lostGroup||r.lostReason||r.potential));
+    (r.manualStatus||r.potential));
   if(!stale.length)return;
   const body=stale.map(r=>({lead_id:r.leadId,status:null,lost_group:null,lost_reason:null,
     potential_value:null,updated_by:'auto-khoa-chot',updated_at:new Date().toISOString()}));
@@ -2601,7 +2600,7 @@ async function rptSlLockChot(){
       body:JSON.stringify(body)});
     if(!res.ok)throw new Error('HTTP '+res.status);
     stale.forEach(r=>logAct('U','saleretail_manual',r.leadId,r.name,'(khoá khi chốt)',
-      [r.manualStatus,r.lostGroup,r.potential?num(r.potential):''].filter(Boolean).join(' · '),'Chốt đơn'));
+      [r.manualStatus,r.potential?num(r.potential):''].filter(Boolean).join(' · '),'Chốt đơn'));
     await rptSlLoadManual(true);
     console.log('[KHOÁ CHỐT] đã dọn '+stale.length+' khách vừa chuyển sang chốt đơn');
   }catch(e){console.warn('[KHOÁ CHỐT] lỗi (bỏ qua):',e.message);}
@@ -2708,10 +2707,7 @@ function rptSlEditRow(leadId){
           :'<input id="rsE_pot" value="'+(r.potential?num(r.potential):'')+'" inputmode="numeric" placeholder="vd 15tr, 500k" style="'+ip+';text-align:right">'}</div>
         <div>${lb('Trạng thái')}${r.isChot
           ?'<div style="height:36px;display:flex;align-items:center">'+rptSlStatusPill('Chốt đơn')+'</div>'
-          :'<select id="rsE_status" style="'+ip+';cursor:pointer" onchange="rptSlLostToggle(this.value)">'+opt(RPT_SL_STATUS_OPTS,r.manualStatus)+'</select>'}</div>
-        ${r.isChot?'':`<div id="rsE_lostWrap" style="opacity:${r.manualStatus==='Mất lead'?1:.45}">${lb('Nhóm nguyên nhân mất lead')}
-          <select id="rsE_lost" ${r.manualStatus==='Mất lead'?'':'disabled'} style="${ip};cursor:pointer">${opt(RPT_SL_LOST_OPTS,r.lostGroup)}</select>
-          <div id="rsE_lostHint" style="font-size:10.5px;color:var(--muted);margin-top:4px;display:${r.manualStatus==='Mất lead'?'none':'block'}">chỉ điền được khi Trạng thái là "Mất lead"</div></div>`}
+          :'<select id="rsE_status" style="'+ip+';cursor:pointer">'+opt(RPT_SL_STATUS_OPTS,r.manualStatus)+'</select>'}</div>
         <div style="grid-column:1/-1">${lb('Nội dung trao đổi')}
           <textarea id="rsE_content" rows="6" placeholder="Khách quan tâm gì, đã trao đổi những gì, hẹn lại khi nào…"
             onkeydown="if(event.ctrlKey&&event.key==='Enter')rptSlSaveRow('${leadId}')"
@@ -2723,13 +2719,6 @@ function rptSlEditRow(leadId){
         <button onclick="rptSlSaveRow('${leadId}')" class="refresh-btn" style="padding:6px 18px">Lưu</button>
       </div>
     </div></div>`;
-}
-function rptSlLostToggle(st){
-  const w=document.getElementById('rsE_lostWrap'),sel=document.getElementById('rsE_lost'),h=document.getElementById('rsE_lostHint');
-  const on=st==='Mất lead';
-  if(w)w.style.opacity=on?1:.45;
-  if(sel){sel.disabled=!on;if(!on)sel.value='';}
-  if(h)h.style.display=on?'none':'block';
 }
 async function rptSlSaveRow(leadId){
   const g=id=>document.getElementById(id);
@@ -2744,9 +2733,7 @@ async function rptSlSaveRow(leadId){
     put('potential_value',v||null);
   }
   if(g('rsE_status')){
-    const st=g('rsE_status').value;put('status',st);
-    // Nhóm nguyên nhân chỉ có nghĩa khi Mất lead -- đổi sang trạng thái khác thì xoá đi cho sạch.
-    put('lost_group',st==='Mất lead'&&g('rsE_lost')?g('rsE_lost').value:null);
+    put('status',g('rsE_status').value);
   }
   if(!Object.keys(patch).length){qcCloseModal();return;}
   try{
@@ -3197,7 +3184,7 @@ function rptSlBuildMaster(){
     return{key,orders,kords,kh,revenue,linkBy,manualKH,noteKH,kiotCusts,leadId,suggest,
       // Trạng thái: khách có thẻ CHỐT ĐƠN thì KHOÁ CỨNG "Chốt đơn", Sale không sửa được.
       // Còn lại để Sale tự chọn ở dropdown; chưa chọn thì để TRỐNG (không suy từ thẻ nữa).
-      manualStatus:mn.status||'',lostGroup:mn.lost_group||'',lostReason:mn.lost_reason||'',note:mn.note||'',
+      manualStatus:mn.status||'',note:mn.note||'',
       potential:Number(mn.potential_value||0),
       // NGÀY CHĂM SÓC của khách có đơn Pancake = ngày tạo đơn đầu tiên -> suy ra được, KHOÁ không cho sửa.
       careDate:orders[0].order_date||mn.care_date||'',careAuto:true,
@@ -3238,7 +3225,7 @@ function rptSlBuildMaster(){
     const lastTouch=touches[touches.length-1]||'';
     rows.push({key:'M'+r.id,orders:[],kords,kh:kc?kc.code:null,revenue,linkBy:kc?'Nhập tay':'',
       manualKH:r.kiot_code||null,noteKH:null,kiotCusts:kc?[kc]:[],leadId,suggest:[],isManual:true,
-      manualStatus:mn.status||'',lostGroup:mn.lost_group||'',lostReason:mn.lost_reason||'',note:mn.note||r.note||'',
+      manualStatus:mn.status||'',note:mn.note||r.note||'',
       potential:Number(mn.potential_value||0), careDate:mn.care_date||'',careAuto:false,careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
       name:r.customer_name||'—',phone:r.phone||(kc?(kc.phone||kc.phone_key||''):''),phoneFromKiot:!r.phone,
       created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staff:rptSlSaleName(r.staff_name),adId:'',
@@ -3266,7 +3253,7 @@ function rptSlBuildMaster(){
     keep.phones=[...new Set(g.map(r=>r.phone).filter(Boolean))];
     keep.isChot=g.some(r=>r.isChot);
     keep.mergedFrom=rest.map(r=>r.leadId);
-    ['staff','kenh','diaChi','content','careDate','manualStatus','lostGroup','lostReason'].forEach(f=>{
+    ['staff','kenh','diaChi','content','careDate','manualStatus'].forEach(f=>{
       if(!keep[f])keep[f]=rest.map(r=>r[f]).filter(Boolean)[0]||keep[f];
     });
     keep.potential=Math.max(...g.map(r=>r.potential||0));
@@ -3404,7 +3391,6 @@ function rptSlShowCustomer(key){
     // Phần CHĂM SÓC -- trước đây modal chỉ có thông tin đơn/khách, thiếu hẳn thứ Sale ghi hằng ngày.
     fld('Ngày chăm sóc',esc(dmy(r.careDate))),
     fld('Giá trị tiềm năng',r.isChot?'':(r.potential?vnd(r.potential):''),r.potential?'var(--orange,#f97316)':''),
-    fld('Nhóm nguyên nhân mất lead',esc(r.lostGroup),r.lostGroup?'var(--red)':''),
   ].join('')+`<div style="grid-column:1/-1">
     <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Nội dung trao đổi gần nhất</div>
     <div style="font-size:12.5px;font-weight:600;margin-top:4px;white-space:pre-wrap;line-height:1.5">${r.content?esc(r.content):'<span style="color:var(--muted);font-weight:600">—</span>'}</div></div>`;
@@ -3497,7 +3483,6 @@ function rptSlTodoBuckets(){
     // 3. Chưa cập nhật trạng thái (chỉ nhóm chưa chốt -- nhóm chốt đã khoá cứng).
     chuaTT:all.filter(r=>!r.isChot&&!r.manualStatus),
     // 4. Đã chọn Mất lead nhưng chưa ghi nhóm nguyên nhân.
-    thieuLy:all.filter(r=>r.status==='Mất lead'&&!r.lostGroup),
     // 5. Khách tiềm năng (chưa chốt, chưa mất) nhưng chưa có giá trị dự kiến.
     thieuGT:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!r.potential),
     // 6. Bước B3 quy trình Sale: đơn trên POS Cake chưa đổi trạng thái cho khớp thẻ khách.
@@ -3510,7 +3495,7 @@ function rptSlTodoBuckets(){
 function rptSlTodoCount(){
   if(!rptSlManualLoaded||!dhLoaded||!kiotLoaded)return 0;
   const b=rptSlTodoBuckets();
-  return b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length+b.thieuGT.length+b.saiB3.length+b.thieuND.length;
+  return b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuGT.length+b.saiB3.length+b.thieuND.length;
 }
 // 3 mục QUAN TRỌNG NHẤT luôn mở sẵn data lỗi; các mục còn lại gập lại, bấm tiêu đề mới bung ra.
 function rptSlSecOpen(id){return !!(window._rptSlSecOpen||{})[id];}
@@ -3562,10 +3547,6 @@ function rptSlInputHtml(){
       <option value="">— chọn —</option>${RPT_SL_STATUS_OPTS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></td>`;
   const s3=tbl(HEAD+'<th>Thẻ Pancake</th><th style="'+RPT_SL_TH_EDIT+'">Trạng thái</th>',
     b.chuaTT.map(r=>`<tr>${info(r)}<td style="font-size:11px;color:var(--muted)">${r.tagStatus||'—'}</td>${ttSel(r)}</tr>`).join(''));
-  const s4=tbl(HEAD+'<th style="'+RPT_SL_TH_EDIT+'">Nhóm nguyên nhân</th>',
-    b.thieuLy.map(r=>`<tr>${info(r)}<td onclick="rptSlStop(event)"><select onchange="rptSlSetField('${r.leadId}','lost_group',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid var(--red);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer">
-      <option value="">— chọn —</option>${RPT_SL_LOST_OPTS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></td></tr>`).join(''));
-
   const s5=tbl(HEAD+'<th>Thẻ Pancake</th><th>Trạng thái</th><th style="'+RPT_SL_TH_EDIT+'">Giá trị tiềm năng</th>',
     b.thieuGT.map(r=>`<tr>${info(r)}<td style="font-size:11px;color:var(--muted)">${r.tagStatus||'—'}</td>
       <td style="font-size:11px">${r.manualStatus||'<span style="color:var(--muted)">chưa cập nhật</span>'}</td>
@@ -3586,7 +3567,7 @@ function rptSlInputHtml(){
       <td>${dmy(r.careDate)||'—'}</td>
       <td onclick="rptSlStop(event)"><button onclick="rptSlEditRow('${r.leadId}')"
         style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">✏️ Ghi nội dung</button></td></tr>`).join(''));
-  const tong=b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuLy.length+b.thieuGT.length+b.saiB3.length+b.thieuND.length;
+  const tong=b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuGT.length+b.saiB3.length+b.thieuND.length;
   return `
     <div class="kpi-grid" style="margin-bottom:14px">
       ${mkKpi(ic('clipboard'),'Tổng việc cần làm',num(tong),'','g-purple')}
@@ -3598,7 +3579,6 @@ function rptSlInputHtml(){
     ${rptSlInputSec('s2','','Mã KH đã điền nhưng không tồn tại bên Kiot','dán lại mã đúng, app ghi sang Pancake',b.maSai.length,'var(--yellow)',s2,true)}
     ${rptSlInputSec('s7','','Đơn POS Cake chưa đổi trạng thái (bước B3)','tiềm năng → Đã xác nhận · chốt đơn → Đã gửi hàng — sửa trong Pancake',b.saiB3.length,'var(--orange,#f97316)',s7,true)}
     ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
-    ${rptSlInputSec('s4','','Mất lead nhưng chưa ghi nhóm nguyên nhân','',b.thieuLy.length,'var(--purple,#8b5cf6)',s4)}
     ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
     ${rptSlInputSec('s8','','Chưa ghi nội dung trao đổi','app không tự suy được phần này',b.thieuND.length,'var(--accent)',s8)}
 `;
@@ -3645,10 +3625,6 @@ function rptSlCrmHtml(){
       :lock('<span class="num" style="font-weight:700">'+(r.potential?vnd(r.potential):'<span style="color:var(--muted);font-weight:400">—</span>')+'</span>',r.potential?vnd(r.potential):'',r,true)}
     <td onclick="rptSlStop(event)">${r.isChot?rptSlStatusPill('Chốt đơn')
       :sel(r,'status',RPT_SL_STATUS_OPTS,r.manualStatus,130)}</td>
-    <td onclick="rptSlStop(event)" title="${r.isChot||r.manualStatus==='Mất lead'?'':'Chỉ điền được khi Trạng thái là Mất lead'}">${
-      r.isChot?'<span style="color:var(--muted)">—</span>'
-      :r.manualStatus==='Mất lead'?sel(r,'lost_group',RPT_SL_LOST_OPTS,r.lostGroup,160)
-      :'<span style="color:var(--muted);font-size:11px">—</span>'}</td>
     <td>${dmy(r.closeDate)||'<span style="color:var(--muted)">—</span>'}</td>
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
     <td onclick="rptSlStop(event)" style="white-space:nowrap">
@@ -3678,8 +3654,8 @@ function rptSlCrmHtml(){
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày chăm sóc</th><th>Nguồn</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái</th><th style="${RPT_SL_TH_EDIT}">Nhóm nguyên nhân mất lead</th><th>Ngày chốt</th><th>Doanh thu</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="11">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
+        <thead><tr><th>Ngày chăm sóc</th><th>Nguồn</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái</th><th>Ngày chốt</th><th>Doanh thu</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="10">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetCrmPage(${page-1})">‹ Trước</button>
