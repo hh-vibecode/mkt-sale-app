@@ -1943,7 +1943,7 @@ function dhFilteredOrders(){
   const to=document.getElementById('dhDateTo')?.value||'';
   const q=(document.getElementById('dhSearch')?.value||'').trim().toLowerCase();
   return dhOrders.filter(o=>{
-    if(!dashSeeSale(o.staff_name)||!dashSeeType(dhSaleTypeOrder(o)))return false;
+    if(!dashSeeSale(rptSlSaleName(o.staff_name))||!dashSeeType(dhSaleTypeOrder(o)))return false;
     if(brand!=='all'&&o.brand!==brand)return false;
     if(from&&o.order_date<from)return false;
     if(to&&o.order_date>to)return false;
@@ -1970,7 +1970,7 @@ function dhRenderTable(){
     <td style="font-size:11.5px">${[o.address,o.ward,o.district,o.province].filter(Boolean).join(', ')||'—'}</td>
     <td style="font-size:11px">${o.source||'—'}</td>
     <td style="font-size:11px;color:var(--muted)">${o.internal_note||'—'}</td>
-    <td>${o.staff_name||'—'}</td><td style="font-size:11px">${o.ad_id||'—'}</td>
+    <td>${rptSlSaleName(o.staff_name)||'—'}</td><td style="font-size:11px">${o.ad_id||'—'}</td>
     <td><span style="display:inline-block;padding:2px 9px;border-radius:20px;background:var(--accent-l);color:var(--accent);font-size:11px;font-weight:800">${DH_BRAND_LABEL[o.brand]||o.brand||'—'}</span></td>
   </tr>`).join('');
   wrap.innerHTML=`
@@ -2216,7 +2216,7 @@ function dhManualForm(){
       ${fld('Nguồn khách',`<select id="dhmNguon" style="${inp}"><option>Online</option><option>Offline</option></select>`)}
       ${fld('Kênh',`<input id="dhmKenh" list="dhmKenhList" placeholder="VD: Tiktok Chánh Tâm" style="${inp}">
         <datalist id="dhmKenhList">${DH_MANUAL_KENH.map(x=>`<option value="${x}">`).join('')}</datalist>`)}
-      ${fld('Sales phụ trách',`<select id="dhmStaff" style="${inp};cursor:pointer"><option value="">— chọn Sale —</option>${RPT_SL_SALES.map(x=>`<option value="${x}">${x}</option>`).join('')}</select>`)}
+      ${fld('Sales phụ trách',`<select id="dhmStaff" style="${inp};cursor:pointer"><option value="">— chọn Sale —</option>${rptSlSalesList().map(x=>`<option value="${x}">${x}</option>`).join('')}</select>`)}
       ${fld('Mã KH Kiot',`<input id="dhmKh" placeholder="KH0075xx" style="${inp}">`)}
       <div style="display:flex;align-items:flex-end"><button onclick="dhManualAdd()" class="refresh-btn" style="width:100%;height:30px">Thêm</button></div>
     </div>
@@ -2340,7 +2340,7 @@ function dhManualHtml(){
   const byCode=kiotCustByCode(),inv=dhManualRev();
   const mine=dhManual.filter(r=>(r.sale_type||'Lẻ')===T);
   const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none';
-  const rows=mine.filter(r=>dashSeeSale(r.staff_name)&&dashSeeType(r.sale_type||'Lẻ')).slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
+  const rows=mine.filter(r=>dashSeeSale(rptSlSaleName(r.staff_name))&&dashSeeType(r.sale_type||'Lẻ')).slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
     const v=inv[r.kiot_code]||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
     return `<tr>
       <td>${dmy(r.created_date)||'—'}</td>
@@ -2528,7 +2528,48 @@ const RPT_SL_MIN_DATE='2026-06-01';
 // DANH SÁCH SALE THẬT -- dùng cho MỌI dropdown và bảng "Hiệu quả theo Sales".
 // Pancake trả về cả tên hệ thống ("Hệ thống", "PANCAKE THT HOLDING") và tên trùng người
 // ("Trịnh Lê Vân Ngọc" = "Vân Ngọc") -> không được để lọt vào ô chọn Sale.
-const RPT_SL_SALES=['Nguyễn Thảo Ngọc','Phạm Thị Lệ','Vân Ngọc','Đỗ Xuân Hoàng','Chánh Tâm Ngọc Diệp'];
+// DANH SÁCH SALE: LẤY THẲNG TỪ PANCAKE (ai đang xử lý tin nhắn thì có tên), không gõ tay danh sách cố định
+// -- có nhân sự mới là tự hiện trong mọi dropdown, không phải sửa code.
+// Bỏ các tên hệ thống/bot và tên rỗng. Danh sách nhớ lại trong localStorage để trang Phân quyền
+// (không nạp đơn Pancake) vẫn có cái mà hiện.
+const RPT_SL_SALE_BLACKLIST=['hệ thống','he thong','pancake','system','bot','admin','sales admin','tht holding','automation','chatbot'];
+// Danh sách LẤY ĐÚNG người phụ trách bên Pancake (+ người đứng tên dòng nhập tay của chính app).
+// KHÔNG lấy tên người bán bên Kiot: đơn Kiot nối về khách bằng MÃ KH rồi, tên bên đó không dùng tới.
+function rptSlSaleIsHuman(n){
+  const t=String(n||'').trim().toLowerCase();
+  if(t.length<3)return false;
+  if(RPT_SL_SALE_BLACKLIST.some(b=>t.includes(b)))return false;
+  return /[a-zà-ỹ]/i.test(t);
+}
+function rptSlSalesList(){
+  let out=[];
+  try{
+    const src=[...(typeof dhOrders!=='undefined'?dhOrders:[]).map(o=>o.staff_name),
+               ...(typeof dhManual!=='undefined'?dhManual:[]).map(r=>r.staff_name)];
+    out=[...new Set(src.map(rptSlSaleName).filter(rptSlSaleIsHuman))].sort((a,b)=>a.localeCompare(b,'vi'));
+  }catch(e){out=[];}
+  if(out.length){try{localStorage.setItem('dashSalesList',JSON.stringify(out));}catch(e){}return out;}
+  try{const c=JSON.parse(localStorage.getItem('dashSalesList')||'[]');if(c.length)return c;}catch(e){}
+  return[];
+}
+// BÍ DANH: cùng một người nhưng Pancake và Kiot ghi tên khác nhau -> quy về MỘT tên chuẩn (tên Pancake),
+// nếu không thì báo cáo tách thành 2 dòng và phân quyền dữ liệu theo tên sẽ hụt data của họ.
+//   Kiot "Đinh Thị Ngọc Diệp"  = Pancake "Chánh Tâm Ngọc Diệp"
+//   Kiot "Trịnh Lê Vân Ngọc"   = Pancake "Vân Ngọc"
+// Thêm người mới bị lệch tên thì bổ sung 1 dòng vào đây.
+// Chỉ gộp các CÁCH VIẾT KHÁC NHAU CỦA CÙNG MỘT NGƯỜI trong data của mình (Pancake + dòng nhập tay),
+// để báo cáo không tách 1 người thành 2 dòng. Không liên quan tới tên bên Kiot.
+const RPT_SL_SALE_ALIAS={
+  'trịnh lê vân ngọc':'Vân Ngọc',
+  'nguyễn vân ngọc':'Vân Ngọc',
+  'thảo ngọc':'Nguyễn Thảo Ngọc',
+  'ngọc diệp':'Chánh Tâm Ngọc Diệp',
+};
+function rptSlSaleName(x){
+  const t=String(x||'').replace(/\s+/g,' ').trim();
+  if(!t)return'';
+  return RPT_SL_SALE_ALIAS[t.toLowerCase()]||t;
+}
 // ── Dữ liệu Sale NHẬP TAY (bảng saleretail_manual) -> đổ thẳng sang Master Data ──
 // Tách riêng khỏi datahub_orders/kiot_* vì 2 bảng đó bị job sync ghi đè mỗi lần chạy.
 let rptSlManual={},rptSlManualLoaded=false;
@@ -2804,7 +2845,7 @@ async function rptSlRenderPage(type){
 function rptSlOverviewHtml(){
   // Áp bộ lọc ngày RIÊNG của báo cáo: khách lọc theo NGÀY TẠO, đơn thô lọc theo NGÀY ĐƠN.
   const master=rptSlPeriod();
-  const le=dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))&&dashSeeSale(o.staff_name)&&modInRange(rptSlMod(),o.order_date));
+  const le=dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))&&dashSeeSale(rptSlSaleName(o.staff_name))&&modInRange(rptSlMod(),o.order_date));
   const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
   const dat=le.filter(o=>tag(o,'LEAD ĐẠT')||dhIsQualified(o));
   // Phễu phải CỘNG DỒN: đơn đã chốt thì trước đó đương nhiên cũng là tiềm năng. Nếu chỉ đếm đơn còn
@@ -2837,7 +2878,7 @@ function rptSlOverviewHtml(){
 
   const bySale={};
   master.forEach(r=>{const s=r.staff||'(chưa gán)';bySale[s]=bySale[s]||{data:0,chot:0,rev:0,noi:0};bySale[s].data++;if(r.isChot)bySale[s].chot++;if(r.kh)bySale[s].noi++;bySale[s].rev+=r.revenue;});
-  const saleRows=Object.entries(bySale).filter(([s])=>RPT_SL_SALES.includes(s)).sort((a,b)=>b[1].rev-a[1].rev||b[1].chot-a[1].chot);
+  const saleRows=Object.entries(bySale).filter(([s])=>rptSlSalesList().includes(s)).sort((a,b)=>b[1].rev-a[1].rev||b[1].chot-a[1].chot);
 
   const byKenh={};master.forEach(r=>{const k=r.kenh||'(không rõ)';byKenh[k]=byKenh[k]||{n:0,chot:0,rev:0};byKenh[k].n++;if(r.isChot)byKenh[k].chot++;byKenh[k].rev+=r.revenue;});
   const kenhRows=Object.entries(byKenh).sort((a,b)=>b[1].n-a[1].n);
@@ -3099,7 +3140,7 @@ function rptSlFilterBar(tab){
   // Dựng lựa chọn từ TOÀN BỘ khách, không phải từ phần đang hiển thị -- nếu lấy theo phần đang hiển thị
   // thì lọc ngày mặc định (hôm qua -> hôm nay) làm dropdown chỉ còn 1-2 mục, không lọc được gì nữa.
   const full=rptSlBuildMaster();
-  const sales=RPT_SL_SALES;
+  const sales=rptSlSalesList();
   // Trạng thái lấy danh sách CỐ ĐỊNH, không lấy theo giá trị đang có trong data.
   const stats=['Chốt đơn',...RPT_SL_STATUS_OPTS,'(chưa cập nhật)'];
   const brands=[...new Set(full.map(r=>DH_BRAND_LABEL[r.brand]||r.brand||'—'))].sort();
@@ -3165,7 +3206,7 @@ function rptSlBuildMaster(){
       phone:phone||kiotCusts.map(c=>c.phone||c.phone_key).filter(Boolean)[0]||'',
       phoneFromKiot:!phone,
       created:orders[0].order_date,brand:last.brand,shop:last.shop_name,
-      source:pick(o=>o.source),staff:pick(o=>o.staff_name),adId:pick(o=>o.ad_id),
+      source:pick(o=>o.source),staff:rptSlSaleName(pick(o=>o.staff_name)),adId:pick(o=>o.ad_id),
       // Data Pancake đều là khách tự nhắn về page -> "Nguồn khách" luôn là Online (offline nằm ở luồng khác).
       nguon:'Online',kenh:rptSlKenh(last),
       diaChi:orders.map(rptSlDiaChi).filter(Boolean).pop()||rptSlDiaChiKiot(kiotCusts),
@@ -3198,7 +3239,7 @@ function rptSlBuildMaster(){
       manualStatus:mn.status||'',lostGroup:mn.lost_group||'',lostReason:mn.lost_reason||'',note:mn.note||r.note||'',
       potential:Number(mn.potential_value||0), careDate:mn.care_date||'',careAuto:false,careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
       name:r.customer_name||'—',phone:r.phone||(kc?(kc.phone||kc.phone_key||''):''),phoneFromKiot:!r.phone,
-      created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staff:r.staff_name||'',adId:'',
+      created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staff:rptSlSaleName(r.staff_name),adId:'',
       nguon:r.nguon||'Online',kenh:rptSlKenhNorm(r.kenh)||'(nhập tay)',diaChi:rptSlDiaChiKiot(kc?[kc]:[]),
       kiotName:kc?kc.name:'',saleType:r.sale_type||'Lẻ',
       status:kords.length?'Chốt đơn':(mn.status||''),tagStatus:'Nhập tay',
@@ -3740,6 +3781,7 @@ async function renderLog(){
 async function renderSettings(){
   const el=document.getElementById('page-settings');
   if(!el)return;
+  try{await dhLoadOrders();}catch(e){}   // để ô "Xem data của Sale" có danh sách tên mới nhất
   el.innerHTML='<div style="padding:60px;text-align:center;color:var(--muted)">Đang tải danh sách tài khoản...</div>';
   let accounts=[];
   try{accounts=await sbFetchAll('sales_users','select=*&has_login=eq.true&order=created_at.desc');}
@@ -3860,7 +3902,7 @@ function crmScopeFields(sales,types){
     <input type="checkbox" name="${nm}" value="${String(v).replace(/"/g,'&quot;')}"${on?' checked':''}> ${v}</label>`;
   return saonlField('Phạm vi dữ liệu',`
     <div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px">Xem data của Sale</div>
-    <div>${RPT_SL_SALES.map(x=>cb('dsale',x,(sales||[]).includes(x))).join('')}</div>
+    <div>${[...new Set([...rptSlSalesList(),...(sales||[])])].map(x=>cb('dsale',x,(sales||[]).includes(x))).join('')}</div>
     <div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:6px 0 3px">Loại khách</div>
     <div>${RPT_SL_TYPES.map(x=>cb('dtype',x,(types||[]).includes(x))).join('')}</div>
     <div style="font-size:10.5px;color:var(--muted);margin-top:5px">Không tick gì = xem tất cả</div>`);
