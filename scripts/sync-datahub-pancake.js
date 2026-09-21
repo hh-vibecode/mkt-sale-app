@@ -132,6 +132,69 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
   }).catch(e => console.warn('Ghi sync_log lỗi (bỏ qua, không chặn job chính):', e.message));
 }
 
+// ── TỰ GẮN THẺ "CHỐT ĐƠN" ────────────────────────────────────────────────────────────────────────
+// Khách đã chốt THẬT (Sale đã dán Mã KH vào ghi chú Pancake, và mã đó có đơn đặt hàng Kiot chưa huỷ)
+// nhưng thẻ trên Pancake vẫn còn là tiềm năng -> gắn CHỐT ĐƠN hộ, bỏ thẻ tiềm năng, GIỮ NGUYÊN KH LẺ/KH SỈ.
+// Ghi bằng: PUT https://pos.pages.fm/api/v1/shops/{shop_id}/customers/{customer_id} body {customer:{tags:[...]}}
+// Đổi thẻ xong, autoB3 chạy ngay sau sẽ đẩy trạng thái đơn lên "Đã gửi hàng", và app tự hiểu khách là
+// "Chốt đơn" vì trạng thái trong app suy từ thẻ. Tắt bằng AUTO_CHOT=0.
+// CHẶN: không đụng đơn đã huỷ; chỉ khi có bằng chứng đơn Kiot thật; không bao giờ GỠ thẻ CHỐT ĐƠN.
+const { sbAll } = require('./lib/sb');   // đọc bảng Supabase CÓ PHÂN TRANG (PostgREST chặn 1000 dòng/lần)
+const doc = (table, query) => sbAll(SUPABASE_URL, SERVICE_ROLE_KEY, table, query);
+function maKH(note) {
+  const m = /KH\s*0*(\d{3,7})/i.exec(note || '');
+  return m ? 'KH' + m[1].padStart(6, '0') : null;
+}
+async function ghiNhatKy(rows) {
+  if (!rows.length) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+    method: 'POST',
+    headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(rows),
+  }).catch(() => {});
+}
+async function autoChot() {
+  if (process.env.AUTO_CHOT === '0') return 'Bỏ qua gắn thẻ (AUTO_CHOT=0).';
+  const [dh, ko] = await Promise.all([
+    doc('datahub_orders', `select=shop_id,order_id,system_id,customer_name,customer_tags,order_status,internal_note&order_date=gte.${MIN_ORDER_DATE}`),
+    doc('kiot_orders', 'select=customer_code,status'),
+  ]);
+  const coDon = new Set(ko.filter(o => o.customer_code && o.status !== 4).map(o => o.customer_code));
+  const can = dh.filter(o => {
+    const t = (o.customer_tags || '').toUpperCase();
+    if (String(o.order_status) === '6' || t.includes('CHỐT ĐƠN')) return false;
+    const m = maKH(o.internal_note);
+    return m && coDon.has(m);
+  });
+  if (!can.length) return 'Thẻ: không khách nào cần gắn CHỐT ĐƠN.';
+  let ok = 0; const loi = []; const nhatKy = [];
+  for (const o of can) {
+    try {
+      const j = await fetch(`https://pos.pages.fm/api/v1/shops/${o.shop_id}/orders/${o.order_id}?access_token=${SESSION_TOKEN}`).then(r => r.json());
+      const d = j.data || j;
+      const cid = d.customer && d.customer.id;
+      const cu = (d.customer && d.customer.shop_customer && d.customer.shop_customer.tags) || [];
+      if (!cid) { loi.push('#' + o.system_id + ' không có customer_id'); continue; }
+      const moi = [...cu.filter(t => !/TIỀM NĂNG/i.test(t)), 'CHỐT ĐƠN'];
+      const put = await fetch(`https://pos.pages.fm/api/v1/shops/${o.shop_id}/customers/${cid}?access_token=${SESSION_TOKEN}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { tags: moi } }),
+      });
+      if (!put.ok) { loi.push('#' + o.system_id + ' ' + put.status); continue; }
+      ok++;
+      await fetch(`${SUPABASE_URL}/rest/v1/datahub_orders?shop_id=eq.${o.shop_id}&order_id=eq.${o.order_id}`, {
+        method: 'PATCH',
+        headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_tags: moi.join(', ') }),
+      }).catch(() => {});
+      nhatKy.push({ who: 'Job tự động', act: 'U', tbl: 'datahub_orders', ref: '#' + o.system_id,
+        label: o.customer_name, fld: 'Thẻ khách', old_v: cu.join(', '), new_v: moi.join(', ') });
+    } catch (e) { loi.push('#' + o.system_id + ' ' + e.message); }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  await ghiNhatKy(nhatKy);
+  return `Thẻ: đã gắn CHỐT ĐƠN cho ${ok}/${can.length} khách` + (loi.length ? ` (lỗi: ${loi.slice(0, 5).join(', ')})` : '') + '.';
+}
+
 // ── BƯỚC B3 TỰ ĐỘNG ──────────────────────────────────────────────────────────────────────────────
 // Quy trình Sale: khách TIỀM NĂNG -> đơn phải là "Đã xác nhận"; khách CHỐT ĐƠN -> "Đã gửi hàng".
 // Trước đây app chỉ liệt kê đơn sai để Sale vào Pancake sửa tay. Nay đổi luôn hộ, vì API cho ghi:
@@ -151,10 +214,7 @@ function b3Target(tags) {
 }
 async function autoB3() {
   if (process.env.AUTO_B3 === '0') return 'Bỏ qua bước B3 (AUTO_B3=0).';
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/datahub_orders?select=shop_id,order_id,system_id,customer_tags,order_status&order_date=gte.${MIN_ORDER_DATE}`,
-    { headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY } });
-  if (!res.ok) return 'Không đọc được đơn để chạy B3.';
-  const rows = await res.json();
+  const rows = await doc('datahub_orders', `select=shop_id,order_id,system_id,customer_tags,order_status&order_date=gte.${MIN_ORDER_DATE}`);
   const can = rows.filter(r => {
     const dich = b3Target(r.customer_tags);
     const ht = Number(r.order_status);
@@ -207,8 +267,9 @@ async function autoB3() {
       errors.push(`Shop ${shop.id} (${shop.brand}): ${e.message}`);
     }
   }
-  const b3 = await autoB3();
-  console.log(`XONG. Tổng ${grandTotal} đơn đã đồng bộ.` + (b3 ? ' ' + b3 : ''));
+  const chot = await autoChot();            // gắn thẻ trước...
+  const b3 = await autoB3();                // ...rồi mới đẩy trạng thái theo thẻ mới
+  console.log(`XONG. Tổng ${grandTotal} đơn đã đồng bộ.` + (chot ? ' ' + chot : '') + (b3 ? ' ' + b3 : ''));
   await logSyncEnd(logId, {
     status: errors.length ? 'failed' : 'success',
     recordsCreated: grandTotal,

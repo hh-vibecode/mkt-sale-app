@@ -21,6 +21,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '20'}
+      # Chặn lỗi đọc thiếu dữ liệu: PostgREST trả tối đa 1000 dòng/lần, quên phân trang là âm thầm sai số.
+      - name: Kiểm tra phân trang khi đọc Supabase
+        run: node scripts/check-pagination.js
       - name: Sync đơn hàng Pancake -> Supabase
         env:
           PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
