@@ -1922,11 +1922,15 @@ const CRM_PIPELINE_CARD_CAP=40; // tránh render vài nghìn card 1 lúc gây tr
 const DH_BRAND_LABEL={CT:'Chánh Tâm',HT:'Hiền Thuỷ',Shidai:'Shidai',TTV:'Tự Tại Viên',Other:'Khác'};
 // Pancake gắn nhiều tag/dòng (LEAD ĐẶT, KH Lẻ, KH Sỉ, LEAD TIỀM NĂNG...) -- chỉ dòng có tag CHỐT ĐƠN
 // mới là đơn hàng thật, còn lại là data thô (lead/khách chưa chốt), không được tính vào KPI "đơn".
-function dhIsOrder(o){return(o.customer_tags||'').toUpperCase().includes('CHỐT ĐƠN');}
+function dhIsOrder(o){return!dhHuy(o)&&(o.customer_tags||'').toUpperCase().includes('CHỐT ĐƠN');}
 // Data ĐỦ ĐIỀU KIỆN vào Master Data (áp dụng cho CẢ Sale Lẻ lẫn Sale Sỉ): chỉ khách đã chốt,
 // đã bàn giao, hoặc được Sale đánh giá là tiềm năng. Data thô mới gắn "LEAD ĐẠT" thì dừng ở
 // Data Hub, không đẩy sang Master Data -- tránh loãng (2.119 -> 159 khách).
+// Đơn Pancake ĐÃ HUỶ (order_status 6) thì bỏ, dù còn thẻ CHỐT ĐƠN -- huỷ rồi thì không phải doanh số.
+// Mã trạng thái POS: 0 Mới · 1 Đã xác nhận · 2 Đã gửi hàng · 3 Đã nhận · 6 Đã huỷ.
+function dhHuy(o){return String(o&&o.order_status)==='6';}
 function dhIsQualified(o){
+  if(dhHuy(o))return false;
   const t=(o.customer_tags||'').toUpperCase();
   return t.includes('CHỐT ĐƠN')||t.includes('BÀN GIAO')||t.includes('TIỀM NĂNG');
 }

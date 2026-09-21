@@ -157,7 +157,9 @@ async function autoB3() {
   const rows = await res.json();
   const can = rows.filter(r => {
     const dich = b3Target(r.customer_tags);
-    return dich !== null && Number(r.order_status) < dich;   // chỉ đẩy TỚI
+    const ht = Number(r.order_status);
+    // chỉ đẩy TỚI, và chỉ từ "Mới"(0) / "Đã xác nhận"(1). Đơn ĐÃ HUỶ (6) hay đã hoàn thì không đụng.
+    return dich !== null && ht < dich && (ht === 0 || ht === 1);
   });
   if (!can.length) return 'B3: không đơn nào cần đổi trạng thái.';
   let ok = 0; const loi = [];
