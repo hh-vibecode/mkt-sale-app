@@ -2296,9 +2296,32 @@ function dhManualRev(){
 // Lịch cron + lần chạy cuối + nút chạy tay. Nút gọi Edge Function 'sync-now' (token GitHub nằm ở server,
 // KHÔNG nhúng vào file này vì repo public). Function từ chối nếu job đang chạy.
 const DH_CRON=[
-  {job:'datahub',ten:'Pancake POS',src:'Data Hub - Pancake POS',lich:'30 phút/lần + quét lại toàn bộ 7h05'},
-  {job:'kiot',   ten:'KiotViet (đơn đặt hàng + hoá đơn)',src:'KiotViet - Đơn đặt hàng',lich:'30 phút/lần + quét lại toàn bộ 7h05'},
-  {job:'mkt',    ten:'Meta Ads',src:'MKT - Meta Ads',lich:'7h05 · 12h05 · 15h05'},
+  {job:'datahub',ten:'Pancake POS → Data Hub',src:'Data Hub - Pancake POS',
+   lich:'30 phút/lần · quét lại toàn bộ 7h05',
+   viec:['Kéo đơn + thẻ khách + ghi chú nội bộ về bảng datahub_orders',
+         'Tự đổi trạng thái đơn (bước B3): khách tiềm năng → Đã xác nhận · khách chốt → Đã gửi hàng']},
+  {job:'kiot',ten:'KiotViet → đơn đặt hàng',src:'KiotViet - Đơn đặt hàng',
+   lich:'30 phút/lần · quét lại toàn bộ 7h05',
+   viec:['Kéo đơn đặt hàng (DH…) từ 1/6 — đây là nguồn DOANH THU và NGÀY CHỐT của báo cáo Sale']},
+  {job:'kiot',ten:'KiotViet → hoá đơn + khách',src:'KiotViet - Hoá đơn',
+   lich:'chạy cùng lượt với đơn đặt hàng',
+   viec:['Kéo hoá đơn (HD…) và danh sách khách Kiot','Hoá đơn CHỈ dùng cho đối soát tiền về, không tính vào doanh số Sale']},
+  {job:'mkt',ten:'Meta Ads → báo cáo MKT',src:'MKT - Meta Ads',
+   lich:'7h05 · 12h05 · 15h05',
+   viec:['Kéo số liệu quảng cáo Facebook']},
+  {job:null,ten:'Chấm điểm hội thoại Sale',src:null,
+   lich:'7h05 · 12h05 · 15h05',
+   viec:['Crawl hội thoại Pancake và chấm phần không cần AI']},
+  {job:null,ten:'Dọn nhật ký thao tác',src:null,
+   lich:'2h15 hằng ngày (chạy trên Supabase)',
+   viec:['Xoá log cũ hơn 7 ngày']},
+];
+// Những việc máy TỰ LÀM, kèm giới hạn an toàn -- ghi ra đây để khỏi phải nhớ.
+const DH_AUTO=[
+  ['Đổi trạng thái đơn Pancake (B3)','Chỉ khách LẺ · chỉ đẩy TỚI, không bao giờ hạ · chỉ từ trạng thái Mới hoặc Đã xác nhận · bỏ qua đơn đã huỷ · chỉ đơn từ 1/6'],
+  ['Ghi Mã KH vào ghi chú nội bộ Pancake','Chạy khi Sale bấm Lưu ở tab Nhập Liệu · nối thêm chứ không ghi đè ghi chú cũ · bỏ qua nếu mã đã có'],
+  ['Khoá hồ sơ khách đã chốt','Khách có thẻ CHỐT ĐƠN thì không sửa được gì nữa, kể cả nội dung trao đổi'],
+  ['KHÔNG tự làm','Gắn/gỡ thẻ khách · huỷ hoặc xoá đơn · tự nối khách bằng SĐT'],
 ];
 async function dhSyncNow(job,btn){
   if(btn){btn.disabled=true;btn.textContent='Đang gọi...';}
@@ -2318,6 +2341,9 @@ async function dhSyncNow(job,btn){
 }
 function dhCronHtml(log){
   if(!dashIsSupreme())return'';
+  const auto=DH_AUTO.map(([t,d])=>`<div style="display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--border)">
+    <div style="min-width:220px;font-size:11.5px;font-weight:800;color:${t==='KHÔNG tự làm'?'var(--red)':'var(--text)'}">${t}</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.5">${d}</div></div>`).join('');
   const ago=t=>{if(!t)return'chưa chạy lần nào';const m=Math.round((Date.now()-new Date(t))/60000);
     return m<60?m+' phút trước':Math.floor(m/60)+' giờ '+(m%60)+' phút trước';};
   return `<div class="tbl-card" style="margin-bottom:16px">
@@ -2325,19 +2351,24 @@ function dhCronHtml(log){
       <div class="tbl-title">Đồng bộ dữ liệu</div>
       <span style="margin-left:auto;font-size:11px;color:var(--muted)">chỉ Supreme Leader thấy mục này</span></div>
     <div class="tbl-scroll"><table>
-      <thead><tr><th>Nguồn</th><th>Lịch tự chạy</th><th>Lần cuối</th><th>Kết quả</th><th></th></tr></thead>
-      <tbody>${DH_CRON.map(c=>{const l=(log||{})[c.src]||{};
+      <thead><tr><th>Việc</th><th>Lịch tự chạy</th><th>Máy làm gì</th><th>Lần cuối</th><th>Kết quả</th><th></th></tr></thead>
+      <tbody>${DH_CRON.map(c=>{const l=(c.src&&(log||{})[c.src])||{};
         return `<tr>
           <td class="name">${c.ten}</td>
           <td style="font-size:11px;color:var(--muted)">${c.lich}</td>
-          <td style="font-size:11.5px">${l.started_at?dmy(String(l.started_at).slice(0,10))+' '+new Date(l.started_at).toLocaleTimeString('vi-VN'):'—'}
-            <span style="color:var(--muted);font-size:10.5px">· ${ago(l.started_at)}</span></td>
+          <td style="font-size:11px;color:var(--text2);line-height:1.5;max-width:420px;white-space:normal">${c.viec.map(v=>'· '+v).join('<br>')}</td>
+          <td style="font-size:11.5px;white-space:nowrap">${l.started_at?dmy(String(l.started_at).slice(0,10))+' '+new Date(l.started_at).toLocaleTimeString('vi-VN'):'<span style="color:var(--muted)">không ghi log</span>'}
+            ${l.started_at?'<span style="color:var(--muted);font-size:10.5px">· '+ago(l.started_at)+'</span>':''}</td>
           <td style="font-size:11px;font-weight:700;color:${l.status==='success'?'var(--green)':l.status==='failed'?'var(--red)':'var(--muted)'}">${l.status==='success'?'OK':l.status==='failed'?'Lỗi':(l.status||'—')}</td>
-          <td><button onclick="dhSyncNow('${c.job}',this)"
-            style="border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 12px;cursor:pointer;font-size:11px;font-weight:700">▶ Chạy ngay</button></td>
+          <td>${c.job?`<button onclick="dhSyncNow('${c.job}',this)"
+            style="border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 12px;cursor:pointer;font-size:11px;font-weight:700">▶ Chạy ngay</button>`:''}</td>
         </tr>`;}).join('')}</tbody>
     </table></div>
-    <div style="padding:9px 14px;font-size:10.5px;color:var(--muted)">GitHub Actions thường giãn lịch dưới 1 giờ thành 2-5 tiếng — cần số tươi thì bấm Chạy ngay (job đang chạy thì sẽ báo).</div>
+    <div style="padding:10px 14px">
+      <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px">Máy tự xử lý những gì</div>
+      ${auto}
+      <div style="font-size:10.5px;color:var(--muted);margin-top:8px">GitHub Actions thường giãn lịch dưới 1 giờ thành 2-5 tiếng — cần số tươi thì bấm Chạy ngay (job đang chạy thì sẽ báo).</div>
+    </div>
   </div>`;
 }
 function dhManualType(){return window._dhManualType==='Sỉ'?'Sỉ':'Lẻ';}
