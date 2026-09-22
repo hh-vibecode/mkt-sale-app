@@ -2568,7 +2568,96 @@ async function renderDataHub(){
 // Hiện có tab "Sale Lẻ" (trước đây là tab Tổng Quan nằm trong trang Báo cáo Sale Lẻ -- đã chuyển sang đây
 // để trang kia chỉ còn phần Sale thao tác hằng ngày: Master / CRM / Nhập Liệu).
 // Thêm mảng mới (Sale Sỉ, MKT, Đối soát...) thì bổ sung 1 dòng vào RPT_TH_TABS.
+// ════════ TAB "TỔNG HỢP": GỘP CẢ LẺ + SỈ (kể cả Sỉ Offline) ════════
+// Hai tab Sale Lẻ / Sale Sỉ là từng mảng riêng; tab này là bức tranh chung của cả công ty trong kỳ --
+// Sỉ Offline (sales tự đi, khách cũ giới thiệu) KHÔNG vào báo cáo MKT nhưng vẫn là tiền thật nên phải
+// có mặt ở đây (người dùng chốt 22/9/2026: "nó là tổng hợp mà").
+function rptThGomTatCa(){
+  const cu=window._rptSlType,ra=[];
+  ['Lẻ','Sỉ'].forEach(t=>{
+    window._rptSlType=t;window._kiotOrdByCode=null;
+    rptSlPeriod().forEach(r=>ra.push(Object.assign({},r,{loai:t,
+      nhom:t==='Lẻ'?'Lẻ':(/offline/i.test(r.nguon||'')?'Sỉ Offline':'Sỉ Online')})));
+  });
+  window._rptSlType=cu||'Lẻ';window._kiotOrdByCode=null;
+  return ra;
+}
+function rptThTongHtml(){
+  const all=rptThGomTatCa();
+  window._rptSlLists=window._rptSlLists||{};
+  const L=(k,v)=>{window._rptSlLists[k]=v;return k;};
+  const cols=['Mảng','Ngày tạo','Khách','SĐT','Kênh','Sales','Trạng thái','Mã KH','Doanh thu'];
+  const rowsOf=l=>l.slice().sort((a,b)=>b.revenue-a.revenue||String(b.created).localeCompare(String(a.created)))
+    .map(r=>[r.nhom,dmy(r.created),r.name,r.phone||'',r.kenh||'',r.staff||'',rptSlRowStatus(r),r.kh||'',r.revenue>0?vnd(r.revenue):'']);
+  const tien=l=>l.reduce((a,r)=>a+r.revenue,0);
+  const nhom={'Lẻ':[],'Sỉ Online':[],'Sỉ Offline':[]};
+  all.forEach(r=>nhom[r.nhom].push(r));
+  const chot=all.filter(r=>r.isChot),coTien=all.filter(r=>r.revenue>0);
+  const tong=tien(all);
+  L('thTong',{title:'Toàn bộ khách trong kỳ · '+vnd(tong),cols,rows:rowsOf(all)});
+  L('thChot',{title:'Khách đã chốt · '+num(chot.length),cols,rows:rowsOf(chot)});
+  Object.keys(nhom).forEach(k=>L('thNhom-'+k,{title:k+' · '+vnd(tien(nhom[k]))+' · '+num(nhom[k].length)+' khách',cols,rows:rowsOf(nhom[k])}));
+  const bam=(key,html,tip)=>'<div onclick="rptSlShow('+String.fromCharCode(39)+key+String.fromCharCode(39)+')" style="cursor:pointer" title="'+(tip||'Bấm để xem danh sách')+'">'+html+'</div>';
+  const g4='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px';
+  const kpi1='<div style="'+g4+'">'
+    +bam('thTong',mkKpi(ic('cash'),'Tổng doanh thu',vnd(tong),num(coTien.length)+' khách có đơn · bấm để xem','g-green'))
+    +bam('thNhom-Lẻ',mkKpi(ic('cash'),'Doanh thu Lẻ',vnd(tien(nhom['Lẻ'])),num(nhom['Lẻ'].length)+' khách · Pancake','g-teal'))
+    +bam('thNhom-Sỉ Online',mkKpi(ic('cash'),'Doanh thu Sỉ Online',vnd(tien(nhom['Sỉ Online'])),num(nhom['Sỉ Online'].length)+' khách · có quảng cáo','g-blue'))
+    +bam('thNhom-Sỉ Offline',mkKpi(ic('cash'),'Doanh thu Sỉ Offline',vnd(tien(nhom['Sỉ Offline'])),num(nhom['Sỉ Offline'].length)+' khách · sales tự đi','g-purple'))
+    +'</div>';
+  const kpi2='<div style="'+g4+'">'
+    +mkKpi(ic('users'),'Tổng khách',num(all.length),num(nhom['Lẻ'].length)+' lẻ · '+num(nhom['Sỉ Online'].length+nhom['Sỉ Offline'].length)+' sỉ','g-orange')
+    +bam('thChot',mkKpi(ic('check'),'Khách đã chốt',num(chot.length),(all.length?pct(chot.length/all.length*100):'—')+' tổng khách · bấm để xem','g-green'))
+    +mkKpi(ic('box'),'Doanh thu TB / khách chốt',chot.length?vnd(tong/chot.length):'—','trung bình mỗi khách đã chốt','g-pink')
+    +mkKpi(ic('diamond'),'Giá trị tiềm năng',vnd(all.filter(r=>!r.isChot).reduce((a,r)=>a+(r.potential||0),0)),'khách chưa chốt đã ước lượng','g-yellow')
+    +'</div>';
+  // doanh thu theo brand (gộp cả 3 mảng) -> bánh tròn bấm được
+  const byBrand={},khBrand={};
+  all.forEach(r=>{if(r.revenue>0){const b=r.loai==='Sỉ'?'Shidai (sỉ)':(DH_BRAND_LABEL[r.brand]||r.brand||'Khác');
+    byBrand[b]=(byBrand[b]||0)+r.revenue;(khBrand[b]=khBrand[b]||[]).push(r);}});
+  Object.keys(khBrand).forEach(b=>L('thBr-'+b,{title:'Doanh thu '+b+' · '+vnd(byBrand[b]),cols,rows:rowsOf(khBrand[b])}));
+  const dsBrand=Object.entries(byBrand).sort((a,b)=>b[1]-a[1]);
+  const mau=['#4361ee','#8b5cf6','#f59e0b','#0abf7a','#ef4444','#14b8a6','#94a3b8'];
+  window._rptThBrand=dsBrand.map((x,i)=>[x[0],x[1],mau[i%mau.length]]);
+  const chuGiai=dsBrand.map((x,i)=>'<div onclick="rptSlShow('+String.fromCharCode(39)+'thBr-'+x[0]+String.fromCharCode(39)+')" title="Bấm để xem khách" '
+    +'style="display:flex;align-items:center;gap:8px;padding:5px 2px;cursor:pointer">'
+    +'<span style="width:10px;height:10px;border-radius:3px;background:'+mau[i%mau.length]+';flex:none"></span>'
+    +'<span style="font-size:11.5px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+x[0]+'</span>'
+    +'<span style="font-size:11.5px;font-weight:700">'+vnd(x[1])+'</span>'
+    +'<span style="font-size:11px;color:var(--muted);font-weight:600;width:52px;text-align:right">'+(tong?pct(x[1]/tong*100):'0%')+'</span></div>').join('');
+  const theBrand='<div class="tbl-card" style="padding:16px 18px"><div style="font-size:13px;font-weight:800;margin-bottom:12px">Doanh thu theo brand <span style="font-size:11px;color:var(--muted);font-weight:600">· bấm để xem danh sách</span></div>'
+    +(dsBrand.length?'<div style="display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr);gap:14px;align-items:center">'
+      +'<div style="height:150px;position:relative"><canvas id="thCBrand"></canvas></div><div style="min-width:0">'+chuGiai+'</div></div>'
+      :'<div style="color:var(--muted);font-size:12px">Chưa có doanh thu</div>')+'</div>';
+  // 3 mảng: thanh so sánh
+  const theNhom='<div class="tbl-card" style="padding:16px 18px"><div style="font-size:13px;font-weight:800;margin-bottom:12px">Ba mảng doanh thu</div>'
+    +Object.keys(nhom).map(k=>{const v=tien(nhom[k]),p=tong?v/tong*100:0;
+      return '<div onclick="rptSlShow('+String.fromCharCode(39)+'thNhom-'+k+String.fromCharCode(39)+')" style="cursor:pointer;margin-bottom:11px">'
+        +'<div style="display:flex;justify-content:space-between;font-size:11.5px;font-weight:700;margin-bottom:3px">'
+        +'<span>'+k+' <span style="color:var(--muted);font-weight:600">· '+num(nhom[k].length)+' khách</span></span>'
+        +'<span>'+vnd(v)+' <span style="color:var(--muted);font-weight:600">· '+pct(p)+'</span></span></div>'
+        +'<div style="height:8px;background:var(--bg2);border-radius:5px;overflow:hidden"><div style="width:'+p.toFixed(1)+'%;height:100%;background:var(--accent);border-radius:5px"></div></div></div>';}).join('')
+    +'</div>';
+  // theo Sales (gộp cả 2 mảng)
+  const bySale={};
+  all.forEach(r=>{const s=r.staff||'(chưa gán)';bySale[s]=bySale[s]||{kh:0,chot:0,rev:0};
+    bySale[s].kh++;if(r.isChot)bySale[s].chot++;bySale[s].rev+=r.revenue;});
+  const saleRows=Object.entries(bySale).sort((a,b)=>b[1].rev-a[1].rev)
+    .map(([s,v])=>'<tr><td class="name">'+String(s).replace(/</g,'&lt;')+'</td><td class="num">'+num(v.kh)+'</td>'
+      +'<td class="num">'+num(v.chot)+'</td><td class="num">'+(v.kh?pct(v.chot/v.kh*100):'—')+'</td>'
+      +'<td class="num" style="font-weight:800;color:'+(v.rev>0?'var(--green)':'inherit')+'">'+(v.rev>0?vnd(v.rev):'—')+'</td></tr>').join('');
+  const bangSale='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Hiệu quả theo Sales</div>'
+    +'<div class="tbl-count">'+num(Object.keys(bySale).length)+'</div>'
+    +'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:auto">gộp cả Lẻ và Sỉ</span></div>'
+    +'<div class="tbl-scroll"><table><thead><tr><th>Sales</th><th>Khách</th><th>Đã chốt</th><th>Tỉ lệ chốt</th><th>Doanh thu</th></tr></thead><tbody>'
+    +(saleRows||'<tr><td colspan="5" style="text-align:center;padding:22px;color:var(--muted)">Chưa có dữ liệu</td></tr>')
+    +'</tbody></table></div></div>';
+  return kpi1+kpi2
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px">'+theBrand+theNhom+'</div>'
+    +bangSale;
+}
 const RPT_TH_TABS=[
+  ['tong','Tổng hợp',()=>rptThTongHtml()],
   ['sale-le','Sale Lẻ',()=>{window._rptSlType='Lẻ';return rptSlOverviewHtml();}],
   ['sale-si','Sale Sỉ',()=>{window._rptSlType='Sỉ';return rptSlOverviewHtml();}],
 ];
@@ -2594,6 +2683,7 @@ async function renderReportTongHop(){
     await kiotLoadInvoices();
     await dhLoadManual();
     await rptSlLoadManual();
+    await siCrmLoad();
     await rptSlLockChot();
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo tổng hợp',e,'renderReportTongHop');return;}
   const cur=rptThTab();
