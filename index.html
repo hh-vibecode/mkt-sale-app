@@ -603,7 +603,7 @@ function modInRange(mod,dateStr){
 const RPT_BRANDS=[['CT','Chánh Tâm'],['HT','Hiền Thuỷ'],['Shidai','Shidai'],['TTV','Tự Tại Viên']];
 const rptBrands={};
 function rptBrand(mod){return rptBrands[mod]||'';}
-function rptSetBrand(mod,v,cb){rptBrands[mod]=v||'';window._kiotOrdByCode=null;if(typeof window[cb]==='function')window[cb]();}
+function rptSetBrand(mod,v,cb){rptBrands[mod]=v||'';window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();if(typeof window[cb]==='function')window[cb]();}
 function rptBrandDrop(mod,cb){
   const cur=rptBrand(mod);
   const ip='height:28px;box-sizing:border-box;padding:2px 8px;border:1.5px solid '+(cur?'var(--accent)':'var(--border)')
@@ -1853,17 +1853,20 @@ let crmCustomers=[],crmLeads=[],crmActivities=[],crmOrders=[],crmSalesUsers=[],c
 function crmConfigOptions(cat){return(crmConfig[cat]||[]).map(o=>o.value);}
 // Tra tên Sale để HIỂN THỊ -- luôn dùng hàm này, đừng tra crmSalesUsers (đã lọc has_login nên thiếu tên cũ).
 async function loadCrmFromSupabase(){
+  // TỐC ĐỘ: 5 bảng CRM v2 cũ (customers 6.440 dòng + leads 6.440 + crm_activities + orders + audit_log)
+  // nặng ~4,9 MB mỗi lần mở app mà KHÔNG trang nào còn đọc -- báo cáo đã chuyển hẳn sang Pancake+Kiot.
+  // Bỏ tải; nếu sau này cần dựng lại màn CRM cũ thì nạp riêng lúc mở trang đó.
   const[customers,leads,activities,orders,salesUsers,allSalesUsers,config,auditLog]=await Promise.all([
-    sbFetchAll('customers','select=*'),
-    sbFetchAll('leads','select=*'),
-    sbFetchAll('crm_activities','select=*&order=activity_date.desc,activity_id.desc'),
-    sbFetchAll('orders','select=*&order=order_date.desc'),
+    Promise.resolve([]),
+    Promise.resolve([]),
+    Promise.resolve([]),
+    Promise.resolve([]),
     sbFetchAll('sales_users','select=*&has_login=eq.true&status=eq.active&order=name.asc'), // chỉ tài khoản THẬT (tạo qua Cài đặt) -- dùng cho dropdown "Sales phụ trách"
     // HIỂN THỊ TÊN thì phải tra trong TOÀN BỘ sales_users: leads.assigned_sales của data migrate trỏ tới 40 tên
     // lịch sử (has_login=false), không có trong danh sách lọc ở trên -- thiếu map này là mọi cột Sales ra "—".
     sbFetchAll('sales_users','select=user_id,name'),
     sbFetchAll('config_options','select=*&active=eq.true&order=sort_order.asc'),
-    sbFetchAll('audit_log','select=*&object_type=eq.customer&order=created_at.desc'),
+    Promise.resolve([]),
   ]);
   crmCustomers=customers;crmLeads=leads;crmActivities=activities;crmOrders=orders;crmSalesUsers=salesUsers;
   window._crmSalesNameById={};allSalesUsers.forEach(s=>{window._crmSalesNameById[s.user_id]=s.name;});
@@ -1979,7 +1982,8 @@ function dhIsQualified(o){
 let dhOrders=[],dhLoaded=false;
 async function dhLoadOrders(force){
   if(dhLoaded&&!force)return;
-  dhOrders=await sbFetchAll('datahub_orders','select=*&order=order_date.desc,system_id.desc');
+  // chỉ lấy cột thật sự dùng -- select=* kéo thêm address/ward/district/created_at... ~0,55 MB thừa
+  dhOrders=await sbFetchAll('datahub_orders','select=id,system_id,shop_id,shop_name,brand,order_id,order_date,customer_status,customer_tags,customer_name,phone,province,district,ward,address,source,internal_note,staff_name,ad_id,order_status,conversation_id,page_id,last_chat_at&order=order_date.desc,system_id.desc');
   // CHỈ CÓ 4 BRAND. Shop Hoàng Dương | Ming Ying là kênh TikTok của Chánh Tâm -> gom về CT.
   // Chuẩn hoá ngay lúc nạp để dữ liệu cũ (đang lưu brand 'Other') cũng đúng, không phải chờ crawl lại.
   dhOrders.forEach(o=>{if(String(o.shop_id)==='1329071685'||o.brand==='Other')o.brand='CT';});
@@ -2042,12 +2046,14 @@ let kiotInvoices=[],kiotOrders=[],kiotCustomers=[],kiotLoaded=false;
 async function kiotLoadInvoices(force){
   if(kiotLoaded&&!force)return;
   [kiotInvoices,kiotOrders,kiotCustomers]=await Promise.all([
-    sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,order_code,total,status,items'),
-    sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,status,status_value,items'),
-    sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name,total_revenue'),
+    // Bỏ cột items khỏi hoá đơn: nặng gấp 3,7 lần phần còn lại mà chỉ dùng lúc xem chi tiết 1 hoá đơn.
+    sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,order_code,total,status'),
+    // items (danh sách mặt hàng) chiếm 3/4 dung lượng mà chỉ cần lúc mở chi tiết 1 khách -> tải riêng
+    sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,status,status_value'),
+    sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name'),
   ]);
   kiotLoaded=true;
-  window._kiotOrdByCode=null;
+  window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
 }
 // Nối Pancake <-> Kiot theo ĐÚNG thứ tự của script cũ (syncLeadSalesOnline): 9 SỐ CUỐI SĐT trước, hết cách
 // mới dùng Mã KH Sale gõ trong ghi chú nội bộ. Chỉ nhận khách Kiot đúng nhóm "Khách lẻ".
@@ -2094,6 +2100,19 @@ const KIOT_MOC_LE='2026-06-01';
 const RPT_MOC_PANCAKE='2026-06-04';
 function kiotMocNgay(){return rptSlType()==='Sỉ'?'':KIOT_MOC_LE;}
 // moc: '' = lấy tất cả. Bỏ trống thì theo báo cáo đang mở.
+// Mặt hàng của đơn Kiot: tải theo TỪNG KHÁCH khi mở hồ sơ, rồi vá thẳng vào dữ liệu đang giữ.
+// Nhờ vậy lượt tải đầu của app nhẹ đi ~1,9 MB mà chi tiết vẫn đầy đủ.
+const _kiotItemsDaTai={};
+async function kiotLoadItems(code){
+  if(!code||_kiotItemsDaTai[code])return;
+  _kiotItemsDaTai[code]=true;
+  try{
+    const rows=await sbFetchAll('kiot_orders','select=code,items&customer_code=eq.'+encodeURIComponent(code));
+    const m={};rows.forEach(r=>{m[r.code]=r.items;});
+    kiotOrders.forEach(o=>{if(o.customer_code===code&&m[o.code])o.items=m[o.code];});
+    window._kiotOrdByCode=null;if(typeof rptSlXoaCache==='function')rptSlXoaCache();
+  }catch(e){_kiotItemsDaTai[code]=false;}
+}
 function kiotOrdByCode(moc){
   const m0=moc===undefined?kiotMocNgay():moc;
   const kho=window._kiotOrdByCode&&typeof window._kiotOrdByCode==='object'?window._kiotOrdByCode:(window._kiotOrdByCode={});
@@ -2710,7 +2729,7 @@ function rptMktData(){
   const cu=window._rptSlType,cuMod=window._rptSlMod;const sale=[];
   window._rptSlMod='mkt';
   ['Lẻ','Sỉ'].forEach(t=>{
-    window._rptSlType=t;window._kiotOrdByCode=null;
+    window._rptSlType=t;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
     rptSlPeriod().forEach(r=>{
       if(!r.isChot||r.revenue<=0)return;
       if(t==='Sỉ'&&/offline/i.test(r.nguon||''))return;
@@ -2721,7 +2740,7 @@ function rptMktData(){
         rev:r.revenue,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||''});
     });
   });
-  window._rptSlType=cu||'Lẻ';window._rptSlMod=cuMod||null;window._kiotOrdByCode=null;
+  window._rptSlType=cu||'Lẻ';window._rptSlMod=cuMod||null;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
   const revBrand={};RPT_MKT_BRANDS.forEach(([k])=>revBrand[k]=0);revBrand.Khac=0;
   const plat={Facebook:0,TikTok:0,'Khác':0};
   const adCamp=buildAdCampMap();
@@ -2753,7 +2772,7 @@ function rptMktData(){
   const cu2=window._rptSlType,cuMod2=window._rptSlMod;
   window._rptSlMod='mkt';
   ['Lẻ','Sỉ'].forEach(t=>{
-    window._rptSlType=t;window._kiotOrdByCode=null;
+    window._rptSlType=t;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
     rptSlPeriod().forEach(r=>{
       const id=String(r.adId||'').trim();
       if(!id||!theoAd[id])return;
@@ -2763,7 +2782,7 @@ function rptMktData(){
       if(r.isChot){theoAd[id].don++;theoAd[id].rev+=r.revenue;}
     });
   });
-  window._rptSlType=cu2||'Lẻ';window._rptSlMod=cuMod2||null;window._kiotOrdByCode=null;
+  window._rptSlType=cu2||'Lẻ';window._rptSlMod=cuMod2||null;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
   const rev=sale.reduce((a,x)=>a+x.rev,0);
   return{ads,kpi,spendBrand,spendNgay,camp,sale,revBrand,plat,rev,don:sale.length,theoAd};
 }
@@ -2972,7 +2991,7 @@ async function renderReportMkt(){
 let siCrmRows=[],siCrmLoaded=false;
 async function siCrmLoad(force){
   if(siCrmLoaded&&!force)return;
-  siCrmRows=await sbFetchAll('salesi_crm','select=*&order=ngay_cham.desc,id.desc');
+  siCrmRows=await sbFetchAll('salesi_crm','select=id,lead_id,kiot_code,customer_name,phone,ngay_cham,nguon,kenh,sales,hinh_thuc,noi_dung,phan_loai,gia_tri_du_kien,viec_tiep,can_ho_tro,tinh_trang,ngay_hen,ngay_chot,gia_tri_chot&order=ngay_cham.desc,id.desc');
   siCrmLoaded=true;
 }
 const SI_HINH_THUC=['Zalo','Gọi điện','Gặp trực tiếp'];
@@ -3519,7 +3538,7 @@ async function rptSlChotFlow(leadId,el){
     const id=Number(String(r.key).replace(/^M/,''));
     await dhManualSet(id,'kiot_code',ma,null);
     await dhManualSet(id,'status','Chốt đơn',null);
-    window._kiotOrdByCode=null;rptSlRender();return;
+    window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();rptSlRender();return;
   }
   // ── BƯỚC 1: ghi vào APP trước (không gọi mạng ra ngoài) ──
   // Trạng thái + Mã KH lưu thẳng vào bảng của app -> doanh thu Kiot về ngay, báo cáo đúng kể cả khi
@@ -3527,7 +3546,7 @@ async function rptSlChotFlow(leadId,el){
   try{
     await rptSlSaveManual(leadId,{status:'Chốt đơn',kiot_code:ma,sync_error:null,sync_error_at:null,sync_payload:null});
     logAct('U','saleretail_manual',leadId,r.name,'Chốt đơn (bước 1: trong app)','',ma);
-    window._kiotOrdByCode=null;rptSlRender();
+    window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();rptSlRender();
   }catch(e){
     alert('Chưa ghi được vào app: '+e.message);return;
   }
@@ -3989,7 +4008,21 @@ function rptSlFilterBar(tab){
   </select>`;
   return one('sale','Sales',sales)+one('status','Trạng thái',stats)+one('brand','Brand',brands);
 }
+// Dựng Master khá nặng (gộp đơn Pancake + Kiot + nhập tay). Một lần render gọi lại 3-8 lần với CÙNG
+// tham số -> nhớ kết quả theo (loại khách + kỳ lọc + phạm vi dữ liệu), xoá khi dữ liệu đổi.
+let _rptSlCache={};
+function rptSlXoaCache(){_rptSlCache={};}
 function rptSlBuildMaster(){
+  const khoa=[rptSlType(),rptSlMod(),JSON.stringify(modRange(rptSlMod())),
+    (window._dangLuuMoc||0),dashSales().join(','),dashTypes().join(','),
+    dhOrders.length,kiotOrders.length,dhManual.length,Object.keys(rptSlManual).length,
+    (typeof siCrmRows!=='undefined'?siCrmRows.length:0),RPT_SL_DANG_LUU.size].join('|');
+  if(_rptSlCache.khoa===khoa)return _rptSlCache.rows;
+  const rows=rptSlBuildMasterRaw();
+  _rptSlCache={khoa,rows};
+  return rows;
+}
+function rptSlBuildMasterRaw(){
   const ordByCode=kiotOrdByCode();
   const byPhone=kiotRetailByPhone(),byCode=kiotCustByCode();
   const byKey={};
@@ -4331,6 +4364,13 @@ function rptSlMasterHtml(){
 function rptSlShowCustomer(key){
   const r=rptSlBuildMaster().find(x=>x.key===key);
   if(!r)return;
+  // mặt hàng tải riêng -> khách nào chưa có thì nạp rồi mở lại hồ sơ cho đủ thông tin
+  const maCanTai=(r.kiotCusts||[]).map(c=>c.code).filter(c=>c&&!_kiotItemsDaTai[c]);
+  if(maCanTai.length){Promise.all(maCanTai.map(kiotLoadItems)).then(()=>{
+    const m=document.getElementById('qcModal');
+    if(m&&m.innerHTML.indexOf('rptSlShowCustomer')>=0)return;   // người dùng đã mở thứ khác
+    if(m&&m.innerHTML.trim())rptSlShowCustomer(key);
+  });}
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const fld=(label,val,color)=>`<div style="min-width:0">
     <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${label}</div>
@@ -4457,7 +4497,7 @@ async function rptSlSaveKH(leadId,val,el,chotLuon){
       o.internal_note=d.note||maChuan;
       if(d.status!==undefined)o.order_status=String(d.status);
       if(d.tags)o.customer_tags=d.tags.join(', ');
-      window._kiotOrdByCode=null;
+      window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
       // KIỂM CHỨNG NGAY, đừng tin là xong. Trước đây app coi "gọi không lỗi" là thành công, nên khi
       // Pancake âm thầm bỏ qua việc gắn thẻ thì dòng biến mất rồi 3 giây sau quay về chỗ cũ, Sale
       // không hiểu vì sao (lỗi 22/9/2026). Giờ so lại kết quả trả về với thứ mình yêu cầu:
@@ -4654,7 +4694,7 @@ function rptSlSetViewAs(id){
   const a=(window._rptSlAccs||[]).find(x=>x.user_id===id);
   if(a)sessionStorage.setItem('dashViewAs',JSON.stringify({id:a.user_id,name:a.name,sales:a.data_sales||[],types:a.data_types||[]}));
   else sessionStorage.removeItem('dashViewAs');
-  window._kiotOrdByCode=null;
+  window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
   rptSlRender();
 }
 function rptSlInputHtml(){
