@@ -2613,7 +2613,9 @@ function rptThTongHtml(){
     +'</div>';
   // doanh thu theo brand (gộp cả 3 mảng) -> bánh tròn bấm được
   const byBrand={},khBrand={};
-  all.forEach(r=>{if(r.revenue>0){const b=r.loai==='Sỉ'?'Shidai (sỉ)':(DH_BRAND_LABEL[r.brand]||r.brand||'Khác');
+  // GỘP THEO THƯƠNG HIỆU, không tách Sỉ/Lẻ: khách sỉ có brand Pancake thì về đúng brand đó, khách sỉ
+  // nhập tay (không có brand) về Shidai -- Shidai chính là mảng sỉ.
+  all.forEach(r=>{if(r.revenue>0){const b=DH_BRAND_LABEL[r.brand]||r.brand||(r.loai==='Sỉ'?'Shidai':'Khác');
     byBrand[b]=(byBrand[b]||0)+r.revenue;(khBrand[b]=khBrand[b]||[]).push(r);}});
   Object.keys(khBrand).forEach(b=>L('thBr-'+b,{title:'Doanh thu '+b+' · '+vnd(byBrand[b]),cols,rows:rowsOf(khBrand[b])}));
   const dsBrand=Object.entries(byBrand).sort((a,b)=>b[1]-a[1]);
