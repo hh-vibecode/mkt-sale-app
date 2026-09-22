@@ -452,7 +452,17 @@ function dashScope(key){
 // để xem đúng phần data tài khoản đó được phép nhìn -> kiểm tra chéo, chắc chắn Sale này không thấy data Sale kia.
 // Chỉ nằm trong phiên làm việc (sessionStorage), đóng tab là hết; và KHÔNG bao giờ nới rộng phạm vi của
 // chính người đang xem -- nếu bản thân đã bị giới hạn thì lấy phần giao của hai phạm vi.
-function dashViewAs(){try{const v=JSON.parse(sessionStorage.getItem('dashViewAs')||'null');return v&&v.id?v:null;}catch(e){return null;}}
+// "Xem như tài khoản" là công cụ kiểm tra chéo của tab NHẬP LIỆU, không được lan sang báo cáo khác.
+// Trước đây nó áp cho cả app nên mở Báo cáo MKT lại thấy số của riêng 1 sale (lỗi 22/9/2026).
+function dashDangONhapLieu(){
+  const t=window._trangHienTai||'';
+  if(t!=='report-saleretail'&&t!=='report-salesi')return false;
+  try{return rptSlViewMode()==='input';}catch(e){return false;}
+}
+function dashViewAs(){
+  if(!dashDangONhapLieu())return null;
+  try{const v=JSON.parse(sessionStorage.getItem('dashViewAs')||'null');return v&&v.id?v:null;}catch(e){return null;}
+}
 function dashCanViewAs(){return dashIsSupreme()||dashCan('settings');}
 function dashGiao(a,b){            // [] = xem tất cả -> bên nào rỗng thì lấy bên kia
   if(!a.length)return b.slice();
@@ -657,6 +667,14 @@ function modDateBar(mod,cb){
 
 function switchPage(p){
   // Chặn cả khi gõ tay vào console / link cũ: không có quyền thì không mở trang.
+  if(window._trangHienTai!==p){
+    window._trangHienTai=p;
+    // rời báo cáo Sale -> thôi "xem như tài khoản khác", tránh mang bộ lọc của 1 sale sang trang khác
+    if(p!=='report-saleretail'&&p!=='report-salesi'){
+      try{sessionStorage.removeItem('dashViewAs');}catch(e){}
+    }
+    window._kiotOrdByCode=null;
+  }
   // Data Hub mở được nếu có 1 trong 2 mức quyền; bên trong renderDataHub sẽ khoá tiếp tab data thô.
   if(!dashCan(p)&&!(p==='datahub'&&dashCan('datahub-manual')))return;
   ['datahub','settings','report-saleretail','report-salesi','report-mkt','report-tonghop','log'].forEach(x=>{
@@ -3178,7 +3196,7 @@ function rptSlCfg(){return RPT_SL_CFG[rptSlType()];}
 function rptSlInType(t){return rptSlType()==='Sỉ'?t==='Sỉ':t!=='Sỉ';}
 function rptSlRender(){const f=window[rptSlCfg().render];if(typeof f==='function')f();}
 function rptSlViewMode(){const m=localStorage.getItem('rptSlViewMode_'+rptSlType())||'master';return m==='overview'?'master':m;}
-function rptSlSetViewMode(m){localStorage.setItem('rptSlViewMode_'+rptSlType(),m);rptSlRender();}
+function rptSlSetViewMode(m){localStorage.setItem('rptSlViewMode_'+rptSlType(),m);window._kiotOrdByCode=null;rptSlRender();}
 function rptSlLast9(s){const d=(s||'').toString().replace(/\D/g,'');return d.length>=9?d.slice(-9):d;}
 const RPT_SL_MIN_DATE='2026-06-01';
 // DANH SÁCH SALE THẬT -- dùng cho MỌI dropdown và bảng "Hiệu quả theo Sales".
@@ -3570,7 +3588,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='22/09 17:30';
+const APP_VERSION='22/09 17:31';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
