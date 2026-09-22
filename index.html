@@ -4025,12 +4025,15 @@ function rptSlBuildMaster(){
   // Là 1 tháng TRÒN tính từ ngày đơn đầu, KHÔNG phải hết tháng dương lịch -- khách đặt 29/7 thì các đơn
   // 01/8, 08/8, 20/8 vẫn là mua lần đầu (vd KH007462 Nam Vĩnh Phúc).
   // Đơn phát sinh sau mốc đó là MUA LẠI -> tách ra repeatOrds, không cộng vào doanh số chốt của Sale.
-  // CẮT HAY KHÔNG CẮT phụ thuộc AI NUÔI KHÁCH (người dùng chốt 22/9/2026):
-  //  - Khách do MKT đưa về (Lẻ, và Sỉ nguồn ONLINE): chỉ tính đơn trong 1 tháng đầu; đơn sau đó là
-  //    khách tự quay lại, không phải công của lượt quảng cáo đó -> xếp "Mua lại".
-  //  - Khách SỈ nguồn OFFLINE: sale tự đi tìm và chăm liên tục, đại lý nhập hàng hàng tháng -> TÍNH HẾT,
-  //    không cắt. Cắt là mất phần lớn doanh số Sỉ (tháng 9/2026: 87,7tr so với 270tr thực tế).
-  const khongCat=r=>rptSlType()==='Sỉ'&&/offline/i.test(r.nguon||'');
+  // AI NUÔI KHÁCH THÌ NGƯỜI ĐÓ ĂN DOANH SỐ (người dùng chốt 22/9/2026):
+  //  - LẺ nguồn ONLINE  -> TÍNH HẾT, mọi đơn về sau đều của kênh online.
+  //  - SỈ nguồn OFFLINE -> TÍNH HẾT, sale tự đi tìm và chăm liên tục, đại lý nhập hàng hàng tháng.
+  //  - SỈ nguồn ONLINE  -> chỉ tính 1 tháng đầu, TRỪ KHI khách vẫn nhắn Pancake quanh thời điểm đơn
+  //    (xem chatToi bên dưới) -- còn nhắn nghĩa là kênh online vẫn đang nuôi, tính tiếp.
+  const khongCat=r=>{
+    const offline=/offline/i.test(r.nguon||'');
+    return rptSlType()==='Sỉ'?offline:!offline;
+  };
   rows.forEach(r=>{
     const all=r.kords||[];
     if(!all.length){r.repeatOrds=[];r.staleOrds=[];r.repeatRevenue=0;return;}
@@ -4041,10 +4044,10 @@ function rptSlBuildMaster(){
       return;
     }
     const han=new Date(String(all[0].purchase_date).slice(0,10));han.setMonth(han.getMonth()+1);
-    // NGOẠI LỆ CHO KHÁCH ONLINE (chốt 22/9/2026): đơn quá 1 tháng VẪN TÍNH nếu khách vẫn nhắn qua
-    // Facebook/Pancake quanh thời điểm đơn đó -- nghĩa là MKT vẫn đang nuôi khách, chứ không phải
-    // khách tự quay lại qua Zalo. Mốc so sánh là lần khách nhắn cuối (last_chat_at) cộng 30 ngày:
-    // còn nhắn thì đơn trong khoảng đó là công của kênh online.
+    // MỐC 1 THÁNG CHỈ ÁP KHI KHÁCH ĐÃ NGỪNG NHẮN PANCAKE (chốt 22/9/2026 -- áp cho MỌI khách online,
+    // cả Lẻ lẫn Sỉ nguồn Online): khách còn nhắn qua Facebook/Pancake thì mọi đơn phát sinh quanh thời
+    // điểm đó vẫn là công của kênh online, tính hết. Chỉ khi khách tắt hẳn tương tác (chuyển Zalo, bỏ
+    // trang) thì đơn mới mới coi là khách tự quay lại -> xếp "Mua lại".
     const chatToi=r.lastChat?new Date(new Date(String(r.lastChat).slice(0,10)).getTime()+30*86400000):null;
     const conNhan=o=>chatToi&&new Date(String(o.purchase_date).slice(0,10))<=chatToi;
     const trongHan=o=>new Date(String(o.purchase_date).slice(0,10))<han||conNhan(o);
