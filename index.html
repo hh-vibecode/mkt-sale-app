@@ -2574,6 +2574,17 @@ const RPT_TH_TABS=[
 ];
 function rptThTab(){const t=localStorage.getItem('rptThTab')||RPT_TH_TABS[0][0];return RPT_TH_TABS.some(x=>x[0]===t)?t:RPT_TH_TABS[0][0];}
 function rptThSetTab(t){localStorage.setItem('rptThTab',t);renderReportTongHop();}
+// Bánh tròn "Doanh thu theo brand" của trang tổng hợp.
+function rptThVeChart(){
+  const el=document.getElementById('thCBrand'),ds=window._rptThBrand||[];
+  if(!el||typeof Chart!=='function'||!ds.length)return;
+  if(window._thChartBrand){window._thChartBrand.destroy();window._thChartBrand=null;}
+  window._thChartBrand=new Chart(el,{type:'doughnut',
+    data:{labels:ds.map(x=>x[0]),datasets:[{data:ds.map(x=>x[1]),backgroundColor:ds.map(x=>x[2]),borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.label+': '+vnd(c.parsed)}}},
+      onClick:(e,els)=>{if(els&&els.length)rptSlShow('ovBrand-'+ds[els[0].index][0]);}}});
+}
 async function renderReportTongHop(){
   const el=document.getElementById('page-report-tonghop');
   if(!el)return;
@@ -2596,6 +2607,8 @@ async function renderReportTongHop(){
   window._rptSlMod='tonghop';
   try{document.getElementById('rptThBody').innerHTML=(RPT_TH_TABS.find(x=>x[0]===cur)||RPT_TH_TABS[0])[2]();}
   finally{window._rptSlMod=null;window._rptSlType='Lẻ';}
+  rptThVeChart();
+  if(typeof tblAlign==='function')tblAlign();
 }
 // ════════ BÁO CÁO MKT ════════
 // Dựng lại đúng khung "Tổng Quan" của dashboard cũ: Ads Performance (4 ô) · Sale Performance (4 ô) ·
@@ -3241,7 +3254,14 @@ function rptSlOverviewHtml(){
   L('ovChuaNoi',{title:'Khách đã chốt nhưng CHƯA nối được Kiot',cols:custCols,rows:custRows(chotKh.filter(r=>!r.kh))});
 
   // Doanh thu theo brand -- brand lấy thẳng từ shop Pancake, không phải suy đoán như bản cũ.
-  const byBrand={};master.forEach(r=>{if(r.revenue>0){const b=DH_BRAND_LABEL[r.brand]||r.brand||'Khác';byBrand[b]=(byBrand[b]||0)+r.revenue;}});
+  // Bấm vào ô Doanh thu hoặc vào từng brand -> hiện đúng danh sách khách đứng sau con số đó.
+  const byBrand={},khBrand={};
+  master.forEach(r=>{if(r.revenue>0){const b=DH_BRAND_LABEL[r.brand]||r.brand||'Khác';
+    byBrand[b]=(byBrand[b]||0)+r.revenue;(khBrand[b]=khBrand[b]||[]).push(r);}});
+  const coRev=master.filter(r=>r.revenue>0).sort((a,b)=>b.revenue-a.revenue);
+  L('ovRev',{title:'Khách đã có doanh thu · '+vnd(rev),cols:custCols,rows:custRows(coRev)});
+  Object.keys(khBrand).forEach(b=>L('ovBrand-'+b,{title:'Doanh thu '+b+' · '+vnd(byBrand[b]),
+    cols:custCols,rows:custRows(khBrand[b].slice().sort((x,y)=>y.revenue-x.revenue))}));
 
   const bySale={};
   master.forEach(r=>{const s=r.staff||'(chưa gán)';bySale[s]=bySale[s]||{data:0,chot:0,rev:0,noi:0};bySale[s].data++;if(r.isChot)bySale[s].chot++;if(r.kh)bySale[s].noi++;bySale[s].rev+=r.revenue;});
@@ -3282,7 +3302,7 @@ function rptSlOverviewHtml(){
       const g2='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px';
       return `
     <div style="${g2}">
-      ${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(ordCount)+' đơn đặt hàng Kiot','g-green')}
+      <div onclick="rptSlShow('ovRev')" style="cursor:pointer" title="Bấm để xem danh sách khách">${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(ordCount)+' đơn đặt hàng Kiot · bấm để xem','g-green')}</div>
       ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(pv),nPv?num(nPv)+'/'+num(open.length)+' khách chưa chốt đã ước lượng':'chưa khách nào được ước lượng','g-orange')}
     </div>
     <div style="${g4};margin-bottom:14px">
@@ -3293,7 +3313,23 @@ function rptSlOverviewHtml(){
     </div>`;})()}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px">
       ${card('Phễu chuyển đổi <span style="font-size:11px;color:var(--muted);font-weight:600">· bấm để xem danh sách</span>',funnelHtml)}
-      ${card('Doanh thu theo brand',Object.keys(byBrand).length?bar(Object.entries(byBrand).sort((a,b)=>b[1]-a[1]),rev,v=>vnd(v)):'<div style="color:var(--muted);font-size:12px">Chưa có doanh thu</div>')}
+      ${(()=>{
+        const ds=Object.entries(byBrand).sort((a,b)=>b[1]-a[1]);
+        const mau=['#4361ee','#f59e0b','#0abf7a','#8b5cf6','#ef4444','#14b8a6','#94a3b8'];
+        window._rptThBrand=ds.map((x,i)=>[x[0],x[1],mau[i%mau.length]]);
+        if(!ds.length)return card('Doanh thu theo brand','<div style="color:var(--muted);font-size:12px">Chưa có doanh thu</div>');
+        const chuGiai=ds.map((x,i)=>`<div onclick="rptSlShow('ovBrand-${x[0]}')" title="Bấm để xem khách của ${x[0]}"
+          style="display:flex;align-items:center;gap:8px;padding:5px 2px;cursor:pointer;border-radius:6px">
+          <span style="width:10px;height:10px;border-radius:3px;background:${mau[i%mau.length]};flex:none"></span>
+          <span style="font-size:11.5px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x[0]}</span>
+          <span style="font-size:11.5px;font-weight:700">${vnd(x[1])}</span>
+          <span style="font-size:11px;color:var(--muted);font-weight:600;width:52px;text-align:right">${pct(rev?x[1]/rev*100:0)}</span>
+        </div>`).join('');
+        return card('Doanh thu theo brand <span style="font-size:11px;color:var(--muted);font-weight:600">· bấm để xem danh sách</span>',
+          `<div style="display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr);gap:14px;align-items:center">
+            <div style="height:150px;position:relative"><canvas id="thCBrand"></canvas></div>
+            <div style="min-width:0">${chuGiai}</div></div>`);
+      })()}
     </div>
     <div class="tbl-card" style="margin-top:4px">
       <div class="tbl-head"><div class="tbl-title">Hiệu quả theo Sales</div><div class="tbl-count">${num(saleRows.length)}</div></div>
