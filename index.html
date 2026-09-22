@@ -3524,8 +3524,23 @@ function rptSlOverviewHtml(){
   const card=(title,body)=>`<div class="tbl-card" style="padding:16px 18px;margin-bottom:16px">
     <div style="font-size:13px;font-weight:800;margin-bottom:12px">${title}</div>${body}</div>`;
 
-  const funnel=[['Tổng data Lẻ',le.length,'ovData','#94a3b8'],['Lead đạt',dat.length,'ovDat','#4361ee'],
-    ['Lead tiềm năng',tiem.length,'ovTiem','#f59e0b'],['Đơn chốt',chotO.length,'ovChot','#0abf7a']];
+  // PHỄU: Lẻ đếm theo ĐƠN PANCAKE (mọi lead lẻ đều đẻ ra 1 đơn Pancake). Sỉ thì KHÔNG -- sale sỉ gọi
+  // điện / Zalo, khách Offline không hề có đơn Pancake, nên phải đếm theo KHÁCH trong Master (gồm cả
+  // khách nhập tay). Trước đây dùng chung công thức của Lẻ nên tab Sỉ chỉ hiện phần Online.
+  const laSi=rptSlType()==='Sỉ';
+  const khongTiem=r=>/không tiềm năng|mất kết nối|mất lead/i.test((r.siPhanLoai||'')+' '+(r.manualStatus||''));
+  const datKh=master.filter(r=>r.isChot||!khongTiem(r));
+  const tiemKh=master.filter(r=>r.isChot||(!khongTiem(r)&&(r.potential>0||/tiềm năng|chăm sóc/i.test((r.siPhanLoai||'')+' '+(r.manualStatus||''))||r.siLuot>0)));
+  if(laSi){
+    L('ovDataKh',{title:'Toàn bộ khách Sỉ (Online + Offline)',cols:custCols,rows:custRows(master)});
+    L('ovDatKh',{title:'Khách còn theo được (bỏ mất kết nối / không tiềm năng)',cols:custCols,rows:custRows(datKh)});
+    L('ovTiemKh',{title:'Khách tiềm năng (gồm cả đã chốt)',cols:custCols,rows:custRows(tiemKh)});
+  }
+  const funnel=laSi
+    ?[['Tổng khách Sỉ',master.length,'ovDataKh','#94a3b8'],['Còn theo được',datKh.length,'ovDatKh','#4361ee'],
+      ['Khách tiềm năng',tiemKh.length,'ovTiemKh','#f59e0b'],['Đã chốt đơn',chotKh.length,'ovChotKh','#0abf7a']]
+    :[['Tổng data Lẻ',le.length,'ovData','#94a3b8'],['Lead đạt',dat.length,'ovDat','#4361ee'],
+      ['Lead tiềm năng',tiem.length,'ovTiem','#f59e0b'],['Đơn chốt',chotO.length,'ovChot','#0abf7a']];
   const fmax=funnel[0][1]||1;
   const funnelHtml=funnel.map(([l,v,k,c],i)=>`<div onclick="rptSlShow('${k}')" style="cursor:pointer;margin-bottom:10px">
     <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:4px">
@@ -3551,12 +3566,28 @@ function rptSlOverviewHtml(){
     </div>
     <div style="${g4};margin-bottom:14px">
       ${mkKpi(ic('users'),'Khách tiềm năng',num(master.length),num(chotKh.length)+' đã chốt · '+num(master.length-chotKh.length)+' chưa chốt','g-blue')}
-      ${mkKpi(ic('check'),'Tỉ lệ chốt / tiềm năng',pct(tiem.length?chotO.length/tiem.length*100:0),num(chotO.length)+' chốt / '+num(tiem.length)+' tiềm năng · '+pct(le.length?chotO.length/le.length*100:0)+' trên tổng data','g-teal')}
+      ${laSi
+        ?mkKpi(ic('check'),'Tỉ lệ chốt / tiềm năng',pct(tiemKh.length?chotKh.length/tiemKh.length*100:0),num(chotKh.length)+' chốt / '+num(tiemKh.length)+' tiềm năng · '+pct(master.length?chotKh.length/master.length*100:0)+' trên tổng khách','g-teal')
+        :mkKpi(ic('check'),'Tỉ lệ chốt / tiềm năng',pct(tiem.length?chotO.length/tiem.length*100:0),num(chotO.length)+' chốt / '+num(tiem.length)+' tiềm năng · '+pct(le.length?chotO.length/le.length*100:0)+' trên tổng data','g-teal')}
       ${mkKpi(ic('clock'),'Đang chăm sóc',num(dangCS.length),master.length?pct(dangCS.length/master.length*100)+' tổng khách':'—','g-purple')}
       ${mkKpi(ic('clock'),'Mất lead',num(matLead.length),master.length?pct(matLead.length/master.length*100)+' tổng khách':'—','g-red')}
     </div>`;})()}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px">
       ${card('Phễu chuyển đổi <span style="font-size:11px;color:var(--muted);font-weight:600">· bấm để xem danh sách</span>',funnelHtml)}
+      ${laSi?(()=>{
+        const nhom={'Online':[],'Offline':[]};
+        master.forEach(r=>nhom[/offline/i.test(r.nguon||'')?'Offline':'Online'].push(r));
+        Object.keys(nhom).forEach(k=>L('ovNguon-'+k,{title:'Khách Sỉ nguồn '+k+' · '+num(nhom[k].length)+' khách',cols:custCols,rows:custRows(nhom[k])}));
+        const tongN=master.length||1;
+        return card('Online / Offline <span style="font-size:11px;color:var(--muted);font-weight:600">· bấm để xem danh sách</span>',
+          Object.keys(nhom).map(k=>{const l=nhom[k],tien=l.reduce((a,r)=>a+r.revenue,0),p=l.length/tongN*100;
+            return '<div onclick="rptSlShow(\'ovNguon-'+k+'\')" style="cursor:pointer;margin-bottom:11px">'
+              +'<div style="display:flex;justify-content:space-between;font-size:11.5px;font-weight:700;margin-bottom:3px">'
+              +'<span>'+k+' <span style="color:var(--muted);font-weight:600">· '+num(l.length)+' khách</span></span>'
+              +'<span>'+vnd(tien)+' <span style="color:var(--muted);font-weight:600">· '+pct(p)+'</span></span></div>'
+              +'<div style="height:7px;background:var(--bg2);border-radius:5px;overflow:hidden"><div style="width:'+p.toFixed(1)+'%;height:100%;background:var(--accent);border-radius:5px"></div></div></div>';
+          }).join(''));
+      })():''}
       ${(()=>{
         const ds=Object.entries(byBrand).sort((a,b)=>b[1]-a[1]);
         const mau=['#4361ee','#f59e0b','#0abf7a','#8b5cf6','#ef4444','#14b8a6','#94a3b8'];
