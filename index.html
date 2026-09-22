@@ -2649,8 +2649,11 @@ let mktLoaded=false;
 async function mktLoadSpend(force){
   if(mktLoaded&&!force)return;
   const rows=await sbFetchAll('mkt_spend','select=ad_id,ad_date,campaign_name,adset_name,ad_name,reach,impressions,spend,messages,ctr,cpc,comments&order=ad_date.desc');
+  // chừa 2 ô cuối cho TÊN QUẢNG CÁO và TÊN NHÓM QC (bảng gốc không có, nhưng báo cáo chi tiết cần)
+  COL.AD_NAME=20;COL.ADSET_NAME2=21;
   const dong=r=>{const a=[];
     a[COL.CAMPAIGN]=r.campaign_name||'';a[COL.AD_ID]=r.ad_id||'';a[COL.DATE]=String(r.ad_date||'').slice(0,10);
+    a[COL.AD_NAME]=r.ad_name||'';a[COL.ADSET_NAME2]=r.adset_name||'';
     a[COL.REACH]=r.reach||0;a[COL.IMPRESSIONS]=r.impressions||0;a[COL.SPEND]=r.spend||0;
     a[COL.MESSAGES]=r.messages||0;a[COL.CTR]=r.ctr||0;a[COL.CPC]=r.cpc||0;a[COL.COMMENTS]=r.comments||0;
     return a;};
@@ -2725,8 +2728,39 @@ function rptMktData(){
     const c=adCamp[String(x.adId||'').trim()];
     if(c&&camp[c]){camp[c].rev+=x.rev;camp[c].don++;}
   });
+  // ── CHI TIẾT THEO TỪNG QUẢNG CÁO ──
+  // Chi phí/mess lấy ở cấp Ad (allRowsRaw), khách lấy từ ad_id ghi trên đơn Pancake -> biết đúng
+  // quảng cáo nào đẻ ra khách nào, khách đó mua bao nhiêu (người dùng yêu cầu 22/9/2026).
+  const theoAd={};
+  (window.allRowsRaw||[]).forEach(r=>{
+    const id=String(r[COL.AD_ID]||'').trim();
+    if(!/^\d{6,}$/.test(id))return;
+    if(rptMktBoQua(r[COL.CAMPAIGN]))return;
+    const b=detectBrand(r[COL.CAMPAIGN]);
+    if(brandLoc&&b!==brandLoc)return;
+    const d=parseDate(r[COL.DATE]);
+    if(!d||!rptMktInRange(isoNgay(d)))return;
+    theoAd[id]=theoAd[id]||{id,ten:'',camp:(r[COL.CAMPAIGN]||'').trim(),brand:b,spend:0,mess:0,khach:[],rev:0,don:0};
+    theoAd[id].spend+=toNum(r[COL.SPEND]);
+    theoAd[id].mess+=toNum(r[COL.MESSAGES]);
+    if(!theoAd[id].ten&&COL.AD_NAME>=0)theoAd[id].ten=(r[COL.AD_NAME]||'').trim();
+  });
+  // khách (kể cả chưa chốt) gắn theo ad_id của đơn Pancake
+  const cu2=window._rptSlType;
+  ['Lẻ','Sỉ'].forEach(t=>{
+    window._rptSlType=t;window._kiotOrdByCode=null;
+    rptSlBuildMaster().forEach(r=>{
+      const id=String(r.adId||'').trim();
+      if(!id||!theoAd[id])return;
+      if(t==='Sỉ'&&/offline/i.test(r.nguon||''))return;
+      theoAd[id].khach.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',staff:r.staff||'',
+        kh:r.kh||'',ngay:r.isChot?r.closeDate:r.created,rev:r.isChot?r.revenue:0,chot:!!r.isChot});
+      if(r.isChot){theoAd[id].don++;theoAd[id].rev+=r.revenue;}
+    });
+  });
+  window._rptSlType=cu2||'Lẻ';window._kiotOrdByCode=null;
   const rev=sale.reduce((a,x)=>a+x.rev,0);
-  return{ads,kpi,spendBrand,spendNgay,camp,sale,revBrand,plat,rev,don:sale.length};
+  return{ads,kpi,spendBrand,spendNgay,camp,sale,revBrand,plat,rev,don:sale.length,theoAd};
 }
 function isoNgay(d){const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);}
 // Bấm ô Doanh số -> tầng 1 hiện 2 khối SỈ / LẺ (như dashboard cũ), bấm tiếp vào khối nào mới mở
@@ -2823,6 +2857,32 @@ function rptMktHtml(){
       +'<td class="num" style="font-weight:800;color:'+(c.rev>0?'var(--green)':'inherit')+'">'+(c.rev>0?vnd(c.rev):'—')+'</td>'
       +'<td class="num" style="font-weight:800;color:'+mauTy(ty)+'">'+(ty===null?'—':ty.toFixed(1)+'%')+'</td></tr>';
   }).join('');
+  // bảng chi tiết theo từng quảng cáo
+  const dsAd=Object.values(d.theoAd||{}).sort((a,b)=>b.spend-a.spend);
+  const colKh=['Loại','Ngày','Khách','SĐT','Kênh','Sales','Mã KH','Trạng thái','Doanh thu'];
+  dsAd.forEach((a,i)=>L('mktAd-'+i,{title:'Khách từ quảng cáo: '+(a.ten||a.camp)+' · '+a.id,
+    cols:colKh,rows:a.khach.slice().sort((x,y)=>y.rev-x.rev).map(k=>[k.loai,dmy(k.ngay),k.name,k.phone||'',k.kenh,k.staff,k.kh,
+      k.chot?'<span style="color:var(--green);font-weight:700">Chốt đơn</span>':'chưa chốt',k.rev?vnd(k.rev):''])}));
+  const bangAd=dsAd.map((a,i)=>{
+    const ty=a.rev>0?a.spend/a.rev*100:null;
+    return '<tr'+(a.khach.length?' onclick="rptSlShow('+String.fromCharCode(39)+'mktAd-'+i+String.fromCharCode(39)+')" style="cursor:pointer" title="Bấm để xem '+a.khach.length+' khách"':'')+'>'
+      +'<td class="name">'+String(a.ten||a.camp).replace(/</g,'&lt;')+'</td>'
+      +'<td style="font-size:11px;color:var(--muted)">'+a.id+'</td>'
+      +'<td style="font-size:11px">'+String(a.camp).slice(0,28).replace(/</g,'&lt;')+'</td>'
+      +'<td class="num">'+vnd(a.spend)+'</td>'
+      +'<td class="num">'+num(a.mess)+'</td>'
+      +'<td class="num">'+(a.mess>0?vnd(a.spend/a.mess):'—')+'</td>'
+      +'<td class="num">'+(a.khach.length?num(a.khach.length):'—')+'</td>'
+      +'<td class="num">'+(a.don?num(a.don):'—')+'</td>'
+      +'<td class="num" style="font-weight:800;color:'+(a.rev>0?'var(--green)':'inherit')+'">'+(a.rev>0?vnd(a.rev):'—')+'</td>'
+      +'<td class="num" style="font-weight:800;color:'+mauTy(ty)+'">'+(ty===null?'—':ty.toFixed(1)+'%')+'</td></tr>';
+  }).join('');
+  const cuonAd='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Chi tiết theo quảng cáo</div>'
+    +'<div class="tbl-count">'+num(dsAd.length)+'</div>'
+    +'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:auto">bấm 1 dòng để xem khách quảng cáo đó mang về</span></div>'
+    +'<div class="tbl-scroll"><table><thead><tr><th>Quảng cáo</th><th>Ads ID</th><th>Chiến dịch</th><th>Chi phí</th><th>Mess</th><th>CP/mess</th><th>Khách</th><th>Đơn chốt</th><th>Doanh thu</th><th>ADS/DS</th></tr></thead><tbody>'
+    +(bangAd||'<tr><td colspan="10" style="text-align:center;padding:22px;color:var(--muted)">Chưa có dữ liệu quảng cáo trong kỳ</td></tr>')
+    +'</tbody></table></div></div>';
   const cuonBang='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Chiến dịch quảng cáo</div>'
     +'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:auto">đơn chốt gắn theo Ads ID trong đơn Pancake</span></div>'
     +'<div class="tbl-scroll"><table><thead><tr><th>Chiến dịch</th><th>Brand</th><th>Chi phí</th><th>Mess</th><th>CP/mess</th><th>Đơn chốt</th><th>Doanh số</th><th>ADS/DS</th></tr></thead><tbody>'
@@ -2844,7 +2904,7 @@ function rptMktHtml(){
     +'<div class="tbl-card"><div class="tbl-head"><div class="tbl-title">ADS / DS theo brand</div>'
     +'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:auto">chi phí ads / doanh số · thấp là tốt</span></div>'
     +'<div style="padding:14px 16px"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">'+the+'</div></div></div>'
-    +cuonBang;
+    +cuonBang+cuonAd;
 }
 // Vẽ biểu đồ sau khi HTML đã vào DOM. Giữ tham chiếu để lần render sau huỷ, tránh rò bộ nhớ.
 function rptMktVeChart(){
