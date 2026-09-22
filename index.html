@@ -2699,6 +2699,31 @@ function rptMktData(){
   return{ads,kpi,spendBrand,spendNgay,camp,sale,revBrand,plat,rev,don:sale.length};
 }
 function isoNgay(d){const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);}
+// Bấm ô Doanh số -> tầng 1 hiện 2 khối SỈ / LẺ (như dashboard cũ), bấm tiếp vào khối nào mới mở
+// danh sách khách của khối đó. Xem tổng quan trước, chi tiết sau -- khỏi đổ 34 dòng vào mặt ngay.
+function rptMktShowDoanhSo(){
+  const d=window._rptMktTach||{le:0,si:0,nLe:0,nSi:0};
+  const tong=d.le+d.si;
+  const khoi=(nhan,tien,sl,mau,key,ghi)=>'<div onclick="qcCloseModal();rptSlShow('+String.fromCharCode(39)+key+String.fromCharCode(39)+')" '
+    +'title="Bấm để xem danh sách khách" style="cursor:pointer;flex:1;min-width:230px;background:var(--surface);border:1.5px solid var(--border);'
+    +'border-left:4px solid '+mau+';border-radius:14px;padding:16px 18px">'
+    +'<div style="font-size:11px;font-weight:800;color:'+mau+';text-transform:uppercase;letter-spacing:.06em">'+nhan+'</div>'
+    +'<div style="font-size:26px;font-weight:800;margin:6px 0 4px">'+vnd(tien)+'</div>'
+    +'<div style="font-size:11.5px;color:var(--muted);font-weight:600">'+num(sl)+' đơn · '
+    +(tong?pct(tien/tong*100):'0%')+' tổng doanh số · '+ghi+'</div></div>';
+  let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
+  m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)qcCloseModal()">'
+    +'<div style="background:var(--bg);border-radius:16px;max-width:760px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">'
+    +'<div style="display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border);background:var(--surface)">'
+    +'<div style="font-size:15px;font-weight:800">Doanh số — Sỉ / Lẻ <span style="color:var(--muted);font-weight:600;font-size:13px">· '+vnd(tong)+'</span></div>'
+    +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
+    +'<div style="padding:18px 20px;display:flex;gap:14px;flex-wrap:wrap">'
+    +khoi('Lẻ (Pancake)',d.le,d.nLe,'#14b8a6','mktLe','đơn lẻ đã chốt')
+    +khoi('Sỉ (nguồn Online)',d.si,d.nSi,'#8b5cf6','mktSi','đơn sỉ nguồn Online đã chốt')
+    +'</div>'
+    +'<div style="padding:0 20px 16px;font-size:11.5px;color:var(--muted);font-weight:600">Bấm vào từng khối để xem danh sách khách. Khách sỉ nguồn Offline không tính vào báo cáo MKT.</div>'
+    +'</div></div>';
+}
 function rptMktHtml(){
   const d=rptMktData();
   const kpi=d.kpi,rev=d.rev,don=d.don;
@@ -2711,6 +2736,7 @@ function rptMktHtml(){
     .map(x=>[x.loai,dmy(x.ngay),x.name,x.phone||'',x.kenh||'',tenBrand(x.brand),x.staff||'',x.kh||'',vnd(x.rev)]);
   const le=d.sale.filter(x=>x.loai==='Lẻ'),si=d.sale.filter(x=>x.loai==='Sỉ');
   const tienLe=le.reduce((a,x)=>a+x.rev,0),tienSi=si.reduce((a,x)=>a+x.rev,0);
+  window._rptMktTach={le:tienLe,si:tienSi,nLe:le.length,nSi:si.length};
   L('mktDon',{title:'Đơn đã chốt · Lẻ '+vnd(tienLe)+' ('+num(le.length)+' đơn) + Sỉ '+vnd(tienSi)+' ('+num(si.length)+' đơn)',
     cols:colDon,rows:rowDon(d.sale)});
   L('mktLe',{title:'Doanh số LẺ · '+vnd(tienLe),cols:colDon,rows:rowDon(le)});
@@ -2737,10 +2763,10 @@ function rptMktHtml(){
     +mkKpi(ic('diamond'),'ADS / DS',adsDs===null?'—':pct(adsDs),'chi phí / doanh số (Sỉ+Lẻ)','g-purple')
     +'</div>';
   const kpiSale='<div class="kpi-grid">'
-    +bam('mktDon',mkKpi(ic('cash'),'Doanh số',rev>0?vnd(rev):'—',
-       'Lẻ '+vnd(tienLe)+' · Sỉ '+vnd(tienSi)+' · bấm để xem','g-teal'))
-    +bam('mktDon',mkKpi(ic('box'),'Số đơn chốt',don>0?num(don):'—',
-       num(le.length)+' lẻ · '+num(si.length)+' sỉ · bấm để xem','g-orange'))
+    +'<div onclick="rptMktShowDoanhSo()" style="cursor:pointer" title="Bấm để xem tách Sỉ / Lẻ">'
+      +mkKpi(ic('cash'),'Doanh số',rev>0?vnd(rev):'—','Lẻ '+vnd(tienLe)+' · Sỉ '+vnd(tienSi)+' · bấm để xem','g-teal')+'</div>'
+    +'<div onclick="rptMktShowDoanhSo()" style="cursor:pointer" title="Bấm để xem tách Sỉ / Lẻ">'
+      +mkKpi(ic('box'),'Số đơn chốt',don>0?num(don):'—',num(le.length)+' lẻ · '+num(si.length)+' sỉ · bấm để xem','g-orange')+'</div>'
     +mkKpi(ic('clipboard'),'DS TB / đơn',don>0?vnd(rev/don):'—','trung bình mỗi đơn chốt','g-pink')
     +mkKpi(ic('check'),'Tỷ lệ chốt',don>0&&kpi.totalMess>0?pct(don/kpi.totalMess*100):'—','đơn chốt / tổng mess','g-red')
     +'</div>';
