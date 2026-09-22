@@ -2704,11 +2704,15 @@ function rptMktData(){
   //  - Sỉ: CHỈ nguồn ONLINE. Khách sỉ Offline (sales tự đi, khách cũ giới thiệu) vẫn nằm trong Báo cáo
   //    Sale Sỉ nhưng KHÔNG tính vào MKT -- không phải tiền do quảng cáo mang về.
   //  - Doanh số Sỉ quy hết về brand SHIDAI (người dùng chốt 22/9/2026: "shidai chính là sỉ").
-  const cu=window._rptSlType;const sale=[];
+  // Lọc kỳ bằng rptSlPeriod() -- nó cắt theo NGÀY TỪNG ĐƠN KIOT và tính lại doanh thu chỉ của đơn trong
+  // kỳ. Trước đây lọc bằng closeDate (ngày đơn ĐẦU TIÊN) nên khách mua lại nhiều lần bị loại oan: đơn
+  // tháng 9 của Mai Quy / ĐỒ THỜ CÚNG THUỶ MAI có đơn đầu từ 10/2025 nên rớt khỏi báo cáo (lỗi 22/9/2026).
+  const cu=window._rptSlType,cuMod=window._rptSlMod;const sale=[];
+  window._rptSlMod='mkt';
   ['Lẻ','Sỉ'].forEach(t=>{
     window._rptSlType=t;window._kiotOrdByCode=null;
-    rptSlBuildMaster().forEach(r=>{
-      if(!r.isChot||r.revenue<=0||!rptMktInRange(r.closeDate))return;
+    rptSlPeriod().forEach(r=>{
+      if(!r.isChot||r.revenue<=0)return;
       if(t==='Sỉ'&&/offline/i.test(r.nguon||''))return;
       const brandRow=t==='Sỉ'?'Shidai':(r.brand||'');
       if(brandLoc&&brandRow!==brandLoc)return;
@@ -2717,7 +2721,7 @@ function rptMktData(){
         rev:r.revenue,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||''});
     });
   });
-  window._rptSlType=cu||'Lẻ';window._kiotOrdByCode=null;
+  window._rptSlType=cu||'Lẻ';window._rptSlMod=cuMod||null;window._kiotOrdByCode=null;
   const revBrand={};RPT_MKT_BRANDS.forEach(([k])=>revBrand[k]=0);revBrand.Khac=0;
   const plat={Facebook:0,TikTok:0,'Khác':0};
   const adCamp=buildAdCampMap();
@@ -2746,10 +2750,11 @@ function rptMktData(){
     if(!theoAd[id].ten&&COL.AD_NAME>=0)theoAd[id].ten=(r[COL.AD_NAME]||'').trim();
   });
   // khách (kể cả chưa chốt) gắn theo ad_id của đơn Pancake
-  const cu2=window._rptSlType;
+  const cu2=window._rptSlType,cuMod2=window._rptSlMod;
+  window._rptSlMod='mkt';
   ['Lẻ','Sỉ'].forEach(t=>{
     window._rptSlType=t;window._kiotOrdByCode=null;
-    rptSlBuildMaster().forEach(r=>{
+    rptSlPeriod().forEach(r=>{
       const id=String(r.adId||'').trim();
       if(!id||!theoAd[id])return;
       if(t==='Sỉ'&&/offline/i.test(r.nguon||''))return;
@@ -2758,7 +2763,7 @@ function rptMktData(){
       if(r.isChot){theoAd[id].don++;theoAd[id].rev+=r.revenue;}
     });
   });
-  window._rptSlType=cu2||'Lẻ';window._kiotOrdByCode=null;
+  window._rptSlType=cu2||'Lẻ';window._rptSlMod=cuMod2||null;window._kiotOrdByCode=null;
   const rev=sale.reduce((a,x)=>a+x.rev,0);
   return{ads,kpi,spendBrand,spendNgay,camp,sale,revBrand,plat,rev,don:sale.length,theoAd};
 }
@@ -3002,16 +3007,13 @@ function siCrmHtml(){
       +'<td style="white-space:nowrap">'+(dmy(r.ngay_cham)||'—')+'</td>'
       +'<td class="name">'+siEsc(r.customer_name)+(r.kiot_code?' <span style="color:var(--muted);font-weight:600;font-size:11px">'+siEsc(r.kiot_code)+'</span>':'')+'</td>'
       +'<td style="'+oNho+'">'+siEsc(r.phone||'')+'</td>'
-      +'<td style="'+oNho+'">'+siEsc([r.nguon,r.kenh].filter(Boolean).join(' · '))+'</td>'
+      +'<td style="'+oNho+'">'+siEsc(r.kenh||'')+'</td>'
       +'<td style="'+oNho+'">'+siEsc(r.sales||'')+'</td>'
       +'<td style="'+oNho+'">'+siEsc(r.hinh_thuc||'')+'</td>'
-      +'<td style="'+oNho+';max-width:320px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+siEsc(r.noi_dung||'')+'">'+siEsc(r.noi_dung||'—')+'</div></td>'
+      +'<td style="'+oNho+';max-width:420px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+siEsc(r.noi_dung||'')+'">'+siEsc(r.noi_dung||'—')+'</div></td>'
       +'<td style="'+oNho+'">'+siEsc(r.phan_loai||'')+'</td>'
-      +'<td class="num">'+(r.gia_tri_du_kien?vnd(r.gia_tri_du_kien):'—')+'</td>'
-      +'<td style="'+oNho+'">'+siEsc(r.can_ho_tro||'')+'</td>'
       +'<td style="'+oNho+'">'+(r.tinh_trang?('<span style="font-weight:700;color:'+(/xong/i.test(r.tinh_trang)?'var(--green)':'var(--yellow)')+'">'+siEsc(r.tinh_trang)+'</span>'):'—')+'</td>'
       +'<td style="white-space:nowrap;'+oNho+'">'+(dmy(r.ngay_hen)||'—')+'</td>'
-      +'<td class="num" style="font-weight:800;color:'+(r.gia_tri_chot?'var(--green)':'inherit')+'">'+(r.gia_tri_chot?vnd(r.gia_tri_chot):'—')+'</td>'
       +'<td style="white-space:nowrap"><button onclick="siCrmForm('+r.id+')" class="btn-ghost" style="padding:3px 9px;font-size:11px">Sửa</button>'
       +'<button onclick="siCrmXoa('+r.id+')" class="btn-ghost" style="padding:3px 9px;font-size:11px;margin-left:4px;color:var(--red)">Xoá</button></td>'
     +'</tr>';}).join('');
@@ -3025,10 +3027,9 @@ function siCrmHtml(){
     +'style="margin-left:auto;height:28px;box-sizing:border-box;padding:2px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:600;font-family:var(--font);outline:none;width:230px">'
     +'<button onclick="siCrmForm(0)" class="refresh-btn" style="padding:5px 14px;font-size:11.5px">+ Thêm lượt chăm sóc</button></div>'
     +'<div class="tbl-scroll"><table><thead><tr>'
-    +'<th>Ngày chăm sóc</th><th>Khách hàng</th><th>SĐT</th><th>Nguồn · Kênh</th><th>Sales</th><th>Hình thức</th>'
-    +'<th>Nội dung chăm sóc</th><th>Phân loại KH</th><th>Giá trị dự kiến</th><th>Cần hỗ trợ</th><th>Tình trạng</th>'
-    +'<th>Ngày hẹn</th><th>Giá trị chốt</th><th></th></tr></thead><tbody>'
-    +(tr||'<tr><td colspan="14" style="text-align:center;padding:24px;color:var(--muted)">Chưa có lượt chăm sóc nào trong kỳ</td></tr>')
+    +'<th>Ngày chăm sóc</th><th>Khách hàng</th><th>SĐT</th><th>Kênh</th><th>Sales</th><th>Hình thức</th>'
+    +'<th>Nội dung chăm sóc</th><th>Phân loại KH</th><th>Tình trạng</th><th>Ngày hẹn</th><th></th></tr></thead><tbody>'
+    +(tr||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Chưa có lượt chăm sóc nào trong kỳ</td></tr>')
     +'</tbody></table></div>'+phanTrang+'</div>';
 }
 function siCrmTim(v){window._siCrmQ=v;window._siCrmPage=1;rptSlRender();}
@@ -4216,18 +4217,10 @@ function rptSlMasterRowSi(r){
   return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\')">'
     +'<td>'+(dmy(r.created)||'—')+'</td>'
     +'<td>'+rptSlSrcBadge(r)+'</td>'
-    +'<td style="'+nho+'">'+e(r.kenh||'—')+'</td>'
     +'<td>'+rptSlStaffHtml(r)+'</td>'
     +'<td class="name">'+rptSlTenKhach(r)+'</td>'
     +'<td style="white-space:nowrap">'+rptSlSdtHtml(r)+'</td>'
-    +'<td style="'+nho+';max-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(r.siDiaChi||'')+'">'+e(r.siDiaChi||'—')+'</div></td>'
-    +'<td>'+mo(r.siMoHinh)+'</td>'
-    +'<td>'+mo(r.siDienTich)+'</td>'
-    +'<td>'+(r.siTaiChinh?'<span style="'+nho+';font-weight:700;color:'+(/xấu/i.test(r.siTaiChinh)?'var(--red)':'var(--green)')+'">'+e(r.siTaiChinh)+'</span>':'<span style="color:var(--muted)">—</span>')+'</td>'
-    +'<td>'+mo(r.siNhomKH)+'</td>'
     +'<td>'+mo(r.siPhanLoai)+'</td>'
-    +'<td>'+mo(r.siGiayPhep)+'</td>'
-    +'<td>'+fanpage+'</td>'
     +'<td class="num">'+(r.siLuot?num(r.siLuot):'—')+'</td>'
     +'<td style="white-space:nowrap">'+(dmy(r.siCSCuoi)||'—')+'</td>'
     +'<td class="num">'+nghi+'</td>'
@@ -4245,7 +4238,10 @@ const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn kh�
 // Master SỈ có thêm khối HỒ SƠ ĐẠI LÝ (sheet Sỉ có, Lẻ không): mô hình hợp tác, diện tích showroom,
 // khả năng tài chính, phân loại KH, giấy phép kinh doanh, fanpage, địa chỉ -- cộng với phần rút gọn
 // nhật ký chăm sóc (số lượt + lần gần nhất + bao lâu chưa liên hệ).
-const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Kênh</th><th>Sales phụ trách</th><th>Tên khách / cửa hàng</th><th>SĐT</th><th>Địa chỉ</th><th>Mô hình</th><th>Showroom</th><th>Khả năng tài chính</th><th>Nhóm KH</th><th>Phân loại KH</th><th>GPKD</th><th>Fanpage</th><th>Lượt CS</th><th>CS gần nhất</th><th>Chưa liên hệ</th><th>Nội dung gần nhất</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Giá trị đơn cộng dồn</th><th></th>';
+// Chỉ để ngoài bảng những cột hay dùng. Mô hình hợp tác, diện tích showroom, khả năng tài chính,
+// nhóm KH, GPKD, fanpage, địa chỉ -> nằm trong HỒ SƠ KHÁCH (bấm vào dòng), vì ít khi cần quét bằng mắt
+// và nhiều trường chỉ điền được 1/4 số khách (người dùng chốt 22/9/2026).
+const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Sales phụ trách</th><th>Tên khách / cửa hàng</th><th>SĐT</th><th>Phân loại KH</th><th>Lượt CS</th><th>CS gần nhất</th><th>Chưa liên hệ</th><th>Nội dung gần nhất</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Giá trị đơn cộng dồn</th><th></th>';
 Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>rptSlType()==='Sỉ'?RPT_SL_MASTER_HEAD_SI:RPT_SL_MASTER_HEAD_LE});
 function rptSlMasterRow(r){
   if(rptSlType()==='Sỉ')return rptSlMasterRowSi(r);
@@ -4338,6 +4334,18 @@ function rptSlShowCustomer(key){
     fld('Mua lại (quá 1 tháng)',r.repeatRevenue>0?vnd(r.repeatRevenue)+' · '+num(r.repeatOrds.length)+' đơn':''),
     fld('Tên bên Kiot',esc(r.kiotName)),
     fld('Ngày đặt hàng gần nhất',esc(dmy(r.lastKiotDate))),
+    ...(rptSlType()==='Sỉ'?[
+      fld('Địa chỉ',esc(r.siDiaChi)),
+      fld('Mô hình hợp tác',esc(r.siMoHinh)),
+      fld('Diện tích showroom',esc(r.siDienTich)),
+      fld('Khả năng tài chính',esc(r.siTaiChinh),/xấu/i.test(r.siTaiChinh||'')?'var(--red)':'var(--green)'),
+      fld('Nhóm khách hàng',esc(r.siNhomKH)),
+      fld('Phân loại KH',esc(r.siPhanLoai)),
+      fld('Giấy phép kinh doanh',esc(r.siGiayPhep)),
+      fld('Fanpage / website',r.siFanpage?'<a href="'+esc(r.siFanpage)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở trang ↗</a>':''),
+      fld('Số lượt chăm sóc',r.siLuot?num(r.siLuot)+' lượt':''),
+      fld('Tình trạng hỗ trợ',esc(r.siHoTro)),
+    ]:[]),
     fld('Hội thoại',rptSlChatUrl(r)?'<a href="'+rptSlChatUrl(r)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat Pancake</a>':''),
     fld('Nguồn gốc (Pancake)',esc(r.source)),
     fld('Ad ID',r.adId?('<code style="font-size:11px">'+esc(r.adId)+'</code>'):''),
