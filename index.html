@@ -3903,6 +3903,8 @@ function rptSlBuildMaster(){
       phoneFromKiot:!phone,
       created:orders[0].order_date,brand:last.brand,shop:last.shop_name,
       // id hội thoại Pancake (lấy ở đơn mới nhất có) -> dựng link bấm vào tên khách là mở khung chat
+      // lần khách nhắn CUỐI trên Pancake -- để biết khách còn theo Facebook hay đã chuyển hẳn sang Zalo
+      lastChat:orders.map(o=>o.last_chat_at).filter(Boolean).sort().pop()||'',
       convId:orders.map(o=>o.conversation_id).filter(Boolean).pop()||'',
       pageId:orders.map(o=>o.page_id).filter(Boolean).pop()||'',
       source:pick(o=>o.source),adId:pick(o=>o.ad_id),
@@ -4039,7 +4041,13 @@ function rptSlBuildMaster(){
       return;
     }
     const han=new Date(String(all[0].purchase_date).slice(0,10));han.setMonth(han.getMonth()+1);
-    const trongHan=o=>new Date(String(o.purchase_date).slice(0,10))<han;
+    // NGOẠI LỆ CHO KHÁCH ONLINE (chốt 22/9/2026): đơn quá 1 tháng VẪN TÍNH nếu khách vẫn nhắn qua
+    // Facebook/Pancake quanh thời điểm đơn đó -- nghĩa là MKT vẫn đang nuôi khách, chứ không phải
+    // khách tự quay lại qua Zalo. Mốc so sánh là lần khách nhắn cuối (last_chat_at) cộng 30 ngày:
+    // còn nhắn thì đơn trong khoảng đó là công của kênh online.
+    const chatToi=r.lastChat?new Date(new Date(String(r.lastChat).slice(0,10)).getTime()+30*86400000):null;
+    const conNhan=o=>chatToi&&new Date(String(o.purchase_date).slice(0,10))<=chatToi;
+    const trongHan=o=>new Date(String(o.purchase_date).slice(0,10))<han||conNhan(o);
     let first=all.filter(trongHan);
     // PHIẾU TREO: trong hạn đã có đơn Hoàn thành thì bỏ đơn Phiếu tạm (status 1) cùng hạn -- đó là phiếu
     // cũ Sale quên huỷ khi khách đổi hàng (vd Kiều Trang DH002322 225,5tr bị thay bởi DH002343 221,8tr).

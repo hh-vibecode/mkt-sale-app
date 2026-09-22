@@ -215,6 +215,39 @@ function b3Target(tags) {
   if (t.includes('TIỀM NĂNG') || t.includes('BÀN GIAO')) return ST.XAC_NHAN;
   return null;
 }
+// NGÀY KHÁCH NHẮN CUỐI trên Pancake (last_customer_interactive_at của hội thoại).
+// Dùng để biết khách online còn theo Facebook hay đã chuyển sang Zalo: còn nhắn thì đơn quá 1 tháng
+// VẪN tính doanh số (quy tắc người dùng chốt 22/9/2026), hết nhắn thì mới coi là khách tự quay lại.
+// Mỗi lượt chỉ lấy tối đa 250 hội thoại: ưu tiên đơn chưa có ngày, rồi tới đơn cũ nhất chưa cập nhật lại.
+async function capNhatChat() {
+  if (process.env.AUTO_CHAT === '0') return 'Bỏ qua ngày nhắn cuối (AUTO_CHAT=0).';
+  const rows = await doc('datahub_orders',
+    `select=id,page_id,conversation_id,last_chat_at&conversation_id=not.is.null&order_date=gte.${MIN_ORDER_DATE}`);
+  const can = rows
+    .filter((r) => r.page_id && r.conversation_id)
+    .sort((a, b) => (a.last_chat_at ? 1 : 0) - (b.last_chat_at ? 1 : 0)
+      || String(a.last_chat_at || '').localeCompare(String(b.last_chat_at || '')))
+    .slice(0, 250);
+  if (!can.length) return '';
+  let ok = 0;
+  for (const r of can) {
+    try {
+      const j = await fetch(`https://pancake.vn/api/v1/pages/${r.page_id}/conversations/${r.conversation_id}?access_token=${SESSION_TOKEN}`)
+        .then((x) => x.json());
+      const c = j.conversation || j;
+      const t = c.last_customer_interactive_at || c.updated_at || null;
+      if (!t || t === r.last_chat_at) continue;
+      const put = await fetch(`${SUPABASE_URL}/rest/v1/datahub_orders?id=eq.${r.id}`, {
+        method: 'PATCH',
+        headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ last_chat_at: t }),
+      });
+      if (put.ok) ok++;
+    } catch (e) { /* hội thoại lỗi thì bỏ qua, lượt sau lấy lại */ }
+    await new Promise((x) => setTimeout(x, 120));
+  }
+  return `Ngày nhắn cuối: cập nhật ${ok}/${can.length} hội thoại.`;
+}
 async function autoB3() {
   if (process.env.AUTO_B3 === '0') return 'Bỏ qua bước B3 (AUTO_B3=0).';
   const rows = await doc('datahub_orders', `select=shop_id,order_id,system_id,customer_tags,order_status&order_date=gte.${MIN_ORDER_DATE}`);
@@ -284,7 +317,8 @@ async function autoB3() {
   }
   const chot = await autoChot();            // gắn thẻ trước...
   const b3 = await autoB3();                // ...rồi mới đẩy trạng thái theo thẻ mới
-  console.log(`XONG. Tổng ${grandTotal} đơn đã đồng bộ.` + (chot ? ' ' + chot : '') + (b3 ? ' ' + b3 : ''));
+  const chat = await capNhatChat();          // ngày khách nhắn cuối -> quyết định đơn lặp có tính không
+  console.log(`XONG. Tổng ${grandTotal} đơn đã đồng bộ.` + (chot ? ' ' + chot : '') + (b3 ? ' ' + b3 : '') + (chat ? ' ' + chat : ''));
   await logSyncEnd(logId, {
     status: errors.length ? 'failed' : 'success',
     recordsCreated: grandTotal,
