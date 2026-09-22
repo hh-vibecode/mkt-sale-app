@@ -3404,7 +3404,7 @@ async function rptSlChotFlow(leadId,el){
     await dhManualSet(id,'status','Chốt đơn',null);
     window._kiotOrdByCode=null;rptSlRender();return;
   }
-  await rptSlSaveKH(leadId,ma,null);
+  await rptSlSaveKH(leadId,ma,null,true);   // true = chốt đơn: gắn thẻ CHỐT ĐƠN + đẩy trạng thái
 }
 function renderReportSaleLe(){return rptSlRenderPage('Lẻ');}
 function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
@@ -4258,7 +4258,7 @@ function dhOrderStatusLabel(v){return DH_ORDER_STATUS[String(v)]||('mã '+v);}
 // rồi mới gọi Pancake ở nền. Xong thì vá thẳng vào dữ liệu đang giữ trong bộ nhớ (khỏi tải lại 2.5k đơn).
 // Hỏng thì trả dòng về bảng và báo, nên không sợ mất việc.
 const RPT_SL_DANG_LUU=new Set();
-async function rptSlSaveKH(leadId,val,el){
+async function rptSlSaveKH(leadId,val,el,chotLuon){
   const ma=String(val||'').trim();
   if(!ma){if(el)el.focus();return;}
   const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
@@ -4278,8 +4278,10 @@ async function rptSlSaveKH(leadId,val,el){
       const res=await fetch(`${SUPABASE_URL}/functions/v1/pancake-note`,{method:'POST',
         headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
         body:JSON.stringify({shop_id:o.shop_id,order_id:o.order_id,code:maChuan,
-          status:r.isChot?2:1,           // chốt -> Đã gửi hàng · tiềm năng -> Đã xác nhận
-          chot:r.isChot&&conTiem,        // còn thẻ tiềm năng thì đổi sang CHỐT ĐƠN
+          // chotLuon = Sale vừa chọn trạng thái "Chốt đơn" -> PHẢI gắn thẻ CHỐT ĐƠN, nếu không thì
+          // khách vẫn là tiềm năng, lần render sau lại rơi về mục "Chưa cập nhật trạng thái" (lỗi 22/9/2026).
+          status:(chotLuon||r.isChot)?2:1,     // chốt -> Đã gửi hàng · tiềm năng -> Đã xác nhận
+          chot:chotLuon?true:(r.isChot&&conTiem),
           who:logWho()})});
       const d=await res.json().catch(()=>({}));
       if(!res.ok)throw new Error(d.error||('lỗi '+res.status));
@@ -4290,6 +4292,8 @@ async function rptSlSaveKH(leadId,val,el){
       o.internal_note=d.note||maChuan;
       if(d.status!==undefined)o.order_status=String(d.status);
       if(d.tags)o.customer_tags=d.tags.join(', ');
+      else if(chotLuon&&!/CHỐT ĐƠN/i.test(o.customer_tags||''))
+        o.customer_tags=((o.customer_tags||'').split(',').map(x=>x.trim()).filter(x=>x&&!/TIỀM NĂNG/i.test(x)).concat('CHỐT ĐƠN')).join(', ');
       window._kiotOrdByCode=null;
     }catch(e){
       alert('Chưa lưu được "'+maChuan+'" sang Pancake: '+e.message+'\nDòng đã được trả lại bảng, thử lại giúp em.');
