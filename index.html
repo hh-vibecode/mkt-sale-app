@@ -4091,7 +4091,12 @@ function rptSlBuildMaster(){
   //    (xem chatToi bên dưới) -- còn nhắn nghĩa là kênh online vẫn đang nuôi, tính tiếp.
   const khongCat=r=>{
     const offline=/offline/i.test(r.nguon||'');
-    return rptSlType()==='Sỉ'?offline:!offline;
+    if(rptSlType()!=='Sỉ')return !offline;          // Lẻ Online: tính hết
+    if(offline)return true;                          // Sỉ Offline: tính hết
+    // Sỉ Online nhưng KHÔNG có đơn Pancake nào -> không có hội thoại để biết khách còn tương tác hay
+    // không, mà thực tế sale vẫn chăm qua Zalo/điện thoại (vd Mai Quy - ĐỒ THỜ CÚNG THUỶ MAI). Thiếu
+    // bằng chứng thì KHÔNG cắt oan; chỉ cắt khi khách thật sự có Pancake và đã tắt tương tác.
+    return !(r.orders&&r.orders.length);
   };
   rows.forEach(r=>{
     const all=r.kords||[];
