@@ -3015,7 +3015,9 @@ function siCrmHtml(){
   const q=(window._siCrmQ||'').trim().toLowerCase();
   let list=siCrmRows.filter(r=>siCrmTrongKy(r)&&dashSeeSale(rptSlSaleName(r.sales)));
   if(q)list=list.filter(r=>[r.customer_name,r.phone,r.kiot_code,r.noi_dung,r.sales].some(x=>String(x||'').toLowerCase().includes(q)));
-  const page=window._siCrmPage||1,pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
+  const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
+  if((window._siCrmPage||1)>totalPages)window._siCrmPage=1;
+  const page=window._siCrmPage||1;
   const rows=list.slice((page-1)*pageSize,page*pageSize);
   const khach=siKhachList();
   const byLead={};khach.forEach(k=>byLead[k.leadId]=k);
@@ -3560,6 +3562,29 @@ async function rptSlChotFlow(leadId,el){
 function renderReportSaleLe(){return rptSlRenderPage('Lẻ');}
 function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Báo lỗi tải ngay trên trang kèm nút thử lại -- không bao giờ để trang trắng mà không nói gì.
+// Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
+// Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
+window._loiCuoi=null;
+function rptBaoLoi(nguon,e){
+  const msg=String((e&&(e.stack||e.message))||e||'').slice(0,600);
+  window._loiCuoi={nguon,msg,luc:new Date().toISOString()};
+  try{
+    let el=document.getElementById('appLoiBar');
+    if(!el){el=document.createElement('div');el.id='appLoiBar';document.body.appendChild(el);}
+    el.style.cssText='position:fixed;right:14px;bottom:14px;z-index:4000;max-width:560px;background:var(--surface);'
+      +'border:1.5px solid var(--red);border-left:5px solid var(--red);border-radius:12px;padding:12px 14px;'
+      +'box-shadow:0 12px 40px rgba(0,0,0,.28);font-family:var(--font);font-size:12px;color:var(--text)';
+    el.innerHTML='<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">'
+      +'<b style="color:var(--red)">Lỗi ở '+String(nguon).replace(/</g,'&lt;')+'</b>'
+      +'<button onclick="navigator.clipboard&&navigator.clipboard.writeText(JSON.stringify(window._loiCuoi))" class="btn-ghost" style="margin-left:auto;padding:2px 8px;font-size:11px">Copy</button>'
+      +'<button onclick="this.parentNode.parentNode.remove()" class="btn-ghost" style="padding:2px 8px;font-size:11px">Đóng</button></div>'
+      +'<div style="white-space:pre-wrap;word-break:break-word;color:var(--text2);max-height:220px;overflow:auto">'
+      +msg.replace(/</g,'&lt;')+'</div>';
+  }catch(e2){}
+  console.error('['+nguon+']',e);
+}
+window.addEventListener('error',ev=>rptBaoLoi('trang',ev.error||ev.message));
+window.addEventListener('unhandledrejection',ev=>rptBaoLoi('tác vụ nền',ev.reason));
 function rptTaiLoi(tieuDe,e,ham){
   return '<div class="page-title" style="margin-bottom:14px">'+tieuDe+'</div>'
     +'<div class="tbl-card" style="border-left:4px solid var(--red);padding:16px 18px">'
@@ -3576,7 +3601,9 @@ function rptDangTai(tieuDe){
 // chừng, để lại màn trắng. Đây chính là lỗi "Sỉ chỉ xem được 1 lần" (22/9/2026).
 const rptSlLuot={};
 async function rptSlRenderPage(type){
-  window._rptSlType=(type==='Sỉ'?'Sỉ':'Lẻ');
+  const loaiMoi=(type==='Sỉ'?'Sỉ':'Lẻ');
+  if(window._rptSlType!==loaiMoi){window._rptSlMasterPage=1;window._rptSlCrmPage=1;window._siCrmPage=1;}
+  window._rptSlType=loaiMoi;
   const cfg=rptSlCfg();
   const el=document.getElementById('page-'+cfg.page);
   if(!el)return;
@@ -3616,9 +3643,11 @@ async function rptSlRenderPage(type){
   const than=document.getElementById('rptSlBody');
   if(!than)return;
   try{
-    than.innerHTML=mode==='input'?rptSlInputHtml():mode==='crm'?rptSlCrmHtml():rptSlMasterHtml();
+    const html=mode==='input'?rptSlInputHtml():mode==='crm'?rptSlCrmHtml():rptSlMasterHtml();
+    if(!html||!String(html).trim())throw new Error('Bảng dựng ra rỗng (mode='+mode+', khách='+rptSlBuildMaster().length+')');
+    than.innerHTML=html;
   }catch(e){
-    console.error('[BÁO CÁO '+cfg.title+'] dựng bảng lỗi:',e);
+    rptBaoLoi('Báo cáo '+cfg.title+' · '+mode,e);
     than.innerHTML='<div class="tbl-card" style="border-left:4px solid var(--red);padding:16px 18px">'
       +'<div style="font-weight:800;color:var(--red);margin-bottom:6px">Không dựng được bảng</div>'
       +'<div style="font-size:12.5px;color:var(--text2);margin-bottom:10px">'+String(e&&e.message||e).replace(/</g,'&lt;')+'</div>'
@@ -4328,13 +4357,17 @@ function rptSlEmptyHtml(coFilter){
     +'<div style="font-size:11.5px;color:var(--muted);margin:5px 0 10px">Toàn bộ dữ liệu có '+num(tong)+' khách — thử mở rộng kỳ xem</div>'
     +nut('thismonth','Tháng này')+nut('30days','30 ngày')+nut('all','Tất cả thời gian')+'</div>';
 }
-function rptSlMasterHtml(){
+function rptSlMasterHtml(){try{return rptSlMasterHtmlRaw();}catch(e){rptBaoLoi('Bảng Master',e);
+  return '<div class="tbl-card" style="padding:16px 18px;border-left:4px solid var(--red)"><b style="color:var(--red)">Bảng Master lỗi</b><div style="font-size:12px;color:var(--text2);margin-top:6px">'+String(e&&e.message||e).replace(/</g,'&lt;')+'</div></div>';}}
+function rptSlMasterHtmlRaw(){
   const allRaw=rptSlPeriod();
   const all=rptSlSortNew(rptSlApplyF('master',allRaw),rptSlNgayTao);
   const q=(window._rptSlMasterQ||'').trim().toLowerCase();
   let list=all;
   if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||((r.phones||[]).some(p=>p.so.includes(q))||(r.phone||'').includes(q))||(r.kh||'').toLowerCase().includes(q)||(r.kiotName||'').toLowerCase().includes(q)||(r.leadId||'').toLowerCase().includes(q));
-  const pageSize=50,page=window._rptSlMasterPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
+  const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
+  if((window._rptSlMasterPage||1)>totalPages)window._rptSlMasterPage=1;
+  const page=window._rptSlMasterPage||1;
   // Bảng chỉ giữ các trường Sale dùng hàng ngày; mọi trường còn lại (Brand, Nhóm KH, Trạng thái, Mã KH,
   // Nối bằng, Tên Kiot, hoá đơn, lịch sử đơn...) nằm trong modal "Chi tiết" ở cột cuối.
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(rptSlMasterRow).join('');
@@ -4795,14 +4828,18 @@ function rptSlInputHtml(){
 // · Trạng thái · Nhóm nguyên nhân mất lead · Ngày chốt · Doanh thu · Mã KH.
 // Master giữ phần định danh, CRM thêm phần con người đánh giá. Tất cả ghi vào saleretail_manual.
 function rptSlSetCrmPage(p){window._rptSlCrmPage=p;rptSlRender();}
-function rptSlCrmHtml(){
+function rptSlCrmHtml(){try{return rptSlCrmHtmlRaw();}catch(e){rptBaoLoi('Bảng CRM',e);
+  return '<div class="tbl-card" style="padding:16px 18px;border-left:4px solid var(--red)"><b style="color:var(--red)">Bảng CRM lỗi</b><div style="font-size:12px;color:var(--text2);margin-top:6px">'+String(e&&e.message||e).replace(/</g,'&lt;')+'</div></div>';}}
+function rptSlCrmHtmlRaw(){
   if(rptSlType()==='Sỉ')return siCrmHtml();   // Sỉ: nhật ký chăm sóc nhiều dòng
   const allRaw=rptSlPeriod();
   const all=rptSlSortNew(rptSlApplyF('crm',allRaw),rptSlNgayCham);
   const q=(window._rptSlCrmQ||'').trim().toLowerCase();
   let list=all;
   if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||((r.phones||[]).some(p=>p.so.includes(q))||(r.phone||'').includes(q))||(r.kh||'').toLowerCase().includes(q)||(r.content||'').toLowerCase().includes(q));
-  const pageSize=50,page=window._rptSlCrmPage||1,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
+  const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
+  if((window._rptSlCrmPage||1)>totalPages)window._rptSlCrmPage=1;
+  const page=window._rptSlCrmPage||1;
   const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
   // Ô Sale PHẢI thao tác -> nền xanh lá nhạt, nhìn là biết chỗ nào cần điền. Ô chỉ đọc giữ nền trắng.
   const edit=inp;
