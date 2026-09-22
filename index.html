@@ -4055,6 +4055,12 @@ function rptSlBuildMaster(){
   _rptSlCache={khoa,rows};
   return rows;
 }
+const RPT_SL_TAM_NGAY=90;
+function rptSlPhieuTreo(o){
+  if(!o||o.status!==1||o.direct)return false;
+  const d=new Date(String(o.purchase_date).slice(0,10));
+  return (Date.now()-d.getTime())/86400000>RPT_SL_TAM_NGAY;
+}
 function rptSlBuildMasterRaw(){
   const ordByCode=kiotOrdByCode();
   const byPhone=kiotRetailByPhone(),byCode=kiotCustByCode();
@@ -4255,7 +4261,7 @@ function rptSlBuildMasterRaw(){
     const all=r.kords||[];
     if(!all.length){r.repeatOrds=[];r.staleOrds=[];r.repeatRevenue=0;return;}
     if(khongCat(r)){
-      const treo2=all.filter(o=>o.status===1&&!o.direct);     // phiếu tạm: không tính
+      const treo2=all.filter(rptSlPhieuTreo);   // phiếu tạm treo quá 90 ngày: không tính
       const dung=all.filter(o=>!treo2.includes(o));
       r.kords=dung;r.staleOrds=treo2;r.repeatOrds=[];r.repeatRevenue=0;
       r.revenue=dung.reduce((x,o)=>x+Number(o.total||0),0);
@@ -4278,7 +4284,7 @@ function rptSlBuildMasterRaw(){
     // Phiếu tạm là đơn chưa chốt thật bên Kiot -- cũ để trong staleOrds, hiện "[Phiếu treo - không tính]".
     // Ghi chú cũ: PHIẾU TREO: trong hạn đã có đơn Hoàn thành thì bỏ đơn Phiếu tạm (status 1) cùng hạn -- đó là phiếu
     // cũ Sale quên huỷ khi khách đổi hàng (vd Kiều Trang DH002322 225,5tr bị thay bởi DH002343 221,8tr).
-    const treo=first.filter(o=>o.status===1&&!o.direct);
+    const treo=first.filter(rptSlPhieuTreo);
     first=first.filter(o=>!treo.includes(o));
     r.kords=first;r.staleOrds=treo;
     r.repeatOrds=all.filter(o=>!trongHan(o));
