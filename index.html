@@ -598,6 +598,27 @@ function modInRange(mod,dateStr){
   return true;
 }
 // Tiêu đề module + bộ lọc ngày trên CÙNG MỘT HÀNG, lọc đẩy sang phải.
+// ── LỌC THEO BRAND (Chánh Tâm / Hiền Thuỷ / Shidai / Tự Tại Viên) ──
+// Giữ trong bộ nhớ phiên như bộ lọc ngày, mỗi trang một lựa chọn riêng; mở lại app là về "tất cả".
+const RPT_BRANDS=[['CT','Chánh Tâm'],['HT','Hiền Thuỷ'],['Shidai','Shidai'],['TTV','Tự Tại Viên']];
+const rptBrands={};
+function rptBrand(mod){return rptBrands[mod]||'';}
+function rptSetBrand(mod,v,cb){rptBrands[mod]=v||'';window._kiotOrdByCode=null;if(typeof window[cb]==='function')window[cb]();}
+function rptBrandDrop(mod,cb){
+  const cur=rptBrand(mod);
+  const ip='height:28px;box-sizing:border-box;padding:2px 8px;border:1.5px solid '+(cur?'var(--accent)':'var(--border)')
+    +';border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer';
+  return '<select onchange="rptSetBrand('+String.fromCharCode(39)+mod+String.fromCharCode(39)+',this.value,'
+    +String.fromCharCode(39)+cb+String.fromCharCode(39)+')" style="'+ip+'" title="Lọc theo thương hiệu">'
+    +'<option value="">Tất cả brand</option>'
+    +RPT_BRANDS.map(b=>'<option value="'+b[0]+'"'+(cur===b[0]?' selected':'')+'>'+b[1]+'</option>').join('')+'</select>';
+}
+// Dòng khách có thuộc brand đang lọc không. Khách Sỉ nhập tay không có brand -> coi là Shidai (mảng sỉ).
+function rptHopBrand(mod,r){
+  const b=rptBrand(mod);if(!b)return true;
+  const cua=r.brand||((r.saleType==='Sỉ'||r.loai==='Sỉ')?'Shidai':'');
+  return cua===b;
+}
 function modHeader(title,sub,mod,cb){
   return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px">
     <div style="min-width:0">
@@ -611,6 +632,7 @@ function modDateBar(mod,cb){
   const r=modRange(mod);
   const ip='height:28px;box-sizing:border-box;padding:2px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
   return `<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end">
+    ${['tonghop','mkt'].includes(mod)?rptBrandDrop(mod,cb):''}
     <select onchange="modQuick('${mod}',this.value,'${cb}')" style="${ip};cursor:pointer">
       <option value="">Chọn nhanh…</option>
       <option value="today">Hôm nay</option>
@@ -2653,8 +2675,10 @@ function rptMktBoQua(ten){return /tuyển\s*dụng|tuyen\s*dung|tuyển\s*nhân|
 // Gom số liệu 1 lần cho cả trang.
 function rptMktData(){
   // ADS: mkt_spend cấp chiến dịch/ngày
+  const brandLoc=rptBrand('mkt');
   const ads=allRows.filter(r=>{
     if(rptMktBoQua(r[COL.CAMPAIGN]))return false;
+    if(brandLoc&&detectBrand(r[COL.CAMPAIGN])!==brandLoc)return false;
     const d=parseDate(r[COL.DATE]);return d?rptMktInRange(isoNgay(d)):false;});
   const kpi=calcKPI(ads);
   const spendBrand={};RPT_MKT_BRANDS.forEach(([k])=>spendBrand[k]=0);spendBrand.Khac=0;
@@ -2680,8 +2704,10 @@ function rptMktData(){
     rptSlBuildMaster().forEach(r=>{
       if(!r.isChot||r.revenue<=0||!rptMktInRange(r.closeDate))return;
       if(t==='Sỉ'&&/offline/i.test(r.nguon||''))return;
+      const brandRow=t==='Sỉ'?'Shidai':(r.brand||'');
+      if(brandLoc&&brandRow!==brandLoc)return;
       sale.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',
-        brand:t==='Sỉ'?'Shidai':(r.brand||''),adId:r.adId||'',
+        brand:brandRow,adId:r.adId||'',
         rev:r.revenue,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||''});
     });
   });
@@ -3468,8 +3494,10 @@ async function rptSlRenderPage(type){
 // nối bằng MÃ KH (không tự nối SĐT), nên mọi con số ở đây đều truy ngược được về chứng từ.
 function rptSlOverviewHtml(){
   // Áp bộ lọc ngày RIÊNG của báo cáo: khách lọc theo NGÀY TẠO, đơn thô lọc theo NGÀY ĐƠN.
-  const master=rptSlPeriod();
-  const le=dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))&&dashSeeSale(rptSlSaleName(o.staff_name))&&modInRange(rptSlMod(),o.order_date));
+  const mod0=rptSlMod();
+  const master=rptSlPeriod().filter(r=>rptHopBrand(mod0,r));
+  const le=dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))&&dashSeeSale(rptSlSaleName(o.staff_name))&&modInRange(mod0,o.order_date)
+    &&(!rptBrand(mod0)||o.brand===rptBrand(mod0)));
   const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
   const dat=le.filter(o=>tag(o,'LEAD ĐẠT')||dhIsQualified(o));
   // Phễu phải CỘNG DỒN: đơn đã chốt thì trước đó đương nhiên cũng là tiềm năng. Nếu chỉ đếm đơn còn
@@ -4292,9 +4320,25 @@ async function rptSlSaveKH(leadId,val,el,chotLuon){
       o.internal_note=d.note||maChuan;
       if(d.status!==undefined)o.order_status=String(d.status);
       if(d.tags)o.customer_tags=d.tags.join(', ');
-      else if(chotLuon&&!/CHỐT ĐƠN/i.test(o.customer_tags||''))
-        o.customer_tags=((o.customer_tags||'').split(',').map(x=>x.trim()).filter(x=>x&&!/TIỀM NĂNG/i.test(x)).concat('CHỐT ĐƠN')).join(', ');
       window._kiotOrdByCode=null;
+      // KIỂM CHỨNG NGAY, đừng tin là xong. Trước đây app coi "gọi không lỗi" là thành công, nên khi
+      // Pancake âm thầm bỏ qua việc gắn thẻ thì dòng biến mất rồi 3 giây sau quay về chỗ cũ, Sale
+      // không hiểu vì sao (lỗi 22/9/2026). Giờ so lại kết quả trả về với thứ mình yêu cầu:
+      //   - chưa gắn được thẻ CHỐT ĐƠN -> ghi trạng thái "Chốt đơn" vào app để khỏi bị nhắc lại,
+      //     đồng thời nói rõ Pancake từ chối vì lý do gì để Sale vào sửa tay.
+      if(chotLuon){
+        const coThe=(d.tags||[]).some(t=>/CHỐT ĐƠN/i.test(t))||/CHỐT ĐƠN/i.test(o.customer_tags||'');
+        if(!coThe){
+          const vi=d.tag_error||d.tag_skipped||'Pancake không trả lời về thẻ';
+          try{await rptSlSaveManual(leadId,{status:'Chốt đơn'});}catch(e2){}
+          logAct('U','datahub_orders','#'+o.system_id,r.name,'Thẻ CHỐT ĐƠN','chưa gắn được',vi);
+          alert('Đã ghi Mã KH '+maChuan+' sang Pancake, nhưng CHƯA gắn được thẻ CHỐT ĐƠN.\n'
+            +'Lý do Pancake trả về: '+vi+'\n\nApp đã ghi trạng thái "Chốt đơn" trong báo cáo nên dòng này'
+            +' không bị nhắc lại; anh/chị vào Pancake gắn thẻ giúp để doanh thu về đúng.');
+        }
+      }
+      // trạng thái đơn không đẩy được (Pancake chỉ cho tiến) -> nói rõ, khỏi tưởng app hỏng
+      if(d.status_error)logAct('U','datahub_orders','#'+o.system_id,r.name,'Trạng thái đơn','không đổi được',d.status_error);
     }catch(e){
       alert('Chưa lưu được "'+maChuan+'" sang Pancake: '+e.message+'\nDòng đã được trả lại bảng, thử lại giúp em.');
     }finally{
