@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22></text></svg>">
 <title>APP MKT/SALE</title>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -3565,6 +3568,25 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 window._loiCuoi=null;
+// Cứ 5 phút hỏi máy chủ xem index.html có đổi không (so ETag). Có bản mới -> hiện nút "Tải lại".
+async function appKiemBanMoi(){
+  try{
+    const r=await fetch(location.pathname+'?v='+Date.now(),{method:'HEAD',cache:'no-store'});
+    const et=r.headers.get('etag')||r.headers.get('last-modified')||'';
+    if(!et)return;
+    if(!window._appETag){window._appETag=et;return;}
+    if(window._appETag===et||document.getElementById('appBanMoi'))return;
+    const d=document.createElement('div');d.id='appBanMoi';
+    d.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:4100;background:var(--accent);'
+      +'color:#fff;border-radius:999px;padding:9px 16px;font-family:var(--font);font-size:12.5px;font-weight:700;'
+      +'box-shadow:0 10px 30px rgba(0,0,0,.28);display:flex;align-items:center;gap:10px';
+    d.innerHTML='Đã có bản cập nhật mới'
+      +'<button onclick="location.reload(true)" style="border:none;background:#fff;color:var(--accent);border-radius:999px;'
+      +'padding:4px 12px;font-weight:800;font-size:12px;cursor:pointer;font-family:var(--font)">Tải lại</button>';
+    document.body.appendChild(d);
+  }catch(e){}
+}
+setInterval(appKiemBanMoi,5*60*1000);setTimeout(appKiemBanMoi,4000);
 function rptBaoLoi(nguon,e){
   const msg=String((e&&(e.stack||e.message))||e||'').slice(0,600);
   window._loiCuoi={nguon,msg,luc:new Date().toISOString()};
