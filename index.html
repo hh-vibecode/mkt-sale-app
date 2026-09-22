@@ -273,6 +273,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     <div class="sb-section" id="sec-report-label" style="margin-top:12px">Báo cáo</div>
     <nav id="sec-report">
       <div class="nav-item" onclick="switchPage('report-saleretail')" id="nav-report-saleretail"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg></span><span class="nav-label">Báo cáo Sale Lẻ</span></div>
+      <div class="nav-item" onclick="switchPage('report-mkt')" id="nav-report-mkt"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 17V9m5 8V5m5 12v-6m5 6V7"/><path stroke-linecap="round" d="M2 21h20"/></svg></span><span class="nav-label">Báo cáo MKT</span></div>
       <div class="nav-item" onclick="switchPage('report-salesi')" id="nav-report-salesi"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h13l2 5H3zM3 7V5m0 7v5h14m-9 3a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0m6 0a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0"/></svg></span><span class="nav-label">Báo cáo Sale Sỉ</span></div>
     </nav>
     <!-- Phân quyền + Nhật ký là việc của admin, không phải việc hằng ngày -> gom vào 1 nút cờ lê
@@ -302,6 +303,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     <div class="tab-page" id="page-report-salesi">
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
+    <div class="tab-page" id="page-report-mkt"></div>
     <div class="tab-page" id="page-report-tonghop">
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
@@ -567,7 +569,7 @@ const modRanges={};
 function modDefaultFor(mod){
   // Trang tổng hợp và CẢ HAI báo cáo Sale (Lẻ + Sỉ) xem theo THÁNG NÀY: đây là báo cáo kỳ, Sale mở lên
   // là muốn thấy kết quả tháng đang chạy; mặc định 2 ngày làm bảng gần như trắng, dễ tưởng mất data.
-  if(mod==='tonghop'||mod==='salesi'||mod==='saleretail'){const t=todayISO();return{from:t.slice(0,8)+'01',to:t};}
+  if(mod==='tonghop'||mod==='salesi'||mod==='saleretail'||mod==='mkt'){const t=todayISO();return{from:t.slice(0,8)+'01',to:t};}
   return modDateDefault();
 }
 function modRange(mod){return modRanges[mod]||modDefaultFor(mod);}
@@ -630,7 +632,7 @@ function switchPage(p){
   // Chặn cả khi gõ tay vào console / link cũ: không có quyền thì không mở trang.
   // Data Hub mở được nếu có 1 trong 2 mức quyền; bên trong renderDataHub sẽ khoá tiếp tab data thô.
   if(!dashCan(p)&&!(p==='datahub'&&dashCan('datahub-manual')))return;
-  ['datahub','settings','report-saleretail','report-salesi','report-tonghop','log'].forEach(x=>{
+  ['datahub','settings','report-saleretail','report-salesi','report-mkt','report-tonghop','log'].forEach(x=>{
     const el=document.getElementById('page-'+x);if(el)el.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);if(nav)nav.classList.toggle('active',x===p);
   });
@@ -640,6 +642,7 @@ function switchPage(p){
   if(p==='report-saleretail')renderReportSaleLe();
   if(p==='report-salesi')renderReportSaleSi();
   if(p==='report-tonghop')renderReportTongHop();
+  if(p==='report-mkt')renderReportMkt();
 }
 
 // ── Load ──
@@ -2574,11 +2577,14 @@ function rptThSetTab(t){localStorage.setItem('rptThTab',t);renderReportTongHop()
 async function renderReportTongHop(){
   const el=document.getElementById('page-report-tonghop');
   if(!el)return;
-  await dhLoadOrders();
-  await kiotLoadInvoices();
-  await dhLoadManual();
-  await rptSlLoadManual();
-  await rptSlLockChot();
+  if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo tổng hợp');
+  try{
+    await dhLoadOrders();
+    await kiotLoadInvoices();
+    await dhLoadManual();
+    await rptSlLoadManual();
+    await rptSlLockChot();
+  }catch(e){el.innerHTML=rptTaiLoi('Báo cáo tổng hợp',e,'renderReportTongHop');return;}
   const cur=rptThTab();
   el.innerHTML=`
     ${modHeader('Báo cáo tổng hợp','','tonghop','renderReportTongHop')}
@@ -2590,6 +2596,196 @@ async function renderReportTongHop(){
   window._rptSlMod='tonghop';
   try{document.getElementById('rptThBody').innerHTML=(RPT_TH_TABS.find(x=>x[0]===cur)||RPT_TH_TABS[0])[2]();}
   finally{window._rptSlMod=null;window._rptSlType='Lẻ';}
+}
+// ════════ BÁO CÁO MKT ════════
+// Dựng lại đúng khung "Tổng Quan" của dashboard cũ: Ads Performance (4 ô) · Sale Performance (4 ô) ·
+// biểu đồ phân tích · ADS/DS theo brand · bảng chiến dịch. Khác một điểm: DOANH SỐ không lấy từ Google
+// Sheet nữa mà lấy thẳng đơn đặt hàng Kiot qua Mã KH -- gồm CẢ SỈ LẪN LẺ, vì lead của cả hai đều do MKT đẻ ra.
+// Nạp CHI PHÍ QUẢNG CÁO từ Supabase (bảng mkt_spend, 1 dòng = 1 Ad / 1 ngày) rồi dựng lại đúng shape mảng
+// mà COL.* đang dùng, để calcKPI()/buildAdCampMap() cũ dùng được nguyên vẹn:
+//   allRowsRaw = cấp Ad  -> tra Ad ID ra tên chiến dịch (gắn đơn chốt về đúng chiến dịch)
+//   allRows    = gộp về cấp CHIẾN DỊCH/ngày -> tính KPI, khỏi cộng trùng
+// Chỉ nạp khi mở Báo cáo MKT (lazy), giữ lại trong phiên.
+let mktLoaded=false;
+async function mktLoadSpend(force){
+  if(mktLoaded&&!force)return;
+  const rows=await sbFetchAll('mkt_spend','select=ad_id,ad_date,campaign_name,adset_name,ad_name,reach,impressions,spend,messages,ctr,cpc,comments&order=ad_date.desc');
+  const dong=r=>{const a=[];
+    a[COL.CAMPAIGN]=r.campaign_name||'';a[COL.AD_ID]=r.ad_id||'';a[COL.DATE]=String(r.ad_date||'').slice(0,10);
+    a[COL.REACH]=r.reach||0;a[COL.IMPRESSIONS]=r.impressions||0;a[COL.SPEND]=r.spend||0;
+    a[COL.MESSAGES]=r.messages||0;a[COL.CTR]=r.ctr||0;a[COL.CPC]=r.cpc||0;a[COL.COMMENTS]=r.comments||0;
+    return a;};
+  window.allRowsRaw=rows.map(dong);
+  // gộp theo chiến dịch + ngày
+  const g={};
+  rows.forEach(r=>{
+    const k=(r.campaign_name||'')+'|'+String(r.ad_date||'').slice(0,10);
+    g[k]=g[k]||{campaign_name:r.campaign_name,ad_date:r.ad_date,reach:0,impressions:0,spend:0,messages:0,comments:0,ctr:0,cpc:0,n:0};
+    const x=g[k];
+    x.reach+=Number(r.reach||0);x.impressions+=Number(r.impressions||0);x.spend+=Number(r.spend||0);
+    x.messages+=Number(r.messages||0);x.comments+=Number(r.comments||0);
+    x.ctr+=Number(r.ctr||0);x.cpc+=Number(r.cpc||0);x.n++;
+  });
+  allRows=Object.values(g).map(x=>dong({campaign_name:x.campaign_name,ad_id:'',ad_date:x.ad_date,
+    reach:x.reach,impressions:x.impressions,spend:x.spend,messages:x.messages,comments:x.comments,
+    ctr:x.n?x.ctr/x.n:0,cpc:x.n?x.cpc/x.n:0}));
+  mktLoaded=true;
+}
+const RPT_MKT_BRANDS=[['HT','Hiền Thuỷ','#f59e0b'],['Shidai','Shidai','#8b5cf6'],['CT','Chánh Tâm','#3b82f6'],['TTV','Tự Tại Viên','#0abf7a']];
+function rptMktInRange(d){return modInRange('mkt',String(d||'').slice(0,10));}
+// Gom số liệu 1 lần cho cả trang.
+function rptMktData(){
+  // ADS: mkt_spend cấp chiến dịch/ngày
+  const ads=allRows.filter(r=>{const d=parseDate(r[COL.DATE]);return d?rptMktInRange(isoNgay(d)):false;});
+  const kpi=calcKPI(ads);
+  const spendBrand={};RPT_MKT_BRANDS.forEach(([k])=>spendBrand[k]=0);spendBrand.Khac=0;
+  const spendNgay={},camp={};
+  ads.forEach(r=>{
+    const b=detectBrand(r[COL.CAMPAIGN]);const key=spendBrand[b]!==undefined?b:'Khac';
+    const sp=toNum(r[COL.SPEND]),ms=toNum(r[COL.MESSAGES]);
+    spendBrand[key]+=sp;
+    const d=parseDate(r[COL.DATE]);if(d){const k=isoNgay(d);spendNgay[k]=(spendNgay[k]||0)+sp;}
+    const c=(r[COL.CAMPAIGN]||'(không tên)').trim();
+    camp[c]=camp[c]||{ten:c,brand:b,spend:0,mess:0,rev:0,don:0};
+    camp[c].spend+=sp;camp[c].mess+=ms;
+  });
+  // SALE: khách đã chốt, ngày chốt nằm trong kỳ -- lấy cả 2 báo cáo Lẻ và Sỉ
+  const cu=window._rptSlType;const sale=[];
+  ['Lẻ','Sỉ'].forEach(t=>{
+    window._rptSlType=t;window._kiotOrdByCode=null;
+    rptSlBuildMaster().forEach(r=>{
+      if(!r.isChot||r.revenue<=0||!rptMktInRange(r.closeDate))return;
+      sale.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',brand:r.brand||'',adId:r.adId||'',
+        rev:r.revenue,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||''});
+    });
+  });
+  window._rptSlType=cu||'Lẻ';window._kiotOrdByCode=null;
+  const revBrand={};RPT_MKT_BRANDS.forEach(([k])=>revBrand[k]=0);revBrand.Khac=0;
+  const plat={Facebook:0,TikTok:0,'Khác':0};
+  const adCamp=buildAdCampMap();
+  sale.forEach(x=>{
+    const key=revBrand[x.brand]!==undefined?x.brand:'Khac';revBrand[key]+=x.rev;
+    const k=(x.kenh||'').toLowerCase();
+    plat[k.includes('facebook')?'Facebook':(k.includes('tiktok')||k.includes('tik tok'))?'TikTok':'Khác']+=x.rev;
+    const c=adCamp[String(x.adId||'').trim()];
+    if(c&&camp[c]){camp[c].rev+=x.rev;camp[c].don++;}
+  });
+  const rev=sale.reduce((a,x)=>a+x.rev,0);
+  return{ads,kpi,spendBrand,spendNgay,camp,sale,revBrand,plat,rev,don:sale.length};
+}
+function isoNgay(d){const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);}
+function rptMktHtml(){
+  const d=rptMktData();
+  const kpi=d.kpi,rev=d.rev,don=d.don;
+  const tienSpend=kpi.totalSpend;
+  const adsDs=rev>0?tienSpend/rev*100:null;
+  const mauTy=t=>t===null?'var(--muted)':t<=50?'var(--green)':t<=100?'var(--yellow)':'var(--red)';
+  const kpiAds='<div class="kpi-grid">'
+    +mkKpi(ic('cash'),'Tổng chi phí',vnd(tienSpend),'ngân sách đã tiêu','g-blue')
+    +mkKpi(ic('chat'),'Tổng mess',num(kpi.totalMess),'lượt trò chuyện','g-green')
+    +mkKpi(ic('target'),'CP / mess',kpi.totalMess>0?vnd(kpi.costPerMess):'—','trung bình mỗi tin nhắn','g-yellow')
+    +mkKpi(ic('diamond'),'ADS / DS',adsDs===null?'—':pct(adsDs),'chi phí / doanh số (Sỉ+Lẻ)','g-purple')
+    +'</div>';
+  const kpiSale='<div class="kpi-grid">'
+    +mkKpi(ic('cash'),'Doanh số',rev>0?vnd(rev):'—',num(don)+' đơn đã chốt · Sỉ + Lẻ','g-teal')
+    +mkKpi(ic('box'),'Số đơn chốt',don>0?num(don):'—',kpi.totalMess>0?('trên '+num(kpi.totalMess)+' mess'):'chưa có mess','g-orange')
+    +mkKpi(ic('clipboard'),'DS TB / đơn',don>0?vnd(rev/don):'—','trung bình mỗi đơn chốt','g-pink')
+    +mkKpi(ic('check'),'Tỷ lệ chốt',don>0&&kpi.totalMess>0?pct(don/kpi.totalMess*100):'—','đơn chốt / tổng mess','g-red')
+    +'</div>';
+  // ADS/DS theo từng brand
+  const the=RPT_MKT_BRANDS.map(function(b){
+    const k=b[0],ten=b[1],mau=b[2];
+    const sp=d.spendBrand[k]||0,rv=d.revBrand[k]||0,ty=rv>0?sp/rv*100:null;
+    return '<div style="background:var(--bg2);border-radius:12px;padding:13px 15px;border-left:4px solid '+mau+'">'
+      +'<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">'+ten+'</div>'
+      +'<div style="font-size:24px;font-weight:800;color:'+mauTy(ty)+';margin:3px 0 2px">'+(ty===null?'—':ty.toFixed(1)+'%')+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);font-weight:600">'+vnd(sp)+' ads · '+(rv>0?vnd(rv):'chưa có')+' doanh số</div></div>';
+  }).join('');
+  // Bảng chiến dịch
+  const camps=Object.values(d.camp).sort((a,b)=>b.spend-a.spend);
+  const bang=camps.map(function(c){
+    const ty=c.rev>0?c.spend/c.rev*100:null;
+    const brandTen=(RPT_MKT_BRANDS.filter(x=>x[0]===c.brand)[0]||[null,'—'])[1];
+    return '<tr><td class="name">'+String(c.ten).replace(/</g,'&lt;')+'</td>'
+      +'<td style="font-size:11px">'+brandTen+'</td>'
+      +'<td class="num">'+vnd(c.spend)+'</td>'
+      +'<td class="num">'+num(c.mess)+'</td>'
+      +'<td class="num">'+(c.mess>0?vnd(c.spend/c.mess):'—')+'</td>'
+      +'<td class="num">'+(c.don?num(c.don):'—')+'</td>'
+      +'<td class="num" style="font-weight:800;color:'+(c.rev>0?'var(--green)':'inherit')+'">'+(c.rev>0?vnd(c.rev):'—')+'</td>'
+      +'<td class="num" style="font-weight:800;color:'+mauTy(ty)+'">'+(ty===null?'—':ty.toFixed(1)+'%')+'</td></tr>';
+  }).join('');
+  const cuonBang='<div class="card"><div class="card-head"><div class="card-title">Chiến dịch quảng cáo</div>'
+    +'<span style="font-size:11px;color:var(--muted);font-weight:600">đơn chốt gắn theo Ads ID trong đơn Pancake</span></div>'
+    +'<div class="tbl-scroll"><table><thead><tr><th>Chiến dịch</th><th>Brand</th><th>Chi phí</th><th>Mess</th><th>CP/mess</th><th>Đơn chốt</th><th>Doanh số</th><th>ADS/DS</th></tr></thead><tbody>'
+    +(bang||'<tr><td colspan="8" style="text-align:center;padding:22px;color:var(--muted)">Chưa có dữ liệu quảng cáo trong kỳ</td></tr>')
+    +'</tbody></table></div></div>';
+  const oChart=(id,tieuDe,phu,cao)=>'<div class="card" style="margin:0">'
+    +'<div class="card-head"><div class="card-title">'+tieuDe+'</div><span style="font-size:11px;color:var(--muted);font-weight:600">'+phu+'</span></div>'
+    +'<div style="height:'+(cao||200)+'px;position:relative"><canvas id="'+id+'"></canvas></div></div>';
+  return '<div class="sec-label">Ads Performance</div>'+kpiAds
+    +'<div class="sec-label">Sale Performance</div>'+kpiSale
+    +'<div class="sec-label">Phân tích</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:14px">'
+    +oChart('mktCBrand','Ngân sách theo brand',vnd(tienSpend))
+    +oChart('mktCRev','Doanh số theo brand',rev>0?vnd(rev):'chưa có đơn')
+    +oChart('mktCWave','Chi phí ads theo ngày','trong kỳ đang xem',220)
+    +oChart('mktCPlat','Doanh số theo nền tảng','Facebook · TikTok · khác')
+    +'</div>'
+    +'<div class="card"><div class="card-head"><div class="card-title">ADS / DS theo brand</div>'
+    +'<span style="font-size:11px;color:var(--muted);font-weight:600">chi phí ads / doanh số · thấp là tốt</span></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">'+the+'</div></div>'
+    +cuonBang;
+}
+// Vẽ biểu đồ sau khi HTML đã vào DOM. Giữ tham chiếu để lần render sau huỷ, tránh rò bộ nhớ.
+function rptMktVeChart(){
+  if(typeof Chart!=='function')return;
+  const d=rptMktData();
+  const css=n=>(getComputedStyle(document.documentElement).getPropertyValue(n)||'').trim()||'#64748b';
+  const chuGam=css('--muted'),luoi=css('--border');
+  const huy=k=>{if(window['_mktChart'+k]){window['_mktChart'+k].destroy();window['_mktChart'+k]=null;}};
+  const donut=function(id,k,nhan,so,mau){
+    const el=document.getElementById(id);if(!el||!so.some(v=>v>0))return;
+    huy(k);
+    window['_mktChart'+k]=new Chart(el,{type:'doughnut',
+      data:{labels:nhan,datasets:[{data:so,backgroundColor:mau,borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+        plugins:{legend:{position:'right',labels:{color:chuGam,font:{size:11,weight:'600'},boxWidth:10,padding:8}},
+          tooltip:{callbacks:{label:c=>c.label+': '+vnd(c.parsed)}}}}});
+  };
+  const nhanBrand=RPT_MKT_BRANDS.map(x=>x[1]).concat('Khác');
+  const mauBrand=RPT_MKT_BRANDS.map(x=>x[2]).concat('#94a3b8');
+  donut('mktCBrand','Brand',nhanBrand,RPT_MKT_BRANDS.map(x=>d.spendBrand[x[0]]||0).concat(d.spendBrand.Khac||0),mauBrand);
+  donut('mktCRev','Rev',nhanBrand,RPT_MKT_BRANDS.map(x=>d.revBrand[x[0]]||0).concat(d.revBrand.Khac||0),mauBrand);
+  donut('mktCPlat','Plat',['Facebook','TikTok','Khác'],[d.plat.Facebook,d.plat.TikTok,d.plat['Khác']],['#1877f2','#0f172a','#94a3b8']);
+  const ngay=Object.keys(d.spendNgay).sort();
+  const el=document.getElementById('mktCWave');
+  if(el&&ngay.length){
+    huy('Wave');
+    window._mktChartWave=new Chart(el,{type:'line',
+      data:{labels:ngay.map(x=>dmy(x)),datasets:[{data:ngay.map(x=>d.spendNgay[x]),borderColor:'#4361ee',
+        backgroundColor:'rgba(67,97,238,.12)',fill:true,tension:.35,pointRadius:2,borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>vnd(c.parsed.y)}}},
+        scales:{x:{ticks:{color:chuGam,font:{size:10}},grid:{display:false}},
+          y:{ticks:{color:chuGam,font:{size:10},callback:v=>v>=1e6?(v/1e6).toFixed(0)+'tr':(v/1e3).toFixed(0)+'k'},grid:{color:luoi}}}}});
+  }
+}
+async function renderReportMkt(){
+  const el=document.getElementById('page-report-mkt');
+  if(!el)return;
+  if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo MKT');
+  try{
+    await mktLoadSpend();
+    await dhLoadOrders();
+    await kiotLoadInvoices();
+    await dhLoadManual();
+    await rptSlLoadManual();
+  }catch(e){el.innerHTML=rptTaiLoi('Báo cáo MKT',e,'renderReportMkt');return;}
+  el.innerHTML=modHeader('Báo cáo MKT','','mkt','renderReportMkt')+'<div id="mktBody"></div>';
+  document.getElementById('mktBody').innerHTML=rptMktHtml();
+  rptMktVeChart();
+  if(typeof tblAlign==='function')tblAlign();
 }
 // ── Báo cáo · Sale Lẻ: trang tổng hợp CHỈ ĐỌC (không ghi bảng nào) từ CRM v2 (customers/leads/crm_activities/
 // orders) + Data Hub (datahub_orders) -- không phải nơi Sale thao tác hàng ngày, xem trang Customers/Workspace.
@@ -2956,16 +3152,34 @@ async function rptSlChotFlow(leadId,el){
 }
 function renderReportSaleLe(){return rptSlRenderPage('Lẻ');}
 function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
+// Báo lỗi tải ngay trên trang kèm nút thử lại -- không bao giờ để trang trắng mà không nói gì.
+function rptTaiLoi(tieuDe,e,ham){
+  return '<div class="page-title" style="margin-bottom:14px">'+tieuDe+'</div>'
+    +'<div class="card" style="border-left:4px solid var(--red)">'
+    +'<div style="font-weight:800;color:var(--red);margin-bottom:6px">Chưa tải được dữ liệu</div>'
+    +'<div style="font-size:12.5px;color:var(--text2);margin-bottom:10px">'+String((e&&e.message)||e||'').replace(/</g,'&lt;')+'</div>'
+    +'<button onclick="'+ham+'()" style="border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:8px;height:30px;padding:0 14px;cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)">Thử lại</button></div>';
+}
+function rptDangTai(tieuDe){
+  return '<div class="page-title" style="margin-bottom:14px">'+tieuDe+'</div>'
+    +'<div style="padding:50px;text-align:center;color:var(--muted);font-size:13px;font-weight:600">Đang tải dữ liệu…</div>';
+}
 async function rptSlRenderPage(type){
   window._rptSlType=(type==='Sỉ'?'Sỉ':'Lẻ');
   const cfg=rptSlCfg();
   const el=document.getElementById('page-'+cfg.page);
   if(!el)return;
-  await dhLoadOrders();
-  await kiotLoadInvoices();
-  await dhLoadManual();
-  await rptSlLoadManual();
-  await rptSlLockChot();
+  if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo · '+cfg.title);
+  try{
+    await dhLoadOrders();
+    await kiotLoadInvoices();
+    await dhLoadManual();
+    await rptSlLoadManual();
+    await rptSlLockChot();
+  }catch(e){
+    el.innerHTML=rptTaiLoi('Báo cáo · '+cfg.title,e,cfg.render);
+    return;
+  }
   const mode=rptSlViewMode();
   el.innerHTML=`
     ${mode==='input'
@@ -4004,7 +4218,7 @@ function rptSlCrmHtml(){
 const CRM_PERMISSION_GROUPS=[
 
   ['Toàn quyền',[[PERM_ALL,'Mọi trang, kể cả module thêm sau này']]],
-  ['Báo cáo',[['report-saleretail','Sale Lẻ'],['report-salesi','Sale Sỉ'],['report-tonghop','Báo cáo tổng hợp (quản lý)']]],
+  ['Báo cáo',[['report-saleretail','Sale Lẻ'],['report-salesi','Sale Sỉ'],['report-mkt','Báo cáo MKT'],['report-tonghop','Báo cáo tổng hợp (quản lý)']]],
   ['Data Hub',[['datahub','Toàn bộ Data Hub'],['datahub-manual','Nhập tay — khách Lẻ'],['datahub-manual-si','Nhập tay — khách Sỉ']]],
   ['Quản trị',[['settings','Phân quyền'],['log','Nhật ký chỉnh sửa']]],
 ];
@@ -4013,8 +4227,8 @@ const CRM_POSITION_DEFAULTS={
   supreme:[PERM_ALL],                                                                                // Supreme Leader: trên cả admin, luôn có mọi thứ
   'sale-le':['report-saleretail','datahub-manual'],                                                  // Sale Lẻ: báo cáo Lẻ + nhập tay Lẻ
   'sale-si':['report-salesi','datahub-manual-si'],                                                   // Sale Sỉ: báo cáo Sỉ + nhập tay Sỉ
-  admin:['report-saleretail','report-salesi','report-tonghop','datahub','datahub-manual','datahub-manual-si','settings','log'], // tick sẵn mọi trang HIỆN CÓ, module mới vẫn phải cấp thêm
-  manager:['report-saleretail','report-salesi','report-tonghop','datahub'],                                          // xem hết số liệu, không quản tài khoản
+  admin:['report-saleretail','report-salesi','report-mkt','report-tonghop','datahub','datahub-manual','datahub-manual-si','settings','log'], // tick sẵn mọi trang HIỆN CÓ, module mới vẫn phải cấp thêm
+  manager:['report-saleretail','report-salesi','report-mkt','report-tonghop','datahub'],                                          // xem hết số liệu, không quản tài khoản
   sales:['report-saleretail','datahub-manual'],                                  // (giữ cho tài khoản cũ) tương đương Sale Lẻ
   mkt:['overview','datahub'],                                                    // chỉ số liệu MKT + nguồn data
 };
