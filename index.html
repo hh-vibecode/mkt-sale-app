@@ -3406,6 +3406,23 @@ async function rptSlSetField(leadId,field,value,el){
 //   3. Đúng mã -> ghi mã vào ghi chú đơn Pancake + đẩy trạng thái đơn + đổi thẻ TIỀM NĂNG sang CHỐT ĐƠN
 //      (làm ở Edge Function 'pancake-note', cùng đường với nút Lưu bên tab Nhập Liệu)
 // Trạng thái "Chốt đơn" trong app do THẺ Pancake quyết định, nên không lưu chữ "Chốt đơn" vào bảng tay.
+// Chạy lại bước 2 (đẩy sang Pancake) cho dòng đang báo lỗi hệ thống.
+async function rptSlThuLai(leadId){
+  const mn=rptSlManual[leadId]||{};
+  const ma=(mn.kiot_code||'').trim();
+  if(!ma){alert('Dòng này chưa có Mã KH để đẩy lại.');return;}
+  await rptSlSaveKH(leadId,ma,null,mn.status==='Chốt đơn');
+}
+// Người tạo app đã vào Pancake sửa tay -> gỡ cờ lỗi.
+async function rptSlBoQuaLoi(leadId){
+  const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
+  if(!confirm('Đánh dấu ĐÃ XỬ LÝ TAY cho "'+((r&&r.name)||leadId)+'"?'+String.fromCharCode(10)+'Dòng sẽ hết báo lỗi.'))return;
+  try{
+    await rptSlSaveManual(leadId,{sync_error:null,sync_error_at:null,sync_payload:null});
+    logAct('U','saleretail_manual',leadId,(r&&r.name)||'','Lỗi hệ thống','đang báo lỗi','đã xử lý tay');
+    rptSlRender();
+  }catch(e){alert('Chưa gỡ được: '+e.message);}
+}
 async function rptSlChotFlow(leadId,el){
   const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
   if(!r){alert('Không tìm thấy khách này.');return;}
@@ -3430,7 +3447,18 @@ async function rptSlChotFlow(leadId,el){
     await dhManualSet(id,'status','Chốt đơn',null);
     window._kiotOrdByCode=null;rptSlRender();return;
   }
-  await rptSlSaveKH(leadId,ma,null,true);   // true = chốt đơn: gắn thẻ CHỐT ĐƠN + đẩy trạng thái
+  // ── BƯỚC 1: ghi vào APP trước (không gọi mạng ra ngoài) ──
+  // Trạng thái + Mã KH lưu thẳng vào bảng của app -> doanh thu Kiot về ngay, báo cáo đúng kể cả khi
+  // Pancake sập. Người dùng gọi đây là "bảo hiểm" (chốt 22/9/2026).
+  try{
+    await rptSlSaveManual(leadId,{status:'Chốt đơn',kiot_code:ma,sync_error:null,sync_error_at:null,sync_payload:null});
+    logAct('U','saleretail_manual',leadId,r.name,'Chốt đơn (bước 1: trong app)','',ma);
+    window._kiotOrdByCode=null;rptSlRender();
+  }catch(e){
+    alert('Chưa ghi được vào app: '+e.message);return;
+  }
+  // ── BƯỚC 2: đẩy ngược sang Pancake. Hỏng thì chỉ ghi lỗi, KHÔNG đụng vào số liệu bước 1 ──
+  await rptSlSaveKH(leadId,ma,null,true);
 }
 function renderReportSaleLe(){return rptSlRenderPage('Lẻ');}
 function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
@@ -3953,7 +3981,10 @@ function rptSlBuildMaster(){
         return orders.map(o=>rptSlStatusOf(o.customer_tags)).sort((a,b)=>rank.indexOf(b)-rank.indexOf(a))[0];})(),
       // NGÀY CHỐT = ngày tạo ĐƠN ĐẶT HÀNG Kiot đầu tiên (không phải ngày hoá đơn). Chưa có đơn Kiot thì
       // tạm lấy ngày đơn Pancake gắn thẻ CHỐT ĐƠN.
-      isChot:chot.length>0,closeDate:kords.length?(kords[0].purchase_date||'').slice(0,10):(chot.length?chot[0].order_date:''),
+      // ĐÃ CHỐT = có thẻ CHỐT ĐƠN bên Pancake HOẶC Sale đã chốt trong app (bước 1 của quy trình 2 bước).
+      // Nhờ vậy báo cáo chạy đúng ngay cả khi Pancake lỗi, không phụ thuộc bước đẩy ngược.
+      isChot:chot.length>0||mn.status==='Chốt đơn',
+      closeDate:kords.length?(kords[0].purchase_date||'').slice(0,10):(chot.length?chot[0].order_date:''),
       lastKiotDate:kords.length?(kords[kords.length-1].purchase_date||'').slice(0,10):'',
       lastTouch,daysIdle:lastTouch?Math.floor((new Date()-new Date(lastTouch))/86400000):null};
   });
@@ -4326,21 +4357,31 @@ async function rptSlSaveKH(leadId,val,el,chotLuon){
       // không hiểu vì sao (lỗi 22/9/2026). Giờ so lại kết quả trả về với thứ mình yêu cầu:
       //   - chưa gắn được thẻ CHỐT ĐƠN -> ghi trạng thái "Chốt đơn" vào app để khỏi bị nhắc lại,
       //     đồng thời nói rõ Pancake từ chối vì lý do gì để Sale vào sửa tay.
+      if((rptSlManual[leadId]||{}).sync_error)
+        {try{await rptSlSaveManual(leadId,{sync_error:null,sync_error_at:null,sync_payload:null});}catch(e3){}}
       if(chotLuon){
         const coThe=(d.tags||[]).some(t=>/CHỐT ĐƠN/i.test(t))||/CHỐT ĐƠN/i.test(o.customer_tags||'');
         if(!coThe){
           const vi=d.tag_error||d.tag_skipped||'Pancake không trả lời về thẻ';
-          try{await rptSlSaveManual(leadId,{status:'Chốt đơn'});}catch(e2){}
+          try{await rptSlSaveManual(leadId,{status:'Chốt đơn',sync_error:'Chưa gắn được thẻ CHỐT ĐƠN: '+vi,
+            sync_error_at:new Date().toISOString(),
+            sync_payload:{shop_id:o.shop_id,order_id:o.order_id,code:maChuan,chot:true,system_id:o.system_id,khach:r.name}});}catch(e2){}
           logAct('U','datahub_orders','#'+o.system_id,r.name,'Thẻ CHỐT ĐƠN','chưa gắn được',vi);
-          alert('Đã ghi Mã KH '+maChuan+' sang Pancake, nhưng CHƯA gắn được thẻ CHỐT ĐƠN.\n'
-            +'Lý do Pancake trả về: '+vi+'\n\nApp đã ghi trạng thái "Chốt đơn" trong báo cáo nên dòng này'
-            +' không bị nhắc lại; anh/chị vào Pancake gắn thẻ giúp để doanh thu về đúng.');
+          alert('Đã ghi Mã KH '+maChuan+' và doanh thu trong app, nhưng Pancake CHƯA gắn được thẻ CHỐT ĐƠN.\n'
+            +'Lý do: '+vi+'\n\nApp đã đánh dấu lỗi hệ thống ở tab Nhập Liệu để người tạo app xử lý.');
         }
       }
       // trạng thái đơn không đẩy được (Pancake chỉ cho tiến) -> nói rõ, khỏi tưởng app hỏng
       if(d.status_error)logAct('U','datahub_orders','#'+o.system_id,r.name,'Trạng thái đơn','không đổi được',d.status_error);
     }catch(e){
-      alert('Chưa lưu được "'+maChuan+'" sang Pancake: '+e.message+'\nDòng đã được trả lại bảng, thử lại giúp em.');
+      // Không kéo dòng về bảng việc nữa: số liệu trong app đã đúng từ bước 1. Chỉ ghi nhận lỗi hệ thống
+      // để hiện ở mục riêng trong tab Nhập Liệu -> người tạo app vào xử lý/chạy lại.
+      try{await rptSlSaveManual(leadId,{sync_error:String(e.message||e).slice(0,300),
+        sync_error_at:new Date().toISOString(),
+        sync_payload:{shop_id:o.shop_id,order_id:o.order_id,code:maChuan,chot:!!chotLuon,system_id:o.system_id,khach:r.name}});}catch(e2){}
+      logAct('U','saleretail_manual',leadId,r.name,'Lỗi đẩy sang Pancake','',String(e.message||e).slice(0,200));
+      alert('Đã ghi nhận trong app (doanh thu vẫn tính đúng), nhưng CHƯA đẩy được sang Pancake:\n'
+        +String(e.message||e)+'\n\nApp đã đánh dấu là lỗi hệ thống ở tab Nhập Liệu để người tạo app xử lý.');
     }finally{
       RPT_SL_DANG_LUU.delete(leadId);
       rptSlRender();
@@ -4439,6 +4480,9 @@ function rptSlTodoBuckets(){
     maSai:all.filter(r=>r.manualKH&&!r.kiotCusts.length),
     // 2b. Mã KH có thật nhưng nghi gán nhầm người -> doanh thu đang tính sang khách khác.
     maNgo:rptSlMaNgo(all),
+    // 2c. Bước 1 (ghi trong app) xong nhưng bước 2 (đẩy ngược sang Pancake) hỏng -> LỖI HỆ THỐNG.
+    //     Số liệu báo cáo vẫn đúng, nhưng Pancake chưa khớp; Sale không tự sửa được, cần người tạo app.
+    loiHT:all.filter(r=>(rptSlManual[r.leadId]||{}).sync_error),
     // 3. Chưa cập nhật trạng thái (chỉ nhóm chưa chốt -- nhóm chốt đã khoá cứng).
     chuaTT:all.filter(r=>!r.isChot&&!r.manualStatus),
     // 4. Đã chọn Mất lead nhưng chưa ghi nhóm nguyên nhân.
@@ -4563,7 +4607,18 @@ function rptSlInputHtml(){
       <td>${dmy(r.careDate)||'—'}</td>
       <td onclick="rptSlStop(event)"><button onclick="rptSlEditRow('${r.leadId}')"
         style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">✏️ Ghi nội dung</button></td></tr>`).join(''));
-  const tong=b.thieuMa.length+b.maSai.length+b.maNgo.length+b.chuaTT.length+b.thieuGT.length+b.thieuND.length;
+  const sLoi=tbl('<th>Ngày tạo</th><th>Khách</th><th>Mã KH</th><th>Lỗi hệ thống</th><th>Lúc</th><th></th>',
+    b.loiHT.map(r=>{const mn=rptSlManual[r.leadId]||{};
+      return '<tr><td>'+(dmy(r.created)||'—')+'</td>'
+        +'<td class="name">'+String(r.name||'').replace(/</g,'&lt;')+'</td>'
+        +'<td style="font-size:11px"><code>'+(r.kh||mn.kiot_code||'—')+'</code></td>'
+        +'<td style="font-size:11px;color:var(--red);font-weight:700;max-width:420px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'
+        +String(mn.sync_error||'').replace(/"/g,'&quot;')+'">'+String(mn.sync_error||'').replace(/</g,'&lt;')+'</div></td>'
+        +'<td style="font-size:11px;color:var(--muted)">'+String(mn.sync_error_at||'').slice(0,16).replace('T',' ')+'</td>'
+        +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
+        +'<button onclick="rptSlThuLai('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" style="border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:700">Thử lại</button>'
+        +'<button onclick="rptSlBoQuaLoi('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" class="btn-ghost" style="margin-left:5px;padding:4px 10px;font-size:11px">Đã xử lý tay</button></td></tr>';}).join(''));
+  const tong=b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length+b.thieuGT.length+b.thieuND.length;
   return `
     ${rptSlViewAsBar()}
     <div class="kpi-grid" style="margin-bottom:14px">
@@ -4575,6 +4630,7 @@ function rptSlInputHtml(){
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
     ${rptSlInputSec('s2','','Mã KH đã điền nhưng không tồn tại bên Kiot','dán lại mã đúng, app ghi sang Pancake',b.maSai.length,'var(--yellow)',s2,true)}
     ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
+    ${rptSlInputSec('sLoi','','Lỗi hệ thống — cần báo người tạo app kiểm tra','số liệu trong app vẫn đúng, chỉ chưa đẩy được sang Pancake',b.loiHT.length,'var(--red)',sLoi,true)}
     ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
     ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
     ${rptSlInputSec('s8','','Chưa ghi nội dung trao đổi','app không tự suy được phần này',b.thieuND.length,'var(--accent)',s8)}
