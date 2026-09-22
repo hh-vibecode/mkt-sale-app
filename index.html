@@ -2089,6 +2089,9 @@ function kiotPickOrderFor(inv,chotOrders){
 //    kéo vào chỉ làm loạn số.
 //  - Sale SỈ: lấy FULL lịch sử như dashboard cũ -- khách buôn mua từ 2021, cắt mốc là mất doanh số.
 const KIOT_MOC_LE='2026-06-01';
+// Mốc dữ liệu Pancake: đơn/hội thoại sớm nhất app có là 4/6/2026. Trước mốc này app "mù", không được
+// dùng việc thiếu hội thoại để cắt doanh số của ai (người dùng nhắc 22/9/2026).
+const RPT_MOC_PANCAKE='2026-06-04';
 function kiotMocNgay(){return rptSlType()==='Sỉ'?'':KIOT_MOC_LE;}
 // moc: '' = lấy tất cả. Bỏ trống thì theo báo cáo đang mở.
 function kiotOrdByCode(moc){
@@ -2891,8 +2894,10 @@ async function renderReportMkt(){
     await rptSlLoadManual();
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo MKT',e,'renderReportMkt');return;}
   el.innerHTML=modHeader('Báo cáo MKT','','mkt','renderReportMkt')+'<div id="mktBody"></div>';
-  document.getElementById('mktBody').innerHTML=rptMktHtml();
-  rptMktVeChart();
+  try{document.getElementById('mktBody').innerHTML=rptMktHtml();}
+  catch(e){console.error('[MKT] dựng bảng lỗi:',e);
+    document.getElementById('mktBody').innerHTML=rptTaiLoi('Báo cáo MKT',e,'renderReportMkt');}
+  try{rptMktVeChart();}catch(e){console.warn('[MKT] vẽ biểu đồ lỗi (bỏ qua):',e);}
   if(typeof tblAlign==='function')tblAlign();
 }
 // ════════ CRM SỈ: NHẬT KÝ CHĂM SÓC (nhiều dòng / 1 khách) ════════
@@ -3474,11 +3479,13 @@ function rptDangTai(tieuDe){
   return '<div class="page-title" style="margin-bottom:14px">'+tieuDe+'</div>'
     +'<div style="padding:50px;text-align:center;color:var(--muted);font-size:13px;font-weight:600">Đang tải dữ liệu…</div>';
 }
+let rptSlLuot=0;   // chống đua: bấm qua lại nhanh -> lượt render cũ xong sau, không được ghi đè lượt mới
 async function rptSlRenderPage(type){
   window._rptSlType=(type==='Sỉ'?'Sỉ':'Lẻ');
   const cfg=rptSlCfg();
   const el=document.getElementById('page-'+cfg.page);
   if(!el)return;
+  const luot=++rptSlLuot;
   if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo · '+cfg.title);
   try{
     await dhLoadOrders();
@@ -3491,6 +3498,8 @@ async function rptSlRenderPage(type){
     el.innerHTML=rptTaiLoi('Báo cáo · '+cfg.title,e,cfg.render);
     return;
   }
+  if(luot!==rptSlLuot)return;            // đã có lượt render mới hơn -> nhường
+  window._rptSlType=(type==='Sỉ'?'Sỉ':'Lẻ');   // các trang khác có thể đã đổi biến này trong lúc chờ
   const mode=rptSlViewMode();
   el.innerHTML=`
     ${mode==='input'
@@ -3506,15 +3515,20 @@ async function rptSlRenderPage(type){
       </span>
     </div>
     <div id="rptSlBody"></div>`;
-  if(mode==='master'){
-    document.getElementById('rptSlBody').innerHTML=rptSlMasterHtml();
-  }else if(mode==='input'){
-    document.getElementById('rptSlBody').innerHTML=rptSlInputHtml();
-  }else if(mode==='crm'){
-    document.getElementById('rptSlBody').innerHTML=rptSlCrmHtml();
-  }else{
-    document.getElementById('rptSlBody').innerHTML=rptSlMasterHtml();
+  // Dựng phần thân trong try/catch: trước đây một hàm con lỗi là #rptSlBody rỗng -> người dùng thấy
+  // "trắng tinh" mà không biết vì sao (báo 22/9/2026). Giờ lỗi thì hiện hẳn ra kèm nút thử lại.
+  const than=document.getElementById('rptSlBody');
+  if(!than)return;
+  try{
+    than.innerHTML=mode==='input'?rptSlInputHtml():mode==='crm'?rptSlCrmHtml():rptSlMasterHtml();
+  }catch(e){
+    console.error('[BÁO CÁO '+cfg.title+'] dựng bảng lỗi:',e);
+    than.innerHTML='<div class="tbl-card" style="border-left:4px solid var(--red);padding:16px 18px">'
+      +'<div style="font-weight:800;color:var(--red);margin-bottom:6px">Không dựng được bảng</div>'
+      +'<div style="font-size:12.5px;color:var(--text2);margin-bottom:10px">'+String(e&&e.message||e).replace(/</g,'&lt;')+'</div>'
+      +'<button onclick="'+cfg.render+'()" style="border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:8px;height:30px;padding:0 14px;cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)">Thử lại</button></div>';
   }
+  try{if(typeof tblAlign==='function')tblAlign();}catch(e){}
 }
 // ── TỔNG QUAN: dựng HOÀN TOÀN trên Pancake (datahub_orders) + KiotViet (kiot_orders = đơn đặt hàng).
 // KHÔNG còn đọc bảng nào migrate từ Google Sheet (crmLeads/crmOrders/crmCustomers/saonl_*).
@@ -4114,7 +4128,10 @@ function rptSlBuildMaster(){
     // trang) thì đơn mới mới coi là khách tự quay lại -> xếp "Mua lại".
     const chatToi=r.lastChat?new Date(new Date(String(r.lastChat).slice(0,10)).getTime()+30*86400000):null;
     const conNhan=o=>chatToi&&new Date(String(o.purchase_date).slice(0,10))<=chatToi;
-    const trongHan=o=>new Date(String(o.purchase_date).slice(0,10))<han||conNhan(o);
+    // App chỉ có dữ liệu Pancake (đơn + hội thoại) TỪ 4/6/2026. Đơn Kiot trước mốc đó không thể chứng
+    // minh khách còn nhắn hay không -> KHÔNG cắt, vì thiếu dữ liệu không phải là bằng chứng khách đã bỏ.
+    const truocPancake=o=>String(o.purchase_date).slice(0,10)<RPT_MOC_PANCAKE;
+    const trongHan=o=>new Date(String(o.purchase_date).slice(0,10))<han||conNhan(o)||truocPancake(o);
     let first=all.filter(trongHan);
     // PHIẾU TREO: trong hạn đã có đơn Hoàn thành thì bỏ đơn Phiếu tạm (status 1) cùng hạn -- đó là phiếu
     // cũ Sale quên huỷ khi khách đổi hàng (vd Kiều Trang DH002322 225,5tr bị thay bởi DH002343 221,8tr).
