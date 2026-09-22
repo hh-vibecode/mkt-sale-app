@@ -2072,8 +2072,8 @@ async function kiotLoadInvoices(force){
     // Bỏ cột items khỏi hoá đơn: nặng gấp 3,7 lần phần còn lại mà chỉ dùng lúc xem chi tiết 1 hoá đơn.
     sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,order_code,total,status'),
     // items (danh sách mặt hàng) chiếm 3/4 dung lượng mà chỉ cần lúc mở chi tiết 1 khách -> tải riêng
-    sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,status,status_value'),
-    sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name'),
+    sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,total_payment,status,status_value'),
+    sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name,debt'),
   ]);
   kiotLoaded=true;
   window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
@@ -3588,7 +3588,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='22/09 17:31';
+const APP_VERSION='22/09 17:54';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -4101,11 +4101,21 @@ function rptSlBuildMaster(){
   _rptSlCache={khoa,rows};
   return rows;
 }
-const RPT_SL_TAM_NGAY=90;
+// PHIẾU TẠM — 3 trường hợp người dùng phân tích (22/9/2026), KHÔNG dùng mốc ngày nữa:
+//  1. Khách ĐÃ TRẢ TIỀN trên chính phiếu đó (total_payment > 0) -> đơn thật, tính đủ doanh thu.
+//     Ví dụ DH002735: tổng 990.000, khách cọc 500.000, vẫn để trạng thái Phiếu tạm.
+//  2. Phiếu ghi 0 đồng đã trả (sale điền sai quy trình) NHƯNG khách có "Nợ cần thu" ÂM bên Kiot
+//     -> tức khách đã cọc, tiền nằm ở tài khoản khách chứ không gắn vào phiếu -> vẫn tính.
+//  3. Không có dấu vết tiền nào -> đúng là phiếu báo giá -> KHÔNG tính doanh thu.
+function rptSlKhachCoCoc(code){
+  const c=code&&kiotCustByCode()[code];
+  return !!(c&&Number(c.debt||0)<0);
+}
 function rptSlPhieuTreo(o){
-  if(!o||o.status!==1||o.direct)return false;
-  const d=new Date(String(o.purchase_date).slice(0,10));
-  return (Date.now()-d.getTime())/86400000>RPT_SL_TAM_NGAY;
+  if(!o||o.status!==1||o.direct)return false;     // chỉ xét đơn đang ở trạng thái Phiếu tạm
+  if(Number(o.total_payment||0)>0)return false;   // case 1: đã trả tiền trên phiếu
+  if(rptSlKhachCoCoc(o.customer_code))return false; // case 2: khách có cọc (nợ cần thu âm)
+  return true;                                    // case 3: phiếu báo giá, không tính
 }
 function rptSlBuildMasterRaw(){
   const ordByCode=kiotOrdByCode();
@@ -4506,7 +4516,7 @@ function rptSlShowCustomer(key){
     <div style="font-size:12.5px;font-weight:600;margin-top:4px;white-space:pre-wrap;line-height:1.5">${r.content?esc(r.content):'<span style="color:var(--muted);font-weight:600">—</span>'}</div></div>`;
   const tl=[
     ...r.orders.map(o=>({d:o.order_date,t:'Đơn Pancake #'+esc(o.system_id),c:esc(o.internal_note||o.source||''),s:esc(o.customer_tags||''),v:''})),
-    ...[...r.kords,...(r.repeatOrds||[]).map(o=>Object.assign({},o,{repeat:true})),...(r.staleOrds||[]).map(o=>Object.assign({},o,{stale:true}))].map(i=>({d:(i.purchase_date||'').slice(0,10),t:(i.repeat?'<span style="color:var(--muted)">[Mua lại]</span> ':i.stale?'<span style="color:var(--red)">[Phiếu treo - không tính]</span> ':'')+(i.direct?'Hoá đơn ':'Đặt hàng ')+esc(i.code)+' <span style="font-weight:600;color:var(--muted)">('+esc(i.status_value||'')+')</span>',c:esc((i.items||[]).map(x=>x.name+' x'+x.qty).join(', ')),s:esc((i.sold_by_name||'')+' · '+(i.branch_name||'')),v:vnd(i.total)})),
+    ...[...r.kords,...(r.repeatOrds||[]).map(o=>Object.assign({},o,{repeat:true})),...(r.staleOrds||[]).map(o=>Object.assign({},o,{stale:true}))].map(i=>({d:(i.purchase_date||'').slice(0,10),t:(i.repeat?'<span style="color:var(--muted)">[Mua lại]</span> ':i.stale?'<span style="color:var(--red)">[Phiếu báo giá - không tính]</span> ':'')+(i.direct?'Hoá đơn ':'Đặt hàng ')+esc(i.code)+' <span style="font-weight:600;color:var(--muted)">('+esc(i.status_value||'')+')</span>',c:esc((i.items||[]).map(x=>x.name+' x'+x.qty).join(', ')),s:esc((i.sold_by_name||'')+' · '+(i.branch_name||'')),v:vnd(i.total)})),
   ].sort((a,b)=>String(b.d).localeCompare(String(a.d)))
    .map(e=>`<tr style="border-bottom:1px solid var(--border)">
     <td style="padding:7px 12px;font-size:12px;color:var(--text2);white-space:nowrap">${dmy(e.d)||'—'}</td>

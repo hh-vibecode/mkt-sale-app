@@ -75,6 +75,8 @@ function mapCustomer(c) {
   return {
     id: c.id, code: c.code, name: c.name || null,
     phone: c.contactNumber || null, phone_key: phoneKeyOf(c.contactNumber),
+    // "Nợ cần thu từ khách" -- ÂM nghĩa là khách đã cọc trước; dùng để biết phiếu tạm nào là đơn thật
+    debt: Number(c.debt || 0),
     customer_group: c.groups || null, branch_id: c.branchId || null,
     location_name: c.locationName || null, ward_name: c.wardName || null,
     total_revenue: c.totalRevenue ?? null, total_invoiced: c.totalInvoiced ?? null, debt: c.debt ?? null,
