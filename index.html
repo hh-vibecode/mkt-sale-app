@@ -3024,7 +3024,7 @@ function siCrmHtml(){
     const k=r.lead_id?byLead[r.lead_id]:null;
     return '<tr>'
       +'<td style="white-space:nowrap">'+(dmy(r.ngay_cham)||'—')+'</td>'
-      +'<td class="name">'+siEsc(r.customer_name)+(r.kiot_code?' <span style="color:var(--muted);font-weight:600;font-size:11px">'+siEsc(r.kiot_code)+'</span>':'')+'</td>'
+      +'<td class="name">'+siEsc(r.customer_name)+(r.kiot_code?' '+rptSlKiotLink(r.kiot_code,'<span style="font-weight:600;font-size:11px">'+siEsc(r.kiot_code)+'</span>'):'')+'</td>'
       +'<td style="'+oNho+'">'+siEsc(r.phone||'')+'</td>'
       +'<td style="'+oNho+'">'+siEsc(r.kenh||'')+'</td>'
       +'<td style="'+oNho+'">'+siEsc(r.sales||'')+'</td>'
@@ -3212,6 +3212,10 @@ function rptSlSdtHtml(r,khiTrong){
 }
 // Link mở hồ sơ khách bên KiotViet theo Mã KH (người dùng gửi mẫu 22/9/2026).
 const KIOT_WEB='https://sieuthidotho285.kiotviet.vn/man/#/Customers?Code=';
+function rptSlOMaKH(r){
+  const ma=r.kh||r.manualKH||'';
+  return '<td style="font-size:11px;white-space:nowrap">'+(ma?rptSlKiotLink(ma,'<code>'+ma+'</code> ↗'):'<span style="color:var(--muted)">—</span>')+'</td>';
+}
 function rptSlKiotLink(ma,nhan){
   const m=String(ma||'').trim();
   if(!m)return nhan||'';
@@ -4269,6 +4273,7 @@ function rptSlMasterRowSi(r){
     +'<td>'+rptSlStaffHtml(r)+'</td>'
     +'<td class="name">'+rptSlTenKhach(r)+'</td>'
     +'<td style="white-space:nowrap">'+rptSlSdtHtml(r)+'</td>'
+    +rptSlOMaKH(r)
     +'<td>'+mo(r.siPhanLoai)+'</td>'
     +'<td class="num">'+(r.siLuot?num(r.siLuot):'—')+'</td>'
     +'<td style="white-space:nowrap">'+(dmy(r.siCSCuoi)||'—')+'</td>'
@@ -4283,14 +4288,14 @@ function rptSlSetMasterPage(p){window._rptSlMasterPage=p;rptSlRender();}
 function rptSlMasterSearch(){return(document.getElementById('rptSlMasterSearch')||{}).value||'';}
 // 1 dòng của bảng Master -- dùng chung cho tab Master Data và bảng "Top khách tiềm năng" ở Tổng quan,
 // để 2 chỗ luôn hiện cùng bộ cột, sửa 1 chỗ là cả 2 đổi theo.
-const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th>';
+const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Mã KH Kiot</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th>';
 // Master SỈ có thêm khối HỒ SƠ ĐẠI LÝ (sheet Sỉ có, Lẻ không): mô hình hợp tác, diện tích showroom,
 // khả năng tài chính, phân loại KH, giấy phép kinh doanh, fanpage, địa chỉ -- cộng với phần rút gọn
 // nhật ký chăm sóc (số lượt + lần gần nhất + bao lâu chưa liên hệ).
 // Chỉ để ngoài bảng những cột hay dùng. Mô hình hợp tác, diện tích showroom, khả năng tài chính,
 // nhóm KH, GPKD, fanpage, địa chỉ -> nằm trong HỒ SƠ KHÁCH (bấm vào dòng), vì ít khi cần quét bằng mắt
 // và nhiều trường chỉ điền được 1/4 số khách (người dùng chốt 22/9/2026).
-const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Sales phụ trách</th><th>Tên khách / cửa hàng</th><th>SĐT</th><th>Phân loại KH</th><th>Lượt CS</th><th>CS gần nhất</th><th>Chưa liên hệ</th><th>Nội dung gần nhất</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Giá trị đơn cộng dồn</th><th></th>';
+const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Sales phụ trách</th><th>Tên khách / cửa hàng</th><th>SĐT</th><th>Mã KH Kiot</th><th>Phân loại KH</th><th>Lượt CS</th><th>CS gần nhất</th><th>Chưa liên hệ</th><th>Nội dung gần nhất</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Giá trị đơn cộng dồn</th><th></th>';
 Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>rptSlType()==='Sỉ'?RPT_SL_MASTER_HEAD_SI:RPT_SL_MASTER_HEAD_LE});
 function rptSlMasterRow(r){
   if(rptSlType()==='Sỉ')return rptSlMasterRowSi(r);
@@ -4302,6 +4307,7 @@ function rptSlMasterRow(r){
     <td>${rptSlStaffHtml(r)}</td>
     <td class="name">${rptSlTenKhach(r)}</td>
     <td style="white-space:nowrap">${rptSlSdtHtml(r)}</td>
+    ${rptSlOMaKH(r)}
     <td>${rptSlStatusPill(rptSlRowStatus(r))}</td>
     <td class="num">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.potential?vnd(r.potential):'<span style="color:var(--muted)">—</span>')}</td>
     <td>${dmy(r.lastTouch)||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
@@ -4350,7 +4356,7 @@ function rptSlMasterHtml(){
       <div class="tbl-head"><div class="tbl-title">Master Data — hồ sơ khách</div><div class="tbl-count">${num(list.length)}</div>
         <span style="margin-left:auto;font-size:11px;color:var(--muted)">Doanh thu trong bộ lọc: <b style="color:var(--green)">${vnd(rev)}</b></span></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày tạo</th><th>Nguồn</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th></tr></thead>
+        <thead><tr>${RPT_SL_MASTER_HEAD}</tr></thead>
         <tbody>${rows||'<tr><td colspan="12">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
@@ -4605,7 +4611,7 @@ function rptSlShowTrungMa(key){
     num(x.soDon!==undefined?x.soDon:(x.orders||[]).length)+' đơn',x.isChot?'<span style="color:var(--green);font-weight:700">Chốt đơn</span>':'',chat(x)];
   const rows=[dong(r),...(r.mergedRows||[]).map(dong)];
   (r.kiotCusts||[]).forEach(c=>rows.push(['<span style="color:var(--muted)">bên Kiot</span>','',
-    esc(c.name||''),esc(c.phone||c.phone_key||''),'','','','','']));
+    rptSlKiotLink(c.code,esc(c.name||'')+' ↗'),esc(c.phone||c.phone_key||''),'','','','','']));
   // HÀNG TRONG ĐƠN KIOT: mở chat của từng khách rồi đối chiếu xem họ hỏi mua đúng mấy món này không --
   // cách chắc ăn nhất để biết mã gán đúng người (người dùng gợi ý 21/9/2026). Đơn 316k toàn nến bơ mà
   // khách chat hỏi tượng Quan Âm 12,5 triệu thì chắc chắn mã dán nhầm.
@@ -4728,7 +4734,7 @@ function rptSlInputHtml(){
     b.maSai.map(r=>`<tr>${info(r)}${maInput(r)}<td style="font-size:11px;color:var(--red);font-weight:700">Mã <code>${r.manualKH}</code> không có bên Kiot</td>${maO(r)}</tr>`).join(''));
   const s2b=tbl(HEAD+'<th>Mã đang dùng</th><th>Khách bên Kiot</th><th>Vì sao nghi</th><th>Doanh thu đang tính</th><th style="'+RPT_SL_TH_EDIT+'">Dán lại mã đúng</th>',
     b.maNgo.map(r=>{const kc=r.kiotCusts[0]||{};
-      return `<tr>${info(r)}<td style="font-size:11px"><code>${r.kh}</code></td>
+      return `<tr>${info(r)}<td style="font-size:11px">${rptSlKiotLink(r.kh,'<code>'+r.kh+'</code>')}</td>
       <td style="font-size:11px">${(kc.name||'—').replace(/</g,'&lt;')}${kc.phone?' · '+kc.phone:''}</td>
       <td style="font-size:11px;color:var(--red);font-weight:700" onclick="rptSlStop(event)">${r.ngoVi||''}
         <button onclick="rptSlShowTrungMa('${r.key.replace(/'/g,"\\'")}')" title="Xem thông tin từng khách đang dùng mã này"
@@ -4757,7 +4763,7 @@ function rptSlInputHtml(){
     b.loiHT.map(r=>{const mn=rptSlManual[r.leadId]||{};
       return '<tr><td>'+(dmy(r.created)||'—')+'</td>'
         +'<td class="name">'+String(r.name||'').replace(/</g,'&lt;')+'</td>'
-        +'<td style="font-size:11px"><code>'+(r.kh||mn.kiot_code||'—')+'</code></td>'
+        +'<td style="font-size:11px">'+((r.kh||mn.kiot_code)?rptSlKiotLink(r.kh||mn.kiot_code,'<code>'+(r.kh||mn.kiot_code)+'</code>'):'—')+'</td>'
         +'<td style="font-size:11px;color:var(--red);font-weight:700;max-width:420px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'
         +String(mn.sync_error||'').replace(/"/g,'&quot;')+'">'+String(mn.sync_error||'').replace(/</g,'&lt;')+'</div></td>'
         +'<td style="font-size:11px;color:var(--muted)">'+String(mn.sync_error_at||'').slice(0,16).replace('T',' ')+'</td>'
@@ -4825,6 +4831,7 @@ function rptSlCrmHtml(){
       :lock('<span class="num" style="font-weight:700">'+(r.potential?vnd(r.potential):'<span style="color:var(--muted);font-weight:400">—</span>')+'</span>',r.potential?vnd(r.potential):'',r,true)}
     <td onclick="rptSlStop(event)">${r.isChot?rptSlStatusPill('Chốt đơn')
       :sel(r,'status',RPT_SL_STATUS_OPTS,r.manualStatus,130)}</td>
+    ${rptSlOMaKH(r)}
     <td>${dmy(r.closeDate)||'<span style="color:var(--muted)">—</span>'}</td>
     <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
     <td onclick="rptSlStop(event)" style="white-space:nowrap">
@@ -4854,7 +4861,7 @@ function rptSlCrmHtml(){
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày chăm sóc</th><th>Nguồn</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái</th><th>Ngày chốt</th><th>Doanh thu</th><th></th></tr></thead>
+        <thead><tr><th>Ngày chăm sóc</th><th>Nguồn</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái</th><th>Mã KH Kiot</th><th>Ngày chốt</th><th>Doanh thu</th><th></th></tr></thead>
         <tbody>${rows||'<tr><td colspan="10">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
