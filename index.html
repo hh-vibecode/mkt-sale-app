@@ -3191,6 +3191,14 @@ function rptSlSdtHtml(r,khiTrong){
     ?'<span style="color:var(--muted)" title="Số ghi trong sổ Kiot">'+p.so+'</span>'
     :'<span>'+p.so+'</span>').join('<br>');
 }
+// Link mở hồ sơ khách bên KiotViet theo Mã KH (người dùng gửi mẫu 22/9/2026).
+const KIOT_WEB='https://sieuthidotho285.kiotviet.vn/man/#/Customers?Code=';
+function rptSlKiotLink(ma,nhan){
+  const m=String(ma||'').trim();
+  if(!m)return nhan||'';
+  return '<a href="'+KIOT_WEB+encodeURIComponent(m)+'" target="_blank" rel="noopener" onclick="rptSlStop(event)"'
+    +' title="Mở khách này bên KiotViet" style="color:var(--accent);font-weight:700;text-decoration:none">'+(nhan||m)+'</a>';
+}
 function rptSlChatUrl(r){
   if(!r||!r.convId)return'';
   return 'https://pancake.vn/'+(r.pageId||String(r.convId).split('_')[0])+'?c_id='+encodeURIComponent(r.convId);
@@ -3540,13 +3548,16 @@ function rptDangTai(tieuDe){
   return '<div class="page-title" style="margin-bottom:14px">'+tieuDe+'</div>'
     +'<div style="padding:50px;text-align:center;color:var(--muted);font-size:13px;font-weight:600">Đang tải dữ liệu…</div>';
 }
-let rptSlLuot=0;   // chống đua: bấm qua lại nhanh -> lượt render cũ xong sau, không được ghi đè lượt mới
+// Chống đua RIÊNG TỪNG TRANG. Trước đây dùng 1 biến chung nên lượt render của trang Sỉ bị lượt render
+// của trang Lẻ (do rptSlRender/lockChot gọi trong lúc chờ) làm cho "hết hạn" -> trang Sỉ thoát giữa
+// chừng, để lại màn trắng. Đây chính là lỗi "Sỉ chỉ xem được 1 lần" (22/9/2026).
+const rptSlLuot={};
 async function rptSlRenderPage(type){
   window._rptSlType=(type==='Sỉ'?'Sỉ':'Lẻ');
   const cfg=rptSlCfg();
   const el=document.getElementById('page-'+cfg.page);
   if(!el)return;
-  const luot=++rptSlLuot;
+  const luot=rptSlLuot[cfg.page]=(rptSlLuot[cfg.page]||0)+1;
   if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo · '+cfg.title);
   try{
     await dhLoadOrders();
@@ -3559,7 +3570,8 @@ async function rptSlRenderPage(type){
     el.innerHTML=rptTaiLoi('Báo cáo · '+cfg.title,e,cfg.render);
     return;
   }
-  if(luot!==rptSlLuot)return;            // đã có lượt render mới hơn -> nhường
+  // chỉ nhường khi trang ĐÃ có nội dung thật; trang đang trống thì cứ vẽ, thà chậm còn hơn trắng
+  if(luot!==rptSlLuot[cfg.page]&&el.innerHTML.indexOf('rptSlBody')>=0)return;
   window._rptSlType=(type==='Sỉ'?'Sỉ':'Lẻ');   // các trang khác có thể đã đổi biến này trong lúc chờ
   const mode=rptSlViewMode();
   el.innerHTML=`
@@ -4177,9 +4189,11 @@ function rptSlBuildMaster(){
     const all=r.kords||[];
     if(!all.length){r.repeatOrds=[];r.staleOrds=[];r.repeatRevenue=0;return;}
     if(khongCat(r)){
-      r.repeatOrds=[];r.staleOrds=[];r.repeatRevenue=0;
-      r.revenue=all.reduce((x,o)=>x+Number(o.total||0),0);
-      r.lastKiotDate=String(all[all.length-1].purchase_date).slice(0,10);
+      const treo2=all.filter(o=>o.status===1&&!o.direct);     // phiếu tạm: không tính
+      const dung=all.filter(o=>!treo2.includes(o));
+      r.kords=dung;r.staleOrds=treo2;r.repeatOrds=[];r.repeatRevenue=0;
+      r.revenue=dung.reduce((x,o)=>x+Number(o.total||0),0);
+      if(dung.length)r.lastKiotDate=String(dung[dung.length-1].purchase_date).slice(0,10);
       return;
     }
     const han=new Date(String(all[0].purchase_date).slice(0,10));han.setMonth(han.getMonth()+1);
@@ -4194,9 +4208,11 @@ function rptSlBuildMaster(){
     const truocPancake=o=>String(o.purchase_date).slice(0,10)<RPT_MOC_PANCAKE;
     const trongHan=o=>new Date(String(o.purchase_date).slice(0,10))<han||conNhan(o)||truocPancake(o);
     let first=all.filter(trongHan);
-    // PHIẾU TREO: trong hạn đã có đơn Hoàn thành thì bỏ đơn Phiếu tạm (status 1) cùng hạn -- đó là phiếu
+    // ĐƠN "PHIẾU TẠM" KHÔNG TÍNH DOANH SỐ (người dùng chốt 22/9/2026: "phiếu tạm bỏ qua hết k tính").
+    // Phiếu tạm là đơn chưa chốt thật bên Kiot -- cũ để trong staleOrds, hiện "[Phiếu treo - không tính]".
+    // Ghi chú cũ: PHIẾU TREO: trong hạn đã có đơn Hoàn thành thì bỏ đơn Phiếu tạm (status 1) cùng hạn -- đó là phiếu
     // cũ Sale quên huỷ khi khách đổi hàng (vd Kiều Trang DH002322 225,5tr bị thay bởi DH002343 221,8tr).
-    const treo=first.some(o=>o.status===3)?first.filter(o=>o.status===1&&!o.direct):[];
+    const treo=first.filter(o=>o.status===1&&!o.direct);
     first=first.filter(o=>!treo.includes(o));
     r.kords=first;r.staleOrds=treo;
     r.repeatOrds=all.filter(o=>!trongHan(o));
@@ -4324,7 +4340,7 @@ function rptSlShowCustomer(key){
     :'<span style="color:var(--red)">Chưa nối được</span>';
   const info=[
     fld('Lead ID','<code>'+esc(r.leadId)+'</code>'),
-    fld('Mã KH Kiot',r.kh?('<code>'+esc(r.kh)+'</code>'):'<span style="color:var(--red)">chưa có</span>'),
+    fld('Mã KH Kiot',r.kh?rptSlKiotLink(r.kh,'<code>'+esc(r.kh)+'</code> ↗'):'<span style="color:var(--red)">chưa có</span>'),
     fld('Nối bằng',linkTxt),
     fld('Trạng thái',esc(r.status),RPT_SL_STATUS_COLOR[r.status]),
     fld('Brand',esc(DH_BRAND_LABEL[r.brand]||r.brand)),
