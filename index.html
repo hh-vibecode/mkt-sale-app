@@ -2683,19 +2683,33 @@ const DH_KENH_NHOM=[
   ['Bán trực tiếp',/bán trực tiếp|ban truc tiep/i,                            '#2a9d8f'],
 ];
 function dhKenhNhom(k){const t=String(k||'');for(const [ten,re,mau] of DH_KENH_NHOM)if(re.test(t))return{ten,mau};return{ten:'Khác',mau:'#8d99ae'};}
-function dhKenhKy(){const g=i=>(document.getElementById(i)||{}).value||'';return{from:g('dhKenhFrom'),to:g('dhKenhTo')};}
-function dhKenhLoc(){const el=document.getElementById('dhKenhBody');if(el)el.innerHTML=dhKenhBodyHtml();tblAlign(el);}
+// MẶC ĐỊNH TỪ 1/6/2026 -- bằng đúng mốc của báo cáo Sale. Trước đây để trống = tất cả thời gian,
+// ra 6,6 tỷ kênh Online trong khi báo cáo chỉ hơn 1 tỷ, nhìn tưởng số sai (anh Hải báo 23/9/2026).
+// Muốn xem cả lịch sử thì bấm nút "Tất cả thời gian".
+function dhKenhKy(){
+  if(window._dhKenhKy===undefined)window._dhKenhKy={from:RPT_SL_MIN_DATE,to:todayISO()};
+  const g=i=>(document.getElementById(i)||{}).value;
+  const f=g('dhKenhFrom'),t=g('dhKenhTo');
+  if(f!==undefined&&t!==undefined)window._dhKenhKy={from:f||'',to:t||''};
+  return window._dhKenhKy;
+}
+function dhKenhDatKy(from,to){window._dhKenhKy={from:from||'',to:to||''};renderDataHub();}
+function dhKenhLoc(){dhKenhKy();renderDataHub();}
 function dhKenhShow(key){const d=(window._dhKenhLists||{})[key];if(d)dataModal(d);}
 function dhKenhHtml(){
   return `<div class="tbl-card" style="margin-bottom:16px">
     <div class="tbl-head"><div class="tbl-title">Kiot raw data — phân bổ theo kênh bán</div>
       <span style="margin-left:auto;font-size:11px;color:var(--muted)">nguồn: đơn đặt hàng Kiot · đã bỏ đơn huỷ và phiếu tạm không cọc · chỉ để xem</span></div>
-    <div style="padding:12px 16px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    ${(()=>{const k=dhKenhKy();const o='height:30px;padding:3px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px';
+      const nut=(l,f,t)=>'<button onclick="dhKenhDatKy('+JSON.stringify(f)+','+JSON.stringify(t)+')" class="btn-ghost" style="padding:4px 11px;font-size:11px">'+l+'</button>';
+      return `<div style="padding:12px 16px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
       <span style="font-size:11px;color:var(--muted)">Ngày:</span>
-      <input id="dhKenhFrom" type="date" onchange="dhKenhLoc()" style="height:30px;padding:3px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px">
+      <input id="dhKenhFrom" type="date" value="${k.from}" onchange="dhKenhLoc()" style="${o}">
       <span style="font-size:11px;color:var(--muted)">→</span>
-      <input id="dhKenhTo" type="date" onchange="dhKenhLoc()" style="height:30px;padding:3px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px">
-    </div>
+      <input id="dhKenhTo" type="date" value="${k.to}" onchange="dhKenhLoc()" style="${o}">
+      ${nut('Từ 1/6/2026',RPT_SL_MIN_DATE,todayISO())}${nut('Tháng này',todayISO().slice(0,8)+'01',todayISO())}${nut('Tất cả thời gian','','')}
+      ${!k.from&&!k.to?'<span style="font-size:11px;font-weight:800;color:var(--yellow)">đang xem TẤT CẢ lịch sử — gồm cả data trước mốc báo cáo</span>':''}
+    </div>`;})()}
     <div id="dhKenhBody">${dhKenhBodyHtml()}</div>
   </div>`;
 }
