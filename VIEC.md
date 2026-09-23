@@ -2,6 +2,7 @@
 
 > Sổ này thay cho việc đọc lại hội thoại cũ. **Claude phải mở file này đầu mỗi phiên làm việc.**
 > Xong việc nào thì xoá khỏi mục ĐANG NỢ và ghi 1 dòng vào NHẬT KÝ (gộp lại khi quá dài).
+> **Anh đã quyết rồi thì LÀM, đừng xếp lại vào mục "chờ anh quyết" để hỏi lại** (mắc lỗi này 23/9 với việc tự tạo data nhập tay).
 > Cập nhật lần cuối: 23/09/2026.
 
 ---
@@ -11,7 +12,6 @@
 | # | Việc | Cần anh nói gì |
 |---|---|---|
 | 1 | **Kéo full hoá đơn Kiot về hub** — 23/09 anh bảo **TẠM ĐỂ ĐÓ**, khi nào cần thì làm. Xem mục 6 bên dưới trước khi bắt tay | khi nào cần thì anh gọi |
-| 2 | **Đẩy data kênh bán sang Data nhập tay** — đã rà ra **18 khách đủ điều kiện** (Lẻ · Online · từ T6 · chưa có trong app), 44,79tr. File: `scratchpad/data-du-dieu-kien.csv` | có tạo 18 dòng nhập tay không |
 | 3 | **Tăng tỉ lệ có SĐT của Pancake** để nối Ad ID theo SĐT ăn thua hơn (hiện chỉ 19% đơn có SĐT nên chỉ vá được 2 lead). Cách: kéo SĐT từ API hội thoại Pancake | cho thử vài trăm hội thoại đo tỉ lệ không |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
 | 5 | **Chi phí MKT luôn trễ 1 ngày** — job Meta chỉ kéo ngày HÔM QUA (`TARGET_DATE = hôm nay - 1`), nên báo cáo MKT hôm nay không có chi phí hôm nay. Meta có trả số trong ngày (chưa chốt, có thể nhích) | có kéo thêm ngày hôm nay không |
@@ -43,6 +43,7 @@
 ## 4. CƠ CHẾ TỰ CHẠY (đang sống)
 
 - `sync-datahub-pancake` · `sync-kiot-orders` (có lấy kênh bán) · `sync-kiot-invoices` · `sync-mkt-from-meta` — lịch do pg_cron trên Supabase bắn.
+- `scripts/tu-tao-nhap-tay.js` — chạy kèm mỗi lượt sync đơn Kiot: khách LẺ + kênh ONLINE + từ 1/6/2026 + chưa có trong app -> tự tạo dòng Data nhập tay. Xem trước bằng `KHO=1`.
 - `moc-so-lieu.yml` — chốt mốc số liệu 00:00 / 08:00 / 16:00 giờ VN. So trước, lệch > 5% thì GIỮ mốc cũ và fail để báo mail.
 - `scripts/kiem-so-lieu.js` — chạy trước & sau mỗi lần sửa logic báo cáo.
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
