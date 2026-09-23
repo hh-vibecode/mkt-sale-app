@@ -718,17 +718,36 @@ const SUPABASE_URL='https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjcnB4ZnZ2anNqcHZia3NxemxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNzE0OTgsImV4cCI6MjEwMjg0NzQ5OH0.XGEUvHP1YBhxYKD9Xq1yH2gl95-V9VgaY5HfsAnFb2c';
 // anon key chỉ có quyền ĐỌC (RLS chặn ghi) nên lộ ra client-side là an toàn, giống pattern publish-to-web của Google Sheets trước đây
 async function sbFetchAll(table,query){
-  const pageSize=1000;let offset=0,out=[];
-  while(true){
-    const url=`${SUPABASE_URL}/rest/v1/${table}?${query}`;
-    const res=await fetch(url,{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,Range:`${offset}-${offset+pageSize-1}`}});
+  const pageSize=1000;
+  const url=`${SUPABASE_URL}/rest/v1/${table}?${query}`;
+  const tai=async(offset,demTong)=>{
+    const h={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,Range:`${offset}-${offset+pageSize-1}`};
+    if(demTong)h.Prefer='count=exact';   // PHẢI exact: 'planned' chỉ là ước lượng, thiếu là mất dòng âm thầm
+    const res=await fetch(url,{headers:h});
     if(!res.ok)throw new Error(`Supabase [${table}] lỗi ${res.status}`);
-    const chunk=await res.json();
-    out=out.concat(chunk);
-    if(chunk.length<pageSize)break;
-    offset+=pageSize;
+    return{rows:await res.json(),range:res.headers.get('content-range')||''};
+  };
+  // Lượt đầu xin luôn TỔNG SỐ DÒNG (content-range: 0-999/7605) để biết còn bao nhiêu trang,
+  // rồi tải hết các trang còn lại CÙNG LÚC thay vì nối đuôi nhau (nhanh gấp mấy lần khi bảng to).
+  const dau=await tai(0,true);
+  if(dau.rows.length<pageSize)return dau.rows;
+  const tong=Number((dau.range.split('/')[1]||'').trim());
+  let out=dau.rows;
+  if(tong>pageSize){
+    const offs=[];for(let o=pageSize;o<tong;o+=pageSize)offs.push(o);
+    const phan=await Promise.all(offs.map(o=>tai(o,false)));
+    phan.forEach(p=>{out=out.concat(p.rows);});
+    // Chốt chặn: nếu trang cuối vẫn đầy 1000 dòng nghĩa là bảng đã dài thêm trong lúc tải -> tải nốt.
+    if(phan.length&&phan[phan.length-1].rows.length<pageSize)return out;
+    if(!phan.length)return out;
+    let o2=offs[offs.length-1]+pageSize;
+    for(;;){const p=await tai(o2,false);out=out.concat(p.rows);
+      if(p.rows.length<pageSize)return out;o2+=pageSize;}
   }
-  return out;
+  // Không lấy được tổng (count bị chặn) -> quay về cách cũ: tải tiếp từng trang cho tới khi hết.
+  let offset=pageSize;
+  for(;;){const p=await tai(offset,false);out=out.concat(p.rows);
+    if(p.rows.length<pageSize)return out;offset+=pageSize;}
 }
 // Nạp MKT từ Supabase (mkt_spend, cấp Ad/ngày) — dựng lại 2 tầng dữ liệu như parseMktCsv() từng làm từ CSV:
 // allRowsRaw = cấp Ad (để buildAdCampMap() gắn Ad ID -> tên chiến dịch), allRows = gộp cấp Chiến dịch/ngày
@@ -2647,17 +2666,25 @@ function dhExcludedHtml(){
   </div>`;
 }
 async function renderDataHub(){
-  await dhLoadOrders();
-  await kiotLoadInvoices();
-  await dhLoadManual();
-  await rptSlLoadManual();
+  // CHỈ TẢI THỨ TAB ĐANG XEM CẦN. Tab Nhập tay và tab Kênh bán không đụng tới data thô Pancake
+  // (datahub_orders ~1,9 MB) -> bỏ hẳn lượt tải đó, mở trang nhanh hơn hẳn cho tài khoản Sale.
+  await Promise.all([dhLoadManual(),kiotLoadInvoices(),rptSlLoadManual()]);
+  // Quyền từng tab: 'datahub' = data thô Pancake · 'datahub-manual' = nhập tay LẺ · 'datahub-manual-si' = nhập tay SỈ.
+  // Chỉ có quyền 'datahub-manual' -> bị khoá cứng ở tab Nhập tay (đổi localStorage cũng không vào được).
+  const canRaw=dashCan('datahub'),canLe=canRaw||dashCan('datahub-manual'),canSi=canRaw||dashCan('datahub-manual-si');
+  let mode=dhViewMode();
+  if(mode==='overview'&&!canRaw)mode=canLe?'manual':'manual-si';
+  if(mode==='manual'&&!canLe)mode=canSi?'manual-si':(canRaw?'overview':'manual');
+  if(mode==='manual-si'&&!canSi)mode=canLe?'manual':(canRaw?'overview':'manual-si');
+  if(mode==='kenh'&&!canRaw)mode=canLe?'manual':'manual-si';
+  if(mode==='overview')await dhLoadOrders();
   const dhConfirmed=dhOrders.filter(dhIsOrder);
   const dhNew=dhOrders.filter(o=>o.customer_status==='Mới').length;
   const dhOld=dhOrders.filter(o=>o.customer_status==='Cũ').length;
   const dhNewConfirmed=dhConfirmed.filter(o=>o.customer_status==='Mới').length;
   const dhOldConfirmed=dhConfirmed.filter(o=>o.customer_status==='Cũ').length;
   let dhSyncLabel='—',dhLastBySrc={};
-  try{
+  if(mode==='overview')try{
     const hist=await sbFetchAll('sync_log','select=source,started_at,status&order=started_at.desc&limit=60');
     hist.forEach(h=>{if(!dhLastBySrc[h.source])dhLastBySrc[h.source]=h;});
     const d0=dhLastBySrc['Data Hub - Pancake POS'];
@@ -2694,15 +2721,6 @@ async function renderDataHub(){
     </div>`;
   const el=document.getElementById('page-datahub');
   if(!el)return;
-  // Chỉ có quyền 'datahub-manual' -> không được xem data thô Pancake: khoá cứng ở tab Data Nhập Tay,
-  // không hiện nút Tổng Quan (đổi localStorage cũng không vào được vì mode bị ép lại ở đây).
-  // Quyền từng tab: 'datahub' = data thô Pancake · 'datahub-manual' = nhập tay LẺ · 'datahub-manual-si' = nhập tay SỈ.
-  const canRaw=dashCan('datahub'),canLe=canRaw||dashCan('datahub-manual'),canSi=canRaw||dashCan('datahub-manual-si');
-  let mode=dhViewMode();
-  if(mode==='overview'&&!canRaw)mode=canLe?'manual':'manual-si';
-  if(mode==='manual'&&!canLe)mode=canSi?'manual-si':(canRaw?'overview':'manual');
-  if(mode==='manual-si'&&!canSi)mode=canLe?'manual':(canRaw?'overview':'manual-si');
-  if(mode==='kenh'&&!canRaw)mode=canLe?'manual':'manual-si';
   window._dhManualType=(mode==='manual-si'?'Sỉ':'Lẻ');
   const tabBtn=(m,label)=>`<button onclick="dhSetViewMode('${m}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode===m?'var(--accent)':'var(--surface)'};color:${mode===m?'#fff':'var(--text2)'}">${label}</button>`;
   const header=`
@@ -2754,11 +2772,7 @@ async function renderReportTongHop(){
   if(!el)return;
   if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo tổng hợp');
   try{
-    await dhLoadOrders();
-    await kiotLoadInvoices();
-    await dhLoadManual();
-    await rptSlLoadManual();
-    await siCrmLoad();
+    await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad()]);
     await rptSlLockChot();
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo tổng hợp',e,'renderReportTongHop');return;}
   const cur=rptThTab();
@@ -3769,12 +3783,10 @@ async function rptSlRenderPage(type){
   const luot=rptSlLuot[cfg.page]=(rptSlLuot[cfg.page]||0)+1;
   if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo · '+cfg.title);
   try{
-    await dhLoadOrders();
-    await kiotLoadInvoices();
-    await dhLoadManual();
-    await rptSlLoadManual();
-    if(rptSlType()==='Sỉ')await siCrmLoad();
-    await rptSlLockChot();
+    // 5 nguồn này độc lập nhau -> tải CÙNG LÚC (trước đây nối tiếp, cộng dồn ~3 giây).
+    await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),
+      rptSlType()==='Sỉ'?siCrmLoad():Promise.resolve()]);
+    await rptSlLockChot();   // phải chạy sau vì đọc dữ liệu vừa tải xong
   }catch(e){
     el.innerHTML=rptTaiLoi('Báo cáo · '+cfg.title,e,cfg.render);
     return;
