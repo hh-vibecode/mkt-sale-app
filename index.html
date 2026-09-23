@@ -4745,7 +4745,7 @@ function rptSlBuildMasterRaw(){
     const all=r.kords||[];
     if(!all.length){r.repeatOrds=[];r.staleOrds=[];r.repeatRevenue=0;return;}
     if(khongCat(r)){
-      const treo2=all.filter(o=>o.khongTinh||rptSlPhieuTreo(o));   // phiếu báo giá / không có dấu vết tiền: không tính
+      const treo2=all.filter(o=>o.khongTinh||rptSlPhieuTreo(o));   // phiếu báo giá / không có dấu vết tiền: không tính (KHÔNG xét đơn treo bao lâu -- có cọc là tính)
       const dung=all.filter(o=>!treo2.includes(o));
       r.kords=dung;r.staleOrds=treo2;r.repeatOrds=[];r.repeatRevenue=0;
       r.revenue=dung.reduce((x,o)=>x+Number(o.total||0),0);
