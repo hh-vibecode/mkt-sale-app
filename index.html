@@ -451,8 +451,12 @@ function dashCan(page){
 }
 // PHẠM VI DỮ LIỆU của tài khoản: xem data của những Sale nào, và loại Sỉ hay Lẻ.
 // Mảng rỗng = xem TẤT CẢ (mặc định, giữ nguyên hành vi cũ). Supreme Leader luôn xem tất cả.
+// PHẠM VI DATA theo VỊ TRÍ: Supreme và ADMIN xem TẤT CẢ (anh Hải chốt 23/9/2026: "admin nhìn được
+// y như t, chỉ không nhìn được các mục t bảo ẩn") -- tức là giới hạn của admin nằm ở QUYỀN VÀO TRANG,
+// không nằm ở phạm vi dữ liệu. Chỉ vị trí Sales/Manager mới bị bó theo danh sách Sale được gán.
+function dashViTriXemHet(vt){return vt==='supreme'||vt==='admin';}
 function dashScope(key){
-  if((localStorage.getItem('dashPosition')||'')==='supreme')return[];
+  if(dashViTriXemHet(localStorage.getItem('dashPosition')||''))return[];
   try{const a=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(a)?a:[];}catch(e){return[];}
 }
 // XEM NHƯ TÀI KHOẢN KHÁC: ở tab Nhập Liệu, Supreme Leader / người có quyền Phân quyền chọn 1 tài khoản
@@ -483,10 +487,12 @@ function dashGiao(a,b){            // [] = xem tất cả -> bên nào rỗng th
 }
 function dashSales(){
   const v=dashViewAs();
+  if(v&&dashCanViewAs()&&dashViTriXemHet(v.vitri||''))return dashScope('dashDataSales');
   return v&&dashCanViewAs()?dashGiao(v.sales||[],dashScope('dashDataSales')):dashScope('dashDataSales');
 }
 function dashTypes(){
   const v=dashViewAs();
+  if(v&&dashCanViewAs()&&dashViTriXemHet(v.vitri||''))return dashScope('dashDataTypes');
   return v&&dashCanViewAs()?dashGiao(v.types||[],dashScope('dashDataTypes')):dashScope('dashDataTypes');
 }
 // KHÁCH CHƯA GÁN SALE: trước đây bị GIẤU khỏi mọi tài khoản có giới hạn phạm vi -- kể cả tài khoản
@@ -5364,7 +5370,7 @@ async function rptSlLoadAccs(){
 function rptSlSetViewAs(id){
   if(!dashCanViewAs())return;
   const a=(window._rptSlAccs||[]).find(x=>x.user_id===id);
-  if(a)localStorage.setItem('dashViewAs',JSON.stringify({id:a.user_id,name:a.name,
+  if(a)localStorage.setItem('dashViewAs',JSON.stringify({id:a.user_id,name:a.name,vitri:a.position_title||'',
     sales:a.data_sales||[],types:a.data_types||[],perms:a.permissions||[],supreme:a.position_title==='supreme'}));
   else localStorage.removeItem('dashViewAs');
   window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
