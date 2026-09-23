@@ -3655,6 +3655,8 @@ const RPT_SL_MIN_DATE='2026-06-01';
 // => DỮ LIỆU không bị đụng tới: mọi dòng vẫn giữ đúng người phụ trách, báo cáo vẫn tính đủ.
 //    Chỉ Ô CHỌN (lọc báo cáo, phạm vi phân quyền, form nhập tay) là dùng đúng danh sách dưới đây.
 // THÊM/BỚT SALE: sửa đúng 1 mảng này, không phải tìm chỗ nào khác.
+// Khách Sỉ chưa có Mã KH -> chưa biết ai bán, tạm gán tên này cho khỏi trống.
+const RPT_SL_BOT_SI='botsale sỉ';
 const RPT_SL_SALE_DROPDOWN=[
   'Nguyễn Thảo Ngọc',
   'Vân Ngọc',
@@ -3662,6 +3664,7 @@ const RPT_SL_SALE_DROPDOWN=[
   'Phạm Thị Lệ',
   'Nguyễn Thị Huế',
   'Nguyễn Hữu Toàn',
+  RPT_SL_BOT_SI,         // khách Sỉ chưa có Mã KH
 ];
 // Ai thuộc đội SỈ -- dùng để tách nhóm trong ô Phân quyền; còn lại coi là đội LẺ.
 const RPT_SL_SALE_DOI_SI=['Nguyễn Thị Huế','Nguyễn Hữu Toàn'];
@@ -4861,6 +4864,18 @@ function rptSlBuildMasterRaw(){
   // toàn bộ nhật ký chăm sóc bên CRM (lượt gần nhất, số lượt, bao lâu chưa liên hệ). Sale Sỉ chủ yếu gọi
   // điện / Zalo chứ không chat Pancake, nên diễn biến nằm hết ở nhật ký tự nhập.
   if(rptSlType()==='Sỉ'){
+    // SALE PHỤ TRÁCH BÊN SỈ (anh Hải chốt 23/9/2026): KHÔNG lấy người phụ trách bên Pancake nữa.
+    //   1) Lấy người TẠO ĐƠN trên Kiot gắn với khách (đơn gần nhất).
+    //   2) Khách chưa có Mã KH / chưa có đơn Kiot -> tạm để 'botsale sỉ' cho khỏi trống.
+    // Lý do: khách sỉ chốt qua điện thoại/Zalo, người trực Pancake thường không phải người bán thật.
+    rows.forEach(r=>{
+      const don=[].concat(r.kords||[],r.repeatOrds||[],r.staleOrds||[])
+        .filter(o=>o&&o.sold_by_name)
+        .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
+      const ten=don.length?String(don[don.length-1].sold_by_name).trim():'';
+      r.staffKiot=ten;
+      r.staff=ten||RPT_SL_BOT_SI;
+    });
     const ky={};
     (typeof siCrmRows!=='undefined'?siCrmRows:[]).forEach(c=>{
       const k=c.lead_id||('MA:'+(c.kiot_code||''))||('SDT:'+rptSlLast9(c.phone||''));
