@@ -3576,6 +3576,16 @@ function rptSlChatUrl(r){
   if(!r||!r.convId)return'';
   return 'https://pancake.vn/'+(r.pageId||String(r.convId).split('_')[0])+'?c_id='+encodeURIComponent(r.convId);
 }
+// Mã gắn NGAY DƯỚI TÊN KHÁCH cho gọn bảng: đã có Mã KH Kiot thì hiện Mã KH (bấm mở sang Kiot),
+// chưa có thì hiện Lead ID do app sinh. Popup chi tiết vẫn giữ ĐỦ cả Lead ID lẫn Mã KH.
+function rptSlMaDuoiTen(r){
+  const ma=r.kh||r.manualKH||'';
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const oNho='font-size:10.5px;font-weight:700;color:var(--muted);margin-top:1px';
+  if(ma)return '<div style="'+oNho+'" title="Lead ID: '+e(r.leadId)+'">'
+    +rptSlKiotLink(ma,'<span style="color:var(--accent)">'+e(ma)+'</span>')+'</div>';
+  return r.leadId?'<div style="'+oNho+'">'+e(r.leadId)+'</div>':'';
+}
 function rptSlTenKhach(r){
   const ten=String(r.name||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const u=rptSlChatUrl(r);
@@ -4818,13 +4828,8 @@ function rptSlMasterRowSi(r){
   const congDon=(r.revenue+r.repeatRevenue)||Number(sh.gia_tri_cong_don||0);
   return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\')">'
     +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+rptSlNhanCu(r.created||sh.ngay_tao,'mua lại')+'</td>'
-    // Khách ĐÃ CHỐT (có Mã KH Kiot) thì cột này hiện thẳng MÃ KH -- mã thật của khách, bấm mở sang Kiot.
-    // Khách chưa chốt mới dùng Lead ID do app sinh. Mã cũ bên sheet chỉ còn trong tooltip để tra ngược.
-    +'<td style="'+nho+';white-space:nowrap"'+(sh.lead_id&&sh.lead_id!==r.leadId?' title="Mã cũ bên sheet: '+e(sh.lead_id)+' · Lead ID app: '+e(r.leadId)+'"':(r.kh?' title="Lead ID app: '+e(r.leadId)+'"':''))
-      +'>'+(r.kh?rptSlKiotLink(r.kh,'<span style="font-weight:800;color:var(--accent)">'+e(r.kh)+'</span>')
-              :'<span style="font-weight:700">'+e(r.leadId||'—')+'</span>')+'</td>'
     +'<td>'+rptSlStaffHtml(r)+'</td>'
-    +'<td class="name">'+rptSlTenKhach(r)+'</td>'
+    +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+'</td>'
     +'<td>'+rptSiPhanLoaiHtml(r.siPhanLoai,e)+'</td>'
     +'<td style="white-space:nowrap">'+(dmy(csCuoi)||'—')+'</td>'
     +'<td class="num"><span style="font-weight:700;color:'+mauNghi+'">'+(nghi2==null?'—':num(nghi2))+'</span></td>'
@@ -4836,7 +4841,7 @@ function rptSlSetMasterPage(p){window._rptSlMasterPage=p;rptSlRender();}
 function rptSlMasterSearch(){return(document.getElementById('rptSlMasterSearch')||{}).value||'';}
 // 1 dòng của bảng Master -- dùng chung cho tab Master Data và bảng "Top khách tiềm năng" ở Tổng quan,
 // để 2 chỗ luôn hiện cùng bộ cột, sửa 1 chỗ là cả 2 đổi theo.
-const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Mã KH Kiot</th><th>Trạng thái</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th>';
+const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Trạng thái</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th>';
 // Master SỈ có thêm khối HỒ SƠ ĐẠI LÝ (sheet Sỉ có, Lẻ không): mô hình hợp tác, diện tích showroom,
 // khả năng tài chính, phân loại KH, giấy phép kinh doanh, fanpage, địa chỉ -- cộng với phần rút gọn
 // nhật ký chăm sóc (số lượt + lần gần nhất + bao lâu chưa liên hệ).
@@ -4845,7 +4850,7 @@ const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn kh�
 // và nhiều trường chỉ điền được 1/4 số khách (người dùng chốt 22/9/2026).
 // MASTER SỈ = đúng khung sheet "Master Data Sỉ" (khác hoàn toàn Lẻ): hồ sơ đại lý + diễn biến chăm sóc
 // + kết quả đơn hàng. Các trường ít dùng (GPKD, fanpage, ghi chú KH, link hồ sơ) nằm trong Chi tiết khách.
-const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Lead ID / Mã KH</th><th>Sales phụ trách</th>'
+const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Sales phụ trách</th>'
   +'<th>Tên cửa hàng</th><th>Phân loại KH</th>'
   +'<th>Ngày CS cuối</th><th>Ngày chưa liên hệ</th><th>Nội dung CS cuối</th>'
   +'<th>Giá trị cộng dồn</th><th></th>';
@@ -4858,9 +4863,8 @@ function rptSlMasterRow(r){
     <td style="font-size:11px">${r.nguon||'—'}</td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
     <td>${rptSlStaffHtml(r)}</td>
-    <td class="name">${rptSlTenKhach(r)}</td>
+    <td class="name">${rptSlTenKhach(r)}${rptSlMaDuoiTen(r)}</td>
     <td style="white-space:nowrap">${rptSlSdtHtml(r)}</td>
-    ${rptSlOMaKH(r)}
     <td>${rptSlStatusPill(rptSlRowStatus(r))}</td>
     <td>${dmy(r.lastTouch)||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
     <td class="num" style="font-weight:800;color:${r.revenue+r.repeatRevenue>0?'var(--green)':'inherit'}">${r.revenue+r.repeatRevenue>0?vnd(r.revenue+r.repeatRevenue):'—'}</td>
