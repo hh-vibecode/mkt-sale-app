@@ -46,9 +46,10 @@ async function ghiLog(body, id) {
   if (!SERVICE_ROLE_KEY) { console.error('Thiếu SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); }
   const logId = CHI_XEM ? null : await ghiLog({ status: 'running' }).catch(() => null);
   try {
-    const [don, kh, dm, dh] = await Promise.all([
+    const [don, kh, hd, dm, dh] = await Promise.all([
       doc('kiot_orders', 'code,customer_code,customer_name,purchase_date,total,total_payment,status,branch_name,sale_channel,sold_by_name'),
       doc('kiot_customers', 'code,name,phone,debt,customer_group'),
+      doc('kiot_invoices', 'customer_code,total,status'),
       doc('datahub_manual', 'kiot_code'),
       doc('datahub_orders', 'internal_note'),
     ]);
@@ -83,9 +84,33 @@ async function ghiLog(body, id) {
       if (ngay < g.ngay) { g.ngay = ngay; g.kenh = o.sale_channel; g.sale = o.sold_by_name || null; }
       g.don++; g.tien += Number(o.total || 0);
     });
+    // ── CHỐT CHẶN CUỐI: KHÁCH PHẢI CÓ DẤU VẾT TIỀN THẬT ───────────────────────────────────────
+    // Đơn "Hoàn thành" hay "Phiếu tạm" chỉ là trạng thái Sale đặt tay, chưa chắc là mua thật.
+    // Chỉ nhận khách có ÍT NHẤT MỘT trong ba: đã trả tiền trên đơn · có hoá đơn hoàn thành ·
+    // có nợ cần thu âm (đã đặt cọc). Không có gì cả thì để ngoài, chờ có tiền mới đưa vào báo cáo.
+    const traTheoKhach = {}, hdTheoKhach = {};
+    don.forEach(o => { if (o.customer_code && o.status !== 4)
+      traTheoKhach[o.customer_code] = (traTheoKhach[o.customer_code] || 0) + Number(o.total_payment || 0); });
+    hd.forEach(i => { if (i.customer_code && i.status === 1)
+      hdTheoKhach[i.customer_code] = (hdTheoKhach[i.customer_code] || 0) + 1; });
+    const bangChung = m => {
+      const t = traTheoKhach[m] || 0, n = hdTheoKhach[m] || 0, c = Number((byCode[m] || {}).debt || 0);
+      const l = [];
+      if (t > 0) l.push('đã trả ' + vn(t));
+      if (n > 0) l.push(n + ' hoá đơn');
+      if (c < 0) l.push('cọc ' + vn(-c));
+      return l.join(' · ');
+    };
+    const loaiRa = [];
+    Object.keys(gom).forEach(m => { if (!bangChung(m)) { loaiRa.push(gom[m]); delete gom[m]; } });
+    if (loaiRa.length) {
+      console.log(`Loại ${loaiRa.length} khách chưa có dấu vết tiền (chưa trả, chưa có hoá đơn, chưa cọc):`);
+      loaiRa.forEach(x => console.log(`   - ${x.ma} ${x.ten} · ${vn(x.tien)} đ`));
+    }
+
     const ds = Object.values(gom).sort((a, b) => b.tien - a.tien);
     console.log(`Đủ điều kiện: ${ds.length} khách · ${vn(ds.reduce((s, x) => s + x.tien, 0))} đ`);
-    ds.forEach(x => console.log(`   ${x.ngay} ${x.ma} ${String(x.ten).slice(0, 26)} · ${x.kenh} · ${x.don} đơn · ${vn(x.tien)}`));
+    ds.forEach(x => console.log(`   ${x.ngay} ${x.ma} ${String(x.ten).slice(0, 26)} · ${x.kenh} · ${x.don} đơn · ${vn(x.tien)} · ${bangChung(x.ma)}`));
     if (CHI_XEM) { console.log('(KHO=1 -> chỉ xem trước, không ghi)'); return; }
     if (!ds.length) { console.log('Không có gì mới.'); await ghiLog({ finished_at: new Date().toISOString(), status: 'success', records_created: 0 }, logId); return; }
 
