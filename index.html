@@ -3600,7 +3600,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/09 09:25';
+const APP_VERSION='23/09 09:33';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -3695,10 +3695,10 @@ async function rptSlRenderPage(type){
         <button onclick="rptSlSetViewMode('input')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='input'?'var(--accent)':'var(--surface)'};color:${mode==='input'?'#fff':'var(--text2)'}">Nhập Liệu${(()=>{const n=rptSlTodoCount();return n?' <span style="background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+n+'</span>':'';})()}</button>
       </span>
     </div>
-    <div id="rptSlBody"></div>`;
+    <div class="rptSlBody"></div>`;
   // Dựng phần thân trong try/catch: trước đây một hàm con lỗi là #rptSlBody rỗng -> người dùng thấy
   // "trắng tinh" mà không biết vì sao (báo 22/9/2026). Giờ lỗi thì hiện hẳn ra kèm nút thử lại.
-  const than=document.getElementById('rptSlBody');
+  const than=el.querySelector('.rptSlBody');   // tìm trong ĐÚNG trang đang vẽ, không dùng id dùng chung
   if(!than)return;
   try{
     const html=mode==='input'?rptSlInputHtml():mode==='crm'?rptSlCrmHtml():rptSlMasterHtml();
