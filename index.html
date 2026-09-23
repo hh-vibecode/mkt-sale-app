@@ -3324,8 +3324,13 @@ function siCrmHtml(){
     const k=r.lead_id?byLead[r.lead_id]:null;
     return '<tr>'
       +'<td style="white-space:nowrap">'+(dmy(r.ngay_cham)||'—')+'</td>'
-      +'<td class="name">'+siEsc(r.customer_name)+(r.kiot_code?' '+rptSlKiotLink(r.kiot_code,'<span style="font-weight:600;font-size:11px">'+siEsc(r.kiot_code)+'</span>'):'')
-        +(r.lead_id?'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+siEsc(r.lead_id)+'</div>':'')+'</td>'
+      // Dưới tên khách: có Mã KH thì hiện Mã KH, chưa có mới hiện Lead ID (Lead ID vẫn nằm trong popup Chi tiết).
+      // Nhật ký CRM gần như không bao giờ điền cột Mã KH -> tra ngược qua hồ sơ khách theo Lead ID.
+      +(()=>{const ma=r.kiot_code||((k&&k.kh)||'');
+        const duoi=ma?'<div style="font-size:10.5px;font-weight:700;color:var(--muted)" title="Lead ID: '+siEsc(r.lead_id||'')+'">'
+            +rptSlKiotLink(ma,'<span style="color:var(--accent)">'+siEsc(ma)+'</span>')+'</div>'
+          :(r.lead_id?'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+siEsc(r.lead_id)+'</div>':'');
+        return '<td class="name">'+siEsc(r.customer_name)+duoi+'</td>';})()
       +'<td style="'+oNho+'">'+siEsc(r.hinh_thuc||'')+'</td>'
       +'<td style="'+oNho+';max-width:420px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+siEsc(r.noi_dung||'')+'">'+siEsc(r.noi_dung||'—')+'</div></td>'
       +'<td>'+rptSiPhanLoaiHtml(r.phan_loai,siEsc)+'</td>'
