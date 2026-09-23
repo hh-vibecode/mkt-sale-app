@@ -3051,10 +3051,11 @@ function rptMktData(){
     if(brandLoc&&b!==brandLoc)return;
     const d=parseDate(r[COL.DATE]);
     if(!d||!rptMktInRange(isoNgay(d)))return;
-    theoAd[id]=theoAd[id]||{id,ten:'',camp:(r[COL.CAMPAIGN]||'').trim(),brand:b,spend:0,mess:0,khach:[],rev:0,don:0};
+    theoAd[id]=theoAd[id]||{id,ten:'',nhom:'',camp:(r[COL.CAMPAIGN]||'').trim(),brand:b,spend:0,mess:0,khach:[],rev:0,don:0};
     theoAd[id].spend+=toNum(r[COL.SPEND]);
     theoAd[id].mess+=toNum(r[COL.MESSAGES]);
     if(!theoAd[id].ten&&COL.AD_NAME>=0)theoAd[id].ten=(r[COL.AD_NAME]||'').trim();
+    if(!theoAd[id].nhom&&COL.ADSET_NAME2>=0)theoAd[id].nhom=(r[COL.ADSET_NAME2]||'').trim();
   });
   // khách (kể cả chưa chốt) gắn theo ad_id của đơn Pancake
   const cu2=window._rptSlType,cuMod2=window._rptSlMod;
@@ -3099,6 +3100,31 @@ function rptMktShowDoanhSo(){
     +'</div>'
     +'<div style="padding:0 20px 16px;font-size:11.5px;color:var(--muted);font-weight:600">Bấm vào từng khối để xem danh sách khách. Khách sỉ nguồn Offline không tính vào báo cáo MKT.</div>'
     +'</div></div>';
+}
+// Mở/gập 1 nhánh trong bảng chi tiết quảng cáo. Gập cha thì gập luôn mọi nhánh con bên dưới,
+// để lần mở sau không bị bung sẵn cả cây.
+function rptMktMo(key){
+  const con=document.querySelectorAll('[data-cha="'+key+'"]');
+  if(!con.length)return;
+  const dangGap=con[0].hidden;
+  con.forEach(el=>{
+    el.hidden=!dangGap;
+    if(!dangGap){
+      const sp=el.querySelector('span[id^="mkt-mui-"]');
+      if(sp)rptMktGap(sp.id.replace('mkt-mui-',''));
+    }
+  });
+  const mui=document.getElementById('mkt-mui-'+key);
+  if(mui)mui.textContent=dangGap?'▼':'▶';
+}
+function rptMktGap(key){
+  document.querySelectorAll('[data-cha="'+key+'"]').forEach(el=>{
+    el.hidden=true;
+    const sp=el.querySelector('span[id^="mkt-mui-"]');
+    if(sp)rptMktGap(sp.id.replace('mkt-mui-',''));
+  });
+  const mui=document.getElementById('mkt-mui-'+key);
+  if(mui)mui.textContent='▶';
 }
 function rptMktTab(){return localStorage.getItem('rptMktTab')==='ct'?'ct':'tq';}
 function rptMktSetTab(t){localStorage.setItem('rptMktTab',t);renderReportMkt();}
@@ -3177,25 +3203,54 @@ function rptMktHtml(){
   dsAd.forEach((a,i)=>L('mktAd-'+i,{title:'Khách từ quảng cáo: '+(a.ten||a.camp)+' · '+a.id,
     cols:colKh,rows:a.khach.slice().sort((x,y)=>y.rev-x.rev).map(k=>[k.loai,dmy(k.ngay),k.name,k.phone||'',k.kenh,k.staff,k.kh,
       k.chot?'<span style="color:var(--green);font-weight:700">Chốt đơn</span>':'chưa chốt',k.rev?vnd(k.rev):''])}));
-  const bangAd=dsAd.map((a,i)=>{
-    const ty=a.rev>0?a.spend/a.rev*100:null;
-    return '<tr'+(a.khach.length?' onclick="rptSlShow('+String.fromCharCode(39)+'mktAd-'+i+String.fromCharCode(39)+')" style="cursor:pointer" title="Bấm để xem '+a.khach.length+' khách"':'')+'>'
-      +'<td class="name">'+String(a.ten||a.camp).replace(/</g,'&lt;')+'</td>'
-      +'<td style="font-size:11px;color:var(--muted)">'+a.id+'</td>'
-      +'<td style="font-size:11px">'+String(a.camp).slice(0,28).replace(/</g,'&lt;')+'</td>'
-      +'<td class="num">'+vnd(a.spend)+'</td>'
-      +'<td class="num">'+num(a.mess)+'</td>'
-      +'<td class="num">'+(a.mess>0?vnd(a.spend/a.mess):'—')+'</td>'
-      +'<td class="num">'+(a.khach.length?num(a.khach.length):'—')+'</td>'
-      +'<td class="num">'+(a.don?num(a.don):'—')+'</td>'
-      +'<td class="num" style="font-weight:800;color:'+(a.rev>0?'var(--green)':'inherit')+'">'+(a.rev>0?vnd(a.rev):'—')+'</td>'
-      +'<td class="num" style="font-weight:800;color:'+mauTy(ty)+'">'+(ty===null?'—':ty.toFixed(1)+'%')+'</td></tr>';
-  }).join('');
-  const cuonAd='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Chi tiết theo quảng cáo</div>'
-    +'<div class="tbl-count">'+num(dsAd.length)+'</div>'
-    +'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:auto">bấm 1 dòng để xem khách quảng cáo đó mang về</span></div>'
-    +'<div class="tbl-scroll"><table><thead><tr><th>Quảng cáo</th><th>Ads ID</th><th>Chiến dịch</th><th>Chi phí</th><th>Mess</th><th>CP/mess</th><th>Khách</th><th>Đơn chốt</th><th>Doanh thu</th><th>ADS/DS</th></tr></thead><tbody>'
-    +(bangAd||'<tr><td colspan="10" style="text-align:center;padding:22px;color:var(--muted)">Chưa có dữ liệu quảng cáo trong kỳ</td></tr>')
+  // ── CÂY 3 TẦNG: Chiến dịch -> Nhóm quảng cáo -> Quảng cáo ──────────────────────────────────
+  // Mặc định GẬP hết; bấm chiến dịch mới mở nhóm, bấm nhóm mới mở từng quảng cáo -- màn hình chỉ
+  // còn vài dòng chiến dịch thay vì đổ hàng trăm quảng cáo ra ngay (yêu cầu 23/9/2026).
+  // Toàn bộ chạy theo BỘ LỌC NGÀY của báo cáo MKT (theoAd đã lọc sẵn trong rptMktData).
+  const cay={};
+  dsAd.forEach((a,i)=>{
+    const tenC=a.camp||'(không tên)',tenN=a.nhom||'(không có nhóm)';
+    const c=cay[tenC]=cay[tenC]||{ten:tenC,spend:0,mess:0,khach:0,don:0,rev:0,soQc:0,nhom:{}};
+    const n=c.nhom[tenN]=c.nhom[tenN]||{ten:tenN,spend:0,mess:0,khach:0,don:0,rev:0,ads:[]};
+    [c,n].forEach(x=>{x.spend+=a.spend;x.mess+=a.mess;x.khach+=a.khach.length;x.don+=a.don;x.rev+=a.rev;});
+    c.soQc++;n.ads.push(Object.assign({},a,{idx:i}));
+  });
+  const dsCamp=Object.values(cay).sort((x,y)=>y.spend-x.spend);
+  const q=String.fromCharCode(39);
+  const oSo=(x,dam)=>'<td class="num">'+vnd(x.spend)+'</td><td class="num">'+num(x.mess)+'</td>'
+    +'<td class="num">'+(x.mess>0?vnd(x.spend/x.mess):'—')+'</td>'
+    +'<td class="num">'+(x.khach?num(x.khach):'—')+'</td>'
+    +'<td class="num">'+(x.don?num(x.don):'—')+'</td>'
+    +'<td class="num" style="font-weight:'+(dam?800:700)+';color:'+(x.rev>0?'var(--green)':'inherit')+'">'+(x.rev>0?vnd(x.rev):'—')+'</td>'
+    +'<td class="num" style="font-weight:800;color:'+mauTy(x.rev>0?x.spend/x.rev*100:null)+'">'
+    +(x.rev>0?(x.spend/x.rev*100).toFixed(1)+'%':'—')+'</td>';
+  let bangAd='';
+  dsCamp.forEach((c,ci)=>{
+    bangAd+='<tr onclick="rptMktMo('+q+'c'+ci+q+')" style="cursor:pointer;background:var(--bg2)">'
+      +'<td class="name" colspan="2"><span id="mkt-mui-c'+ci+'" style="color:var(--muted);font-size:10px;margin-right:6px">▶</span>'
+      +String(c.ten).replace(/</g,'&lt;')+'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'
+      +num(Object.keys(c.nhom).length)+' nhóm · '+num(c.soQc)+' quảng cáo</div></td>'
+      +oSo(c,true)+'</tr>';
+    Object.values(c.nhom).sort((x,y)=>y.spend-x.spend).forEach((n,ni)=>{
+      const kn='c'+ci+'-n'+ni;
+      bangAd+='<tr data-cha="c'+ci+'" hidden onclick="rptMktMo('+q+kn+q+')" style="cursor:pointer">'
+        +'<td colspan="2" style="padding-left:26px"><span id="mkt-mui-'+kn+'" style="color:var(--muted);font-size:10px;margin-right:6px">▶</span>'
+        +'<span style="font-size:11.5px;font-weight:700">'+String(n.ten).replace(/</g,'&lt;')+'</span>'
+        +'<span style="font-size:10.5px;color:var(--muted);font-weight:600"> · '+num(n.ads.length)+' QC</span></td>'
+        +oSo(n,false)+'</tr>';
+      n.ads.sort((x,y)=>y.spend-x.spend).forEach(a=>{
+        bangAd+='<tr data-cha="'+kn+'" hidden'+(a.khach.length?' onclick="rptSlShow('+q+'mktAd-'+a.idx+q+')" style="cursor:pointer" title="Bấm để xem '+a.khach.length+' khách"':'')+'>'
+          +'<td style="padding-left:48px;font-size:11.5px">'+String(a.ten||'(không tên)').replace(/</g,'&lt;')+'</td>'
+          +'<td style="font-size:10.5px;color:var(--muted)">'+a.id+'</td>'
+          +oSo({spend:a.spend,mess:a.mess,khach:a.khach.length,don:a.don,rev:a.rev},false)+'</tr>';
+      });
+    });
+  });
+  const cuonAd='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Chi tiết quảng cáo</div>'
+    +'<div class="tbl-count">'+num(dsCamp.length)+' chiến dịch</div>'
+    +'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:auto">bấm chiến dịch → nhóm QC → quảng cáo; bấm dòng quảng cáo để xem khách</span></div>'
+    +'<div class="tbl-scroll"><table><thead><tr><th colspan="2">Chiến dịch / Nhóm / Quảng cáo</th><th>Chi phí</th><th>Mess</th><th>CP/mess</th><th>Khách</th><th>Đơn chốt</th><th>Doanh thu</th><th>ADS/DS</th></tr></thead><tbody>'
+    +(bangAd||'<tr><td colspan="9" style="text-align:center;padding:22px;color:var(--muted)">Chưa có dữ liệu quảng cáo trong kỳ</td></tr>')
     +'</tbody></table></div></div>';
   const cuonBang='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Chiến dịch quảng cáo</div>'
     +'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:auto">đơn chốt gắn theo Ads ID trong đơn Pancake</span></div>'
