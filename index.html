@@ -2585,6 +2585,52 @@ function dhCronHtml(log){
 }
 function dhManualType(){return window._dhManualType==='Sỉ'?'Sỉ':'Lẻ';}
 const DH_MANUAL_MOC='2026-06-01';   // mốc hiển thị của tab Data nhập tay
+
+// ── DUNG LƯỢNG KHO DỮ LIỆU ─────────────────────────────────────────────────────────────────────
+// Gói Supabase Free cho 500 MB. Hết dung lượng là job đồng bộ ghi lỗi, báo cáo đứng số mà không
+// ai biết vì sao -- nên để ngay đầu Data Hub cho thấy trước khi chạm trần.
+// Số lấy từ hàm db_dung_luong() bên Postgres (đọc pg_database_size + kích thước từng bảng).
+const DB_GIOI_HAN=500*1024*1024;
+let dbDungLuong=null;
+async function dbTaiDungLuong(force){
+  if(dbDungLuong&&!force)return dbDungLuong;
+  const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/db_dung_luong',{method:'POST',
+    headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:'{}'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return dbDungLuong=await r.json();
+}
+function dbCo(b){const n=Number(b||0);
+  return n>=1048576?(n/1048576).toFixed(n>=10485760?0:1)+' MB':Math.round(n/1024)+' kB';}
+function dbDungLuongHtml(){
+  const d=dbDungLuong;
+  if(!d)return '<div class="tbl-card" style="padding:12px 16px;margin-bottom:14px;font-size:12px;color:var(--muted);font-weight:600">Đang đo dung lượng kho dữ liệu…</div>';
+  const tong=Number(d.tong_bytes||0),pct1=tong/DB_GIOI_HAN*100;
+  const mau=pct1>=85?'var(--red)':pct1>=65?'var(--yellow)':'var(--green)';
+  const bang=(d.bang||[]).slice().sort((a,b)=>b.bytes-a.bytes);
+  const tongDong=bang.reduce((s,x)=>s+Number(x.dong||0),0);
+  const top=bang.slice(0,8).map(x=>`<tr><td class="name">${x.ten}</td>
+    <td class="num">${num(x.dong)}</td><td class="num">${dbCo(x.bytes)}</td>
+    <td class="num" style="color:var(--muted)">${(x.bytes/tong*100).toFixed(1)}%</td></tr>`).join('');
+  return `<div class="tbl-card" style="margin-bottom:14px">
+    <div class="tbl-head"><div class="tbl-title">Kho dữ liệu</div>
+      <span style="margin-left:auto;font-size:11px;color:var(--muted)">${bang.length} bảng · ${num(tongDong)} dòng · đo lúc ${String(d.luc||'').slice(11,16)}</span>
+      <button class="refresh-btn" onclick="dbLamMoi()" style="margin-left:10px;padding:4px 12px;font-size:11px">↺ Đo lại</button></div>
+    <div style="padding:14px 16px 6px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+      ${mkKpi(ic('box'),'Đang dùng',dbCo(tong),'trên '+dbCo(DB_GIOI_HAN)+' của gói Free','g-blue')}
+      ${mkKpi(ic('clipboard'),'Tổng số dòng',num(tongDong),bang.length+' bảng','g-purple')}
+      ${mkKpi(ic('box'),'Bảng nặng nhất',bang.length?bang[0].ten:'—',bang.length?dbCo(bang[0].bytes):'','g-teal')}
+      ${mkKpi(ic('clock'),'Còn trống',dbCo(Math.max(0,DB_GIOI_HAN-tong)),(100-pct1).toFixed(1)+'% dung lượng','g-green')}
+    </div>
+    <div style="padding:2px 16px 12px">
+      <div style="height:9px;border-radius:20px;background:var(--bg2);overflow:hidden">
+        <div style="height:100%;width:${Math.min(100,pct1).toFixed(2)}%;background:${mau}"></div></div>
+      <div style="font-size:11px;font-weight:700;color:${mau};margin-top:5px">Đã dùng ${pct1.toFixed(1)}% dung lượng${pct1>=85?' — sắp chạm trần, cần dọn bớt bảng cũ':''}</div>
+    </div>
+    <div class="tbl-scroll"><table><thead><tr><th>Bảng</th><th>Số dòng</th><th>Dung lượng</th><th>% kho</th></tr></thead>
+      <tbody>${top}</tbody></table></div>
+  </div>`;
+}
+async function dbLamMoi(){try{await dbTaiDungLuong(true);renderDataHub();}catch(e){rptBaoLoi('Dung lượng kho dữ liệu',e);}}
 function dhManualHtml(){
   const T=dhManualType();
   const byCode=kiotCustByCode(),inv=dhManualRev();
@@ -2744,7 +2790,8 @@ function dhExcludedHtml(){
 async function renderDataHub(){
   // CHỈ TẢI THỨ TAB ĐANG XEM CẦN. Tab Nhập tay và tab Kênh bán không đụng tới data thô Pancake
   // (datahub_orders ~1,9 MB) -> bỏ hẳn lượt tải đó, mở trang nhanh hơn hẳn cho tài khoản Sale.
-  await Promise.all([dhLoadManual(),kiotLoadInvoices(),rptSlLoadManual()]);
+  await Promise.all([dhLoadManual(),kiotLoadInvoices(),rptSlLoadManual(),
+    dbTaiDungLuong().catch(()=>null)]);
   // Quyền từng tab: 'datahub' = data thô Pancake · 'datahub-manual' = nhập tay LẺ · 'datahub-manual-si' = nhập tay SỈ.
   // Chỉ có quyền 'datahub-manual' -> bị khoá cứng ở tab Nhập tay (đổi localStorage cũng không vào được).
   const canRaw=dashCan('datahub'),canLe=canRaw||dashCan('datahub-manual'),canSi=canRaw||dashCan('datahub-manual-si');
@@ -2809,9 +2856,10 @@ async function renderDataHub(){
         ${canRaw?tabBtn('kenh','Kênh bán'):''}
       </span>
     </div>`;
-  if(mode==='manual'||mode==='manual-si'){el.innerHTML=header+dhManualHtml();return;}
-  if(mode==='kenh'){el.innerHTML=header+dhKenhHtml();tblAlign(el);return;}
-  el.innerHTML=header+pancakeOrdersHtml+dhExcludedHtml();
+  const kho=dbDungLuongHtml();   // dung lượng kho dữ liệu -- hiện ở đầu MỌI tab của Data Hub
+  if(mode==='manual'||mode==='manual-si'){el.innerHTML=header+kho+dhManualHtml();tblAlign(el);return;}
+  if(mode==='kenh'){el.innerHTML=header+kho+dhKenhHtml();tblAlign(el);return;}
+  el.innerHTML=header+kho+pancakeOrdersHtml+dhExcludedHtml();
   dhRenderTable();
 }
 
