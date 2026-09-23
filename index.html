@@ -2984,6 +2984,13 @@ const RPT_MKT_BRANDS=[['HT','Hiền Thuỷ','#f59e0b'],['Shidai','Shidai','#8b5c
 function rptMktInRange(d){return modInRange('mkt',String(d||'').slice(0,10));}
 // Chiến dịch TUYỂN DỤNG không phải chi phí bán hàng -> không tính vào chi phí ads của báo cáo MKT
 // (người dùng chốt 22/9/2026). Vẫn nằm trong Meta, chỉ là không đưa vào ADS/DS và CP/mess.
+// LƯỢT MUA CỦA QUẢNG CÁO: chỉ tính khi data ĐƯỢC ĐÁNH THẺ CHỐT ĐƠN trên Pancake **và** mang Ad ID
+// của chính quảng cáo đó. Có Mã KH mà thẻ chưa chốt -> doanh thu vẫn về báo cáo Sale, nhưng KHÔNG
+// ghi công cho quảng cáo; dòng nhập tay (thẻ 'Nhập tay') cũng không được tính cho MKT.
+function rptMktDuocTinh(r){
+  if(!String(r.adId||'').trim())return false;
+  return /ch\u1ed1t/i.test(r.tagStatus||'');
+}
 function rptMktBoQua(ten){return /tuyển\s*dụng|tuyen\s*dung|tuyển\s*nhân|recruit/i.test(String(ten||''));}
 // Gom số liệu 1 lần cho cả trang.
 function rptMktData(){
@@ -3065,10 +3072,13 @@ function rptMktData(){
     rptSlPeriod().forEach(r=>{
       const id=String(r.adId||'').trim();
       if(!id||!theoAd[id])return;
-      if(/offline/i.test(r.nguon||''))return;   // MKT CHỈ lấy nguồn Online -- cả Lẻ lẫn Sỉ (chốt 23/9/2026)
+      if(/offline/i.test(r.nguon||''))return;
+      // Khách chưa được đánh chốt đơn vẫn hiện trong danh sách khách của quảng cáo (để biết ads đẻ
+      // ra ai), nhưng KHÔNG cộng vào lượt mua / doanh thu của quảng cáo.
+      const tinh=rptMktDuocTinh(r);   // MKT CHỈ lấy nguồn Online -- cả Lẻ lẫn Sỉ (chốt 23/9/2026)
       theoAd[id].khach.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',staff:r.staff||'',
         kh:r.kh||'',ngay:r.isChot?r.closeDate:r.created,rev:r.isChot?r.revenue:0,chot:!!r.isChot});
-      if(r.isChot){theoAd[id].don++;theoAd[id].rev+=r.revenue;}
+      if(r.isChot&&tinh){theoAd[id].don++;theoAd[id].rev+=r.revenue;}
     });
   });
   window._rptSlType=cu2||'Lẻ';window._rptSlMod=cuMod2||null;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
