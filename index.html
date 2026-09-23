@@ -3178,6 +3178,7 @@ function siCrmHtml(){
       +'<td style="'+oNho+'">'+siEsc(r.hinh_thuc||'')+'</td>'
       +'<td style="'+oNho+';max-width:420px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+siEsc(r.noi_dung||'')+'">'+siEsc(r.noi_dung||'—')+'</div></td>'
       +'<td>'+rptSiPhanLoaiHtml(r.phan_loai,siEsc)+'</td>'
+      +'<td style="'+oNho+'">'+(r.tinh_trang?('<span style="font-weight:800;color:'+(/xong/i.test(r.tinh_trang)?'var(--green)':'var(--yellow)')+'">'+siEsc(r.tinh_trang)+'</span>'):'<span style="color:var(--muted)">—</span>')+'</td>'
       +'<td style="white-space:nowrap;'+oNho+'">'+(dmy(r.ngay_chot)||'—')+'</td>'
       +'<td class="num" style="font-weight:800;color:'+(r.gia_tri_chot?'var(--green)':'inherit')+'">'+(r.gia_tri_chot?vnd(r.gia_tri_chot):'—')+'</td>'
       +'<td style="white-space:nowrap"><button onclick="siCrmChiTiet('+r.id+')" class="btn-ghost" style="padding:3px 9px;font-size:11px;color:var(--accent);font-weight:700">Chi tiết</button>'
@@ -3211,8 +3212,8 @@ function siCrmHtml(){
     +'<button onclick="siCrmForm(0)" class="refresh-btn" style="padding:5px 14px;font-size:11.5px">+ Thêm lượt chăm sóc</button></div>'
     +'<div class="tbl-scroll"><table><thead><tr>'
     +'<th>Ngày chăm sóc</th><th>Khách hàng</th><th>Hình thức</th><th>Nội dung chăm sóc</th><th>Phân loại KH</th>'
-    +'<th>Ngày chốt đơn</th><th>Tổng giá trị chốt</th><th></th></tr></thead><tbody>'
-    +(tr||'<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Chưa có lượt chăm sóc nào trong kỳ</td></tr>')
+    +'<th>Tình trạng hỗ trợ</th><th>Ngày chốt đơn</th><th>Tổng giá trị chốt</th><th></th></tr></thead><tbody>'
+    +(tr||'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted)">Chưa có lượt chăm sóc nào trong kỳ</td></tr>')
     +'</tbody></table></div>'+phanTrang+'</div>';
 }
 // Popup 1 lượt chăm sóc: chứa ĐỦ mọi trường, kể cả những cột đã gỡ khỏi bảng cho đỡ rối.
