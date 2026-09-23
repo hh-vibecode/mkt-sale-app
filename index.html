@@ -2835,6 +2835,8 @@ function rptMktShowDoanhSo(){
     +'<div style="padding:0 20px 16px;font-size:11.5px;color:var(--muted);font-weight:600">Bấm vào từng khối để xem danh sách khách. Khách sỉ nguồn Offline không tính vào báo cáo MKT.</div>'
     +'</div></div>';
 }
+function rptMktTab(){return localStorage.getItem('rptMktTab')==='ct'?'ct':'tq';}
+function rptMktSetTab(t){localStorage.setItem('rptMktTab',t);renderReportMkt();}
 function rptMktHtml(){
   const d=rptMktData();
   const kpi=d.kpi,rev=d.rev,don=d.don;
@@ -2939,7 +2941,15 @@ function rptMktHtml(){
     +'<div class="tbl-head"><div class="tbl-title" style="font-size:13px">'+tieuDe+'</div>'
     +'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:auto">'+phu+'</span></div>'
     +'<div style="padding:14px 16px"><div style="height:'+(cao||200)+'px;position:relative"><canvas id="'+id+'"></canvas></div></div></div>';
-  return '<div class="sec-label">Ads Performance</div>'+kpiAds
+  // Tách 2 tab cho đỡ dài: Tổng quan (chỉ số + biểu đồ) và Chi tiết (bảng chiến dịch + từng quảng cáo).
+  const tab=rptMktTab();
+  const nutTab='<div class="period-bar"><span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">'
+    +[['tq','Tổng quan'],['ct','Chi tiết']].map(x=>'<button onclick="rptMktSetTab('+String.fromCharCode(39)+x[0]+String.fromCharCode(39)+')"'
+      +' style="border:none;padding:5px 14px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:'
+      +(tab===x[0]?'var(--accent)':'var(--surface)')+';color:'+(tab===x[0]?'#fff':'var(--text2)')+'">'+x[1]+'</button>').join('')
+    +'</span></div>';
+  if(tab==='ct')return nutTab+cuonBang+cuonAd;
+  return nutTab+'<div class="sec-label">Ads Performance</div>'+kpiAds
     +'<div class="sec-label">Sale Performance</div>'+kpiSale
     +'<div class="sec-label">Phân tích</div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:14px">'
@@ -2951,7 +2961,7 @@ function rptMktHtml(){
     +'<div class="tbl-card"><div class="tbl-head"><div class="tbl-title">ADS / DS theo brand</div>'
     +'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:auto">chi phí ads / doanh số · thấp là tốt</span></div>'
     +'<div style="padding:14px 16px"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">'+the+'</div></div></div>'
-    +cuonBang+cuonAd;
+    ;
 }
 // Vẽ biểu đồ sau khi HTML đã vào DOM. Giữ tham chiếu để lần render sau huỷ, tránh rò bộ nhớ.
 function rptMktVeChart(){
@@ -3588,7 +3598,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='22/09 17:54';
+const APP_VERSION='23/09 09:11';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5186,7 +5196,7 @@ function openCrmAddAccount(){
       </select>`)}
       ${saonlField('Bộ phận',`<input name="department" style="${saonlInputStyle}" value="Sale Online (Lẻ)">`)}
       ${crmScopeFields([],[])}
-      ${saonlField('Quyền truy cập',`<div id="crmAcctPerms">${CRM_PERMISSION_GROUPS.map(([grp,items])=>`
+      ${saonlField('Quyền truy cập',`${crmNutTickHet('crmAcctPerms')}<div id="crmAcctPerms">${CRM_PERMISSION_GROUPS.map(([grp,items])=>`
         <div style="margin-bottom:9px">
           <div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">${grp}</div>
           <div style="display:flex;flex-wrap:wrap;gap:10px">${items.map(([id,label])=>`<label style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;cursor:pointer"><input type="checkbox" name="perm" value="${id}"> ${label}</label>`).join('')}</div>
@@ -5238,6 +5248,16 @@ async function submitCrmAddAccount(){
 // SỬA TÀI KHOẢN: đổi tên / vị trí / bộ phận / quyền truy cập. Username không đổi (là khoá đăng nhập).
 // Ô chọn PHẠM VI DỮ LIỆU: xem data của Sale nào + loại Sỉ/Lẻ nào. Không tick gì = xem tất cả.
 const RPT_SL_TYPES=['Lẻ','Sỉ'];
+// Tick từng ô quyền rất lâu -> 2 nút bật/tắt toàn bộ trong khung đang mở.
+function crmTickHet(khung,tick){
+  document.querySelectorAll('#'+khung+' input[name="perm"]').forEach(cb=>{cb.checked=!!tick;});
+}
+function crmNutTickHet(khung){
+  const nut=(nhan,tick,mau)=>'<button type="button" onclick="crmTickHet('+String.fromCharCode(39)+khung+String.fromCharCode(39)+','+tick+')"'
+    +' style="border:1.5px solid '+mau+';background:var(--surface);color:'+mau+';border-radius:7px;height:24px;padding:0 10px;'
+    +'cursor:pointer;font-size:11px;font-weight:700;font-family:var(--font)">'+nhan+'</button>';
+  return '<div style="display:flex;gap:6px;margin-bottom:8px">'+nut('Tích hết',true,'var(--accent)')+nut('Bỏ hết',false,'var(--muted)')+'</div>';
+}
 function crmScopeFields(sales,types){
   const cb=(nm,v,on)=>`<label style="display:inline-flex;align-items:center;gap:5px;margin:0 12px 4px 0;font-size:12px;font-weight:600;cursor:pointer">
     <input type="checkbox" name="${nm}" value="${String(v).replace(/"/g,'&quot;')}"${on?' checked':''}> ${v}</label>`;
@@ -5259,7 +5279,7 @@ function openCrmEditAccount(userId){
       ${saonlField('Vị trí *',`<select name="position" id="crmEditPosition" style="${saonlInputStyle}">${Object.keys(CRM_POSITION_LABEL).map(p=>`<option value="${p}"${a.position_title===p?' selected':''}>${CRM_POSITION_LABEL[p]}</option>`).join('')}</select>`)}
       ${saonlField('Bộ phận',`<input name="department" value="${esc(a.department)}" style="${saonlInputStyle}">`)}
       ${crmScopeFields(a.data_sales||[],a.data_types||[])}
-      ${saonlField('Quyền truy cập',`<div id="crmEditPerms">${CRM_PERMISSION_GROUPS.map(([grp,items])=>`
+      ${saonlField('Quyền truy cập',`${crmNutTickHet('crmEditPerms')}<div id="crmEditPerms">${CRM_PERMISSION_GROUPS.map(([grp,items])=>`
         <div style="margin-bottom:6px"><div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px">${grp}</div>
         ${items.map(([id,label])=>`<label style="display:inline-flex;align-items:center;gap:5px;margin:0 12px 4px 0;font-size:12px;font-weight:600;cursor:pointer">
           <input type="checkbox" name="perm" value="${id}"${perms.includes(id)?' checked':''}> ${label}</label>`).join('')}</div>`).join('')}</div>`)}
