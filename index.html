@@ -3624,6 +3624,9 @@ const RPT_SL_MIN_DATE='2026-06-01';
 // (không nạp đơn Pancake) vẫn có cái mà hiện.
 // Sale Sỉ đưa vào dropdown: CHỈ 2 người này. Người bán Kiot khác vẫn lưu được trên dữ liệu.
 const RPT_SL_SALE_SI=['Nguyễn Thị Huế','Nguyễn Hữu Toàn'];
+// Tên KHÔNG đưa vào dropdown dù dữ liệu cũ còn (nghỉ việc / không còn phụ trách).
+// Dữ liệu cũ của họ vẫn giữ nguyên, chỉ bỏ khỏi ô chọn.
+const RPT_SL_SALE_BO=['Đỗ Luân','Nguyễn Hưng'];
 const RPT_SL_SALE_BLACKLIST=['hệ thống','he thong','pancake','system','bot','admin','sales admin','tht holding','automation','chatbot','{del}'];
 // Danh sách LẤY ĐÚNG người phụ trách bên Pancake (+ người đứng tên dòng nhập tay của chính app).
 // KHÔNG lấy tên người bán bên Kiot: đơn Kiot nối về khách bằng MÃ KH rồi, tên bên đó không dùng tới.
@@ -3704,7 +3707,7 @@ function rptSlSalesList(){
                // không thì mọi nhân viên kho lại tràn vào dropdown.
                ...(typeof dhManual!=='undefined'?dhManual:[]).filter(r=>(r.sale_type||'Lẻ')!=='Sỉ').map(r=>r.staff_name),
                ...RPT_SL_SALE_SI];
-    out=[...new Set(src.map(rptSlSaleName).filter(rptSlSaleIsHuman))].sort((a,b)=>a.localeCompare(b,'vi'));
+    out=[...new Set(src.map(rptSlSaleName).filter(rptSlSaleIsHuman).filter(x=>!RPT_SL_SALE_BO.includes(x)))].sort((a,b)=>a.localeCompare(b,'vi'));
   }catch(e){out=[];}
   if(out.length){try{localStorage.setItem('dashSalesList',JSON.stringify(out));}catch(e){}return out;}
   try{const c=JSON.parse(localStorage.getItem('dashSalesList')||'[]');if(c.length)return c;}catch(e){}
