@@ -10,6 +10,10 @@
 // LƯU Ý API: lọc theo ngày bán phải truyền CẢ fromPurchaseDate LẪN toPurchaseDate, thiếu 1 trong 2 là API
 // lặng lẽ bỏ qua bộ lọc và trả toàn bộ lịch sử từ 2021 (đã dò tay 15/9/2026).
 
+// Gọi API qua fetchLai: lỗi mạng thoáng qua sẽ tự thử lại thay vì fail cả lượt chạy.
+const { fetchLai } = require('./lib/fetch-lai.js');
+const fetch = (u, o) => fetchLai(u, o, { ten: require('path').basename(__filename) });
+
 const SUPABASE_URL = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const KIOT_RETAILER = 'sieuthidotho285';
 const CLIENT_ID = process.env.KIOT_CLIENT_ID;

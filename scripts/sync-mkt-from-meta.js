@@ -11,6 +11,10 @@
 // Field trong bảng mkt_spend (xem supabase-schema.sql): ad_id, ad_date, campaign_name, adset_name, ad_name,
 // brand, product, reach, impressions, spend, messages, ctr, cpc, comments.
 
+// Gọi API qua fetchLai: lỗi mạng thoáng qua sẽ tự thử lại thay vì fail cả lượt chạy.
+const { fetchLai } = require('./lib/fetch-lai.js');
+const fetch = (u, o) => fetchLai(u, o, { ten: require('path').basename(__filename) });
+
 const META_API_VERSION = 'v21.0';
 const SUPABASE_URL = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
 

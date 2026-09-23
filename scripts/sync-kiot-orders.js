@@ -12,6 +12,10 @@
 // Nên lấy theo purchaseDate GIẢM DẦN và tự dừng khi trang cũ hơn MIN_PURCHASE_DATE. Từ 1/6 chỉ ~900 đơn
 // (~9 request) nên mỗi lượt quét lại toàn bộ luôn -- bắt được cả đơn cũ bị đổi trạng thái / bị huỷ.
 
+// Gọi API qua fetchLai: lỗi mạng thoáng qua sẽ tự thử lại thay vì fail cả lượt chạy.
+const { fetchLai } = require('./lib/fetch-lai.js');
+const fetch = (u, o) => fetchLai(u, o, { ten: require('path').basename(__filename) });
+
 const SUPABASE_URL = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const KIOT_RETAILER = 'sieuthidotho285';
 const CLIENT_ID = process.env.KIOT_CLIENT_ID;
