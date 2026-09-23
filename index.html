@@ -465,7 +465,17 @@ function dashScope(key){
 function dashViewAs(){
   try{const v=JSON.parse(localStorage.getItem('dashViewAs')||'null');return v&&v.id?v:null;}catch(e){return null;}
 }
-function dashCanViewAs(){return dashIsSupreme()||dashCan('settings');}
+// Ai được dùng "Xem như tài khoản": xét QUYỀN GỐC của người đang đăng nhập, KHÔNG gọi dashCan()
+// -- dashCan lại hỏi ngược dashCanViewAs nên gọi vòng là treo trình duyệt (đã dính 23/9/2026 với
+// tài khoản không phải Supreme: mở báo cáo là "Maximum call stack size exceeded").
+function dashCanViewAs(){
+  if(dashIsSupreme())return true;
+  const role=localStorage.getItem('dashRole')||'admin';
+  let a;
+  if(role==='account'){try{a=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){a=[];}}
+  else a=ROLE_PAGES[role]!==undefined?ROLE_PAGES[role]:null;
+  return !a||a.indexOf(PERM_ALL)>=0||a.indexOf('settings')>=0;
+}
 function dashGiao(a,b){            // [] = xem tất cả -> bên nào rỗng thì lấy bên kia
   if(!a.length)return b.slice();
   if(!b.length)return a.slice();
@@ -479,7 +489,24 @@ function dashTypes(){
   const v=dashViewAs();
   return v&&dashCanViewAs()?dashGiao(v.types||[],dashScope('dashDataTypes')):dashScope('dashDataTypes');
 }
-function dashSeeSale(name){const a=dashSales();return !a.length||a.includes(String(name||'').trim());}
+// KHÁCH CHƯA GÁN SALE: trước đây bị GIẤU khỏi mọi tài khoản có giới hạn phạm vi -- kể cả tài khoản
+// quản lý được tick đủ mọi Sale, nên số liệu của họ hụt so với tài khoản toàn quyền (báo 23/9/2026:
+// nick Chị Oanh thiếu 40 khách Sỉ / 477 triệu chỉ vì các khách đó không có Sale phụ trách).
+// Quy tắc: đã được xem data của TẤT CẢ Sale đang có thì coi như xem tất cả, thấy luôn phần chưa gán Sale.
+// Tài khoản chỉ được xem vài Sale thì vẫn không thấy -- data chưa gán không thuộc về ai cả.
+function dashPhamViDayDu(){
+  const a=dashSales();
+  if(!a.length)return true;
+  let moi=[];try{moi=rptSlSalesList();}catch(e){moi=[];}
+  return moi.length>0&&moi.every(x=>a.includes(x));
+}
+function dashSeeSale(name){
+  const a=dashSales();
+  if(!a.length)return true;
+  const t=String(name||'').trim();
+  if(!t)return dashPhamViDayDu();
+  return a.includes(t);
+}
 function dashSeeType(t){const a=dashTypes();return !a.length||a.includes(t||'Lẻ');}
 function applyRole(){
   const role=localStorage.getItem('dashRole')||'admin';
