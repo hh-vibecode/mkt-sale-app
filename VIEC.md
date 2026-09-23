@@ -10,7 +10,7 @@
 
 | # | Việc | Cần anh nói gì |
 |---|---|---|
-| 1 | **Kéo full hoá đơn Kiot về hub** — Kiot có 69.823 hoá đơn từ 2021, app mới lưu 2.516 (từ 1/6/2026). Ước thêm 110–120 MB (đang dùng 44,7/500 MB) | kéo full hay giữ mốc T6 |
+| 1 | **Kéo full hoá đơn Kiot về hub** — 23/09 anh bảo **TẠM ĐỂ ĐÓ**, khi nào cần thì làm. Xem mục 6 bên dưới trước khi bắt tay | khi nào cần thì anh gọi |
 | 2 | **Đẩy data kênh bán sang Data nhập tay** — đã rà ra **18 khách đủ điều kiện** (Lẻ · Online · từ T6 · chưa có trong app), 44,79tr. File: `scratchpad/data-du-dieu-kien.csv` | có tạo 18 dòng nhập tay không |
 | 3 | **Tăng tỉ lệ có SĐT của Pancake** để nối Ad ID theo SĐT ăn thua hơn (hiện chỉ 19% đơn có SĐT nên chỉ vá được 2 lead). Cách: kéo SĐT từ API hội thoại Pancake | cho thử vài trăm hội thoại đo tỉ lệ không |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
@@ -48,3 +48,25 @@
 
 - **23/09** — Kiot raw data: đổi tên tab, bỏ đơn huỷ + 640 phiếu tạm không cọc. Data Hub thêm mục Kho dữ liệu (dung lượng DB). Tab nhập tay lọc từ T6. Sửa lỗi nick quản lý hụt 40 khách Sỉ / 477tr (khách chưa gán Sale bị giấu) + vòng lặp vô hạn `dashCan` ↔ `dashCanViewAs`. Phân loại Sỉ/Lẻ theo chi nhánh (347 khách trước đây không xếp được). Nạp nốt 159 dòng sheet Master Sỉ (giờ 386/386). Brand Sỉ mặc định Shidai. Dựng lại dash Master/CRM (4 dash/hàng). CRM Sỉ mặc định lọc 3 ngày. Suy Ad ID theo SĐT. Tăng tốc tải trang (2.803 ms → 1.075 ms). Sửa workflow Pancake fail hàng loạt do bộ chặn phân trang.
 - **22/09** — Sửa tận gốc lỗi báo cáo Sỉ trắng tinh (trùng id `rptSlBody`). Dựng lại Master/CRM Sỉ theo khung sheet. Bộ kiểm số liệu. MKT tách 2 tab.
+
+---
+
+## 6. ĐỂ DÀNH — kéo full hoá đơn Kiot (khảo sát 23/09/2026)
+
+Anh hỏi "sao mọi lượt tải lại nặng lên, tưởng chỉ nặng khi xem Kiot raw data" — anh đúng, và đây là số đo để sau này khỏi đo lại.
+
+**Hiện trạng:** Kiot có **69.823 hoá đơn** từ 2021, app mới lưu **2.516** (từ 1/6/2026). Đơn đặt hàng thì đã đủ: 3.029 (API báo 3.076, còn lệch 47 chưa soi).
+
+**Hai con số đừng lẫn:**
+- Lưu trong database: thêm ~**110–120 MB** (đang dùng 44,7/500 MB) → không đáng lo.
+- Tải về trình duyệt: `kiotLoadInvoices()` đang kéo **TOÀN BỘ** hoá đơn mỗi khi mở Báo cáo Lẻ / Sỉ / Tổng hợp / Data Hub, không riêng tab raw data. Vì doanh thu Sale có bù **hoá đơn bán thẳng** (hoá đơn không gắn đơn đặt hàng) — chiếm **78%** số hoá đơn nên lọc theo loại không nhẹ đi mấy.
+
+**Ước payload khi có đủ 70k hoá đơn:**
+
+| Cách tải | Mỗi lượt mở báo cáo |
+|---|---|
+| Giữ nguyên hiện tại (10 cột, mọi hoá đơn) | 18,0 MB |
+| Chỉ hoá đơn bán thẳng, 4 cột | 6,0 MB |
+| Thêm chặn theo kỳ đang lọc | dưới 1 MB |
+
+**Thứ tự làm khi anh bật đèn xanh:** sửa cách tải (chặn theo kỳ + chỉ cột cần) → đo lại tốc độ → rồi mới bật job kéo full. Kéo về trước rồi mới tối ưu là tự làm chậm app của mình. Riêng Sỉ tính full lịch sử nên khi lọc "tất cả thời gian" vẫn phải kéo nhiều — chỗ đó để tải theo yêu cầu (bấm mới tải).
