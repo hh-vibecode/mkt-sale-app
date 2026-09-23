@@ -3188,7 +3188,23 @@ function siCrmHtml(){
   const phanTrang=totalPages>1?'<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;padding:10px 14px">'
     +nut('‹ Trước',page-1,page<=1)+'<span style="font-size:11.5px;font-weight:700;color:var(--muted)">Trang '+page+'/'+totalPages+'</span>'
     +nut('Sau ›',page+1,page>=totalPages)+'</div>':'';
-  return '<div class="tbl-card"><div class="tbl-head">'
+  // CRM SỈ = NHẬT KÝ CHĂM SÓC: mỗi dòng 1 lượt gọi/Zalo. Dash trả lời: trong kỳ chăm được bao nhiêu lượt,
+  // trên bao nhiêu khách, chốt được mấy đơn, và còn bao nhiêu khách đang bị bỏ quên quá 10 ngày.
+  const khachTrongKy=new Set(list.map(r=>r.lead_id||r.kiot_code||r.customer_name).filter(Boolean));
+  const chotKy=list.filter(r=>r.ngay_chot);
+  const tienChot=list.reduce((t,r)=>t+Number(r.gia_tri_chot||0),0);
+  // Lượt gần nhất của từng khách (tính trên TOÀN BỘ nhật ký, không giới hạn kỳ lọc) -> ai lâu chưa đụng tới.
+  const chamCuoi={};
+  siCrmRows.forEach(r=>{const k=r.lead_id||r.kiot_code||r.customer_name;if(!k)return;
+    const d=String(r.ngay_cham||'').slice(0,10);if(d&&(!chamCuoi[k]||d>chamCuoi[k]))chamCuoi[k]=d;});
+  const boQuen=Object.values(chamCuoi).filter(d=>Math.floor((Date.now()-new Date(d).getTime())/86400000)>=10).length;
+  const dash='<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px">'
+    +mkKpi(ic('clipboard'),'Lượt chăm sóc',num(list.length),'trong kỳ đang lọc','g-blue')
+    +mkKpi(ic('users'),'Khách được chăm',num(khachTrongKy.size),(list.length&&khachTrongKy.size?(list.length/khachTrongKy.size).toFixed(1):'0')+' lượt/khách','g-green')
+    +mkKpi(ic('cash'),'Chốt đơn trong kỳ',num(chotKy.length),vnd(tienChot),'g-teal')
+    +mkKpi(ic('clock'),'Khách lâu chưa liên hệ',num(boQuen),'lượt gần nhất quá 10 ngày','g-red')
+    +'</div>';
+  return dash+'<div class="tbl-card"><div class="tbl-head">'
     +'<div class="tbl-title">Nhật ký chăm sóc khách Sỉ</div><div class="tbl-count">'+num(list.length)+'</div>'
     +'<input value="'+siEsc(window._siCrmQ||'')+'" oninput="siCrmTim(this.value)" placeholder="Tìm tên, SĐT, mã KH, nội dung…" '
     +'style="margin-left:auto;height:28px;box-sizing:border-box;padding:2px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:600;font-family:var(--font);outline:none;width:230px">'
@@ -3803,6 +3819,22 @@ function rptDangTai(tieuDe){
 // của trang Lẻ (do rptSlRender/lockChot gọi trong lúc chờ) làm cho "hết hạn" -> trang Sỉ thoát giữa
 // chừng, để lại màn trắng. Đây chính là lỗi "Sỉ chỉ xem được 1 lần" (22/9/2026).
 const rptSlLuot={};
+// CRM SỈ mặc định chỉ xem 3 NGÀY GẦN NHẤT: đây là nhật ký chăm sóc hằng ngày, mở ra là muốn thấy
+// việc vừa làm, không phải cả tháng 2.000 dòng. Đặt thẳng vào thanh chọn ngày để nhìn là biết đang lọc gì.
+// Cờ _auto = do app tự đặt: rời tab CRM thì trả lại mặc định của trang (tháng này). Người dùng tự chọn
+// ngày thì không còn cờ này -> giữ nguyên lựa chọn của họ, không bị app đè lên.
+function rptSlKyMacDinh(mode){
+  if(rptSlType()!=='Sỉ')return;
+  const cu=modRanges.salesi;
+  if(mode==='crm'){
+    if(cu&&!cu._auto)return;                       // người dùng đã tự chọn -> tôn trọng
+    const t=todayISO();
+    const tu=new Date(new Date(t).getTime()-2*86400000).toISOString().slice(0,10);
+    modRanges.salesi={from:tu,to:t,_auto:true};
+  }else if(cu&&cu._auto){
+    delete modRanges.salesi;                       // rời CRM -> về mặc định tháng này
+  }
+}
 async function rptSlRenderPage(type){
   const loaiMoi=(type==='Sỉ'?'Sỉ':'Lẻ');
   if(window._rptSlType!==loaiMoi){window._rptSlMasterPage=1;window._rptSlCrmPage=1;window._siCrmPage=1;}
@@ -3825,6 +3857,7 @@ async function rptSlRenderPage(type){
   if(luot!==rptSlLuot[cfg.page]&&el.innerHTML.indexOf('rptSlBody')>=0)return;
   window._rptSlType=(type==='Sỉ'?'Sỉ':'Lẻ');   // các trang khác có thể đã đổi biến này trong lúc chờ
   const mode=rptSlViewMode();
+  rptSlKyMacDinh(mode);
   el.innerHTML=`
     ${mode==='input'
       // Tab Nhập Liệu là danh sách VIỆC CẦN LÀM -> không lọc theo ngày (lọc ngày sẽ giấu mất việc tồn đọng),
@@ -4608,7 +4641,7 @@ function rptSlSetMasterPage(p){window._rptSlMasterPage=p;rptSlRender();}
 function rptSlMasterSearch(){return(document.getElementById('rptSlMasterSearch')||{}).value||'';}
 // 1 dòng của bảng Master -- dùng chung cho tab Master Data và bảng "Top khách tiềm năng" ở Tổng quan,
 // để 2 chỗ luôn hiện cùng bộ cột, sửa 1 chỗ là cả 2 đổi theo.
-const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Mã KH Kiot</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th>';
+const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Mã KH Kiot</th><th>Trạng thái</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th>';
 // Master SỈ có thêm khối HỒ SƠ ĐẠI LÝ (sheet Sỉ có, Lẻ không): mô hình hợp tác, diện tích showroom,
 // khả năng tài chính, phân loại KH, giấy phép kinh doanh, fanpage, địa chỉ -- cộng với phần rút gọn
 // nhật ký chăm sóc (số lượt + lần gần nhất + bao lâu chưa liên hệ).
@@ -4634,7 +4667,6 @@ function rptSlMasterRow(r){
     <td style="white-space:nowrap">${rptSlSdtHtml(r)}</td>
     ${rptSlOMaKH(r)}
     <td>${rptSlStatusPill(rptSlRowStatus(r))}</td>
-    <td class="num">${r.isChot?'<span style="color:var(--muted)">—</span>':(r.potential?vnd(r.potential):'<span style="color:var(--muted)">—</span>')}</td>
     <td>${dmy(r.lastTouch)||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
     <td class="num" style="font-weight:800;color:${r.revenue+r.repeatRevenue>0?'var(--green)':'inherit'}">${r.revenue+r.repeatRevenue>0?vnd(r.revenue+r.repeatRevenue):'—'}</td>
     <td><span style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap">
@@ -4669,14 +4701,18 @@ function rptSlMasterHtmlRaw(){
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(rptSlMasterRow).join('');
   const rev=list.reduce((s,r)=>s+r.revenue,0);
   return `
-    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px">
-      ${mkKpi(ic('users'),'Tổng khách',num(all.length),'đã chốt / bàn giao / tiềm năng','g-blue')}
-      ${mkKpi(ic('check'),'Khách đã chốt',num(all.filter(r=>r.isChot).length),num(all.filter(r=>!r.isChot).length)+' khách còn ở dạng tiềm năng','g-green')}
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px">
-      ${mkKpi(ic('cash'),'Doanh thu chốt',vnd(all.reduce((s,r)=>s+r.revenue,0)),'từ đơn đặt hàng KiotViet','g-teal')}
-      ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(all.filter(r=>r.isChot&&r.daysIdle!==null&&r.daysIdle>=10).length),'đã chốt, >10 ngày','g-yellow')}
-    </div>
+    ${(()=>{
+      // MASTER = NHÌN TỔNG QUAN: bao nhiêu khách, chốt được bao nhiêu, ra bao nhiêu tiền, mỗi khách bao nhiêu.
+      // Việc chăm sóc (lâu chưa liên hệ, đang theo ai) thuộc về tab CRM, không để lẫn ở đây.
+      const chot=all.filter(r=>r.isChot);
+      const tien=all.reduce((s,r)=>s+r.revenue+(r.repeatRevenue||0),0);
+      const tb=chot.length?tien/chot.length:0;
+      return `<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px">
+        ${mkKpi(ic('users'),'Tổng khách',num(all.length),num(chot.length)+' đã chốt · '+num(all.length-chot.length)+' tiềm năng','g-blue')}
+        ${mkKpi(ic('check'),'Tỉ lệ chốt',pct(all.length?chot.length/all.length*100:0),num(chot.length)+'/'+num(all.length)+' khách','g-green')}
+        ${mkKpi(ic('cash'),'Doanh thu cộng dồn',vnd(tien),'đơn đặt hàng Kiot, gồm cả mua lại','g-teal')}
+        ${mkKpi(ic('cash'),'Bình quân / khách chốt',vnd(tb),'tổng tiền chia số khách đã chốt','g-purple')}
+      </div>`;})()}
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-end">
       ${rptSlFilterBar('master')}
       <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(rptSlRender,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
@@ -5206,21 +5242,18 @@ function rptSlCrmHtmlRaw(){
       <button onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')" title="Xem hồ sơ đầy đủ"
         style="border:1.5px solid var(--border);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">Chi tiết</button></td>
   </tr>`;}).join('');
-  // 6 dash theo khung CRM của dashboard cũ: hàng 1 về KHÁCH, hàng 2 về KẾT QUẢ.
+  // CRM = MÀN HÌNH CHĂM SÓC: đang theo bao nhiêu khách, ai bị bỏ quên, đã chăm được bao nhiêu,
+  // số tiền đang treo. Các con số tổng quan (tổng khách, doanh thu) để bên Master.
   const daCham=all.filter(r=>r.careDate||r.content);
-  const lauCS=all.filter(r=>!r.careDate&&!r.content||(r.daysIdle!==null&&r.daysIdle>=10));
-  const chot=all.filter(r=>r.isChot),mat=all.filter(r=>r.status==='Mất lead');
-  const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px';
+  const dangTheo=all.filter(r=>!r.isChot&&r.status!=='Mất lead');
+  const lauCS=dangTheo.filter(r=>(!r.careDate&&!r.content)||(r.daysIdle!==null&&r.daysIdle>=10));
+  const g3='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px';
   return `
     <div style="${g3}">
-      ${mkKpi(ic('users'),'Tổng số KH',num(all.length),'khách riêng biệt','g-blue')}
-      ${mkKpi(ic('check'),'KH đã chăm sóc',num(daCham.length),pct(all.length?daCham.length/all.length*100:0)+' tổng KH','g-green')}
-      ${mkKpi(ic('clock'),'KH chưa / lâu CS',num(lauCS.length),'chưa CS hoặc >10 ngày','g-red')}
-    </div>
-    <div style="${g3};margin-bottom:14px">
-      ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(all.filter(r=>!r.isChot).reduce((s,r)=>s+r.potential,0)),num(all.filter(r=>!r.isChot&&r.potential>0).length)+'/'+num(all.filter(r=>!r.isChot).length)+' khách chưa chốt','g-teal')}
-      ${mkKpi(ic('check'),'Đã chốt đơn',num(chot.length),pct(all.length?chot.length/all.length*100:0),'g-purple')}
-      ${mkKpi(ic('clock'),'Mất lead',num(mat.length),pct(all.length?mat.length/all.length*100:0),'g-orange')}
+      ${mkKpi(ic('users'),'Khách đang theo',num(dangTheo.length),'chưa chốt, chưa mất lead','g-blue')}
+      ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(lauCS.length),'chưa chăm hoặc >10 ngày — cần gọi lại','g-red')}
+      ${mkKpi(ic('check'),'Đã chăm sóc',num(daCham.length),pct(all.length?daCham.length/all.length*100:0)+' tổng khách trong kỳ','g-green')}
+      ${mkKpi(ic('cash'),'Giá trị đang theo',vnd(dangTheo.reduce((s,r)=>s+r.potential,0)),num(dangTheo.filter(r=>r.potential>0).length)+'/'+num(dangTheo.length)+' khách đã ước giá trị','g-teal')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;justify-content:flex-end">
       ${rptSlFilterBar('crm')}
