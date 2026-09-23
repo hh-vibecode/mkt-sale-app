@@ -4515,20 +4515,12 @@ function rptSlMasterRowSi(r){
     +'<td style="'+nho+'">'+e(r.kenh||sh.kenh||'—')+'</td>'
     +'<td>'+rptSlStaffHtml(r)+'</td>'
     +'<td style="'+nho+'">'+(sh.ad_id?adIdNote(sh.ad_id):(r.adId?adIdNote(r.adId):'<span style="color:var(--muted)">—</span>'))+'</td>'
-    +'<td style="'+nho+'">'+e(sh.nguoi_dai_dien||'—')+'</td>'
     +'<td style="white-space:nowrap">'+rptSlSdtHtml(r)+'</td>'
     +'<td class="name">'+rptSlTenKhach(r)+'</td>'
-    +'<td style="'+nho+'">'+e(sh.tinh||'—')+'</td>'
-    +'<td>'+oNho(r.siMoHinh)+'</td>'
-    +'<td>'+oNho(r.siDienTich)+'</td>'
-    +'<td>'+(r.siTaiChinh?'<span style="'+nho+';font-weight:700;color:'+(/xấu/i.test(r.siTaiChinh)?'var(--red)':'var(--green)')+'">'+e(r.siTaiChinh)+'</span>':'<span style="color:var(--muted)">—</span>')+'</td>'
-    +'<td>'+oNho(r.siNhomKH)+'</td>'
     +'<td>'+oNho(r.siPhanLoai)+'</td>'
     +'<td style="white-space:nowrap">'+(dmy(csCuoi)||'—')+'</td>'
     +'<td class="num"><span style="font-weight:700;color:'+mauNghi+'">'+(nghi2==null?'—':num(nghi2))+'</span></td>'
     +'<td style="'+nho+';max-width:280px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(ndCuoi)+'">'+e(ndCuoi||'—')+'</div></td>'
-    +'<td style="white-space:nowrap">'+(dmy(ngayDonDau)||'—')+'</td>'
-    +'<td class="num">'+(donDau>0?vnd(donDau):'—')+'</td>'
     +'<td class="num" style="font-weight:800;color:'+(congDon>0?'var(--green)':'inherit')+'">'+(congDon>0?vnd(congDon):'—')+'</td>'
     +rptSlOMaKH(r)
     +'<td></td></tr>';
@@ -4547,10 +4539,9 @@ const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn kh�
 // MASTER SỈ = đúng khung sheet "Master Data Sỉ" (khác hoàn toàn Lẻ): hồ sơ đại lý + diễn biến chăm sóc
 // + kết quả đơn hàng. Các trường ít dùng (GPKD, fanpage, ghi chú KH, link hồ sơ) nằm trong Chi tiết khách.
 const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Lead ID</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th>'
-  +'<th>Ad ID</th><th>Người đại diện</th><th>SĐT</th><th>Tên cửa hàng</th>'
-  +'<th>Tỉnh/TP</th><th>Mô hình</th><th>Showroom</th><th>Khả năng tài chính</th><th>Nhóm KH</th><th>Phân loại KH</th>'
+  +'<th>Ad ID</th><th>SĐT</th><th>Tên cửa hàng</th><th>Phân loại KH</th>'
   +'<th>Ngày CS cuối</th><th>Ngày chưa liên hệ</th><th>Nội dung CS cuối</th>'
-  +'<th>Ngày chốt đầu</th><th>Giá trị đơn đầu</th><th>Giá trị cộng dồn</th><th>Mã KH</th><th></th>';
+  +'<th>Giá trị cộng dồn</th><th>Mã KH</th><th></th>';
 Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>rptSlType()==='Sỉ'?RPT_SL_MASTER_HEAD_SI:RPT_SL_MASTER_HEAD_LE});
 function rptSlMasterRow(r){
   if(rptSlType()==='Sỉ')return rptSlMasterRowSi(r);
@@ -4656,6 +4647,9 @@ function rptSlShowCustomer(key){
     fld('Tên bên Kiot',esc(r.kiotName)),
     fld('Ngày đặt hàng gần nhất',esc(dmy(r.lastKiotDate))),
     ...(rptSlType()==='Sỉ'?[
+      // Các trường hồ sơ cửa hàng đã gỡ khỏi bảng Master cho đỡ rối -- xem đầy đủ ở đây.
+      fld('Người đại diện',esc((r.sh||{}).nguoi_dai_dien)),
+      fld('Tỉnh/TP',esc([(r.sh||{}).quan,(r.sh||{}).tinh].filter(Boolean).join(', '))),
       fld('Địa chỉ',esc(r.siDiaChi)),
       fld('Mô hình hợp tác',esc(r.siMoHinh)),
       fld('Diện tích showroom',esc(r.siDienTich)),
@@ -4664,6 +4658,9 @@ function rptSlShowCustomer(key){
       fld('Phân loại KH',esc(r.siPhanLoai)),
       fld('Giấy phép kinh doanh',esc(r.siGiayPhep)),
       fld('Fanpage / website',r.siFanpage?'<a href="'+esc(r.siFanpage)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở trang ↗</a>':''),
+      // Đơn đầu tiên: đã gỡ khỏi bảng Master, xem ở đây.
+      fld('Ngày chốt đầu',esc(dmy(r.kords&&r.kords.length?String(r.kords[0].purchase_date).slice(0,10):((r.sh||{}).ngay_chot_dau||'')))),
+      fld('Giá trị đơn đầu',(()=>{const v=r.kords&&r.kords.length?Number(r.kords[0].total||0):Number((r.sh||{}).gia_tri_don_dau||0);return v>0?vnd(v):'';})()),
       fld('Số lượt chăm sóc',r.siLuot?num(r.siLuot)+' lượt':''),
       fld('Tình trạng hỗ trợ',esc(r.siHoTro)),
     ]:[]),
@@ -4880,6 +4877,20 @@ function rptSlShowTrungMa(key){
   dataModal({title:'Các khách đang dùng chung mã '+(r.kh||''),
     cols:['Lead ID','Ngày tạo','Họ tên / Mã đơn','SĐT / Tiền','Kênh / Mặt hàng','Sales','Đơn Pancake','Trạng thái','Hội thoại'],rows});
 }
+// Khách Sỉ đã có trạng thái hay chưa. Sale Sỉ chăm qua điện thoại/Zalo nên "trạng thái" của họ
+// nằm ở Phân loại KH (Master sheet) / Tình trạng hỗ trợ (CRM), không phải ô trạng thái của luồng Lẻ.
+function rptSlCoTrangThai(r){
+  if(r.manualStatus)return true;
+  if(rptSlType()!=='Sỉ')return false;
+  const sh=r.sh||{};
+  return !!(sh.phan_loai||sh.nhom_kh||r.siPhanLoai||r.siNhomKH||r.siHoTro);
+}
+// Sỉ đã đánh "Mất kết nối" = coi như mất lead -> thôi nhắc ghi thêm giá trị / nội dung.
+function rptSlMatLeadSi(r){
+  if(rptSlType()!=='Sỉ')return false;
+  const t=String(r.siPhanLoai||(r.sh||{}).phan_loai||'');
+  return /mất kết nối|mat ket noi|không liên hệ|huỷ|hủy/i.test(t);
+}
 function rptSlTodoBuckets(){
   const all=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao)
     .filter(r=>!RPT_SL_DANG_LUU.has(r.leadId));   // dòng vừa điền mã: giấu đi trong lúc chạy ngầm
@@ -4895,21 +4906,27 @@ function rptSlTodoBuckets(){
     //     Số liệu báo cáo vẫn đúng, nhưng Pancake chưa khớp; Sale không tự sửa được, cần người tạo app.
     loiHT:all.filter(r=>(rptSlManual[r.leadId]||{}).sync_error),
     // 3. Chưa cập nhật trạng thái (chỉ nhóm chưa chốt -- nhóm chốt đã khoá cứng).
-    chuaTT:all.filter(r=>!r.isChot&&!r.manualStatus),
+    //    SỈ KHÁC LẺ: Sale Sỉ không dùng ô trạng thái của luồng Lẻ, họ ghi ở "Phân loại KH"
+    //    (Chăm sóc dài hạn / Chưa liên hệ được / Mất kết nối) bên Master và "Tình trạng hỗ trợ" bên CRM.
+    //    Trước đây chỉ soi r.manualStatus nên 49/61 khách Sỉ bị nhắc oan dù sheet đã điền đủ.
+    chuaTT:all.filter(r=>!r.isChot&&!rptSlCoTrangThai(r)),
     // 4. Đã chọn Mất lead nhưng chưa ghi nhóm nguyên nhân.
     // 5. Khách tiềm năng (chưa chốt, chưa mất) nhưng chưa có giá trị dự kiến.
-    thieuGT:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!r.potential),
+    thieuGT:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!r.potential&&!rptSlMatLeadSi(r)),
     // 6. Bước B3 quy trình Sale: đơn trên POS Cake chưa đổi trạng thái cho khớp thẻ khách.
     // 7. Chưa ghi nội dung trao đổi -- thứ DUY NHẤT không hệ thống nào suy ra được, phải Sale ghi.
     //    Khách đã chốt thì hồ sơ đã khoá, không sửa được nữa -> không nhắc.
     //    Khách MẤT LEAD cũng thôi nhắc: đã bỏ rồi thì ghi nội dung trao đổi cũng không để làm gì.
-    thieuND:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!String(r.content||'').trim()),
+    thieuND:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!rptSlMatLeadSi(r)
+      &&!String(r.content||'').trim()&&!String(r.siNDCuoi||'').trim()&&!String((r.sh||{}).nd_cham_cuoi||'').trim()),
   };
 }
 function rptSlTodoCount(){
   if(!rptSlManualLoaded||!dhLoaded||!kiotLoaded)return 0;
   const b=rptSlTodoBuckets();
-  return b.thieuMa.length+b.maSai.length+b.chuaTT.length+b.thieuGT.length+b.thieuND.length;
+  // KHÔNG đếm "chưa có giá trị dự kiến" và "chưa ghi nội dung trao đổi": đó là phần ghi thêm cho đẹp hồ sơ,
+  // không phải việc buộc phải làm -- để trong số đếm thì badge lúc nào cũng đỏ, Sale nhờn, việc thật bị lẫn.
+  return b.thieuMa.length+b.maSai.length+b.chuaTT.length;
 }
 // 3 mục QUAN TRỌNG NHẤT luôn mở sẵn data lỗi; các mục còn lại gập lại, bấm tiêu đề mới bung ra.
 function rptSlSecOpen(id){return !!(window._rptSlSecOpen||{})[id];}
@@ -5029,7 +5046,7 @@ function rptSlInputHtml(){
         +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
         +'<button onclick="rptSlThuLai('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" style="border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:700">Thử lại</button>'
         +'<button onclick="rptSlBoQuaLoi('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" class="btn-ghost" style="margin-left:5px;padding:4px 10px;font-size:11px">Đã xử lý tay</button></td></tr>';}).join(''));
-  const tong=b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length+b.thieuGT.length+b.thieuND.length;
+  const tong=b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length;   // 2 mục ghi thêm không tính
   return `
     ${rptSlViewAsBar()}
     <div class="kpi-grid" style="margin-bottom:14px">
@@ -5043,8 +5060,8 @@ function rptSlInputHtml(){
     ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
     ${rptSlInputSec('sLoi','','Lỗi hệ thống — cần báo người tạo app kiểm tra','số liệu trong app vẫn đúng, chỉ chưa đẩy được sang Pancake',b.loiHT.length,'var(--red)',sLoi,true)}
     ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
-    ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
-    ${rptSlInputSec('s8','','Chưa ghi nội dung trao đổi','app không tự suy được phần này',b.thieuND.length,'var(--accent)',s8)}
+    ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
+    ${rptSlInputSec('s8','','Chưa ghi nội dung trao đổi','ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuND.length,'var(--accent)',s8)}
 `;
 }
 // ── CRM: TOÀN BỘ khách chốt + tiềm năng từ Master đổ sang, mỗi khách 1 DÒNG.
