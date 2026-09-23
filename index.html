@@ -3063,13 +3063,18 @@ function siCrmHtml(){
       +'<td style="white-space:nowrap">'+(dmy(r.ngay_cham)||'—')+'</td>'
       +'<td class="name">'+siEsc(r.customer_name)+(r.kiot_code?' '+rptSlKiotLink(r.kiot_code,'<span style="font-weight:600;font-size:11px">'+siEsc(r.kiot_code)+'</span>'):'')+'</td>'
       +'<td style="'+oNho+'">'+siEsc(r.phone||'')+'</td>'
-      +'<td style="'+oNho+'">'+siEsc(r.kenh||'')+'</td>'
+      +'<td style="'+oNho+'">'+siEsc([r.nguon,r.kenh].filter(Boolean).join(' · '))+'</td>'
+      +'<td style="'+oNho+'">'+(r.ad_id?adIdNote(r.ad_id):'<span style="color:var(--muted)">—</span>')+'</td>'
       +'<td style="'+oNho+'">'+siEsc(r.sales||'')+'</td>'
       +'<td style="'+oNho+'">'+siEsc(r.hinh_thuc||'')+'</td>'
       +'<td style="'+oNho+';max-width:420px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+siEsc(r.noi_dung||'')+'">'+siEsc(r.noi_dung||'—')+'</div></td>'
       +'<td style="'+oNho+'">'+siEsc(r.phan_loai||'')+'</td>'
+      +'<td class="num">'+(r.gia_tri_du_kien?vnd(r.gia_tri_du_kien):'—')+'</td>'
+      +'<td style="'+oNho+';max-width:200px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+siEsc(r.viec_tiep||'')+'">'+siEsc(r.viec_tiep||'—')+'</div></td>'
       +'<td style="'+oNho+'">'+(r.tinh_trang?('<span style="font-weight:700;color:'+(/xong/i.test(r.tinh_trang)?'var(--green)':'var(--yellow)')+'">'+siEsc(r.tinh_trang)+'</span>'):'—')+'</td>'
       +'<td style="white-space:nowrap;'+oNho+'">'+(dmy(r.ngay_hen)||'—')+'</td>'
+      +'<td style="white-space:nowrap;'+oNho+'">'+(dmy(r.ngay_chot)||'—')+'</td>'
+      +'<td class="num" style="font-weight:800;color:'+(r.gia_tri_chot?'var(--green)':'inherit')+'">'+(r.gia_tri_chot?vnd(r.gia_tri_chot):'—')+'</td>'
       +'<td style="white-space:nowrap"><button onclick="siCrmForm('+r.id+')" class="btn-ghost" style="padding:3px 9px;font-size:11px">Sửa</button>'
       +'<button onclick="siCrmXoa('+r.id+')" class="btn-ghost" style="padding:3px 9px;font-size:11px;margin-left:4px;color:var(--red)">Xoá</button></td>'
     +'</tr>';}).join('');
@@ -3083,9 +3088,10 @@ function siCrmHtml(){
     +'style="margin-left:auto;height:28px;box-sizing:border-box;padding:2px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:600;font-family:var(--font);outline:none;width:230px">'
     +'<button onclick="siCrmForm(0)" class="refresh-btn" style="padding:5px 14px;font-size:11.5px">+ Thêm lượt chăm sóc</button></div>'
     +'<div class="tbl-scroll"><table><thead><tr>'
-    +'<th>Ngày chăm sóc</th><th>Khách hàng</th><th>SĐT</th><th>Kênh</th><th>Sales</th><th>Hình thức</th>'
-    +'<th>Nội dung chăm sóc</th><th>Phân loại KH</th><th>Tình trạng</th><th>Ngày hẹn</th><th></th></tr></thead><tbody>'
-    +(tr||'<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--muted)">Chưa có lượt chăm sóc nào trong kỳ</td></tr>')
+    +'<th>Ngày chăm sóc</th><th>Lead ID / Mã KH</th><th>SĐT</th><th>Nguồn · Kênh</th><th>Ad ID</th><th>Sales phụ trách</th>'
+    +'<th>Hình thức</th><th>Nội dung chăm sóc</th><th>Phân loại KH</th><th>Giá trị dự kiến</th><th>Việc cần làm tiếp</th>'
+    +'<th>Tình trạng hỗ trợ</th><th>Ngày hẹn</th><th>Ngày chốt đơn</th><th>Tổng giá trị chốt</th><th></th></tr></thead><tbody>'
+    +(tr||'<tr><td colspan="16" style="text-align:center;padding:24px;color:var(--muted)">Chưa có lượt chăm sóc nào trong kỳ</td></tr>')
     +'</tbody></table></div>'+phanTrang+'</div>';
 }
 function siCrmTim(v){window._siCrmQ=v;window._siCrmPage=1;rptSlRender();}
@@ -3600,7 +3606,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/09 09:33';
+const APP_VERSION='23/09 09:44';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -4289,6 +4295,18 @@ function rptSlBuildMasterRaw(){
       r.siDiaChi=mn.si_dia_chi||'';r.siGiayPhep=mn.si_giay_phep||'';r.siFanpage=mn.si_fanpage||'';
       r.siMoHinh=mn.si_mo_hinh||'';r.siDienTich=mn.si_dien_tich||'';r.siTaiChinh=mn.si_tai_chinh||'';
       r.siPhanLoai=mn.si_phan_loai||'';r.siNhomKH=mn.si_nhom_kh||'';
+      // Bộ trường RIÊNG CỦA SỈ lấy nguyên từ sheet Master Sỉ (khác hẳn Lẻ): Lead ID, Ad ID, người đại diện,
+      // tên cửa hàng, tỉnh/quận, link hồ sơ, ghi chú KH, ngày chốt đầu, giá trị đơn đầu / cộng dồn...
+      const sh=mn.si_sheet||{};
+      r.sh=sh;
+      if(!r.siDiaChi&&sh.dia_chi)r.siDiaChi=[sh.dia_chi,sh.quan,sh.tinh].filter(Boolean).join(', ');
+      if(!r.siMoHinh)r.siMoHinh=sh.mo_hinh||'';
+      if(!r.siDienTich)r.siDienTich=sh.dien_tich||'';
+      if(!r.siTaiChinh)r.siTaiChinh=sh.tai_chinh||'';
+      if(!r.siPhanLoai)r.siPhanLoai=sh.phan_loai||'';
+      if(!r.siNhomKH)r.siNhomKH=sh.nhom_kh||'';
+      if(!r.siGiayPhep)r.siGiayPhep=sh.gpkd||'';
+      if(!r.siFanpage)r.siFanpage=sh.fanpage||'';
       const ds=(ky[r.leadId]||[]).concat(r.kh?(ky['MA:'+r.kh]||[]):[])
         .sort((a,b)=>String(b.ngay_cham).localeCompare(String(a.ngay_cham)));
       r.siLuot=ds.length;
@@ -4370,21 +4388,38 @@ function rptSlMasterRowSi(r){
   const fanpage=r.siFanpage?'<a href="'+e(r.siFanpage)+'" target="_blank" rel="noopener" onclick="rptSlStop(event)" style="'+nho+';color:var(--accent);font-weight:700;text-decoration:none">Trang ↗</a>':'<span style="color:var(--muted)">—</span>';
   const nghi=r.siNgayNghi==null?'<span style="color:var(--muted)">—</span>'
     :'<span style="font-weight:700;color:'+(r.siNgayNghi>=30?'var(--red)':r.siNgayNghi>=10?'var(--yellow)':'var(--text)')+'">'+num(r.siNgayNghi)+' ngày</span>';
+  const sh=r.sh||{};
+  const oNho=v=>v?'<span style="'+nho+'">'+e(v)+'</span>':'<span style="color:var(--muted)">—</span>';
+  const csCuoi=r.siCSCuoi||sh.ngay_cham_cuoi||'';
+  const ndCuoi=r.siNDCuoi||sh.nd_cham_cuoi||'';
+  const nghi2=csCuoi?Math.floor((Date.now()-new Date(csCuoi).getTime())/86400000):null;
+  const mauNghi=nghi2==null?'var(--muted)':nghi2>=30?'var(--red)':nghi2>=10?'var(--yellow)':'var(--text)';
+  const donDau=r.kords&&r.kords.length?Number(r.kords[0].total||0):Number(sh.gia_tri_don_dau||0);
+  const ngayDonDau=r.kords&&r.kords.length?String(r.kords[0].purchase_date).slice(0,10):(sh.ngay_chot_dau||'');
+  const congDon=(r.revenue+r.repeatRevenue)||Number(sh.gia_tri_cong_don||0);
   return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\')">'
-    +'<td>'+(dmy(r.created)||'—')+'</td>'
+    +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+'</td>'
     +'<td>'+rptSlSrcBadge(r)+'</td>'
+    +'<td style="'+nho+'">'+e(r.kenh||sh.kenh||'—')+'</td>'
     +'<td>'+rptSlStaffHtml(r)+'</td>'
-    +'<td class="name">'+rptSlTenKhach(r)+'</td>'
+    +'<td style="'+nho+'">'+(sh.ad_id?adIdNote(sh.ad_id):(r.adId?adIdNote(r.adId):'<span style="color:var(--muted)">—</span>'))+'</td>'
+    +'<td style="'+nho+'">'+e(sh.lead_id||r.leadId||'—')+'</td>'
+    +'<td style="'+nho+'">'+e(sh.nguoi_dai_dien||'—')+'</td>'
     +'<td style="white-space:nowrap">'+rptSlSdtHtml(r)+'</td>'
+    +'<td class="name">'+rptSlTenKhach(r)+'</td>'
+    +'<td style="'+nho+'">'+e(sh.tinh||'—')+'</td>'
+    +'<td>'+oNho(r.siMoHinh)+'</td>'
+    +'<td>'+oNho(r.siDienTich)+'</td>'
+    +'<td>'+(r.siTaiChinh?'<span style="'+nho+';font-weight:700;color:'+(/xấu/i.test(r.siTaiChinh)?'var(--red)':'var(--green)')+'">'+e(r.siTaiChinh)+'</span>':'<span style="color:var(--muted)">—</span>')+'</td>'
+    +'<td>'+oNho(r.siNhomKH)+'</td>'
+    +'<td>'+oNho(r.siPhanLoai)+'</td>'
+    +'<td style="white-space:nowrap">'+(dmy(csCuoi)||'—')+'</td>'
+    +'<td class="num"><span style="font-weight:700;color:'+mauNghi+'">'+(nghi2==null?'—':num(nghi2))+'</span></td>'
+    +'<td style="'+nho+';max-width:280px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(ndCuoi)+'">'+e(ndCuoi||'—')+'</div></td>'
+    +'<td style="white-space:nowrap">'+(dmy(ngayDonDau)||'—')+'</td>'
+    +'<td class="num">'+(donDau>0?vnd(donDau):'—')+'</td>'
+    +'<td class="num" style="font-weight:800;color:'+(congDon>0?'var(--green)':'inherit')+'">'+(congDon>0?vnd(congDon):'—')+'</td>'
     +rptSlOMaKH(r)
-    +'<td>'+mo(r.siPhanLoai)+'</td>'
-    +'<td class="num">'+(r.siLuot?num(r.siLuot):'—')+'</td>'
-    +'<td style="white-space:nowrap">'+(dmy(r.siCSCuoi)||'—')+'</td>'
-    +'<td class="num">'+nghi+'</td>'
-    +'<td style="'+nho+';max-width:260px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(r.siNDCuoi||'')+'">'+e(r.siNDCuoi||'—')+'</div></td>'
-    +'<td>'+rptSlStatusPill(rptSlRowStatus(r))+'</td>'
-    +'<td class="num">'+(r.isChot?'<span style="color:var(--muted)">—</span>':(r.potential?vnd(r.potential):'<span style="color:var(--muted)">—</span>'))+'</td>'
-    +'<td class="num" style="font-weight:800;color:'+(r.revenue+r.repeatRevenue>0?'var(--green)':'inherit')+'">'+(r.revenue+r.repeatRevenue>0?vnd(r.revenue+r.repeatRevenue):'—')+'</td>'
     +'<td></td></tr>';
 }
 function rptSlSetMasterPage(p){window._rptSlMasterPage=p;rptSlRender();}
@@ -4398,7 +4433,13 @@ const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn kh�
 // Chỉ để ngoài bảng những cột hay dùng. Mô hình hợp tác, diện tích showroom, khả năng tài chính,
 // nhóm KH, GPKD, fanpage, địa chỉ -> nằm trong HỒ SƠ KHÁCH (bấm vào dòng), vì ít khi cần quét bằng mắt
 // và nhiều trường chỉ điền được 1/4 số khách (người dùng chốt 22/9/2026).
-const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Sales phụ trách</th><th>Tên khách / cửa hàng</th><th>SĐT</th><th>Mã KH Kiot</th><th>Phân loại KH</th><th>Lượt CS</th><th>CS gần nhất</th><th>Chưa liên hệ</th><th>Nội dung gần nhất</th><th>Trạng thái</th><th>Giá trị tiềm năng</th><th>Giá trị đơn cộng dồn</th><th></th>';
+// MASTER SỈ = đúng khung sheet "Master Data Sỉ" (khác hoàn toàn Lẻ): hồ sơ đại lý + diễn biến chăm sóc
+// + kết quả đơn hàng. Các trường ít dùng (GPKD, fanpage, ghi chú KH, link hồ sơ) nằm trong Chi tiết khách.
+const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th>'
+  +'<th>Ad ID</th><th>Lead ID</th><th>Người đại diện</th><th>SĐT</th><th>Tên cửa hàng</th>'
+  +'<th>Tỉnh/TP</th><th>Mô hình</th><th>Showroom</th><th>Khả năng tài chính</th><th>Nhóm KH</th><th>Phân loại KH</th>'
+  +'<th>Ngày CS cuối</th><th>Ngày chưa liên hệ</th><th>Nội dung CS cuối</th>'
+  +'<th>Ngày chốt đầu</th><th>Giá trị đơn đầu</th><th>Giá trị cộng dồn</th><th>Mã KH</th><th></th>';
 Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>rptSlType()==='Sỉ'?RPT_SL_MASTER_HEAD_SI:RPT_SL_MASTER_HEAD_LE});
 function rptSlMasterRow(r){
   if(rptSlType()==='Sỉ')return rptSlMasterRowSi(r);
