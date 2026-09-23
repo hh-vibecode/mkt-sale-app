@@ -17,12 +17,17 @@ const SUPABASE_URL = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
 const AD_ACCOUNT_ID_RAW = process.env.META_AD_ACCOUNT_ID;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-// Mặc định kéo báo cáo của HÔM QUA (Meta thường chưa chốt số liệu xong trong ngày hiện tại) -- override
-// bằng biến môi trường SYNC_DATE (định dạng YYYY-MM-DD) nếu cần chạy bù cho 1 ngày cụ thể.
-const TARGET_DATE = process.env.SYNC_DATE || (() => {
-  const d = new Date(); d.setDate(d.getDate() - 1);
+// Kéo CẢ HÔM QUA LẪN HÔM NAY mỗi lượt chạy (chốt 23/9/2026).
+// Hôm qua: Meta đã chốt số -> lượt chạy sau ghi đè lại cho chuẩn.
+// Hôm nay: số realtime tại thời điểm kéo -> báo cáo MKT không còn trống chi phí ngày đang chạy.
+// Giờ VN (UTC+7) chứ không phải giờ máy chủ, nếu không thì chạy lúc 00:xx VN sẽ lấy nhầm ngày.
+// SYNC_DATE=YYYY-MM-DD: chạy bù đúng 1 ngày cụ thể.
+const ngayVN = (lui) => {
+  const d = new Date(Date.now() + 7 * 3600 * 1000);
+  d.setUTCDate(d.getUTCDate() - (lui || 0));
   return d.toISOString().slice(0, 10);
-})();
+};
+const TARGET_DATES = process.env.SYNC_DATE ? [process.env.SYNC_DATE] : [ngayVN(1), ngayVN(0)];
 
 function detectBrand(name) {
   const n = (name || '').trim();
@@ -49,7 +54,7 @@ function actionValue(actions, types) {
   return total;
 }
 
-async function fetchInsights(adAccountId) {
+async function fetchInsights(adAccountId, TARGET_DATE) {
   const fields = ['campaign_name', 'adset_name', 'ad_name', 'ad_id', 'reach', 'impressions', 'spend', 'ctr', 'cpc', 'actions'].join(',');
   const url = `https://graph.facebook.com/${META_API_VERSION}/${adAccountId}/insights` +
     `?level=ad&fields=${fields}&time_range=${encodeURIComponent(JSON.stringify({ since: TARGET_DATE, until: TARGET_DATE }))}` +
@@ -82,7 +87,7 @@ async function upsertMktSpend(rows) {
     const t = await res.text();
     throw new Error(`Supabase upsert lỗi ${res.status}: ${t.slice(0, 500)}`);
   }
-  console.log(`Đã upsert ${rows.length} dòng vào mkt_spend cho ngày ${TARGET_DATE}.`);
+  console.log(`Đã upsert ${rows.length} dòng vào mkt_spend.`);
 }
 
 // Ghi lịch sử vào sync_log để Data Hub (Admin) thấy được job này thực sự chạy khi nào, lấy/tạo/lỗi bao nhiêu --
@@ -114,17 +119,18 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
   try {
     const adAccountIds = AD_ACCOUNT_ID_RAW.split(',').map(s => s.trim()).filter(Boolean)
       .map(id => id.startsWith('act_') ? id : `act_${id}`);
-    console.log(`Đang kéo báo cáo Meta Ads cho ngày ${TARGET_DATE}, ${adAccountIds.length} account: ${adAccountIds.join(', ')}...`);
+    console.log(`Đang kéo báo cáo Meta Ads cho ${TARGET_DATES.join(' và ')}, ${adAccountIds.length} account: ${adAccountIds.join(', ')}...`);
 
+    let rows = [];
+    for (const TARGET_DATE of TARGET_DATES) {
     let raw = [];
     for (const adAccountId of adAccountIds) {
-      const rowsForAccount = await fetchInsights(adAccountId);
-      console.log(`  ${adAccountId}: ${rowsForAccount.length} dòng (cấp Ad).`);
+      const rowsForAccount = await fetchInsights(adAccountId, TARGET_DATE);
+      console.log(`  ${TARGET_DATE} · ${adAccountId}: ${rowsForAccount.length} dòng (cấp Ad).`);
       raw = raw.concat(rowsForAccount);
     }
-    if (raw[0]) console.log('Mẫu 1 dòng thô (để đối chiếu field actions nếu cần chỉnh):', JSON.stringify(raw[0], null, 2));
 
-    const rows = raw.filter(r => r.ad_id).map(r => {
+    rows = rows.concat(raw.filter(r => r.ad_id).map(r => {
       const campaign = r.campaign_name || '';
       return {
         ad_id: r.ad_id,
@@ -142,9 +148,14 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
         cpc: Number(r.cpc) || 0,
         comments: Math.round(actionValue(r.actions, ['comment', 'post_comment'])),
       };
-    });
+    }));
+    }
 
     await upsertMktSpend(rows);
+    const theoNgay = {};
+    rows.forEach(r => { theoNgay[r.ad_date] = (theoNgay[r.ad_date] || 0) + Number(r.spend || 0); });
+    Object.entries(theoNgay).sort().forEach(([d, v]) =>
+      console.log(`  ${d}: ${rows.filter(r => r.ad_date === d).length} dòng · ${Math.round(v).toLocaleString('vi')} đ`));
     await logSyncEnd(logId, { status: 'success', recordsCreated: rows.length });
   } catch (e) {
     await logSyncEnd(logId, { status: 'failed', errorMessage: e.message });

@@ -635,6 +635,13 @@ function modQuick(mod,v,cb){
   else if(v==='30days'){d.setDate(d.getDate()-29);from=d.toISOString().slice(0,10);}
   else if(v==='thismonth'){from=t.slice(0,8)+'01';}
   else if(v==='all'){from='';to='';}
+  // "3/2026" -> trọn tháng đó. Tháng đang chạy thì chặn đến hôm nay cho khỏi lấy ngày tương lai.
+  else if(/^thang:\d{4}-\d{2}$/.test(v)){
+    const ym=v.slice(6);
+    from=ym+'-01';
+    const cuoi=new Date(Date.UTC(Number(ym.slice(0,4)),Number(ym.slice(5,7)),0)).toISOString().slice(0,10);   // UTC: Date thường lệch mất 1 ngày
+    to=cuoi>t?t:cuoi;
+  }
   else return;
   modSetRange(mod,from,to,cb);
 }
@@ -691,6 +698,12 @@ function modDateBar(mod,cb){
       <option value="30days">30 ngày qua</option>
       <option value="thismonth">Tháng này</option>
       <option value="all">Tất cả</option>
+      ${(()=>{ // các tháng ĐÃ QUA trong năm nay, mới nhất lên trước -- bấm 1 phát ra trọn tháng
+        const t=todayISO(),nam=t.slice(0,4),thang=Number(t.slice(5,7));
+        let o='<option disabled>──────────</option>';
+        for(let m=thang;m>=1;m--){const mm=String(m).padStart(2,'0');
+          o+='<option value="thang:'+nam+'-'+mm+'">'+m+'/'+nam+'</option>';}
+        return o;})()}
     </select>
     <span style="font-size:11px;color:var(--muted);font-weight:700">Từ</span>
     <input type="date" value="${r.from}" onchange="modSetRange('${mod}',this.value,'${r.to}','${cb}')" style="${ip}">
@@ -2683,11 +2696,10 @@ const DH_KENH_NHOM=[
   ['Bán trực tiếp',/bán trực tiếp|ban truc tiep/i,                            '#2a9d8f'],
 ];
 function dhKenhNhom(k){const t=String(k||'');for(const [ten,re,mau] of DH_KENH_NHOM)if(re.test(t))return{ten,mau};return{ten:'Khác',mau:'#8d99ae'};}
-// MẶC ĐỊNH TỪ 1/6/2026 -- bằng đúng mốc của báo cáo Sale. Trước đây để trống = tất cả thời gian,
-// ra 6,6 tỷ kênh Online trong khi báo cáo chỉ hơn 1 tỷ, nhìn tưởng số sai (anh Hải báo 23/9/2026).
-// Muốn xem cả lịch sử thì bấm nút "Tất cả thời gian".
+// MẶC ĐỊNH TẤT CẢ THỜI GIAN: đây là kho thô, xem full rồi tự lọc. Lưu ý khi đối chiếu với báo cáo Sale:
+// báo cáo chỉ tính từ 1/6/2026 nên số ở đây LUÔN lớn hơn (kênh Online full time 6,6 tỷ vs từ T6 1,19 tỷ).
 function dhKenhKy(){
-  if(window._dhKenhKy===undefined)window._dhKenhKy={from:RPT_SL_MIN_DATE,to:todayISO()};
+  if(window._dhKenhKy===undefined)window._dhKenhKy={from:'',to:''};
   const g=i=>(document.getElementById(i)||{}).value;
   const f=g('dhKenhFrom'),t=g('dhKenhTo');
   if(f!==undefined&&t!==undefined)window._dhKenhKy={from:f||'',to:t||''};
@@ -2708,7 +2720,6 @@ function dhKenhHtml(){
       <span style="font-size:11px;color:var(--muted)">→</span>
       <input id="dhKenhTo" type="date" value="${k.to}" onchange="dhKenhLoc()" style="${o}">
       ${nut('Từ 1/6/2026',RPT_SL_MIN_DATE,todayISO())}${nut('Tháng này',todayISO().slice(0,8)+'01',todayISO())}${nut('Tất cả thời gian','','')}
-      ${!k.from&&!k.to?'<span style="font-size:11px;font-weight:800;color:var(--yellow)">đang xem TẤT CẢ lịch sử — gồm cả data trước mốc báo cáo</span>':''}
     </div>`;})()}
     <div id="dhKenhBody">${dhKenhBodyHtml()}</div>
   </div>`;
