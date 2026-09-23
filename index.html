@@ -1100,7 +1100,7 @@ function shortAdId(id){id=(id||'').toString().trim();return id.length<=8?id:id.s
 function adIdNote(id){
   const v=(id||'').toString().trim();
   if(!v)return'<b style="color:#e11d48">Thiếu Ads ID</b>';
-  const nm=(typeof adNameMap==='function'?adNameMap()[v]:null);
+  const nm=(typeof adNameMap==='function'?(adNameMap()||{})[v]:null);
   const short=shortAdId(v);
   if(nm)return`${nm} <span style="color:var(--muted)" title="${v}">(${short})</span>`;
   return`<span title="${v}">${short}</span> <span style="color:var(--muted);font-size:11px">(chưa khớp MKT)</span>`;
@@ -1459,7 +1459,9 @@ function productOf(r){const ch=(r[COL_SI.CHANNEL]||'').toLowerCase();const adId=
 // Trả về null nếu Kênh không rõ ràng là 1 trong 2 thương hiệu này (VD "Sales trực tiếp") — dropdown sẽ không khớp dòng đó khi lọc theo 1 thương hiệu cụ thể.
 // Ads ID → Tên QC, đối chiếu qua Chi Tiết MKT (allRowsRaw) — lấy tên theo ngày gần nhất nếu QC từng đổi tên
 function adNameMap(){
-  if(window._adNameMapSrc!==window.allRowsRaw){
+  // Master Sỉ/Lẻ gọi hàm này trước khi báo cáo MKT kịp nạp -> allRowsRaw còn undefined; khi đó vẫn phải
+  // trả về object rỗng chứ không được trả undefined (trước đây làm vỡ cả bảng Master).
+  if(!window._adNameMapObj||window._adNameMapSrc!==window.allRowsRaw){
     const m={},dm={};
     (window.allRowsRaw||[]).forEach(r=>{
       const id=String(r[COL.AD_ID]||'').trim();
@@ -1469,7 +1471,7 @@ function adNameMap(){
       const d=parseDate(r[COL.DATE]);
       if(!dm[id]||(d&&d>dm[id])){m[id]=nm;dm[id]=d;}
     });
-    window._adNameMapObj=m;window._adNameMapSrc=window.allRowsRaw;
+    window._adNameMapObj=m;window._adNameMapSrc=window.allRowsRaw||null;
   }
   return window._adNameMapObj;
 }
