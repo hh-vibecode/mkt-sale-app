@@ -3622,11 +3622,20 @@ const RPT_SL_MIN_DATE='2026-06-01';
 // -- có nhân sự mới là tự hiện trong mọi dropdown, không phải sửa code.
 // Bỏ các tên hệ thống/bot và tên rỗng. Danh sách nhớ lại trong localStorage để trang Phân quyền
 // (không nạp đơn Pancake) vẫn có cái mà hiện.
-// Sale Sỉ đưa vào dropdown: CHỈ 2 người này. Người bán Kiot khác vẫn lưu được trên dữ liệu.
-const RPT_SL_SALE_SI=['Nguyễn Thị Huế','Nguyễn Hữu Toàn'];
-// Tên KHÔNG đưa vào dropdown dù dữ liệu cũ còn (nghỉ việc / không còn phụ trách).
-// Dữ liệu cũ của họ vẫn giữ nguyên, chỉ bỏ khỏi ô chọn.
-const RPT_SL_SALE_BO=['Đỗ Luân','Nguyễn Hưng'];
+// ── DANH SÁCH SALE CHO DROPDOWN ───────────────────────────────────────────────────────────────
+// Anh Hải chốt 23/9/2026: "data cứ lấy bình thường, ai phụ trách cứ để nguyên, nhưng dropdown cho
+// chọn để lọc ở các báo cáo CHỈ CÓ CÁC TÊN T BẢO".
+// => DỮ LIỆU không bị đụng tới: mọi dòng vẫn giữ đúng người phụ trách, báo cáo vẫn tính đủ.
+//    Chỉ Ô CHỌN (lọc báo cáo, phạm vi phân quyền, form nhập tay) là dùng đúng danh sách dưới đây.
+// THÊM/BỚT SALE: sửa đúng 1 mảng này, không phải tìm chỗ nào khác.
+const RPT_SL_SALE_DROPDOWN=[
+  'Nguyễn Thảo Ngọc',
+  'Vân Ngọc',
+  'Chánh Tâm Ngọc Diệp',
+  'Phạm Thị Lệ',
+  'Nguyễn Thị Huế',      // Sỉ
+  'Nguyễn Hữu Toàn',     // Sỉ
+];
 const RPT_SL_SALE_BLACKLIST=['hệ thống','he thong','pancake','system','bot','admin','sales admin','tht holding','automation','chatbot','{del}'];
 // Danh sách LẤY ĐÚNG người phụ trách bên Pancake (+ người đứng tên dòng nhập tay của chính app).
 // KHÔNG lấy tên người bán bên Kiot: đơn Kiot nối về khách bằng MÃ KH rồi, tên bên đó không dùng tới.
@@ -3694,6 +3703,15 @@ function rptSlStaffHtml(r){
   return '<span style="color:var(--muted)">chưa gán</span>';
 }
 function rptSlSalesList(){
+  // Danh sách cố định + những tên ĐÃ ĐƯỢC TICK trong phạm vi tài khoản nào đó (giữ lại để không
+  // âm thầm bỏ mất lựa chọn cũ của người dùng).
+  const daTick=[];
+  try{(window._rptSlAccs||[]).forEach(a=>(a.data_sales||[]).forEach(x=>daTick.push(x)));}catch(e){}
+  try{const c=JSON.parse(localStorage.getItem('dashDataSales')||'[]');if(Array.isArray(c))daTick.push(...c);}catch(e){}
+  return [...new Set([...RPT_SL_SALE_DROPDOWN,...daTick])].sort((a,b)=>a.localeCompare(b,'vi'));
+}
+// Danh sách gom từ dữ liệu thật -- KHÔNG dùng cho dropdown nữa, giữ lại cho chỗ nào cần soát.
+function rptSlSalesTrongData(){
   let out=[];
   try{
     // CHỈ 2 NGUỒN + danh sách Sỉ cố định (anh Hải chốt 23/9/2026: "đừng thêm người vào dropdown nhiều"):
