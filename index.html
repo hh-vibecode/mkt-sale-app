@@ -256,6 +256,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     <span class="top-logo-text">APP <span>MKT/SALE</span></span>
   </div>
   <div class="topbar-right">
+  <span id="viewAsBox" style="display:none;align-items:center;gap:7px"></span>
   <button class="theme-toggle" onclick="toggleTheme()">
     <div class="toggle-track"><div class="toggle-thumb"></div></div>
     <span id="themeLabel">Tối</span>
@@ -433,6 +434,12 @@ function dashIsSupreme(a){
 }
 // Quyền hiện tại của tài khoản đang đăng nhập; null = toàn quyền.
 function dashCan(page){
+  // Đang "xem như" ai thì quyền vào trang lấy nguyên của người đó -- để thấy đúng những gì họ thấy.
+  const xem=dashViewAs();
+  if(xem&&dashCanViewAs()){
+    const p=xem.perms||[];
+    return !!xem.supreme||p.indexOf(PERM_ALL)>=0||p.indexOf(page)>=0;
+  }
   let a=window._dashAllowed;
   if(a===undefined){
     const role=localStorage.getItem('dashRole')||'admin';
@@ -452,16 +459,11 @@ function dashScope(key){
 // để xem đúng phần data tài khoản đó được phép nhìn -> kiểm tra chéo, chắc chắn Sale này không thấy data Sale kia.
 // Chỉ nằm trong phiên làm việc (sessionStorage), đóng tab là hết; và KHÔNG bao giờ nới rộng phạm vi của
 // chính người đang xem -- nếu bản thân đã bị giới hạn thì lấy phần giao của hai phạm vi.
-// "Xem như tài khoản" là công cụ kiểm tra chéo của tab NHẬP LIỆU, không được lan sang báo cáo khác.
-// Trước đây nó áp cho cả app nên mở Báo cáo MKT lại thấy số của riêng 1 sale (lỗi 22/9/2026).
-function dashDangONhapLieu(){
-  const t=window._trangHienTai||'';
-  if(t!=='report-saleretail'&&t!=='report-salesi')return false;
-  try{return rptSlViewMode()==='input';}catch(e){return false;}
-}
+// Ô chọn nằm ở THANH TRÊN CÙNG và áp cho TOÀN BỘ app: quyền vào trang, phạm vi data, mọi báo cáo.
+// Lưu ở localStorage nên giữ nguyên khi chuyển trang và cả khi F5 -- chỉ hết khi tự chọn lại "Chính tôi"
+// hoặc đăng xuất. Thanh trên luôn hiện rõ đang xem như ai để không quên mình đang ở tài khoản người khác.
 function dashViewAs(){
-  if(!dashDangONhapLieu())return null;
-  try{const v=JSON.parse(sessionStorage.getItem('dashViewAs')||'null');return v&&v.id?v:null;}catch(e){return null;}
+  try{const v=JSON.parse(localStorage.getItem('dashViewAs')||'null');return v&&v.id?v:null;}catch(e){return null;}
 }
 function dashCanViewAs(){return dashIsSupreme()||dashCan('settings');}
 function dashGiao(a,b){            // [] = xem tất cả -> bên nào rỗng thì lấy bên kia
@@ -488,7 +490,12 @@ function applyRole(){
   else allowed=ROLE_PAGES[role]!==undefined?ROLE_PAGES[role]:null;
   if(TEMP_VISIBLE_PAGES)allowed=TEMP_VISIBLE_PAGES;
   if(dashIsSupreme(allowed))allowed=null; // toàn quyền -> không ẩn trang nào
+  // Đang xem như tài khoản khác -> menu bên trái cũng phải đúng menu của họ.
+  const xemNhu=dashViewAs();
+  if(xemNhu&&dashCanViewAs())
+    allowed=(xemNhu.supreme||(xemNhu.perms||[]).indexOf(PERM_ALL)>=0)?null:(xemNhu.perms||[]).slice();
   window._dashAllowed=allowed;
+  dashViewAsRender();
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el=>{
     const id=el.id.replace('nav-','');
     // Data Hub có 2 mức quyền -> chỉ cần 1 trong 2 là hiện mục trên thanh bên.
@@ -509,7 +516,7 @@ function applyRole(){
   if(allowed&&allowed.length)switchPage(allowed[0]);
   else if(allowed)document.body.innerHTML='<div style="padding:40px;font:600 14px var(--font)">Tài khoản chưa được cấp quyền xem trang nào. Liên hệ admin.</div>';
 }
-function logout(){['dashDataSales','dashDataTypes'].forEach(k=>localStorage.removeItem(k));localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
+function logout(){['dashDataSales','dashDataTypes','dashViewAs'].forEach(k=>localStorage.removeItem(k));localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
 function canReassign(){return['supreme','admin','manager'].includes(localStorage.getItem('dashPosition')||'admin');}
 // Tài khoản vị trí "Sales" chỉ được xem khách được gán cho mình (chuẩn CRM: Sale không thấy data cả công ty).
 // Admin/Manager xem tất cả. 4 tài khoản cũ (admin/admin2/ngoc.onl/mkt) không có user_id thật trong bảng
@@ -669,10 +676,6 @@ function switchPage(p){
   // Chặn cả khi gõ tay vào console / link cũ: không có quyền thì không mở trang.
   if(window._trangHienTai!==p){
     window._trangHienTai=p;
-    // rời báo cáo Sale -> thôi "xem như tài khoản khác", tránh mang bộ lọc của 1 sale sang trang khác
-    if(p!=='report-saleretail'&&p!=='report-salesi'){
-      try{sessionStorage.removeItem('dashViewAs');}catch(e){}
-    }
     window._kiotOrdByCode=null;
   }
   // Data Hub mở được nếu có 1 trong 2 mức quyền; bên trong renderDataHub sẽ khoá tiếp tab data thô.
@@ -4964,39 +4967,45 @@ function rptSlInputSec(id,icon,title,desc,count,color,body,luonMo){
     ${mo?than:''}
   </div>`;
 }
-// Ô "Xem như tài khoản" ở góc phải tab Nhập Liệu (chỉ Supreme / người có quyền Phân quyền thấy).
-function rptSlViewAsBar(){
-  if(!dashCanViewAs())return'';
+// Ô "Xem như tài khoản" trên THANH TRÊN CÙNG -- chỉ Supreme / người có quyền Phân quyền thấy.
+// Chọn 1 tài khoản là cả app chuyển sang đúng góc nhìn của họ: menu bên trái, quyền vào trang,
+// phạm vi data trong mọi báo cáo. Dùng để soát xem tài khoản nào đang bị thiếu thông tin.
+function dashViewAsRender(){
+  const box=document.getElementById('viewAsBox');
+  if(!box)return;
+  if(!dashCanViewAs()){box.style.display='none';box.innerHTML='';return;}
+  box.style.display='inline-flex';
   const v=dashViewAs(),accs=window._rptSlAccs;
-  if(!accs)rptSlLoadAccs();
-  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  if(!accs){rptSlLoadAccs();}
+  const esc=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const mo=a=>{const p=[(a.data_sales||[]).length?(a.data_sales||[]).join(', '):'mọi Sale',
                         (a.data_types||[]).length?'chỉ '+(a.data_types||[]).join('/'):''].filter(Boolean).join(' · ');
     return '<option value="'+esc(a.user_id)+'"'+(v&&v.id===a.user_id?' selected':'')+'>'+esc(a.name)+' — '+esc(p)+'</option>';};
-  return `<div id="rptSlViewAs" style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:12px">
-    ${v?'<span style="font-size:11.5px;font-weight:800;color:#fff;background:var(--accent);border-radius:20px;padding:4px 12px">Đang xem như '+esc(v.name)+' — đúng phần data tài khoản này nhìn thấy</span>':''}
-    <span style="font-size:11.5px;color:var(--muted);font-weight:700">Xem như tài khoản</span>
-    <select onchange="rptSlSetViewAs(this.value)" style="height:30px;padding:3px 9px;border:1.5px solid ${v?'var(--accent)':'var(--border)'};border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:700;font-family:var(--font);cursor:pointer;max-width:340px">
-      <option value="">— Chính tôi (toàn bộ data) —</option>${accs?accs.map(mo).join(''):'<option disabled>đang tải…</option>'}
-    </select></div>`;
+  box.innerHTML=(v?'<span title="Cả app đang hiển thị theo quyền của tài khoản này" style="font-size:11px;font-weight:800;color:#fff;background:var(--red);border-radius:20px;padding:4px 11px;white-space:nowrap">Đang xem như '+esc(v.name)+'</span>':'')
+    +'<select onchange="rptSlSetViewAs(this.value)" title="Xem app bằng góc nhìn của một tài khoản khác"'
+    +' style="height:30px;padding:3px 9px;border:1.5px solid '+(v?'var(--red)':'var(--border)')+';border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;max-width:260px">'
+    +'<option value="">— Xem như: chính tôi —</option>'+(accs?accs.map(mo).join(''):'<option disabled>đang tải…</option>')+'</select>';
 }
 async function rptSlLoadAccs(){
   if(window._rptSlAccsLoading)return; window._rptSlAccsLoading=true;
   let list=[];
-  try{list=await sbFetchAll('sales_users','select=user_id,name,position_title,data_sales,data_types&has_login=eq.true&status=eq.active&order=name');}catch(e){list=[];}
+  try{list=await sbFetchAll('sales_users','select=user_id,name,position_title,permissions,data_sales,data_types&has_login=eq.true&status=eq.active&order=name');}catch(e){list=[];}
   const me=localStorage.getItem('dashUserId')||'';
   window._rptSlAccs=list.filter(a=>a.position_title!=='supreme'||a.user_id===me);  // acc Supreme chỉ chính chủ thấy
   window._rptSlAccsLoading=false;
-  const el=document.getElementById('rptSlViewAs');
-  if(el)el.outerHTML=rptSlViewAsBar();
+  dashViewAsRender();
 }
 function rptSlSetViewAs(id){
   if(!dashCanViewAs())return;
   const a=(window._rptSlAccs||[]).find(x=>x.user_id===id);
-  if(a)sessionStorage.setItem('dashViewAs',JSON.stringify({id:a.user_id,name:a.name,sales:a.data_sales||[],types:a.data_types||[]}));
-  else sessionStorage.removeItem('dashViewAs');
+  if(a)localStorage.setItem('dashViewAs',JSON.stringify({id:a.user_id,name:a.name,
+    sales:a.data_sales||[],types:a.data_types||[],perms:a.permissions||[],supreme:a.position_title==='supreme'}));
+  else localStorage.removeItem('dashViewAs');
   window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
-  rptSlRender();
+  window._dashAllowed=undefined;
+  applyRole();                       // dựng lại menu bên trái theo quyền tài khoản vừa chọn
+  const p=window._trangHienTai;
+  if(p&&dashCan(p))switchPage(p);    // trang đang mở vẫn xem được thì vẽ lại tại chỗ
 }
 function rptSlInputHtml(){
   const b=rptSlTodoBuckets();
@@ -5067,7 +5076,6 @@ function rptSlInputHtml(){
         +'<button onclick="rptSlBoQuaLoi('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" class="btn-ghost" style="margin-left:5px;padding:4px 10px;font-size:11px">Đã xử lý tay</button></td></tr>';}).join(''));
   const tong=b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length;   // 2 mục ghi thêm không tính
   return `
-    ${rptSlViewAsBar()}
     <div class="kpi-grid" style="margin-bottom:14px">
       ${mkKpi(ic('clipboard'),'Tổng việc cần làm',num(tong),'','g-purple')}
       ${mkKpi(ic('cash'),'Đơn chốt chưa có Mã KH',num(b.thieuMa.length),'','g-red')}
