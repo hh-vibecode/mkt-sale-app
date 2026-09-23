@@ -3170,7 +3170,8 @@ function siCrmHtml(){
     const k=r.lead_id?byLead[r.lead_id]:null;
     return '<tr>'
       +'<td style="white-space:nowrap">'+(dmy(r.ngay_cham)||'—')+'</td>'
-      +'<td class="name">'+siEsc(r.customer_name)+(r.kiot_code?' '+rptSlKiotLink(r.kiot_code,'<span style="font-weight:600;font-size:11px">'+siEsc(r.kiot_code)+'</span>'):'')+'</td>'
+      +'<td class="name">'+siEsc(r.customer_name)+(r.kiot_code?' '+rptSlKiotLink(r.kiot_code,'<span style="font-weight:600;font-size:11px">'+siEsc(r.kiot_code)+'</span>'):'')
+        +(r.lead_id?'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+siEsc(r.lead_id)+'</div>':'')+'</td>'
       +'<td style="'+oNho+'">'+siEsc(r.phone||'')+'</td>'
       +'<td style="'+oNho+'">'+siEsc([r.nguon,r.kenh].filter(Boolean).join(' · '))+'</td>'
       +'<td style="'+oNho+'">'+(r.ad_id?adIdNote(r.ad_id):'<span style="color:var(--muted)">—</span>')+'</td>'
@@ -4506,11 +4507,14 @@ function rptSlMasterRowSi(r){
   const congDon=(r.revenue+r.repeatRevenue)||Number(sh.gia_tri_cong_don||0);
   return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\')">'
     +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+'</td>'
+    // Lead ID LUÔN là mã do app sinh (L-<shop>-<số đơn đầu>). Mã cũ bên sheet chỉ giữ trong tooltip
+    // để tra ngược khi cần, không hiển thị nữa -- mỗi khách 1 mã duy nhất, không còn 2 hệ mã song song.
+    +'<td style="'+nho+';white-space:nowrap"'+(sh.lead_id&&sh.lead_id!==r.leadId?' title="Mã cũ bên sheet: '+e(sh.lead_id)+'"':'')
+      +'><span style="font-weight:700">'+e(r.leadId||'—')+'</span></td>'
     +'<td>'+rptSlSrcBadge(r)+'</td>'
     +'<td style="'+nho+'">'+e(r.kenh||sh.kenh||'—')+'</td>'
     +'<td>'+rptSlStaffHtml(r)+'</td>'
     +'<td style="'+nho+'">'+(sh.ad_id?adIdNote(sh.ad_id):(r.adId?adIdNote(r.adId):'<span style="color:var(--muted)">—</span>'))+'</td>'
-    +'<td style="'+nho+'">'+e(sh.lead_id||r.leadId||'—')+'</td>'
     +'<td style="'+nho+'">'+e(sh.nguoi_dai_dien||'—')+'</td>'
     +'<td style="white-space:nowrap">'+rptSlSdtHtml(r)+'</td>'
     +'<td class="name">'+rptSlTenKhach(r)+'</td>'
@@ -4542,8 +4546,8 @@ const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn kh�
 // và nhiều trường chỉ điền được 1/4 số khách (người dùng chốt 22/9/2026).
 // MASTER SỈ = đúng khung sheet "Master Data Sỉ" (khác hoàn toàn Lẻ): hồ sơ đại lý + diễn biến chăm sóc
 // + kết quả đơn hàng. Các trường ít dùng (GPKD, fanpage, ghi chú KH, link hồ sơ) nằm trong Chi tiết khách.
-const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th>'
-  +'<th>Ad ID</th><th>Lead ID</th><th>Người đại diện</th><th>SĐT</th><th>Tên cửa hàng</th>'
+const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Lead ID</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th>'
+  +'<th>Ad ID</th><th>Người đại diện</th><th>SĐT</th><th>Tên cửa hàng</th>'
   +'<th>Tỉnh/TP</th><th>Mô hình</th><th>Showroom</th><th>Khả năng tài chính</th><th>Nhóm KH</th><th>Phân loại KH</th>'
   +'<th>Ngày CS cuối</th><th>Ngày chưa liên hệ</th><th>Nội dung CS cuối</th>'
   +'<th>Ngày chốt đầu</th><th>Giá trị đơn đầu</th><th>Giá trị cộng dồn</th><th>Mã KH</th><th></th>';
