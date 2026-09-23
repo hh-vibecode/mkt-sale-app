@@ -1,10 +1,16 @@
 // ════════ TỰ TẠO DATA NHẬP TAY TỪ ĐƠN KIOT ════════
 // Chạy sau mỗi lượt kéo đơn Kiot. Bộ lọc do anh Hải chốt 23/9/2026:
-//   khách LẺ · kênh bán ONLINE · đơn từ 1/6/2026 · chưa có mặt trong app
+//   khách LẺ: chỉ kênh ONLINE
+//   khách SỈ : MỌI kênh -- online thì nguồn "Online", "Bán trực tiếp" thì nguồn "Offline"
+//   (chung: đơn từ 1/6/2026 · chưa có mặt trong app · có dấu vết tiền thật)
+// Sỉ Offline vẫn vào BÁO CÁO SALE SỈ nhưng KHÔNG vào báo cáo MKT -- app tự lọc theo cột nguồn.
 // -> mỗi khách 1 dòng datahub_manual, để doanh thu về đúng báo cáo Sale/MKT mà Sale không phải gõ tay.
 //
 // KHÔNG lấy: đơn huỷ · phiếu tạm không có dấu vết tiền (chưa trả đồng nào và khách cũng không cọc)
-//            · kênh Shidai (khách sỉ) · khách đã có dòng nhập tay hoặc đã có Mã KH trong ghi chú Pancake.
+//            · kênh Bán trực tiếp / Kênh Thị Trường / Khác (không phải online)
+//            · khách đã có dòng nhập tay hoặc đã có Mã KH trong ghi chú Pancake.
+// 23/9/2026 mở rộng: trước chỉ lấy khách LẺ, giờ lấy CẢ KHÁCH SỈ nguồn online (gồm kênh Facebook Shidai)
+// -- vì bóc lệch tháng 9 thấy khách sỉ online như ANH DŨNG-HY (39,2tr, có hoá đơn) bị rơi khỏi báo cáo.
 // Chạy tay: node scripts/tu-tao-nhap-tay.js        (KHO=1 để chỉ xem trước, không ghi)
 const SUPABASE_URL = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -74,14 +80,15 @@ async function ghiLog(body, id) {
       const ngay = String(o.purchase_date || '').slice(0, 10);
       if (o.status === 4 || phieuBaoGia(o)) return;
       if (ngay < MOC) return;
-      if (!ONLINE.test(o.sale_channel || '') || /shidai/i.test(o.sale_channel || '')) return;
       if (!o.customer_code || daCo.has(o.customer_code)) return;
       const c = byCode[o.customer_code];
-      if (loai(c) !== 'Lẻ') return;
+      const online = ONLINE.test(o.sale_channel || '') || /shidai/i.test(o.sale_channel || '');
+      // Lẻ chỉ nhận kênh online; Sỉ nhận cả bán trực tiếp (= nguồn Offline).
+      if (loai(c) !== 'Sỉ' && !online) return;
       const g = gom[o.customer_code] = gom[o.customer_code] || { ma: o.customer_code,
-        ten: (c && c.name) || o.customer_name || '', sdt: (c && c.phone) || null,
+        ten: (c && c.name) || o.customer_name || '', sdt: (c && c.phone) || null, loai: loai(c), nguon: online ? 'Online' : 'Offline',
         ngay, kenh: o.sale_channel, sale: o.sold_by_name || null, don: 0, tien: 0 };
-      if (ngay < g.ngay) { g.ngay = ngay; g.kenh = o.sale_channel; g.sale = o.sold_by_name || null; }
+      if (ngay < g.ngay) { g.ngay = ngay; g.kenh = o.sale_channel; g.sale = o.sold_by_name || null; g.nguon = online ? 'Online' : 'Offline'; }
       g.don++; g.tien += Number(o.total || 0);
     });
     // ── CHỐT CHẶN CUỐI: KHÁCH PHẢI CÓ DẤU VẾT TIỀN THẬT ───────────────────────────────────────
@@ -109,12 +116,15 @@ async function ghiLog(body, id) {
     }
 
     const ds = Object.values(gom).sort((a, b) => b.tien - a.tien);
-    console.log(`Đủ điều kiện: ${ds.length} khách · ${vn(ds.reduce((s, x) => s + x.tien, 0))} đ`);
-    ds.forEach(x => console.log(`   ${x.ngay} ${x.ma} ${String(x.ten).slice(0, 26)} · ${x.kenh} · ${x.don} đơn · ${vn(x.tien)} · ${bangChung(x.ma)}`));
+    const dem = l => ds.filter(x => x.loai === l);
+    console.log(`Đủ điều kiện: ${ds.length} khách · ${vn(ds.reduce((s, x) => s + x.tien, 0))} đ`
+      + ` (Lẻ ${dem('Lẻ').length} · ${vn(dem('Lẻ').reduce((s, x) => s + x.tien, 0))} đ`
+      + ` | Sỉ ${dem('Sỉ').length} · ${vn(dem('Sỉ').reduce((s, x) => s + x.tien, 0))} đ)`);
+    ds.forEach(x => console.log(`   [${x.loai}] ${x.ngay} ${x.ma} ${String(x.ten).slice(0, 26)} · ${x.kenh} · ${x.don} đơn · ${vn(x.tien)} · ${bangChung(x.ma)}`));
     if (CHI_XEM) { console.log('(KHO=1 -> chỉ xem trước, không ghi)'); return; }
     if (!ds.length) { console.log('Không có gì mới.'); await ghiLog({ finished_at: new Date().toISOString(), status: 'success', records_created: 0 }, logId); return; }
 
-    const rows = ds.map(x => ({ created_date: x.ngay, sale_type: 'Lẻ', nguon: 'Online', kenh: x.kenh,
+    const rows = ds.map(x => ({ created_date: x.ngay, sale_type: x.loai, nguon: x.nguon, kenh: x.kenh,
       brand: brand(x.kenh), customer_name: x.ten, phone: x.sdt, staff_name: x.sale, kiot_code: x.ma,
       status: 'Chốt đơn', note: 'Tự tạo từ đơn Kiot · kênh ' + x.kenh, created_by: 'Monsieur Claude' }));
     let ok = 0;

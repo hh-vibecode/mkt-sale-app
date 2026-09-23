@@ -3020,7 +3020,7 @@ function rptMktData(){
     window._rptSlType=t;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
     rptSlPeriod().forEach(r=>{
       if(!r.isChot||r.revenue<=0)return;
-      if(t==='Sỉ'&&/offline/i.test(r.nguon||''))return;
+      if(/offline/i.test(r.nguon||''))return;   // MKT CHỈ lấy nguồn Online -- cả Lẻ lẫn Sỉ (chốt 23/9/2026)
       const brandRow=t==='Sỉ'?'Shidai':(r.brand||'');
       if(brandLoc&&brandRow!==brandLoc)return;
       sale.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',
@@ -3064,7 +3064,7 @@ function rptMktData(){
     rptSlPeriod().forEach(r=>{
       const id=String(r.adId||'').trim();
       if(!id||!theoAd[id])return;
-      if(t==='Sỉ'&&/offline/i.test(r.nguon||''))return;
+      if(/offline/i.test(r.nguon||''))return;   // MKT CHỈ lấy nguồn Online -- cả Lẻ lẫn Sỉ (chốt 23/9/2026)
       theoAd[id].khach.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',staff:r.staff||'',
         kh:r.kh||'',ngay:r.isChot?r.closeDate:r.created,rev:r.isChot?r.revenue:0,chot:!!r.isChot});
       if(r.isChot){theoAd[id].don++;theoAd[id].rev+=r.revenue;}
