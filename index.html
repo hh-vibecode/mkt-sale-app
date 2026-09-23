@@ -4228,6 +4228,21 @@ function rptSlSortNew(list,ngay){
 }
 // Ngày hiện ở cột đầu từng bảng -- dùng làm khoá xếp để bảng nhìn vào là thấy đúng thứ tự.
 function rptSlNgayTao(r){return r.created||'';}
+// Lọc "tháng này" nhưng bảng vẫn hiện khách có ngày tạo từ T6 -- KHÔNG phải lỗi lọc: đó là KHÁCH CŨ
+// MUA LẠI trong kỳ (đơn Kiot rơi vào kỳ nên doanh thu phải tính). Trước đây nhìn cột Ngày tạo dễ tưởng
+// bộ lọc hỏng (báo 23/9/2026), nên đánh dấu thẳng vào ô ngày cho khỏi nhầm.
+function rptSlNgoaiKy(d){
+  const M=rptSlMod(),rg=modRange(M);
+  if(!rg.from&&!rg.to)return false;
+  const x=String(d||'').slice(0,10);
+  return !!x&&!modInRange(M,x);
+}
+function rptSlNhanCu(d,nhan){
+  if(!rptSlNgoaiKy(d))return '';
+  return ' <span title="Khách cũ (tạo trước kỳ đang lọc) nhưng có phát sinh trong kỳ nên vẫn được tính"'
+    +' style="display:inline-block;padding:1px 6px;border-radius:20px;font-size:9.5px;font-weight:800;white-space:nowrap;'
+    +'color:var(--muted);background:var(--bg2);border:1px solid var(--border)">'+(nhan||'khách cũ')+'</span>';
+}
 function rptSlNgayCham(r){return r.careDate||r.created||'';}
 function rptSlInRange(r){
   const M=rptSlMod();
@@ -4622,7 +4637,7 @@ function rptSlMasterRowSi(r){
   const ngayDonDau=r.kords&&r.kords.length?String(r.kords[0].purchase_date).slice(0,10):(sh.ngay_chot_dau||'');
   const congDon=(r.revenue+r.repeatRevenue)||Number(sh.gia_tri_cong_don||0);
   return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\')">'
-    +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+'</td>'
+    +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+rptSlNhanCu(r.created||sh.ngay_tao,'mua lại')+'</td>'
     // Khách ĐÃ CHỐT (có Mã KH Kiot) thì cột này hiện thẳng MÃ KH -- mã thật của khách, bấm mở sang Kiot.
     // Khách chưa chốt mới dùng Lead ID do app sinh. Mã cũ bên sheet chỉ còn trong tooltip để tra ngược.
     +'<td style="'+nho+';white-space:nowrap"'+(sh.lead_id&&sh.lead_id!==r.leadId?' title="Mã cũ bên sheet: '+e(sh.lead_id)+' · Lead ID app: '+e(r.leadId)+'"':(r.kh?' title="Lead ID app: '+e(r.leadId)+'"':''))
@@ -4658,7 +4673,7 @@ Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>rptSlType()==='Sỉ'?
 function rptSlMasterRow(r){
   if(rptSlType()==='Sỉ')return rptSlMasterRowSi(r);
   return `<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
-    <td>${dmy(r.created)||'—'}</td>
+    <td style="white-space:nowrap">${dmy(r.created)||'—'}${rptSlNhanCu(r.created,'mua lại')}</td>
     <td>${rptSlSrcBadge(r)}</td>
     <td style="font-size:11px">${r.nguon||'—'}</td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
@@ -5223,7 +5238,7 @@ function rptSlCrmHtmlRaw(){
   const lock=(html,full,r,right)=>`<td ondblclick="rptSlStop(event);rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')"
     title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm đúp để xem hồ sơ đầy đủ)" style="cursor:default"><div style="display:flex;align-items:center;gap:4px;justify-content:${right?'flex-end':'space-between'}">${html}${pen(r)}</div></td>`;
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>{return `<tr>
-    ${(r.careAuto?lockRO:lock)(dmy(r.careDate)||'<span style="color:var(--muted)">—</span>',
+    ${(r.careAuto?lockRO:lock)((dmy(r.careDate)||'<span style="color:var(--muted)">—</span>')+rptSlNhanCu(r.careDate,'ngoài kỳ'),
       r.careAuto?'Ngày tạo đơn Pancake đầu tiên — app tự lấy, không sửa tay':dmy(r.careDate),r)}
     <td>${rptSlSrcBadge(r)}</td>
     <td>${rptSlStaffHtml(r)}</td>
