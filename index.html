@@ -2072,7 +2072,7 @@ async function kiotLoadInvoices(force){
     // Bỏ cột items khỏi hoá đơn: nặng gấp 3,7 lần phần còn lại mà chỉ dùng lúc xem chi tiết 1 hoá đơn.
     sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,order_code,total,status'),
     // items (danh sách mặt hàng) chiếm 3/4 dung lượng mà chỉ cần lúc mở chi tiết 1 khách -> tải riêng
-    sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,total_payment,status,status_value'),
+    sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,total_payment,status,status_value,sale_channel'),
     sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name,debt'),
   ]);
   kiotLoaded=true;
@@ -2531,6 +2531,96 @@ function dhManualHtml(){
 }
 // DATA ĐÃ GỠ KHỎI BÁO CÁO SALE: đơn Pancake lỗi (không SĐT, không Mã KH, không tra được là ai).
 // Hiển thị ở DATA HUB chứ không ở tab Sale -- Sale chỉ báo, còn giữ/gỡ data là việc của người quản Data Hub.
+// ===== DATA HUB — PHÂN BỔ KÊNH BÁN (đọc kênh bán của ĐƠN ĐẶT HÀNG Kiot) =====
+// Chỉ để XEM/thống kê. Dữ liệu này CHƯA đẩy vào báo cáo Sale/MKT nào -- luồng nhập tay cũ giữ nguyên.
+// Người tạo: Monsieur Claude.
+const DH_KENH_NHOM=[
+  ['Shidai (Sỉ)', /shidai/i,                                                  '#7209b7'],
+  ['Online',      /facebook|tiktok|website|instagram|shopee|google|haravan/i, '#4361ee'],
+  ['Bán trực tiếp',/bán trực tiếp|ban truc tiep/i,                            '#2a9d8f'],
+];
+function dhKenhNhom(k){const t=String(k||'');for(const [ten,re,mau] of DH_KENH_NHOM)if(re.test(t))return{ten,mau};return{ten:'Khác',mau:'#8d99ae'};}
+function dhKenhKy(){const g=i=>(document.getElementById(i)||{}).value||'';return{from:g('dhKenhFrom'),to:g('dhKenhTo')};}
+function dhKenhLoc(){const el=document.getElementById('dhKenhBody');if(el)el.innerHTML=dhKenhBodyHtml();tblAlign(el);}
+function dhKenhShow(key){const d=(window._dhKenhLists||{})[key];if(d)dataModal(d);}
+function dhKenhHtml(){
+  return `<div class="tbl-card" style="margin-bottom:16px">
+    <div class="tbl-head"><div class="tbl-title">Phân bổ theo kênh bán</div>
+      <span style="margin-left:auto;font-size:11px;color:var(--muted)">nguồn: đơn đặt hàng Kiot · chỉ để xem, chưa đẩy vào báo cáo</span></div>
+    <div style="padding:12px 16px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <span style="font-size:11px;color:var(--muted)">Ngày:</span>
+      <input id="dhKenhFrom" type="date" onchange="dhKenhLoc()" style="height:30px;padding:3px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px">
+      <span style="font-size:11px;color:var(--muted)">→</span>
+      <input id="dhKenhTo" type="date" onchange="dhKenhLoc()" style="height:30px;padding:3px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px">
+    </div>
+    <div id="dhKenhBody">${dhKenhBodyHtml()}</div>
+  </div>`;
+}
+function dhKenhBodyHtml(){
+  const {from,to}=dhKenhKy();
+  const ds=(kiotOrders||[]).filter(o=>{const d=String(o.purchase_date||'').slice(0,10);
+    return (!from||d>=from)&&(!to||d<=to);});
+  const song=ds.filter(o=>o.status!==4);
+  window._dhKenhLists={};
+  const L=(k,d)=>{window._dhKenhLists[k]=d;return k;};
+  const cust=(typeof kiotCustByCode==='function')?kiotCustByCode():{};
+  const dsCot=['Ngày','Mã đơn','Khách hàng','Kênh bán','Nhân viên','Giá trị'];
+  const dsRow=o=>[dmy(String(o.purchase_date||'').slice(0,10)),o.code,(cust[o.customer_code]||{}).name||o.customer_name||'—',
+    o.sale_channel||'—',o.sold_by_name||'—',vnd(Number(o.total||0))];
+  const bang={};
+  song.forEach(o=>{const k=o.sale_channel||'(chưa có kênh)';
+    const b=bang[k]=bang[k]||{kenh:k,n:0,tien:0,khach:new Set(),dau:'',cuoi:'',don:[]};
+    const d=String(o.purchase_date||'').slice(0,10);
+    b.n++;b.tien+=Number(o.total||0);if(o.customer_code)b.khach.add(o.customer_code);
+    if(!b.dau||d<b.dau)b.dau=d;if(d>b.cuoi)b.cuoi=d;b.don.push(o);});
+  const rows=Object.values(bang).sort((a,b)=>b.tien-a.tien);
+  const tongTien=rows.reduce((s,r)=>s+r.tien,0)||1;
+  // KPI theo nhóm kênh
+  const nhom={};
+  song.forEach(o=>{const g=dhKenhNhom(o.sale_channel);
+    const b=nhom[g.ten]=nhom[g.ten]||{n:0,tien:0,mau:g.mau,don:[]};b.n++;b.tien+=Number(o.total||0);b.don.push(o);});
+  const thuTu=['Online','Shidai (Sỉ)','Bán trực tiếp','Khác'].filter(t=>nhom[t]);
+  const kpi=thuTu.map(t=>{const b=nhom[t];
+    const key=L('nhom-'+t,{title:'Đơn nhóm '+t,cols:dsCot,rows:b.don.sort((x,y)=>String(y.purchase_date).localeCompare(String(x.purchase_date))).map(dsRow)});
+    return `<div onclick="dhKenhShow('${key}')" style="cursor:pointer;border:1.5px solid var(--border);border-left:4px solid ${b.mau};border-radius:12px;padding:12px 14px;background:var(--surface)">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${t}</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text);margin-top:4px">${vnd(b.tien)}</div>
+      <div style="font-size:11.5px;color:var(--muted);font-weight:600">${num(b.n)} đơn · ${pct(b.tien/tongTien*100)} doanh số</div>
+    </div>`;}).join('');
+  // bảng theo kênh
+  const bangKenh=rows.map(r=>{const g=dhKenhNhom(r.kenh);
+    const key=L('kenh-'+r.kenh,{title:'Đơn kênh '+r.kenh,cols:dsCot,
+      rows:r.don.sort((x,y)=>String(y.purchase_date).localeCompare(String(x.purchase_date))).map(dsRow)});
+    return `<tr style="cursor:pointer" onclick="dhKenhShow('${key}')"><td class="name">${r.kenh}</td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:700;color:#fff;background:${g.mau}">${g.ten}</span></td>
+      <td>${num(r.n)}</td><td>${num(r.khach.size)}</td><td>${vnd(r.tien)}</td><td>${pct(r.tien/tongTien*100)}</td>
+      <td style="font-size:11px;color:var(--muted)">${dmy(r.dau)||'—'} → ${dmy(r.cuoi)||'—'}</td></tr>`;}).join('');
+  // bảng theo tháng x nhóm
+  const thang={};
+  song.forEach(o=>{const m=String(o.purchase_date||'').slice(0,7);if(!m)return;
+    const g=dhKenhNhom(o.sale_channel).ten;
+    const b=thang[m]=thang[m]||{};b[g]=b[g]||{n:0,tien:0};b[g].n++;b[g].tien+=Number(o.total||0);});
+  const thangKeys=Object.keys(thang).sort().reverse();
+  const bangThang=thangKeys.map(m=>{const b=thang[m];
+    const tong=thuTu.reduce((s,t)=>s+((b[t]||{}).tien||0),0);
+    return `<tr><td class="name">${m.slice(5)}/${m.slice(0,4)}</td>
+      ${thuTu.map(t=>`<td style="font-size:11.5px">${(b[t]?num(b[t].n)+' đơn · '+vnd(b[t].tien):'—')}</td>`).join('')}
+      <td>${vnd(tong)}</td></tr>`;}).join('');
+  const huy=ds.length-song.length;
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;padding:12px 16px 4px">${kpi}</div>
+    <div style="padding:6px 16px 12px;font-size:11.5px;color:var(--muted);font-weight:600">${num(song.length)} đơn tính doanh số${huy?' · '+num(huy)+' đơn huỷ (không tính)':''} · tổng ${vnd(tongTien)}</div>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>Kênh bán</th><th>Nhóm</th><th>Số đơn</th><th>Số khách</th><th>Doanh số</th><th>% DS</th><th>Khoảng thời gian</th></tr></thead>
+      <tbody>${bangKenh||'<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted)">Không có đơn trong khoảng này</td></tr>'}</tbody>
+    </table></div>
+    <div class="tbl-head" style="border-top:1px solid var(--border)"><div class="tbl-title">Theo tháng</div><div class="tbl-count">${num(thangKeys.length)}</div></div>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>Tháng</th>${thuTu.map(t=>`<th>${t}</th>`).join('')}<th>Tổng doanh số</th></tr></thead>
+      <tbody>${bangThang||'<tr><td colspan="'+(thuTu.length+2)+'" style="padding:20px;text-align:center;color:var(--muted)">—</td></tr>'}</tbody>
+    </table></div>`;
+}
+
 function dhExcludedHtml(){
   const ids=Object.keys(rptSlManual||{}).filter(k=>rptSlManual[k].excluded);
   const list=ids.map(id=>{const mn=rptSlManual[id]||{};const o=(dhOrders||[]).find(x=>rptSlLeadId(x)===id);
@@ -2610,6 +2700,7 @@ async function renderDataHub(){
   if(mode==='overview'&&!canRaw)mode=canLe?'manual':'manual-si';
   if(mode==='manual'&&!canLe)mode=canSi?'manual-si':(canRaw?'overview':'manual');
   if(mode==='manual-si'&&!canSi)mode=canLe?'manual':(canRaw?'overview':'manual-si');
+  if(mode==='kenh'&&!canRaw)mode=canLe?'manual':'manual-si';
   window._dhManualType=(mode==='manual-si'?'Sỉ':'Lẻ');
   const tabBtn=(m,label)=>`<button onclick="dhSetViewMode('${m}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode===m?'var(--accent)':'var(--surface)'};color:${mode===m?'#fff':'var(--text2)'}">${label}</button>`;
   const header=`
@@ -2619,9 +2710,11 @@ async function renderDataHub(){
         ${canRaw?tabBtn('overview','Tổng Quan'):''}
         ${canLe?tabBtn('manual','Nhập tay Lẻ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')!=='Sỉ').length+')'):''}
         ${canSi?tabBtn('manual-si','Nhập tay Sỉ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')==='Sỉ').length+')'):''}
+        ${canRaw?tabBtn('kenh','Kênh bán'):''}
       </span>
     </div>`;
   if(mode==='manual'||mode==='manual-si'){el.innerHTML=header+dhManualHtml();return;}
+  if(mode==='kenh'){el.innerHTML=header+dhKenhHtml();tblAlign(el);return;}
   el.innerHTML=header+pancakeOrdersHtml+dhExcludedHtml();
   dhRenderTable();
 }
