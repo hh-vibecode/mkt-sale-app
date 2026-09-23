@@ -36,3 +36,11 @@ jobs:
           KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/sync-kiot-orders.js
+
+      # Sau khi có đơn mới: tự tạo dòng Data nhập tay cho khách LẺ mua qua kênh ONLINE từ 1/6/2026
+      # mà app chưa có, để doanh thu về đúng báo cáo Sale/MKT mà Sale không phải gõ tay.
+      - name: Tự tạo data nhập tay từ đơn Kiot
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/tu-tao-nhap-tay.js
