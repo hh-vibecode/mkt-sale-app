@@ -54,6 +54,63 @@ async function fetchOrders(token) {
   return all;
 }
 
+// KÊNH BÁN: /orders (danh sách) KHÔNG trả về kênh bán, chỉ /orders/code/{code} mới có
+// SaleChannelId / SaleChannelName. Nên mỗi lần chạy chỉ gọi chi tiết cho những đơn CHƯA có kênh
+// trong Supabase (thường chỉ là đơn mới), không gọi lại cho cả 3.000 đơn cũ.
+const GIOI_HAN_CHI_TIET = 400;   // trần mỗi lượt chạy, tránh job kéo dài bất thường
+
+async function kenhDaCo() {
+  const m = {};
+  let offset = 0;
+  for (;;) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/kiot_orders?select=code,sale_channel,sale_channel_id&sale_channel=not.is.null`, {
+      headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, Range: `${offset}-${offset + 999}` } });
+    if (!res.ok) throw new Error('Đọc kênh bán đã có lỗi ' + res.status);
+    const rows = await res.json();
+    rows.forEach(r => { m[r.code] = { ten: r.sale_channel, id: r.sale_channel_id }; });
+    if (rows.length < 1000) return m;
+    offset += 1000;
+  }
+}
+
+// Danh mục kênh bán (id -> tên) để tra khi đơn chỉ trả về id.
+async function danhMucKenh(token) {
+  const res = await fetch('https://public.kiotapi.com/salechannel?pageSize=100', {
+    headers: { Retailer: KIOT_RETAILER, Authorization: 'Bearer ' + token } });
+  const m = { 0: 'Bán trực tiếp' };
+  if (res.ok) ((await res.json()).data || []).forEach(c => { m[c.id] = c.name; });
+  return m;
+}
+
+async function layKenh(token, code, dm) {
+  const res = await fetch(`https://public.kiotapi.com/orders/code/${encodeURIComponent(code)}`, {
+    headers: { Retailer: KIOT_RETAILER, Authorization: 'Bearer ' + token } });
+  if (!res.ok) return null;
+  const d = await res.json();
+  // KHÔNG có khoá SaleChannelId = đơn bán tại quầy, kênh id 0 "Bán trực tiếp" (đúng cách đã backfill 3.027 đơn).
+  const id = d.SaleChannelId ?? d.saleChannelId ?? 0;
+  return { ten: d.SaleChannelName || d.saleChannelName || dm[id] || null, id };
+}
+
+async function ganKenh(token, rows) {
+  const daCo = await kenhDaCo();
+  const thieu = rows.filter(r => !daCo[r.code]).slice(0, GIOI_HAN_CHI_TIET);
+  if (!thieu.length) { rows.forEach(r => { const k = daCo[r.code] || {}; r.sale_channel = k.ten || null; r.sale_channel_id = k.id ?? null; }); return; }
+  const dm = await danhMucKenh(token);
+  let lay = 0;
+  for (let i = 0; i < thieu.length; i += 5) {
+    const lo = thieu.slice(i, i + 5);
+    const kq = await Promise.all(lo.map(r => layKenh(token, r.code, dm).catch(() => null)));
+    lo.forEach((r, k) => { if (kq[k] && kq[k].ten) { daCo[r.code] = kq[k]; lay++; } });
+    await new Promise(r => setTimeout(r, 120));
+  }
+  // Mọi dòng đều phải có ĐỦ 2 khoá này, nếu không PostgREST báo "All object keys must match".
+  // Dòng cũ lấy lại đúng giá trị đang có trong DB -> upsert không xoá mất kênh đã biết.
+  rows.forEach(r => { const k = daCo[r.code] || {}; r.sale_channel = k.ten || null; r.sale_channel_id = k.id ?? null; });
+  const conThieu = rows.filter(r => !r.sale_channel).length;
+  console.log(`Kênh bán: gọi chi tiết ${thieu.length} đơn, lấy được ${lay}. Còn ${conThieu} đơn chưa có kênh.`);
+}
+
 function mapOrder(o) {
   return {
     id: o.id,
@@ -107,6 +164,7 @@ async function logSync(body, id) {
     const token = await getToken();
     const orders = await fetchOrders(token);
     const rows = orders.map(mapOrder).filter(r => r.purchase_date && r.purchase_date.slice(0, 10) >= MIN_PURCHASE_DATE);
+    await ganKenh(token, rows);
     await upsert(rows);
     const st = {};
     rows.forEach(r => { st[r.status_value || r.status] = (st[r.status_value || r.status] || 0) + 1; });
