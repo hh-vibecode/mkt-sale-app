@@ -3703,9 +3703,8 @@ function rptSlSalesList(){
     // Người bán khác bên Kiot VẪN được lưu là người phụ trách trên từng dòng dữ liệu, chỉ không đưa
     // vào dropdown cho khỏi rối -- dropdown là để chọn, không phải để liệt kê toàn bộ nhân sự.
     const src=[...(typeof dhOrders!=='undefined'?dhOrders:[]).map(o=>o.staff_name),
-               // Dòng nhập tay khách SỈ lấy tên người bán bên Kiot -> chỉ nhận nếu nằm trong RPT_SL_SALE_SI,
-               // không thì mọi nhân viên kho lại tràn vào dropdown.
-               ...(typeof dhManual!=='undefined'?dhManual:[]).filter(r=>(r.sale_type||'Lẻ')!=='Sỉ').map(r=>r.staff_name),
+               // Dòng NHẬP TAY: ai đang đứng tên phụ trách thì lấy đúng người đó, không lọc theo Sỉ/Lẻ.
+               ...(typeof dhManual!=='undefined'?dhManual:[]).map(r=>r.staff_name),
                ...RPT_SL_SALE_SI];
     out=[...new Set(src.map(rptSlSaleName).filter(rptSlSaleIsHuman).filter(x=>!RPT_SL_SALE_BO.includes(x)))].sort((a,b)=>a.localeCompare(b,'vi'));
   }catch(e){out=[];}
