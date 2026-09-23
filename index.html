@@ -4272,6 +4272,39 @@ function rptSlPhieuTreo(o){
   if(rptSlKhachCoCoc(o.customer_code))return false; // case 2: khách có cọc (nợ cần thu âm)
   return true;                                    // case 3: phiếu báo giá, không tính
 }
+// SUY AD ID THEO SỐ ĐIỆN THOẠI (thêm 23/9/2026 theo yêu cầu).
+// Nhiều lead không có Ad ID: khách nhập tay, khách sheet Sỉ, hoặc đơn Pancake không gắn ad.
+// Nguyên tắc: so 9 số cuối SĐT của khách (gồm cả số ghi trong sổ Kiot) với SĐT trên đơn Pancake
+// CÓ ad_id -> lấy ad của đơn GẦN NGÀY TẠO LEAD NHẤT. Ad suy ra được đánh dấu riêng (adSuyRa=true)
+// để bảng/popup hiện rõ "suy từ SĐT", không lẫn với ad Pancake ghi thẳng trên đơn.
+// GIỚI HẠN THẬT: Pancake chỉ lưu SĐT ở ~19% số đơn, nên cách này chỉ vá được phần nhỏ.
+function rptSlAdTheoSdt(){
+  if(window._rptSlAdSdt&&window._rptSlAdSdtNguon===(dhOrders||[]).length)return window._rptSlAdSdt;
+  const m={};
+  (dhOrders||[]).forEach(o=>{
+    if(!o.ad_id)return;
+    const k=rptSlLast9(o.phone||'');
+    if(!k)return;
+    (m[k]=m[k]||[]).push({ad:o.ad_id,ngay:String(o.order_date||'').slice(0,10)});
+  });
+  window._rptSlAdSdtNguon=(dhOrders||[]).length;
+  return window._rptSlAdSdt=m;
+}
+function rptSlSuyAdId(rows){
+  const m=rptSlAdTheoSdt();
+  rows.forEach(r=>{
+    if(r.adId||((r.sh||{}).ad_id))return;
+    const sos=[...new Set((r.phones||[]).map(p=>rptSlLast9(p.so)).filter(Boolean))];
+    let hit=[];
+    sos.forEach(k=>{(m[k]||[]).forEach(x=>hit.push(x));});
+    if(!hit.length)return;
+    const moc=String(r.created||'').slice(0,10);
+    if(moc)hit.sort((a,b)=>Math.abs(new Date(a.ngay)-new Date(moc))-Math.abs(new Date(b.ngay)-new Date(moc)));
+    r.adId=hit[0].ad;
+    r.adSuyRa=true;
+    r.adSuyRaSdt=sos.join(', ');
+  });
+}
 function rptSlBuildMasterRaw(){
   const ordByCode=kiotOrdByCode();
   const byPhone=kiotRetailByPhone(),byCode=kiotCustByCode();
@@ -4413,6 +4446,7 @@ function rptSlBuildMasterRaw(){
     rest.forEach(r=>{r._merged=true;});
   });
   rows=rows.filter(r=>!r._merged);
+  rptSlSuyAdId(rows);
   // Khách bị GỠ không vào bất kỳ tab nào (Tổng Quan / Master / CRM / Nhập Liệu) -- chỉ còn ở mục
   // "Đã gỡ khỏi báo cáo" cuối tab Nhập Liệu để khôi phục.
   rows=rows.filter(r=>!(rptSlManual[r.leadId]||{}).excluded);
@@ -4714,7 +4748,8 @@ function rptSlShowCustomer(key){
     ]:[]),
     fld('Hội thoại',rptSlChatUrl(r)?'<a href="'+rptSlChatUrl(r)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat Pancake</a>':''),
     fld('Nguồn gốc (Pancake)',esc(r.source)),
-    fld('Ad ID',(()=>{const id=r.adId||(r.sh||{}).ad_id;return id?adIdNote(id):'';})()),
+    fld('Ad ID',(()=>{const id=r.adId||(r.sh||{}).ad_id;if(!id)return'';
+      return adIdNote(id)+(r.adSuyRa?' <span style="font-size:10.5px;color:var(--yellow);font-weight:700" title="Không có Ad ID sẵn — app suy ra bằng cách so SĐT '+esc(r.adSuyRaSdt||'')+' với đơn Pancake có gắn ads">· suy từ SĐT</span>':'');})()),
     fld('Ngày chưa liên hệ',r.daysIdle===null?'':num(r.daysIdle)+' ngày',r.isChot&&r.daysIdle>=10?'var(--red)':''),
     fld('Địa chỉ',esc(r.diaChi)),
     // Phần CHĂM SÓC -- trước đây modal chỉ có thông tin đơn/khách, thiếu hẳn thứ Sale ghi hằng ngày.
