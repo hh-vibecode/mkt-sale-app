@@ -2140,7 +2140,7 @@ async function kiotLoadInvoices(force){
     sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name,debt'),
   ]);
   kiotLoaded=true;
-  window._kiotOrdByCode=null;window._kiotCNKhach=null;window._kiotRetailByPhone=null;
+  window._kiotOrdByCode=null;window._kiotCNKhach=null;window._kiotRetailByPhone=null;window._rptSlHdKhach=null;
   if(typeof rptSlXoaCache==="function")rptSlXoaCache();
 }
 // Nối Pancake <-> Kiot theo ĐÚNG thứ tự của script cũ (syncLeadSalesOnline): 9 SỐ CUỐI SĐT trước, hết cách
@@ -2236,7 +2236,9 @@ function kiotOrdByCode(moc){
   if(kho[m0])return kho[m0];
   const sau=o=>!m0||String(o.purchase_date||'').slice(0,10)>=m0;
   const m={};
-  kiotOrders.forEach(o=>{if(o.customer_code&&o.status!==4&&sau(o))(m[o.customer_code]=m[o.customer_code]||[]).push(o);});
+  kiotOrders.forEach(o=>{if(!o.customer_code||o.status===4||!sau(o))return;
+    // Không loại khỏi danh sách -- chỉ đánh dấu, để popup chi tiết vẫn hiện "[không tính]" cho minh bạch.
+    (m[o.customer_code]=m[o.customer_code]||[]).push(rptSlDonKhongTinh(o)?Object.assign({},o,{khongTinh:true}):o);});
   kiotInvoices.forEach(i=>{if(i.customer_code&&i.status===1&&!i.order_code&&sau(i))
     (m[i.customer_code]=m[i.customer_code]||[]).push(Object.assign({},i,{direct:true,status_value:'HĐ bán thẳng'}));});
   Object.values(m).forEach(a=>a.sort((x,y)=>String(x.purchase_date).localeCompare(String(y.purchase_date))));
@@ -4460,6 +4462,33 @@ function rptSlBuildMaster(){
 //  2. Phiếu ghi 0 đồng đã trả (sale điền sai quy trình) NHƯNG khách có "Nợ cần thu" ÂM bên Kiot
 //     -> tức khách đã cọc, tiền nằm ở tài khoản khách chứ không gắn vào phiếu -> vẫn tính.
 //  3. Không có dấu vết tiền nào -> đúng là phiếu báo giá -> KHÔNG tính doanh thu.
+// ── DẤU VẾT TIỀN THẬT (luật anh Hải chốt 23/9/2026) ───────────────────────────────────────────
+// MỌI dữ liệu liên quan doanh thu, trước khi vào app/báo cáo, phải có ít nhất MỘT bằng chứng tiền:
+//   (1) đã trả tiền trên đơn · (2) khách có hoá đơn đã hoàn thành · (3) khách có đặt cọc (nợ cần thu âm)
+// Trạng thái "Hoàn thành" do Sale tự đặt KHÔNG phải bằng chứng.
+//
+// CHỈ ÁP TỪ 1/6/2026 -- vì app chỉ lưu hoá đơn từ mốc đó; đơn cũ hơn mà "không thấy hoá đơn" là do
+// mình thiếu dữ liệu, không phải khách chưa trả. Cắt doanh thu cũ bằng dữ liệu thiếu là sai (bài học 22/9).
+const RPT_MOC_HOADON='2026-06-01';
+function rptSlHoaDonTheoKhach(){
+  if(window._rptSlHdKhach&&window._rptSlHdNguon===(kiotInvoices||[]).length)return window._rptSlHdKhach;
+  const m={};
+  (kiotInvoices||[]).forEach(i=>{if(i.customer_code&&i.status===1)m[i.customer_code]=(m[i.customer_code]||0)+1;});
+  window._rptSlHdNguon=(kiotInvoices||[]).length;
+  return window._rptSlHdKhach=m;
+}
+function rptSlCoDauVetTien(o){
+  if(Number(o.total_payment||0)>0)return true;
+  if((rptSlHoaDonTheoKhach()[o.customer_code]||0)>0)return true;
+  return rptSlKhachCoCoc(o.customer_code);
+}
+// Đơn KHÔNG được tính doanh thu: huỷ · phiếu báo giá · (từ 1/6/2026) không có dấu vết tiền nào.
+function rptSlDonKhongTinh(o){
+  if(!o||o.status===4)return true;
+  if(rptSlPhieuTreo(o))return true;
+  if(String(o.purchase_date||'').slice(0,10)>=RPT_MOC_HOADON&&!rptSlCoDauVetTien(o))return true;
+  return false;
+}
 function rptSlKhachCoCoc(code){
   const c=code&&kiotCustByCode()[code];
   return !!(c&&Number(c.debt||0)<0);
@@ -4716,7 +4745,7 @@ function rptSlBuildMasterRaw(){
     const all=r.kords||[];
     if(!all.length){r.repeatOrds=[];r.staleOrds=[];r.repeatRevenue=0;return;}
     if(khongCat(r)){
-      const treo2=all.filter(rptSlPhieuTreo);   // phiếu tạm treo quá 90 ngày: không tính
+      const treo2=all.filter(o=>o.khongTinh||rptSlPhieuTreo(o));   // phiếu báo giá / không có dấu vết tiền: không tính
       const dung=all.filter(o=>!treo2.includes(o));
       r.kords=dung;r.staleOrds=treo2;r.repeatOrds=[];r.repeatRevenue=0;
       r.revenue=dung.reduce((x,o)=>x+Number(o.total||0),0);
@@ -4739,13 +4768,14 @@ function rptSlBuildMasterRaw(){
     // Phiếu tạm là đơn chưa chốt thật bên Kiot -- cũ để trong staleOrds, hiện "[Phiếu treo - không tính]".
     // Ghi chú cũ: PHIẾU TREO: trong hạn đã có đơn Hoàn thành thì bỏ đơn Phiếu tạm (status 1) cùng hạn -- đó là phiếu
     // cũ Sale quên huỷ khi khách đổi hàng (vd Kiều Trang DH002322 225,5tr bị thay bởi DH002343 221,8tr).
-    const treo=first.filter(rptSlPhieuTreo);
+    const treo=first.filter(o=>o.khongTinh||rptSlPhieuTreo(o));
     first=first.filter(o=>!treo.includes(o));
     r.kords=first;r.staleOrds=treo;
     r.repeatOrds=all.filter(o=>!trongHan(o));
     r.revenue=r.kords.reduce((s,o)=>s+Number(o.total||0),0);
     r.repeatRevenue=r.repeatOrds.reduce((s,o)=>s+Number(o.total||0),0);
-    r.lastKiotDate=String(r.kords[r.kords.length-1].purchase_date).slice(0,10);
+    // Sau khi chặn đơn không có dấu vết tiền, một khách có thể còn 0 đơn tính -> phải chống lỗi ở đây.
+    r.lastKiotDate=r.kords.length?String(r.kords[r.kords.length-1].purchase_date).slice(0,10):'';
   });
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
 }
@@ -4961,7 +4991,7 @@ function rptSlShowCustomer(key){
     <div style="font-size:12.5px;font-weight:600;margin-top:4px;white-space:pre-wrap;line-height:1.5">${r.content?esc(r.content):'<span style="color:var(--muted);font-weight:600">—</span>'}</div></div>`;
   const tl=[
     ...r.orders.map(o=>({d:o.order_date,t:'Đơn Pancake #'+esc(o.system_id),c:esc(o.internal_note||o.source||''),s:esc(o.customer_tags||''),v:''})),
-    ...[...r.kords,...(r.repeatOrds||[]).map(o=>Object.assign({},o,{repeat:true})),...(r.staleOrds||[]).map(o=>Object.assign({},o,{stale:true}))].map(i=>({d:(i.purchase_date||'').slice(0,10),t:(i.repeat?'<span style="color:var(--muted)">[Mua lại]</span> ':i.stale?'<span style="color:var(--red)">[Phiếu báo giá - không tính]</span> ':'')+(i.direct?'Hoá đơn ':'Đặt hàng ')+esc(i.code)+' <span style="font-weight:600;color:var(--muted)">('+esc(i.status_value||'')+')</span>',c:esc((i.items||[]).map(x=>x.name+' x'+x.qty).join(', ')),s:esc((i.sold_by_name||'')+' · '+(i.branch_name||'')),v:vnd(i.total)})),
+    ...[...r.kords,...(r.repeatOrds||[]).map(o=>Object.assign({},o,{repeat:true})),...(r.staleOrds||[]).map(o=>Object.assign({},o,{stale:true}))].map(i=>({d:(i.purchase_date||'').slice(0,10),t:(i.repeat?'<span style="color:var(--muted)">[Mua lại]</span> ':i.stale?'<span style="color:var(--red)">['+(i.khongTinh&&!rptSlPhieuTreo(i)?'Chưa có dấu vết tiền':'Phiếu báo giá')+' - không tính]</span> ':'')+(i.direct?'Hoá đơn ':'Đặt hàng ')+esc(i.code)+' <span style="font-weight:600;color:var(--muted)">('+esc(i.status_value||'')+')</span>',c:esc((i.items||[]).map(x=>x.name+' x'+x.qty).join(', ')),s:esc((i.sold_by_name||'')+' · '+(i.branch_name||'')),v:vnd(i.total)})),
   ].sort((a,b)=>String(b.d).localeCompare(String(a.d)))
    .map(e=>`<tr style="border-bottom:1px solid var(--border)">
     <td style="padding:7px 12px;font-size:12px;color:var(--text2);white-space:nowrap">${dmy(e.d)||'—'}</td>
