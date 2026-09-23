@@ -3178,7 +3178,7 @@ function siCrmHtml(){
       +'<td style="'+oNho+'">'+siEsc(r.sales||'')+'</td>'
       +'<td style="'+oNho+'">'+siEsc(r.hinh_thuc||'')+'</td>'
       +'<td style="'+oNho+';max-width:420px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+siEsc(r.noi_dung||'')+'">'+siEsc(r.noi_dung||'—')+'</div></td>'
-      +'<td style="'+oNho+'">'+siEsc(r.phan_loai||'')+'</td>'
+      +'<td>'+rptSiPhanLoaiHtml(r.phan_loai,siEsc)+'</td>'
       +'<td class="num">'+(r.gia_tri_du_kien?vnd(r.gia_tri_du_kien):'—')+'</td>'
       +'<td style="'+oNho+';max-width:200px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+siEsc(r.viec_tiep||'')+'">'+siEsc(r.viec_tiep||'—')+'</div></td>'
       +'<td style="'+oNho+'">'+(r.tinh_trang?('<span style="font-weight:700;color:'+(/xong/i.test(r.tinh_trang)?'var(--green)':'var(--yellow)')+'">'+siEsc(r.tinh_trang)+'</span>'):'—')+'</td>'
@@ -4489,6 +4489,26 @@ function rptSlBuildMasterRaw(){
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
 }
 // 1 dòng Master SỈ -- khung hồ sơ đại lý, khác hẳn Lẻ.
+// Màu cho "Phân loại KH" của Sỉ -- 6 giá trị Sale đang dùng thật (đếm trên dữ liệu 23/9/2026).
+// Nhìn màu là biết ngay khách nào còn sống, khách nào nguội, đỡ phải đọc từng dòng chữ.
+const RPT_SI_PHANLOAI=[
+  // THỨ TỰ QUAN TRỌNG: "Không tiềm năng" phải đứng TRƯỚC "Tiềm năng", nếu không nó khớp nhầm thành xanh.
+  [/không tiềm năng|khong tiem nang/i,'#8d99ae'], // xám -- loại
+  [/đã ra đơn|da ra don/i,          '#16a34a'],   // xanh lá  -- đã mua
+  [/tiềm năng|tiem nang/i,          '#0ea5e9'],   // xanh nước -- còn cơ hội
+  [/chăm sóc dài hạn|cham soc/i,    '#4361ee'],   // xanh dương -- đang nuôi
+  [/chưa liên hệ|chua lien he/i,    '#f59e0b'],   // vàng -- chưa gọi được
+  [/mất kết nối|mat ket noi/i,      '#e11d48'],   // đỏ -- mất liên lạc
+];
+function rptSiPhanLoaiMau(v){const t=String(v||'');for(const[re,m]of RPT_SI_PHANLOAI)if(re.test(t))return m;return '';}
+function rptSiPhanLoaiHtml(v,esc){
+  const t=String(v||'').trim();
+  if(!t)return '<span style="color:var(--muted)">—</span>';
+  const mau=rptSiPhanLoaiMau(t)||'var(--text2)';
+  const chu=(esc||(x=>x))(t);
+  return '<span style="display:inline-block;white-space:nowrap;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:800;'
+    +'color:'+mau+';background:color-mix(in srgb,'+mau+' 14%,transparent);border:1px solid color-mix(in srgb,'+mau+' 38%,transparent)">'+chu+'</span>';
+}
 function rptSlMasterRowSi(r){
   const e=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const nho='font-size:11px';
@@ -4516,7 +4536,7 @@ function rptSlMasterRowSi(r){
     +'<td>'+rptSlStaffHtml(r)+'</td>'
     +'<td style="white-space:nowrap">'+rptSlSdtHtml(r)+'</td>'
     +'<td class="name">'+rptSlTenKhach(r)+'</td>'
-    +'<td>'+oNho(r.siPhanLoai)+'</td>'
+    +'<td>'+rptSiPhanLoaiHtml(r.siPhanLoai,e)+'</td>'
     +'<td style="white-space:nowrap">'+(dmy(csCuoi)||'—')+'</td>'
     +'<td class="num"><span style="font-weight:700;color:'+mauNghi+'">'+(nghi2==null?'—':num(nghi2))+'</span></td>'
     +'<td style="'+nho+';max-width:280px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(ndCuoi)+'">'+e(ndCuoi||'—')+'</div></td>'
@@ -4654,7 +4674,7 @@ function rptSlShowCustomer(key){
       fld('Diện tích showroom',esc(r.siDienTich)),
       fld('Khả năng tài chính',esc(r.siTaiChinh),/xấu/i.test(r.siTaiChinh||'')?'var(--red)':'var(--green)'),
       fld('Nhóm khách hàng',esc(r.siNhomKH)),
-      fld('Phân loại KH',esc(r.siPhanLoai)),
+      fld('Phân loại KH',esc(r.siPhanLoai),rptSiPhanLoaiMau(r.siPhanLoai)),
       fld('Giấy phép kinh doanh',esc(r.siGiayPhep)),
       fld('Fanpage / website',r.siFanpage?'<a href="'+esc(r.siFanpage)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở trang ↗</a>':''),
       // Đơn đầu tiên: đã gỡ khỏi bảng Master, xem ở đây.
