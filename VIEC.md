@@ -14,13 +14,16 @@
 | 2 | **Đẩy data kênh bán sang Data nhập tay** — đã rà ra **18 khách đủ điều kiện** (Lẻ · Online · từ T6 · chưa có trong app), 44,79tr. File: `scratchpad/data-du-dieu-kien.csv` | có tạo 18 dòng nhập tay không |
 | 3 | **Tăng tỉ lệ có SĐT của Pancake** để nối Ad ID theo SĐT ăn thua hơn (hiện chỉ 19% đơn có SĐT nên chỉ vá được 2 lead). Cách: kéo SĐT từ API hội thoại Pancake | cho thử vài trăm hội thoại đo tỉ lệ không |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
-| 5 | **Tình trạng hỗ trợ (CRM Sỉ)** — 996/1.000 lượt đều là "Đã xong", cột gần như vô nghĩa | có bổ sung lựa chọn khác không (Chờ kế toán, Chờ giao hàng, Cần giá sỉ…) |
+| 5 | **Chi phí MKT luôn trễ 1 ngày** — job Meta chỉ kéo ngày HÔM QUA (`TARGET_DATE = hôm nay - 1`), nên báo cáo MKT hôm nay không có chi phí hôm nay. Meta có trả số trong ngày (chưa chốt, có thể nhích) | có kéo thêm ngày hôm nay không |
+| 6 | **Tình trạng hỗ trợ (CRM Sỉ)** — 996/1.000 lượt đều là "Đã xong", cột gần như vô nghĩa | có bổ sung lựa chọn khác không (Chờ kế toán, Chờ giao hàng, Cần giá sỉ…) |
 
 ## 2. CLAUDE ĐANG NỢ (tự làm, không cần hỏi)
 
 | # | Việc | Ghi chú |
 |---|---|---|
-| 1 | **Soi 47 đơn đặt hàng lệch** — Kiot API báo 3.076 đơn, app lưu 3.029. Chưa rõ là đơn mới hay job bỏ sót | đã hứa với anh 23/9 |
+| — | (trống) | |
+
+**Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
 
