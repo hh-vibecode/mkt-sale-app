@@ -427,18 +427,23 @@ const TEMP_VISIBLE_PAGES=null;
 // CHỈ vị trí "Supreme Leader" mới mặc định toàn quyền. Admin vẫn phải tick từng trang trong Phân quyền
 // như mọi tài khoản khác -- có quyền quản tài khoản không có nghĩa là được xem hết số liệu.
 const PERM_ALL='*';
-function dashIsSupreme(a){
+// PHÂN BIỆT 2 KHÁI NIỆM (anh Hải chốt 23/9/2026):
+//   dashToanQuyen()  = Supreme HOẶC ADMIN -> mở HẾT DỮ LIỆU và HẾT TRANG, không cần tick quyền gì.
+//   dashIsSupreme()  = CHỈ Supreme -> dành cho những thứ riêng của người làm app (lịch chạy job,
+//                      xem như tài khoản khác...). Admin KHÔNG được thấy nhóm này.
+function dashToanQuyen(a){
   if(a===undefined){try{a=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){a=[];}}
   if(Array.isArray(a)&&a.indexOf(PERM_ALL)>=0)return true;
-  return (localStorage.getItem('dashPosition')||'')==='supreme';
+  return dashViTriXemHet(localStorage.getItem('dashPosition')||'');
 }
+function dashIsSupreme(){return (localStorage.getItem('dashPosition')||'')==='supreme';}
 // Quyền hiện tại của tài khoản đang đăng nhập; null = toàn quyền.
 function dashCan(page){
   // Đang "xem như" ai thì quyền vào trang lấy nguyên của người đó -- để thấy đúng những gì họ thấy.
   const xem=dashViewAs();
   if(xem&&dashCanViewAs()){
     const p=xem.perms||[];
-    return !!xem.supreme||p.indexOf(PERM_ALL)>=0||p.indexOf(page)>=0;
+    return !!xem.supreme||dashViTriXemHet(xem.vitri||'')||p.indexOf(PERM_ALL)>=0||p.indexOf(page)>=0;
   }
   let a=window._dashAllowed;
   if(a===undefined){
@@ -446,7 +451,7 @@ function dashCan(page){
     if(role==='account'){try{a=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){a=[];}}
     else a=ROLE_PAGES[role]!==undefined?ROLE_PAGES[role]:null;
   }
-  if(dashIsSupreme(a))return true;
+  if(dashToanQuyen(a))return true;
   return !a||a.indexOf(page)>=0;
 }
 // PHẠM VI DỮ LIỆU của tài khoản: xem data của những Sale nào, và loại Sỉ hay Lẻ.
@@ -467,13 +472,23 @@ function dashScope(key){
 // Lưu ở localStorage nên giữ nguyên khi chuyển trang và cả khi F5 -- chỉ hết khi tự chọn lại "Chính tôi"
 // hoặc đăng xuất. Thanh trên luôn hiện rõ đang xem như ai để không quên mình đang ở tài khoản người khác.
 function dashViewAs(){
-  try{const v=JSON.parse(localStorage.getItem('dashViewAs')||'null');return v&&v.id?v:null;}catch(e){return null;}
+  try{
+    const v=JSON.parse(localStorage.getItem('dashViewAs')||'null');
+    if(!v||!v.id)return null;
+    // Bản ghi lưu trước 23/9/2026 chưa có 'vitri' -> tra lại từ danh sách tài khoản đã nạp,
+    // để người đang xem không phải chọn lại mới đúng quyền.
+    if(v.vitri===undefined){
+      const a=(window._rptSlAccs||[]).find(x=>x.user_id===v.id);
+      if(a){v.vitri=a.position_title||'';try{localStorage.setItem('dashViewAs',JSON.stringify(v));}catch(e){}}
+    }
+    return v;
+  }catch(e){return null;}
 }
 // Ai được dùng "Xem như tài khoản": xét QUYỀN GỐC của người đang đăng nhập, KHÔNG gọi dashCan()
 // -- dashCan lại hỏi ngược dashCanViewAs nên gọi vòng là treo trình duyệt (đã dính 23/9/2026 với
 // tài khoản không phải Supreme: mở báo cáo là "Maximum call stack size exceeded").
 function dashCanViewAs(){
-  if(dashIsSupreme())return true;
+  if(dashIsSupreme())return true;   // CHỈ Supreme mặc nhiên có; admin phải có quyền 'settings'
   const role=localStorage.getItem('dashRole')||'admin';
   let a;
   if(role==='account'){try{a=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){a=[];}}
@@ -522,11 +537,11 @@ function applyRole(){
   if(role==='account'){try{allowed=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){allowed=[];}}
   else allowed=ROLE_PAGES[role]!==undefined?ROLE_PAGES[role]:null;
   if(TEMP_VISIBLE_PAGES)allowed=TEMP_VISIBLE_PAGES;
-  if(dashIsSupreme(allowed))allowed=null; // toàn quyền -> không ẩn trang nào
+  if(dashToanQuyen(allowed))allowed=null; // toàn quyền -> không ẩn trang nào
   // Đang xem như tài khoản khác -> menu bên trái cũng phải đúng menu của họ.
   const xemNhu=dashViewAs();
   if(xemNhu&&dashCanViewAs())
-    allowed=(xemNhu.supreme||(xemNhu.perms||[]).indexOf(PERM_ALL)>=0)?null:(xemNhu.perms||[]).slice();
+    allowed=(xemNhu.supreme||dashViTriXemHet(xemNhu.vitri||'')||(xemNhu.perms||[]).indexOf(PERM_ALL)>=0)?null:(xemNhu.perms||[]).slice();
   window._dashAllowed=allowed;
   dashViewAsRender();
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el=>{
