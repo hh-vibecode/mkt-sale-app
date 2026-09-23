@@ -4685,7 +4685,13 @@ function rptSlBuildMasterRaw(){
   dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))).forEach(o=>{(byKey[rptSlCustKey(o)]=byKey[rptSlCustKey(o)]||[]).push(o);});
   // Chỉ giữ khách ĐỦ ĐIỀU KIỆN (xem dhIsQualified). Gom theo khách TRƯỚC rồi mới lọc, để khách có
   // 3 đơn mà chỉ 1 đơn chốt vẫn giữ nguyên lịch sử cả 3 đơn.
-  Object.keys(byKey).forEach(k=>{if(!byKey[k].some(dhIsQualified))delete byKey[k];});
+  // RIÊNG BÁO CÁO SỈ (anh Hải chốt 23/9/2026): khách gắn thẻ KH SỈ mà CÓ SỐ ĐIỆN THOẠI thì kéo về
+  // Master hết, không đòi phải có thêm thẻ TIỀM NĂNG / CHỐT ĐƠN. Lý do: Sale Sỉ chăm qua điện thoại
+  // và Zalo, thẻ trên Pancake thường không được cập nhật -- bắt đủ thẻ là mất gần hết khách.
+  const coSdt=o=>String(o.phone||'').replace(/\D/g,'').length>=9;
+  const duSi=o=>!dhHuy(o)&&coSdt(o);
+  const duDK=rptSlType()==='Sỉ'?(o=>dhIsQualified(o)||duSi(o)):dhIsQualified;
+  Object.keys(byKey).forEach(k=>{if(!byKey[k].some(duDK))delete byKey[k];});
   let rows=Object.entries(byKey).map(([key,orders])=>{
     orders.sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
     const last=orders[orders.length-1];
