@@ -4988,12 +4988,48 @@ function rptSiPhanLoaiSelect(r){
     +RPT_SI_PHANLOAI_DS.map(x=>'<option value="'+e(x)+'"'+(v===x?' selected':'')+'>'+e(x)+'</option>').join('')
     +'</select></td>';
 }
+// Phân loại KH -> THẺ tương ứng trên Pancake (anh Hải chốt 23/9/2026).
+// Khách Sỉ kéo về Master chỉ nhờ có SĐT thường chưa có thẻ gì; Sale chăm xong phân loại trong app thì
+// app gắn thẻ ngược lên Pancake luôn, khỏi phải vào Pancake làm tay lần nữa.
+//   Đã ra đơn                      -> CHỐT ĐƠN
+//   Tiềm năng, chưa ra đơn / Chăm sóc dài hạn -> TIỀM NĂNG
+//   3 loại còn lại (Mất kết nối, Chưa liên hệ được, Không tiềm năng) -> KHÔNG đụng vào thẻ.
+function rptSiTheTuPhanLoai(v){
+  const t=String(v||'');
+  if(/ra đơn/i.test(t)&&!/chưa ra đơn/i.test(t))return 'CHỐT ĐƠN';
+  if(/tiềm năng, chưa ra đơn|chăm sóc dài hạn/i.test(t))return 'TIỀM NĂNG';
+  return '';
+}
+async function rptSiGanThePancake(r,the){
+  const o=(r.orders||[]).slice(-1)[0];   // gắn trên đơn Pancake mới nhất của khách
+  if(!o||!the)return null;
+  const res=await fetch(`${SUPABASE_URL}/functions/v1/pancake-note`,{method:'POST',
+    headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({shop_id:o.shop_id,order_id:o.order_id,the,who:logWho()})});
+  const d=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(d.error||('lỗi '+res.status));
+  if(d.tags)logAct('U','datahub_orders','#'+o.system_id,r.name,'Thẻ khách',(d.tags_cu||[]).join(', '),d.tags.join(', '));
+  return d;
+}
 async function rptSiSetPhanLoai(leadId,giaTri,el){
   const cu=el?el.style.borderColor:'';
   if(el){el.disabled=true;el.style.opacity='.6';}
   try{
     await rptSlSaveManual(leadId,{si_phan_loai:giaTri||null});
     logAct('U','saleretail_manual',leadId,null,'Phân loại KH',null,giaTri||'(bỏ trống)');
+    // Gắn thẻ ngược lên Pancake -- lỗi ở bước này KHÔNG làm hỏng việc lưu phân loại.
+    const the=rptSiTheTuPhanLoai(giaTri);
+    const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
+    if(the==='CHỐT ĐƠN'&&r&&!r.isChot){
+      // Chốt đơn bên Sỉ đi ĐÚNG luồng của Lẻ: hỏi Mã KH -> ghi trong app trước -> đẩy ngược Pancake
+      // (đổi thẻ TIỀM NĂNG sang CHỐT ĐƠN + chuyển trạng thái đơn sang Đã gửi hàng).
+      if(el){el.disabled=false;el.style.opacity='1';}
+      return rptSlChotFlow(leadId,el);
+    }
+    if(the&&r&&(r.orders||[]).length){
+      try{await rptSiGanThePancake(r,the);}
+      catch(e){rptBaoLoi('Gắn thẻ '+the+' trên Pancake',e);}
+    }
     window._kiotOrdByCode=null;rptSlXoaCache();rptSlRender();
   }catch(e){
     if(el){el.disabled=false;el.style.opacity='1';el.style.borderColor=cu;}

@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Chỉ nhận POST' }, 405);
   if (!PC) return json({ error: 'Chưa cấu hình PANCAKE_SESSION_TOKEN' }, 500);
 
-  const { shop_id, order_id, code, status, chot, who } = await req.json().catch(() => ({}));
+  const { shop_id, order_id, code, status, chot, the, who } = await req.json().catch(() => ({}));
   if (!shop_id || !order_id) return json({ error: 'Thiếu shop_id / order_id' }, 400);
 
   const base = `https://pos.pages.fm/api/v1/shops/${shop_id}/orders/${order_id}`;
@@ -73,19 +73,28 @@ Deno.serve(async (req) => {
     }
   }
 
-  // 3) ĐỔI THẺ KHÁCH sang CHỐT ĐƠN (khi app gửi chot=true và khách còn thẻ tiềm năng).
-  //    Thẻ nằm ở KHÁCH chứ không ở đơn: PUT /shops/{shop}/customers/{customer_id} body {customer:{tags:[...]}}
+  // 3) GẮN THẺ KHÁCH trên Pancake. Thẻ nằm ở KHÁCH chứ không ở đơn:
+  //    PUT /shops/{shop}/customers/{customer_id} body {customer:{tags:[...]}}
+  //    - chot=true            -> bỏ TIỀM NĂNG, gắn CHỐT ĐƠN (giữ nguyên hành vi cũ)
+  //    - the='TIỀM NĂNG'      -> gắn thêm TIỀM NĂNG (23/9/2026: Sale Sỉ phân loại khách trong app thì
+  //                              app gắn thẻ ngược lên Pancake, khỏi phải làm tay 2 nơi)
+  //    - the='CHỐT ĐƠN'       -> như chot=true
   let tagMoi: string[] | null = null;
-  if (chot === true) {
+  const theMuon = chot === true ? 'CHỐT ĐƠN' : (typeof the === 'string' && the.trim() ? the.trim().toUpperCase() : '');
+  if (theMuon === 'CHỐT ĐƠN' || theMuon === 'TIỀM NĂNG') {
     const d2 = await doc();
     const cid = d2?.customer?.id;
     const cu: string[] = d2?.customer?.shop_customer?.tags ?? [];
+    const daCo = (t: string) => cu.some((x) => x.toUpperCase().includes(t));
     if (!cid) {
       ket.tag_skipped = 'Không đọc được khách của đơn';
-    } else if (cu.some((t) => /CHỐT ĐƠN/i.test(t))) {
-      ket.tag_skipped = 'Khách đã có thẻ CHỐT ĐƠN';
+    } else if (daCo(theMuon) || (theMuon === 'TIỀM NĂNG' && daCo('CHỐT ĐƠN'))) {
+      // đã có đúng thẻ đó, hoặc xin gắn TIỀM NĂNG cho khách đã CHỐT ĐƠN (bậc cao hơn) -> bỏ qua
+      ket.tag_skipped = 'Khách đã có thẻ ' + (daCo(theMuon) ? theMuon : 'CHỐT ĐƠN');
     } else {
-      const moi = [...cu.filter((t) => !/TIỀM NĂNG/i.test(t)), 'CHỐT ĐƠN'];
+      const moi = theMuon === 'CHỐT ĐƠN'
+        ? [...cu.filter((t) => !/TIỀM NĂNG/i.test(t)), 'CHỐT ĐƠN']
+        : [...cu, 'TIỀM NĂNG'];
       const r = await fetch(`https://pos.pages.fm/api/v1/shops/${shop_id}/customers/${cid}?access_token=${PC}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { tags: moi } }),
       });
