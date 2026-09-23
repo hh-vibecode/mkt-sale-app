@@ -2100,21 +2100,51 @@ async function kiotLoadInvoices(force){
     sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name,debt'),
   ]);
   kiotLoaded=true;
-  window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
+  window._kiotOrdByCode=null;window._kiotCNKhach=null;window._kiotRetailByPhone=null;
+  if(typeof rptSlXoaCache==="function")rptSlXoaCache();
 }
 // Nối Pancake <-> Kiot theo ĐÚNG thứ tự của script cũ (syncLeadSalesOnline): 9 SỐ CUỐI SĐT trước, hết cách
 // mới dùng Mã KH Sale gõ trong ghi chú nội bộ. Chỉ nhận khách Kiot đúng nhóm "Khách lẻ".
+// ── SỈ HAY LẺ? (quy tắc người dùng chốt 23/9/2026) ────────────────────────────────────────────
+// Kiot có 3 CHI NHÁNH: "Tổng kho sỉ Shidai" (khách sỉ) và 2 cửa hàng "Đồ Thờ Chánh Tâm" /
+// "Đồ thờ Hiền Thủy" (khách lẻ). Chi nhánh là dấu hiệu chắc nhất -- vẫn có ca lẫn nhưng hiếm.
+// Nhóm khách chỉ dùng khi nhóm nói RÕ (Khách buôn / NPP / CTV / thị trường / Khách lẻ);
+// 317 khách đang để TRỐNG nhóm -- trước đây bị loại khỏi cả hai báo cáo, giờ xét theo chi nhánh đơn.
+// Cuối cùng mới đoán theo tiền tố tên (KB/NPP/CTV = sỉ, KL = lẻ) cho khách chưa có đơn nào.
+const KIOT_CN_SI=/tổng kho|tong kho|shidai|sỉ/i;
+const KIOT_NHOM_SI=/buôn|buon|npp|ctv|phân phối|phan phoi|thị trường|thi truong|đại lý|dai ly/i;
+const KIOT_NHOM_LE=/khách lẻ|khach le/i;
+const KIOT_TEN_SI=/^s*(kb|npp|ctv|đl|dl)/i;
+function kiotChiNhanhKhach(){
+  if(window._kiotCNKhach)return window._kiotCNKhach;
+  const m={};
+  (kiotOrders||[]).forEach(o=>{
+    if(!o.customer_code)return;
+    const b=m[o.customer_code]=m[o.customer_code]||{si:0,le:0};
+    if(KIOT_CN_SI.test(o.branch_name||''))b.si++;else b.le++;
+  });
+  return window._kiotCNKhach=m;
+}
+function kiotLoaiKhach(c){
+  if(!c)return 'Lẻ';
+  const nhom=String(c.customer_group||'');
+  if(KIOT_NHOM_SI.test(nhom))return 'Sỉ';
+  if(KIOT_NHOM_LE.test(nhom))return 'Lẻ';
+  const cn=kiotChiNhanhKhach()[c.code];
+  if(cn&&(cn.si||cn.le))return cn.si>cn.le?'Sỉ':'Lẻ';
+  return KIOT_TEN_SI.test(c.name||'')?'Sỉ':'Lẻ';
+}
 function kiotRetailByPhone(){
-  const grp=(typeof rptSlCfg==='function'?rptSlCfg().group:'khách lẻ');
+  const loai=(typeof rptSlType==='function'?rptSlType():'Lẻ');
   window._kiotRetailByPhone=window._kiotRetailByPhone||{};
-  if(window._kiotRetailByPhone[grp])return window._kiotRetailByPhone[grp];
+  if(window._kiotRetailByPhone[loai])return window._kiotRetailByPhone[loai];
   const m={};
   kiotCustomers.forEach(c=>{
     if(!c.phone_key)return;
-    if(!(c.customer_group||'').toLowerCase().includes(grp))return;
+    if(kiotLoaiKhach(c)!==loai)return;
     (m[c.phone_key]=m[c.phone_key]||[]).push(c);
   });
-  return window._kiotRetailByPhone[grp]=m;
+  return window._kiotRetailByPhone[loai]=m;
 }
 function kiotCustByCode(){
   if(window._kiotCustByCode)return window._kiotCustByCode;
@@ -2244,8 +2274,8 @@ function dhDataIssues(){
     if(!kh)return;
     if(!custByCode[kh]){add('Mã KH không tồn tại bên Kiot','err',o,kh+' · gõ nhầm mã, không tìm thấy khách nào');return;}
     const kc=custByCode[kh];
-    if((kc.customer_group||'').trim().toLowerCase()!=='khách lẻ')
-      add('Khách Kiot không thuộc nhóm "Khách lẻ"','warn',o,kh+' · nhóm hiện tại: '+(kc.customer_group||'(trống)'));
+    if(kiotLoaiKhach(kc)!=='Lẻ')
+      add('Khách Kiot không phải khách lẻ','warn',o,kh+' · nhóm: '+(kc.customer_group||'(trống)')+' · app xếp: '+kiotLoaiKhach(kc));
     // SĐT Pancake khác SĐT Kiot KHÔNG phải lỗi: 1 người dùng nhiều số (số riêng, số người nhà, số
     // nhận hàng). Mã KH mới là khoá xác nhận, nên lệch số không ảnh hưởng gì -> không báo.
     // Mã Sale dán trỏ sang khách A, nhưng SĐT trên đơn lại là của khách B bên Kiot -> gần như chắc chắn
@@ -2331,11 +2361,19 @@ async function dhLoadManual(force){
   dhManual=await sbFetchAll('datahub_manual','select=*&order=created_date.desc,id.desc');
   dhManualLoaded=true;
 }
+function dhmMoForm(){window._dhmMo=!window._dhmMo;renderDataHub();}
 function dhManualForm(){
+  // Mặc định chỉ hiện 1 NÚT. Trước đây form 8 ô luôn bung ra trên đầu trang, đẩy bảng xuống và rối mắt.
+  if(!window._dhmMo)
+    return '<div style="margin-bottom:14px"><button onclick="dhmMoForm()" class="refresh-btn" style="padding:6px 16px;font-size:12px">'
+      +'+ Thêm khách nhập tay</button></div>';
   const inp='height:30px;box-sizing:border-box;padding:3px 9px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:600;font-family:var(--font);outline:none;width:100%';
   const fld=(l,h)=>`<div style="min-width:0"><div style="font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:3px;text-transform:uppercase">${l}</div>${h}</div>`;
   return `<div class="tbl-card" style="padding:16px 18px;margin-bottom:16px">
-    <div style="font-size:13px;font-weight:800;margin-bottom:12px">Thêm khách nhập tay — <span style="color:var(--accent)">khách ${dhManualType()}</span></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:800">Thêm khách nhập tay — <span style="color:var(--accent)">khách ${dhManualType()}</span></div>
+      <button onclick="dhmMoForm()" class="btn-ghost" style="margin-left:auto;padding:4px 12px;font-size:11.5px">Đóng</button>
+    </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:11px 13px">
       ${fld('Ngày tạo *',`<input type="date" id="dhmDate" value="${todayISO()}" style="${inp}">`)}
       ${fld('Họ tên khách *',`<input id="dhmName" placeholder="VD: Chị Lưu" style="${inp}">`)}
@@ -2344,7 +2382,7 @@ function dhManualForm(){
       ${fld('Kênh',`<input id="dhmKenh" list="dhmKenhList" placeholder="VD: Tiktok Chánh Tâm" style="${inp}">
         <datalist id="dhmKenhList">${DH_MANUAL_KENH.map(x=>`<option value="${x}">`).join('')}</datalist>`)}
       ${fld('Sales phụ trách',`<select id="dhmStaff" style="${inp};cursor:pointer"><option value="">— chọn Sale —</option>${rptSlSalesList().map(x=>`<option value="${x}">${x}</option>`).join('')}</select>`)}
-      ${fld('Brand',`<select id="dhmBrand" style="${inp};cursor:pointer"><option value="">— tự suy từ kênh —</option>${
+      ${dhManualType()==='Sỉ'?'':fld('Brand',`<select id="dhmBrand" style="${inp};cursor:pointer"><option value="">— tự suy từ kênh —</option>${
         Object.keys(DH_BRAND_LABEL).filter(b=>b!=='Other').map(b=>'<option value="'+b+'">'+DH_BRAND_LABEL[b]+'</option>').join('')}</select>`)}
       ${fld('Mã KH Kiot',`<input id="dhmKh" placeholder="KH0075xx" style="${inp}">`)}
       <div style="display:flex;align-items:flex-end"><button onclick="dhManualAdd()" class="refresh-btn" style="width:100%;height:30px">Thêm</button></div>
@@ -2353,13 +2391,15 @@ function dhManualForm(){
   </div>`;
 }
 // Brand suy từ tên kênh -- để báo cáo gộp chung được với data Pancake mà Sale không phải chọn thêm.
-function dhManualBrand(kenh){
+// Brand suy từ KÊNH. Với khách SỈ: kênh nào không ghi rõ brand khác (Sales trực tiếp, khách cũ
+// giới thiệu, bỏ trống...) thì mặc định là SHIDAI -- Sỉ chỉ bán dưới brand này (chốt 23/9/2026).
+function dhManualBrand(kenh,loai){
   const k=(kenh||'').toLowerCase();
-  if(/chánh tâm|chanh tam/.test(k))return'CT';
+  if(/chánh tâm|chanh tam|ming ying|hoàng dương/.test(k))return'CT';
   if(/hiền thu|hien thu/.test(k))return'HT';
   if(/shidai|thời đại|thoi dai/.test(k))return'Shidai';
   if(/nến bơ|nen bo|tự tại|tu tai/.test(k))return'TTV';
-  return null;
+  return (loai||(typeof dhManualType==='function'?dhManualType():''))==='Sỉ'?'Shidai':null;
 }
 async function dhManualAdd(){
   const g=id=>(document.getElementById(id)||{}).value||'';
@@ -2367,7 +2407,7 @@ async function dhManualAdd(){
   const kenh=g('dhmKenh').trim();
   const row={
     created_date:g('dhmDate'),customer_name:g('dhmName').trim(),phone:g('dhmPhone').trim()||null,
-    nguon:g('dhmNguon'),kenh:kenh||null,brand:g('dhmBrand')||dhManualBrand(kenh),   // chọn tay thắng, bỏ trống thì suy từ kênh
+    nguon:g('dhmNguon'),kenh:kenh||null,brand:g('dhmBrand')||dhManualBrand(kenh,dhManualType()),   // chọn tay thắng, bỏ trống thì suy từ kênh
     sale_type:dhManualType(),staff_name:g('dhmStaff').trim()||null,kiot_code:g('dhmKh').trim().toUpperCase()||null,
     created_by:localStorage.getItem('dashUser')||localStorage.getItem('dashRole')||'app',
   };
