@@ -1,0 +1,31 @@
+{
+ "luc": "2026-09-23T02:24:39.529Z",
+ "so": {
+  "le_thangNay_doanhThu": 172814000,
+  "le_thangNay_khach": 39,
+  "le_thangNay_chot": 36,
+  "le_thangNay_boPhieuTam": 0,
+  "si_thangNay_doanhThu": 248162000,
+  "si_thangNay_khach": 35,
+  "si_thangNay_chot": 16,
+  "si_thangNay_boPhieuTam": 1192756500,
+  "le_tatCa_doanhThu": 1081621500,
+  "le_tatCa_khach": 183,
+  "le_tatCa_chot": 143,
+  "le_tatCa_boPhieuTam": 753273000,
+  "si_tatCa_doanhThu": 15090779580,
+  "si_tatCa_khach": 235,
+  "si_tatCa_chot": 89,
+  "si_tatCa_boPhieuTam": 5714121240,
+  "mkt_chiPhi": 52437477,
+  "mkt_mess": 1317,
+  "mkt_doanhSo": 294286000,
+  "mkt_don": 42,
+  "mkt_le": 172814000,
+  "mkt_si": 121472000,
+  "nguon_donPancake": 2547,
+  "nguon_donKiot": 3027,
+  "nguon_khachKiot": 7605,
+  "nguon_nhapTay": 186
+ }
+}

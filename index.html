@@ -2320,6 +2320,8 @@ function dhManualForm(){
       ${fld('Kênh',`<input id="dhmKenh" list="dhmKenhList" placeholder="VD: Tiktok Chánh Tâm" style="${inp}">
         <datalist id="dhmKenhList">${DH_MANUAL_KENH.map(x=>`<option value="${x}">`).join('')}</datalist>`)}
       ${fld('Sales phụ trách',`<select id="dhmStaff" style="${inp};cursor:pointer"><option value="">— chọn Sale —</option>${rptSlSalesList().map(x=>`<option value="${x}">${x}</option>`).join('')}</select>`)}
+      ${fld('Brand',`<select id="dhmBrand" style="${inp};cursor:pointer"><option value="">— tự suy từ kênh —</option>${
+        Object.keys(DH_BRAND_LABEL).filter(b=>b!=='Other').map(b=>'<option value="'+b+'">'+DH_BRAND_LABEL[b]+'</option>').join('')}</select>`)}
       ${fld('Mã KH Kiot',`<input id="dhmKh" placeholder="KH0075xx" style="${inp}">`)}
       <div style="display:flex;align-items:flex-end"><button onclick="dhManualAdd()" class="refresh-btn" style="width:100%;height:30px">Thêm</button></div>
     </div>
@@ -2341,7 +2343,7 @@ async function dhManualAdd(){
   const kenh=g('dhmKenh').trim();
   const row={
     created_date:g('dhmDate'),customer_name:g('dhmName').trim(),phone:g('dhmPhone').trim()||null,
-    nguon:g('dhmNguon'),kenh:kenh||null,brand:dhManualBrand(kenh),
+    nguon:g('dhmNguon'),kenh:kenh||null,brand:g('dhmBrand')||dhManualBrand(kenh),   // chọn tay thắng, bỏ trống thì suy từ kênh
     sale_type:dhManualType(),staff_name:g('dhmStaff').trim()||null,kiot_code:g('dhmKh').trim().toUpperCase()||null,
     created_by:localStorage.getItem('dashUser')||localStorage.getItem('dashRole')||'app',
   };
@@ -2355,7 +2357,7 @@ async function dhManualAdd(){
     logAct('C','datahub_manual',ins&&ins.id?('M-'+String(ins.id).padStart(4,'0')):null,row.customer_name,null,null,
       [row.created_date,row.kenh,row.kiot_code].filter(Boolean).join(' · '));
     await dhLoadManual(true);
-    ['dhmName','dhmPhone','dhmKenh','dhmStaff','dhmKh'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    ['dhmName','dhmPhone','dhmKenh','dhmStaff','dhmKh','dhmBrand'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
     renderDataHub();
   }catch(e){msg.innerHTML='<span style="color:var(--red)">'+e.message+'</span>';}
 }
@@ -3598,7 +3600,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/09 09:11';
+const APP_VERSION='23/09 09:25';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
