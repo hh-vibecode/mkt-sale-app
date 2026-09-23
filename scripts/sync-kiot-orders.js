@@ -63,8 +63,9 @@ async function kenhDaCo() {
   const m = {};
   let offset = 0;
   for (;;) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/kiot_orders?select=code,sale_channel,sale_channel_id&sale_channel=not.is.null`, {
-      headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, Range: `${offset}-${offset + 999}` } });
+    // Phân trang bằng limit/offset trên URL (bộ chặn scripts/check-pagination.js chỉ nhận dạng này).
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/kiot_orders?select=code,sale_channel,sale_channel_id&sale_channel=not.is.null&limit=1000&offset=${offset}`, {
+      headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY } });
     if (!res.ok) throw new Error('Đọc kênh bán đã có lỗi ' + res.status);
     const rows = await res.json();
     rows.forEach(r => { m[r.code] = { ten: r.sale_channel, id: r.sale_channel_id }; });
