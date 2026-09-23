@@ -5576,8 +5576,20 @@ function rptSlInputHtml(){
         <button onclick="rptSlMaOk('${r.leadId}','${String(r.name||'').replace(/'/g,"\\'")}')" title="Đã kiểm tra, mã gán đúng người"
           style="display:block;margin-top:4px;border:1.5px solid var(--green);background:var(--surface);color:var(--green);border-radius:7px;height:24px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">Đúng khách rồi</button></td>
       <td class="num" style="font-weight:800">${r.revenue>0?vnd(r.revenue):'—'}</td>${maO(r)}</tr>`;}).join(''));
-  const ttSel=r=>`<td onclick="rptSlStop(event)"><select onchange="rptSlSetField('${r.leadId}','status',this.value,this)" style="height:26px;padding:2px 6px;border:1.5px solid var(--yellow);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">
-      <option value="">— chọn —</option>${RPT_SL_STATUS_OPTS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></td>`;
+  // Ô TRẠNG THÁI trong Nhập Liệu. SỈ DÙNG BỘ KHÁC HẲN LẺ: Sale Sỉ đánh Phân loại KH (6 mức) và ghi
+  // vào đúng ô si_phan_loai mà Master và CRM đang dùng. Trước đây Sỉ hiện nhầm 4 trạng thái của Lẻ
+  // và ghi sang ô khác, nên điền xong dòng vẫn quay lại mục 'chưa cập nhật' (anh Hải báo 23/9/2026).
+  const ttSel=r=>{
+    const q=String.fromCharCode(39);
+    const si=rptSlType()===String.fromCharCode(83,7881);
+    const ds=si?RPT_SI_PHANLOAI_DS:RPT_SL_STATUS_OPTS;
+    const cur=si?(r.siPhanLoai||''):(r.manualStatus||'');
+    const goi=si?('rptSiSetPhanLoai('+q+r.leadId+q+',this.value,this)')
+               :('rptSlSetField('+q+r.leadId+q+','+q+'status'+q+',this.value,this)');
+    const opt=['<option value="">— chọn —</option>'].concat(
+      ds.map(x=>'<option value="'+x+'"'+(cur===x?' selected':'')+'>'+x+'</option>')).join('');
+    return '<td onclick="rptSlStop(event)"><select onchange="'+goi+'" style="height:26px;padding:2px 6px;border:1.5px solid var(--yellow);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">'+opt+'</select></td>';
+  };
   const s3=tbl(HEAD+'<th>Thẻ Pancake</th><th style="'+RPT_SL_TH_EDIT+'">Trạng thái</th>',
     b.chuaTT.map(r=>`<tr>${info(r)}<td style="font-size:11px;color:var(--muted)">${r.tagStatus||'—'}</td>${ttSel(r)}</tr>`).join(''));
   const s5=tbl(HEAD+'<th>Thẻ Pancake</th><th>Trạng thái</th><th style="'+RPT_SL_TH_EDIT+'">Giá trị tiềm năng</th>',
