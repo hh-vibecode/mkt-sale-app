@@ -3556,8 +3556,27 @@ async function siCrmLuu(id){
   const ngay=g('siF_ngay').value;
   if(!ngay){msg.innerHTML='<span style="color:var(--red)">Chưa chọn ngày chăm sóc</span>';return;}
   const tien=v=>{const x=rptSlParseMoney(v||'');return isNaN(x)||!x?null:x;};
-  const k=(window._siCrmKhach||[]).find(x=>x.name===ten);
+  let k=(window._siCrmKhach||[]).find(x=>x.name===ten);
   const cu=id?(siCrmRows.find(x=>x.id===id)||{}):{};   // dòng cũ, để giữ những trường không còn ô nhập
+  // KHÁCH MỚI TINH: gõ tên lạ, chưa có trong Master -> tạo luôn 1 dòng Data nhập tay (khách Sỉ),
+  // đúng như khi thêm tay bên Data Hub. Nhờ vậy khách xuất hiện ở Master ngay, không phải nhập 2 lần
+  // (anh Hải chốt 23/9/2026). Đã có khách rồi thì chỉ gắn lượt chăm sóc vào khách đó.
+  if(!k&&!id){
+    try{
+      const ins=await sbInsert('datahub_manual',{
+        created_date:ngay,sale_type:'Sỉ',nguon:g('siF_nguon').value||'Offline',
+        kenh:(g('siF_kenh').value||'').trim()||null,brand:dhManualBrand(g('siF_kenh').value,'Sỉ'),
+        customer_name:ten,phone:(g('siF_sdt').value||'').trim()||null,
+        staff_name:g('siF_sales').value||null,kiot_code:(g('siF_ma').value||'').trim().toUpperCase()||null,
+        status:g('siF_phanloai').value||null,note:'Tạo từ CRM Sỉ khi ghi lượt chăm sóc',created_by:logWho()});
+      await dhLoadManual(true);
+      if(ins&&ins.id){
+        const leadMoi='M-'+String(ins.id).padStart(4,'0');
+        k={leadId:leadMoi,name:ten};
+        logAct('C','datahub_manual',leadMoi,ten,'Khách mới từ CRM Sỉ','',ngay);
+      }
+    }catch(e){console.warn('[CRM SỈ] chưa tạo được khách mới:',e.message);}
+  }
   const row={lead_id:(k&&k.leadId)||window._siCrmLead||null,customer_name:ten,
     phone:(g('siF_sdt').value||'').trim()||null,kiot_code:(g('siF_ma').value||'').trim().toUpperCase()||null,
     ngay_cham:ngay,nguon:g('siF_nguon').value||null,kenh:(g('siF_kenh').value||'').trim()||null,
@@ -3580,7 +3599,15 @@ async function siCrmLuu(id){
       const ins=await sbInsert('salesi_crm',row);
       logAct('C','salesi_crm',ins&&ins.id?('#'+ins.id):null,ten,'Lượt chăm sóc','',ngay+' · '+(row.noi_dung||'').slice(0,80));
     }
+    // NỐI 3 CHỖ: Master · CRM · Nhập Liệu dùng CHUNG một phân loại khách.
+    // Ghi lượt chăm sóc có Phân loại KH -> cập nhật luôn hồ sơ khách, nên Master và Nhập Liệu
+    // đổi theo ngay. Chiều ngược lại: đổi ở Master cũng ghi vào cùng ô đó. Ai sửa sau thì thắng.
+    if(row.lead_id&&row.phan_loai){
+      try{await rptSlSaveManual(row.lead_id,{si_phan_loai:row.phan_loai});}
+      catch(e){console.warn("[CRM SỈ] chưa đồng bộ phân loại sang Master:",e.message);}
+    }
     await siCrmLoad(true);
+    window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
     qcCloseModal();rptSlRender();
   }catch(e){msg.innerHTML='<span style="color:var(--red)">Chưa lưu được: '+e.message+'</span>';}
 }
@@ -4943,6 +4970,36 @@ const RPT_SI_PHANLOAI=[
   [/mất kết nối|mat ket noi/i,      '#e11d48'],   // đỏ -- mất liên lạc
 ];
 function rptSiPhanLoaiMau(v){const t=String(v||'');for(const[re,m]of RPT_SI_PHANLOAI)if(re.test(t))return m;return '';}
+// 6 giá trị Sale Sỉ đang dùng thật -- dùng cho ô chọn ở Master Sỉ.
+const RPT_SI_PHANLOAI_DS=['Đã ra đơn','Tiềm năng, chưa ra đơn','Chăm sóc dài hạn','Chưa liên hệ được','Mất kết nối','Không tiềm năng'];
+// Ô CHỌN Phân loại KH ngay trên bảng Master Sỉ -- sửa tại chỗ, không phải mở popup.
+// Lưu vào saleretail_manual.si_phan_loai; giá trị này được ưu tiên hơn phân loại lấy từ sheet.
+function rptSiPhanLoaiSelect(r){
+  const v=r.siPhanLoai||'';
+  const mau=rptSiPhanLoaiMau(v)||'var(--text2)';
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const q=String.fromCharCode(39);
+  return '<td onclick="rptSlStop(event)">'
+    +'<select onchange="rptSiSetPhanLoai('+q+e(r.leadId)+q+',this.value,this)"'
+    +' style="max-width:150px;height:26px;padding:1px 6px;border:1.5px solid '+(v?'color-mix(in srgb,'+mau+' 45%,transparent)':'var(--border)')
+    +';border-radius:20px;background:'+(v?'color-mix(in srgb,'+mau+' 12%,transparent)':'var(--surface)')
+    +';color:'+mau+';font-size:10.5px;font-weight:800;font-family:var(--font);cursor:pointer;outline:none">'
+    +'<option value=""'+(v?'':' selected')+'>— chưa phân loại —</option>'
+    +RPT_SI_PHANLOAI_DS.map(x=>'<option value="'+e(x)+'"'+(v===x?' selected':'')+'>'+e(x)+'</option>').join('')
+    +'</select></td>';
+}
+async function rptSiSetPhanLoai(leadId,giaTri,el){
+  const cu=el?el.style.borderColor:'';
+  if(el){el.disabled=true;el.style.opacity='.6';}
+  try{
+    await rptSlSaveManual(leadId,{si_phan_loai:giaTri||null});
+    logAct('U','saleretail_manual',leadId,null,'Phân loại KH',null,giaTri||'(bỏ trống)');
+    window._kiotOrdByCode=null;rptSlXoaCache();rptSlRender();
+  }catch(e){
+    if(el){el.disabled=false;el.style.opacity='1';el.style.borderColor=cu;}
+    rptBaoLoi('Lưu phân loại KH',e);
+  }
+}
 function rptSiPhanLoaiHtml(v,esc){
   const t=String(v||'').trim();
   if(!t)return '<span style="color:var(--muted)">—</span>';
@@ -4971,7 +5028,7 @@ function rptSlMasterRowSi(r){
     +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+rptSlNhanCu(r.created||sh.ngay_tao,'mua lại')+'</td>'
     +'<td>'+rptSlStaffHtml(r)+'</td>'
     +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+'</td>'
-    +'<td>'+rptSiPhanLoaiHtml(r.siPhanLoai,e)+'</td>'
+    +rptSiPhanLoaiSelect(r)
     +'<td style="white-space:nowrap">'+(dmy(csCuoi)||'—')+'</td>'
     +'<td class="num"><span style="font-weight:700;color:'+mauNghi+'">'+(nghi2==null?'—':num(nghi2))+'</span></td>'
     +'<td style="'+nho+';max-width:280px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(ndCuoi)+'">'+e(ndCuoi||'—')+'</div></td>'
