@@ -14,10 +14,7 @@
 | 1 | **Kéo full hoá đơn Kiot về hub** — 23/09 anh bảo **TẠM ĐỂ ĐÓ**, khi nào cần thì làm. Xem mục 6 bên dưới trước khi bắt tay | khi nào cần thì anh gọi |
 | 3 | **Tăng tỉ lệ có SĐT của Pancake** để nối Ad ID theo SĐT ăn thua hơn (hiện chỉ 19% đơn có SĐT nên chỉ vá được 2 lead). Cách: kéo SĐT từ API hội thoại Pancake | cho thử vài trăm hội thoại đo tỉ lệ không |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
-| 10 | **Top khách tiềm năng (Báo cáo tổng hợp)**: đang lọc khách CHƯA chốt nên cột doanh số gần như trống | giữ vậy hay đổi sang top 10 theo doanh số |
-| 11 | Master Lẻ còn nhãn "Chi tiết" ở cột cuối · nút "Cho nghỉ"/"Khoá TK" chưa hỏi xác nhận | có đồng bộ nốt không |
 | 12 | M-0197 (Sỉ "Ngoquoc Duy") và M-0021 (Lẻ "KL ANH DUY") chung SĐT …349764439 — KHÔNG gộp vì khác Lẻ/Sỉ | chỉ để anh biết |
-| 13 | 4 khách có ghi chú trong sheet Sỉ chưa có trong app: MỞ MỚI CỬA HÀNG (0916050878) · KH005476 (0934687350) · KH007548 (0975427001) | có tạo khách cho họ không |
 
 ## 2. CLAUDE ĐANG NỢ (tự làm, không cần hỏi)
 
@@ -57,6 +54,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **24/09 khuya** — Rà lại toàn bộ sheet 1.MASTER DATA SỈ: 389/389 dòng đều có khách trong app (4 "chưa có" hôm trước là do script nạp ghi chú dò thiếu khách Pancake). Bù hồ sơ cho 160 khách (chủ yếu khách Pancake L-SD-…): người đại diện 158 · phân loại 149 · tỉnh 147 · mô hình 139 · nhóm KH 4 · diện tích 3 · ghi chú riêng 2; chỉ bù ô trống, không ghi đè; rà lại còn 0 ô thiếu (`scripts/bu-truong-master-si-once.js`). Tổng hợp: Top 10 khách theo doanh số. Master Lẻ bỏ nhãn Chi tiết. Nút Cho nghỉ hỏi xác nhận.
 - **24/09 tối** — Gộp 4 cặp dòng Data nhập tay trùng người (xoá M-0053, M-0054, M-0015, M-0340 sau khi chuyển 4 lượt chăm sóc + 9 trường hồ sơ sang dòng giữ); nhập tay 381 → 377, doanh thu và số khách không đổi, 2.005 lượt chăm sóc 0 mồ côi. Ca Thuỳ Trâm: mã KH007352 ĐÚNG (SĐT M-0019 = SĐT KH007352 bên Kiot, đơn DH002098 có trả 7,59tr + hoá đơn HD057808) — Kiot chỉ đặt tên khách theo "Anh Tân".
 - **24/09 chiều-tối** — Deploy pancake-note v6 (gắn thẻ TIỀM NĂNG). Master/CRM Sỉ bỏ hết dash cũ, gỡ hẳn tab CRM Sỉ (2.005 lượt đã nối hết vào khách, 0 mồ côi). Popup hồ sơ khách Sỉ 3 tab; tab Ghi chú riêng nạp 94 khách từ sheet 1.MASTER DATA SỈ (7 cột si_gc_*). salesi_crm thêm phan_hoi/trang_thai/ma_don. Master Sỉ 5 dash (Tổng khách bấm ra Online/Offline · Đã chốt · Đang chăm · Lâu chưa chăm >10 ngày · Chưa cập nhật trạng thái). Tab lên ngang tiêu đề ở mọi báo cáo. Nút Xoá chuyển vào form Sửa (Data nhập tay có form Sửa mới). Thu hồi data cho Admin. Top khách tiềm năng ở Tổng hợp rút về 10 dòng. Siết luật Online vào Master Sỉ (chưa rơi khách nào).
 - **24/09** — Gộp khách trùng ở Master Sỉ/Lẻ: ngoài Mã KH giờ gộp thêm theo SĐT (9 số cuối) và tên bỏ dấu; Sỉ 571 → 410 khách, hết trùng SĐT/tên, doanh thu không đổi. Bộ kiểm số liệu nay cộng cả đơn mua lại cho khớp bảng trong app. Master Sỉ thêm nút Thêm khách mới; nhân sự Sỉ chỉ còn Toàn và Huế (19 khách của 7 người kia chuyển về botsale sỉ). Phân quyền rút gọn 2 cột Phạm vi/Quyền. Thêm tab Gán data bên Sỉ.

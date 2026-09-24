@@ -2885,6 +2885,8 @@ async function dhNhanSuDoiDoi(id,doi){
 }
 async function dhNhanSuNghi(id,lam){
   if(!dashToanQuyen())return;
+  if(!lam){const x=saleNhanSuDS().find(y=>y.id===id)||{};
+    if(!confirm('Cho "'+(x.ten||'nhân sự này')+'" nghỉ?\n\nNgười này sẽ biến khỏi mọi ô chọn Sale trong app. Dữ liệu khách họ đang giữ KHÔNG mất, có thể cho làm lại.'))return;}
   try{
     const r=await fetch(SUPABASE_URL+'/rest/v1/sale_nhan_su?id=eq.'+id,{method:'PATCH',
       headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
@@ -4448,29 +4450,29 @@ function rptSlOverviewHtml(){
       </table></div>
     </div>
     ${(()=>{
-      // Báo cáo TỔNG HỢP là màn hình để NHÌN, không phải chỗ thao tác -> bảng này chỉ liệt kê gọn
-      // 10 khách tiềm năng giá trị nhất kèm doanh số, không bê nguyên bảng Master kèm ô chọn/nút sửa
-      // sang đây nữa (anh Hải 24/9/2026). Muốn thao tác thì sang đúng báo cáo Sale Lẻ / Sale Sỉ.
+      // Báo cáo TỔNG HỢP là màn hình để NHÌN -> chỉ liệt kê gọn 10 khách mang về nhiều tiền nhất trong kỳ,
+      // tính cả đơn mua lại (anh Hải 24/9/2026). Muốn thao tác thì sang đúng báo cáo Sale Lẻ / Sale Sỉ.
       const tien=r=>Number(r.revenue||0)+Number(r.repeatRevenue||0);
-      const top=master.filter(r=>!r.isChot&&r.status!=='Mất lead')
-        .sort((a,b)=>(Number(b.potential||0)-Number(a.potential||0))||(tien(b)-tien(a)))
-        .slice(0,10);
-      const tong=master.filter(r=>!r.isChot&&r.status!=='Mất lead').reduce((s,r)=>s+(r.potential||0),0);
+      const coTien=master.filter(r=>tien(r)>0);
+      const top=coTien.slice().sort((a,b)=>tien(b)-tien(a)).slice(0,10);
+      const tong=coTien.reduce((s,r)=>s+tien(r),0);
+      const tongTop=top.reduce((s,r)=>s+tien(r),0);
       const esc=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       return `<div class="tbl-card">
-      <div class="tbl-head"><div class="tbl-title">Top khách hàng tiềm năng</div><div class="tbl-count">${num(top.length)}</div>
-        <span style="margin-left:auto;font-size:11px;color:var(--muted)">Giá trị tiềm năng: <b style="color:var(--orange,#f97316)">${vnd(tong)}</b></span></div>
+      <div class="tbl-head"><div class="tbl-title">Top 10 khách hàng theo doanh số</div><div class="tbl-count">${num(top.length)}</div>
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)">10 khách này: <b style="color:var(--green)">${vnd(tongTop)}</b>${tong?' · '+pct(tongTop/tong*100)+' doanh số kỳ':''}</span></div>
       ${top.length?`<div class="tbl-scroll"><table>
-        <thead><tr><th>Tên khách</th><th>Sales phụ trách</th><th>Kênh</th><th>Liên hệ cuối</th><th>Giá trị tiềm năng</th><th>Doanh số cộng dồn</th></tr></thead>
-        <tbody>${top.map(r=>`<tr>
+        <thead><tr><th>#</th><th>Tên khách</th><th>Sales phụ trách</th><th>Kênh</th><th>Số đơn</th><th>Đơn gần nhất</th><th>Doanh số</th></tr></thead>
+        <tbody>${top.map((r,i)=>`<tr>
+          <td class="num" style="color:var(--muted);font-weight:700">${i+1}</td>
           <td class="name">${esc(r.name)}${r.kh?`<div style="font-size:10.5px;font-weight:700;color:var(--muted)">${esc(r.kh)}</div>`:''}</td>
           <td>${esc(r.staff||'—')}</td>
           <td style="font-size:11.5px">${esc(r.kenh||'—')}</td>
-          <td style="white-space:nowrap">${dmy(r.careDate)||'—'}</td>
-          <td class="num" style="font-weight:700;color:${r.potential?'var(--orange,#f97316)':'inherit'}">${r.potential?vnd(r.potential):'—'}</td>
-          <td class="num" style="font-weight:800;color:${tien(r)?'var(--green)':'inherit'}">${tien(r)?vnd(tien(r)):'—'}</td>
+          <td class="num">${num((r.kords||[]).length+(r.repeatOrds||[]).length)}</td>
+          <td style="white-space:nowrap">${dmy(r.lastKiotDate)||'—'}</td>
+          <td class="num" style="font-weight:800;color:var(--green)">${vnd(tien(r))}</td>
         </tr>`).join('')}</tbody></table></div>`
-        :'<div style="padding:22px;text-align:center;color:var(--muted);font-size:12.5px;font-weight:600">Chưa có khách tiềm năng nào trong kỳ</div>'}
+        :'<div style="padding:22px;text-align:center;color:var(--muted);font-size:12.5px;font-weight:600">Chưa có khách nào ra doanh số trong kỳ</div>'}
     </div>`;})()}`;
 }
 function rptSlShow(key){const d=(window._rptSlLists||{})[key];if(d)dataModal(d);}
@@ -5205,7 +5207,7 @@ function rptSlSetMasterPage(p){window._rptSlMasterPage=p;rptSlRender();}
 function rptSlMasterSearch(){return(document.getElementById('rptSlMasterSearch')||{}).value||'';}
 // 1 dòng của bảng Master -- dùng chung cho tab Master Data và bảng "Top khách tiềm năng" ở Tổng quan,
 // để 2 chỗ luôn hiện cùng bộ cột, sửa 1 chỗ là cả 2 đổi theo.
-const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Trạng thái</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th><th></th>';
+const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Họ tên khách</th><th>SĐT</th><th>Trạng thái</th><th>Ngày chăm sóc cuối</th><th>Giá trị đơn cộng dồn</th>';
 // Master SỈ có thêm khối HỒ SƠ ĐẠI LÝ (sheet Sỉ có, Lẻ không): mô hình hợp tác, diện tích showroom,
 // khả năng tài chính, phân loại KH, giấy phép kinh doanh, fanpage, địa chỉ -- cộng với phần rút gọn
 // nhật ký chăm sóc (số lượt + lần gần nhất + bao lâu chưa liên hệ).
@@ -5232,9 +5234,6 @@ function rptSlMasterRow(r){
     <td>${rptSlStatusPill(rptSlRowStatus(r))}</td>
     <td>${dmy(r.lastTouch)||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
     <td class="num" style="font-weight:800;color:${r.revenue+r.repeatRevenue>0?'var(--green)':'inherit'}">${r.revenue+r.repeatRevenue>0?vnd(r.revenue+r.repeatRevenue):'—'}</td>
-    <td><span style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap">
-      <span style="width:26px;height:26px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;flex:0 0 auto"></span>
-      <span style="font-size:11.5px;font-weight:700;color:var(--accent)">Chi tiết</span></span></td>
   </tr>`;
 }
 // Bảng trống thường là do BỘ LỌC NGÀY chứ không phải hết data -> nói thẳng và cho nhảy kỳ ngay.
