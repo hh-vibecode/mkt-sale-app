@@ -2754,18 +2754,16 @@ function dhNhanSuHtml(){
       const ai=aiXem(x.ten);
       return '<tr'+(x.dang_lam===false?' style="opacity:.5"':'')+'>'
         +'<td class="name">'+e(x.ten)+(x.dang_lam===false?' <span style="font-size:10px;color:var(--muted)">(nghỉ)</span>':'')+'</td>'
-        +'<td><span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:800;color:#fff;background:'+mau+'">'+doi+'</span></td>'
-        +'<td style="font-size:11.5px">'+(ai.length?ai.map(e).join(', '):'<span style="color:var(--red)">chưa ai xem được</span>')+'</td>'
-        +'<td class="num">'+num(ai.length)+'</td>'
+        +'<td class="num"'+(ai.length?'':' style="color:var(--red)"')+'>'+num(ai.length)+'</td>'
         +'<td style="white-space:nowrap">'+(suaDuoc
           ?('<button onclick="dhNhanSuDoiDoi('+x.id+','+q+(doi==='Lẻ'?'Sỉ':'Lẻ')+q+')" class="btn-ghost" style="padding:3px 9px;font-size:11px">Đổi sang '+(doi==='Lẻ'?'Sỉ':'Lẻ')+'</button>'
             +'<button onclick="dhNhanSuNghi('+x.id+','+(x.dang_lam===false?'true':'false')+')" class="btn-ghost" style="padding:3px 9px;font-size:11px;margin-left:4px;color:'+(x.dang_lam===false?'var(--green)':'var(--red)')+'">'+(x.dang_lam===false?'Cho làm lại':'Cho nghỉ')+'</button>')
           :'<span style="font-size:11px;color:var(--muted)">chỉ admin sửa được</span>')+'</td></tr>';
     }).join('');
-    return '<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head" style="border-left:4px solid '+mau+'">'
+    return '<div class="tbl-card" style="margin:0"><div class="tbl-head" style="border-left:4px solid '+mau+'">'
       +'<div class="tbl-title">Sale '+doi+'</div><div class="tbl-count">'+num(list.length)+'</div></div>'
-      +'<div class="tbl-scroll"><table><thead><tr><th>Tên nhân sự</th><th>Đội</th><th>Tài khoản xem được data của người này</th><th>Số TK</th><th></th></tr></thead>'
-      +'<tbody>'+(dong||'<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--muted)">chưa có ai</td></tr>')+'</tbody></table></div></div>';
+      +'<div class="tbl-scroll"><table><thead><tr><th>Tên nhân sự</th><th>Số TK xem được</th><th></th></tr></thead>'
+      +'<tbody>'+(dong||'<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--muted)">chưa có ai</td></tr>')+'</tbody></table></div></div>';
   };
   const nutThem=suaDuoc
     ?'<button onclick="dhNhanSuThemForm()" class="refresh-btn" style="padding:6px 16px;font-size:12px">+ Thêm nhân sự Sale</button>'
@@ -2773,7 +2771,8 @@ function dhNhanSuHtml(){
   return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
     +'<div style="font-size:11.5px;color:var(--muted);font-weight:600">Thêm ở đây là áp cho mọi ô chọn Sale trong app: bộ lọc báo cáo, phạm vi phân quyền, form nhập tay.</div>'
     +'<span style="margin-left:auto">'+nutThem+'</span></div>'
-    +khoi('Lẻ','#4361ee')+khoi('Sỉ','#7209b7');
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;align-items:start">'
+    +khoi('Lẻ','#4361ee')+khoi('Sỉ','#7209b7')+'</div>';
 }
 function dhNhanSuThemForm(){
   if(!dashToanQuyen())return;
