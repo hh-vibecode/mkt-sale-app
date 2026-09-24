@@ -5074,9 +5074,17 @@ function rptSlBuildMasterRaw(){
   // GỘP các dòng cùng MÃ KH. Một người có thể dùng 2 SĐT (nhắn từ 2 số, hoặc số người nhà), mà khoá gom
   // khách của app là SĐT -> cùng 1 người bị tách thành 2 dòng và đơn Kiot của họ bị cộng CẢ HAI LẦN.
   // Mã KH là khoá do người xác nhận nên đáng tin hơn SĐT: trùng mã thì gộp.
-  const byKh={};
-  rows.forEach(r=>{if(r.kh)(byKh[r.kh]=byKh[r.kh]||[]).push(r);});
-  Object.values(byKh).filter(g=>g.length>1).forEach(g=>{
+  // Gộp theo NHIỀU KHOÁ, chắc trước lỏng sau: Mã KH -> SĐT (9 số cuối) -> tên đã bỏ dấu.
+  // Thiếu bước SĐT/tên nên 1 người vào app bằng 2 đường (lead Pancake + dòng sheet nhập tay) bị
+  // tách thành 2-3 dòng, nhìn như trùng khách (anh Hải báo 24/9/2026).
+  const boDau=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/đ/gi,'d').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const nhomTheo=khoa=>{
+    const m={};
+    rows.filter(r=>!r._merged).forEach(r=>{const k=khoa(r);if(k)(m[k]=m[k]||[]).push(r);});
+    return Object.values(m).filter(g=>g.length>1);
+  };
+  const gopNhom=g=>{
     g.sort((a,b)=>String(a.created).localeCompare(String(b.created)));
     const keep=g[0],rest=g.slice(1);
     keep.orders=g.flatMap(r=>r.orders).sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
@@ -5084,6 +5092,12 @@ function rptSlBuildMasterRaw(){
     const seen={};keep.kords=g.flatMap(r=>r.kords).filter(i=>seen[i.code]?false:(seen[i.code]=true))
       .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
     keep.revenue=keep.kords.reduce((s,i)=>s+Number(i.total||0),0);
+    // Gộp nốt ĐƠN MUA LẠI và ĐƠN KHÔNG TÍNH của các dòng bị gộp -- bỏ sót chỗ này thì doanh thu
+    // mua lại của dòng phụ biến mất (đã làm hụt 43,1 triệu bên Sỉ ngày 24/9/2026).
+    {const co={};keep.repeatOrds=g.flatMap(r=>r.repeatOrds||[]).filter(i=>co[i.code]?false:(co[i.code]=true))
+      .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));}
+    keep.repeatRevenue=keep.repeatOrds.reduce((s,i)=>s+Number(i.total||0),0);
+    {const co2={};keep.staleOrds=g.flatMap(r=>r.staleOrds||[]).filter(i=>co2[i.code]?false:(co2[i.code]=true));}
     keep.phone=keep.phone||rest.map(r=>r.phone).filter(Boolean)[0]||'';
     {const co={};keep.phones=g.flatMap(r=>r.phones||[]).filter(p=>{const k=rptSlLast9(p.so);return co[k]?false:(co[k]=true);});}
     keep.isChot=g.some(r=>r.isChot);
@@ -5100,7 +5114,16 @@ function rptSlBuildMasterRaw(){
     keep.daysIdle=keep.lastTouch?Math.floor((new Date()-new Date(keep.lastTouch))/86400000):null;
     keep.status=keep.isChot?'Chốt đơn':keep.manualStatus||'';
     rest.forEach(r=>{r._merged=true;});
-  });
+  };
+  // 1) Mã KH -- khoá chắc nhất, do người xác nhận
+  nhomTheo(r=>r.kh||'').forEach(gopNhom);
+  // 2) SĐT 9 số cuối -- gộp lead Pancake với dòng nhập tay cùng số
+  nhomTheo(r=>{const p=(r.phones||[])[0];return p?rptSlLast9(p.so):'';}).forEach(gopNhom);
+  // 3) Tên đã bỏ dấu -- chỉ gộp khi KHÔNG có mã nào khác nhau, tránh gộp nhầm 2 người trùng tên
+  nhomTheo(r=>boDau(r.name)).filter(g=>{
+    const ma=[...new Set(g.map(r=>r.kh).filter(Boolean))];
+    return ma.length<=1;
+  }).forEach(gopNhom);
   rows=rows.filter(r=>!r._merged);
   rptSlSuyAdId(rows);
   // Khách bị GỠ không vào bất kỳ tab nào (Tổng Quan / Master / CRM / Nhập Liệu) -- chỉ còn ở mục

@@ -107,7 +107,8 @@ async function dongSo() {
         window._rptSlType=loai;window._rptSlMod=null;window._kiotOrdByCode=null;rptSlXoaCache();
         const p=rptSlPeriod();
         const ten=(loai==='Lẻ'?'le':'si')+'_'+ky[0];
-        dat(ten+'_doanhThu',p.reduce((a,r)=>a+r.revenue,0));
+        // Doanh thu phải cộng cả đơn mua lại (>1 tháng) — bảng trong app hiện revenue+repeatRevenue
+        dat(ten+'_doanhThu',p.reduce((a,r)=>a+r.revenue+(r.repeatRevenue||0),0));
         dat(ten+'_khach',p.length);
         dat(ten+'_chot',p.filter(r=>r.isChot).length);
         dat(ten+'_boPhieuTam',p.reduce((a,r)=>a+(r.staleOrds||[]).reduce((x,o)=>x+Number(o.total||0),0),0));
