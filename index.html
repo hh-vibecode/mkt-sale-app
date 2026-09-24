@@ -812,7 +812,7 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // sửa từng chỗ gọi. Khi CSDL đã khoá (chỉ mở cho người đăng nhập) thì khoá công khai một mình vô dụng.
 // SB_BAT_BUOC_PHIEN: false = giai đoạn chạy song song (chưa có thẻ vẫn dùng khoá công khai như cũ);
 //                    true  = đã khoá CSDL, chưa có thẻ phiên hợp lệ thì bắt đăng nhập lại.
-const SB_BAT_BUOC_PHIEN=false;
+const SB_BAT_BUOC_PHIEN=true;   // BẬT 24/9/2026 cùng lúc khoá CSDL (supabase-schema-khoa-bao-mat.sql)
 const _fetchGoc=window.fetch.bind(window);
 function sbPhien(){try{return JSON.parse(localStorage.getItem('sbPhien')||'null');}catch(e){return null;}}
 let _sbDangLamMoi=null;
