@@ -4924,10 +4924,16 @@ function rptSlBuildMasterRaw(){
     const mn=rptSlManual[leadId]||{};
     const touches=[mn.care_date,r.created_date,...kords.map(i=>(i.purchase_date||'').slice(0,10))].filter(Boolean).sort();
     const lastTouch=touches[touches.length-1]||'';
+    // Khách NHẬP TAY bên Lẻ chưa ai điền ngày chăm sóc -> tự lấy NGÀY TIẾP XÚC ĐẦU TIÊN (sớm nhất giữa ngày
+    // tạo khách và ngày đặt đơn Kiot đầu), giống khách Pancake tự lấy ngày đơn đầu. Sale điền tay thì ưu tiên
+    // bản tay. Bên Sỉ KHÔNG bù: ngày chăm sóc Sỉ lấy từ lịch sử chăm sóc thật, chưa chăm thì để trống.
+    const ngayDau=[String(r.created_date||'').slice(0,10),...kords.map(i=>(i.purchase_date||'').slice(0,10))].filter(Boolean).sort()[0]||'';
+    const tuBu=!mn.care_date&&rptSlType()!=='Sỉ'&&!!ngayDau;
+    const nhanBu=tuBu?(ngayDau===String(r.created_date||'').slice(0,10)?'Ngày tạo khách':'Ngày đặt đơn Kiot đầu tiên'):'';
     rows.push({key:'M'+r.id,orders:[],kords,kh:kc?kc.code:null,revenue,linkBy:kc?'Nhập tay':'',
       manualKH:r.kiot_code||null,noteKH:null,kiotCusts:kc?[kc]:[],leadId,suggest:[],isManual:true,
       manualStatus:mn.status||r.status||'',note:mn.note||r.note||'',
-      potential:Number(mn.potential_value||0), careDate:mn.care_date||'',careAuto:false,careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
+      potential:Number(mn.potential_value||0), careDate:mn.care_date||(tuBu?ngayDau:''),careAuto:tuBu,careAutoNhan:nhanBu,careForm:mn.care_form||'',content:mn.content||'',custType:mn.cust_type||'',
       name:r.customer_name||'—',phones:rptSlGomSdt([r.phone],kc?[kc]:[]),
       phone:r.phone||(kc?(kc.phone||kc.phone_key||''):''),phoneFromKiot:!r.phone,
       created:r.created_date,brand:r.brand||'',shop:'',source:r.kenh||'',staffRaw:r.staff_name||'',staff:(x=>rptSlSaleIsHuman(x)?rptSlSaleName(x):'')(r.staff_name),adId:'',
@@ -6183,7 +6189,7 @@ function rptSlCrmHtmlRaw(){
     title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm đúp để xem hồ sơ đầy đủ)" style="cursor:default"><div style="display:flex;align-items:center;gap:4px;justify-content:${right?'flex-end':'space-between'}">${html}${pen(r)}</div></td>`;
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>{return `<tr>
     ${(r.careAuto?lockRO:lock)((dmy(r.careDate)||'<span style="color:var(--muted)">—</span>')+rptSlNhanCu(r.careDate,'ngoài kỳ'),
-      r.careAuto?'Ngày tạo đơn Pancake đầu tiên — app tự lấy, không sửa tay':dmy(r.careDate),r)}
+      r.careAuto?(r.careAutoNhan||'Ngày tạo đơn Pancake đầu tiên')+' — app tự lấy vì chưa ai điền; sửa bằng nút ✏️ trên dòng':dmy(r.careDate),r)}
     <td>${rptSlSrcBadge(r)}</td>
     <td>${rptSlStaffHtml(r)}</td>
     <td class="name">${rptSlTenKhach(r)}${rptSlMaDuoiTen(r)}</td>
