@@ -5300,7 +5300,7 @@ function rptSiDashHtml(all){
   const chuaTT=all.filter(r=>!String(r.siPhanLoai||'').trim());
   window._rptSiDashList=all;
   return '<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px">'
-    +'<div onclick="rptSiDashNguon()" style="cursor:pointer" title="Bấm để xem tách Online / Offline">'
+    +'<div onclick="rptSiDashNguon()" style="cursor:pointer" title="Bấm để xem khách Online / Offline">'
       +mkKpi(ic('users'),'Tổng khách hàng',num(all.length),'','g-blue')+'</div>'
     +mkKpi(ic('check'),'Khách đã chốt đơn',num(chot.length),'','g-green')
     +mkKpi(ic('chat'),'Đang chăm sóc',num(dangCham.length),'','g-teal')
@@ -5308,20 +5308,34 @@ function rptSiDashHtml(all){
     +mkKpi(ic('clipboard'),'Chưa cập nhật trạng thái',num(chuaTT.length),'','g-purple')
     +'</div>';
 }
-// Bấm ô Tổng khách hàng -> tách theo nguồn khách, kèm số đã chốt và doanh số của từng nguồn.
+// Bấm ô "Tổng khách hàng" -> popup tách 2 ô Online / Offline; bấm tiếp từng ô mới ra danh sách khách
+// (anh Hải 24/9/2026). Khách chưa ghi nguồn gom thành ô thứ 3 nếu có, để tổng luôn cộng đủ.
+function rptSiNguonCua(r){return /offline/i.test(r.nguon||'')?'Offline':(/online/i.test(r.nguon||'')?'Online':'Chưa rõ nguồn');}
 function rptSiDashNguon(){
   const all=window._rptSiDashList||[];
-  const g={};
-  all.forEach(r=>{
-    const k=/offline/i.test(r.nguon||'')?'Offline':(/online/i.test(r.nguon||'')?'Online':'Chưa rõ nguồn');
-    const o=g[k]=g[k]||{n:0,chot:0,tien:0};
-    o.n++;if(r.isChot)o.chot++;o.tien+=Number(r.revenue||0)+Number(r.repeatRevenue||0);
-  });
-  const thuTu=['Online','Offline','Chưa rõ nguồn'].filter(k=>g[k]);
-  dataModal({title:'Khách Sỉ theo nguồn',
-    cols:['Nguồn khách','Số khách','Tỉ trọng','Đã chốt','Tỉ lệ chốt','Doanh số'],
-    rows:thuTu.map(k=>[k,num(g[k].n),pct(all.length?g[k].n/all.length*100:0),num(g[k].chot),
-      pct(g[k].n?g[k].chot/g[k].n*100:0),g[k].tien?vnd(g[k].tien):'—'])});
+  const dem={};all.forEach(r=>{const k=rptSiNguonCua(r);dem[k]=(dem[k]||0)+1;});
+  const ds=[['Online','g-blue','chat'],['Offline','g-green','users'],['Chưa rõ nguồn','g-purple','clipboard']]
+    .filter(x=>x[0]!=='Chưa rõ nguồn'||dem[x[0]]);
+  let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
+  m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
+   +'<div style="background:var(--surface);border-radius:16px;max-width:'+(ds.length>2?720:520)+'px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
+   +'<div style="display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border)">'
+   +'<div style="font-size:15px;font-weight:800">Tổng khách hàng · '+num(all.length)+'</div>'
+   +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
+   +'<div style="padding:18px 20px;display:grid;grid-template-columns:repeat('+ds.length+',minmax(0,1fr));gap:12px">'
+   +ds.map(function(x){
+      return '<div onclick="rptSiDashNguonDs('+String.fromCharCode(39)+x[0]+String.fromCharCode(39)+')" style="cursor:pointer" title="Bấm để xem danh sách khách">'
+        +mkKpi(ic(x[2]),'Khách '+x[0],num(dem[x[0]]||0),'',x[1])+'</div>';}).join('')
+   +'</div></div></div>';
+}
+function rptSiDashNguonDs(nguon){
+  const ds=(window._rptSiDashList||[]).filter(r=>rptSiNguonCua(r)===nguon);
+  const tien=r=>Number(r.revenue||0)+Number(r.repeatRevenue||0);
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  dataModal({title:'Khách '+nguon,
+    cols:['Ngày tạo','Sales phụ trách','Tên khách','Kênh','Phân loại KH','Doanh số'],
+    rows:ds.map(r=>[dmy(rptSlNgayTao(r))||'—',e(r.staff||'—'),e(r.name)+(r.kh?' <span style="color:var(--muted);font-weight:600">· '+e(r.kh)+'</span>':''),
+      e(r.kenh||'—'),e(r.siPhanLoai||'—'),tien(r)?vnd(tien(r)):'—'])});
 }
 function rptSlMasterHtmlRaw(){
   const allRaw=rptSlPeriod();
