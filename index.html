@@ -3990,10 +3990,21 @@ function rptSlParseMoney(raw){
 // Khách đã chốt: trạng thái khoá "Chốt đơn", không có giá trị tiềm năng / nguyên nhân mất lead.
 // SỬA HỒ SƠ KHÁCH SỈ ngay ở Master (Sale báo 24/9/2026: khai thác được thông tin mới thì không biết
 // điền vào đâu -- trước đây chỉ sửa được bên CRM). Ghi vào saleretail_manual, dùng chung với CRM.
+// Ô CHỌN của hồ sơ Sỉ -- đúng danh sách trong tab Dropdown List của sheet Sale Sỉ (anh Hải 24/9/2026).
+const RPT_SI_CHON={si_mo_hinh:['Hộ Kinh Doanh','Công Ty'],si_tai_chinh:['Thanh toán đúng hạn','Công nợ xấu']};
+RPT_SI_CHON.mohinh=RPT_SI_CHON.si_mo_hinh;RPT_SI_CHON.taichinh=RPT_SI_CHON.si_tai_chinh;
+// Vẽ 1 ô nhập: có trong RPT_SI_CHON thì là ô chọn (giữ cả giá trị cũ lạ nếu có), còn lại là ô gõ.
+function rptSiO(id,khoa,gt,ip){
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const ds=RPT_SI_CHON[khoa];
+  if(!ds)return '<input id="'+id+'" value="'+e(gt)+'" style="'+ip+'">';
+  const tat=ds.indexOf(gt)<0&&gt?[gt].concat(ds):ds;
+  return '<select id="'+id+'" style="'+ip+';cursor:pointer"><option value="">—</option>'
+    +tat.map(x=>'<option value="'+e(x)+'"'+(x===gt?' selected':'')+'>'+e(x)+'</option>').join('')+'</select>';
+}
 const RPT_SI_SUA=[
   ['si_nguoi_dai_dien','Người đại diện','text'],
   ['si_sdt','SĐT','text'],
-  ['si_tinh','Tỉnh/TP','text'],
   ['si_dia_chi','Địa chỉ','text'],
   ['si_mo_hinh','Mô hình hợp tác','text'],
   ['si_dien_tich','Diện tích showroom','text'],
@@ -4010,7 +4021,6 @@ const RPT_SI_THEM=[
   ['nguoi','Người đại diện','text'],
   ['sdt','SĐT','text'],
   ['ma','Mã KH Kiot','text'],
-  ['tinh','Tỉnh/TP','text'],
   ['diachi','Địa chỉ','text'],
   ['mohinh','Mô hình hợp tác','text'],
   ['dientich','Diện tích showroom','text'],
@@ -4024,7 +4034,7 @@ function rptSiThemKhachForm(){
   const lb=t=>'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">'+t+'</div>';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const sale=saleNhanSuDS().filter(x=>x.doi==='Sỉ'&&x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);
-  const o=RPT_SI_THEM.map(([k,nhan])=>'<div>'+lb(nhan)+'<input id="siT_'+k+'" style="'+ip+'"></div>').join('');
+  const o=RPT_SI_THEM.map(([k,nhan])=>'<div>'+lb(nhan)+rptSiO('siT_'+k,k,'',ip)+'</div>').join('');
   let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
   m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
    +'<div style="background:var(--surface);border-radius:16px;max-width:820px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
@@ -4065,7 +4075,7 @@ async function rptSiThemKhach(){
       created_by:logWho()});
     if(!ins||!ins.id)throw new Error('không tạo được dòng khách');
     const leadId='M-'+String(ins.id).padStart(4,'0');
-    const hoSo={si_nguoi_dai_dien:g('siT_nguoi')||null,si_sdt:g('siT_sdt')||null,si_tinh:g('siT_tinh')||null,
+    const hoSo={si_nguoi_dai_dien:g('siT_nguoi')||null,si_sdt:g('siT_sdt')||null,
       si_dia_chi:g('siT_diachi')||null,si_mo_hinh:g('siT_mohinh')||null,si_dien_tich:g('siT_dientich')||null,
       si_tai_chinh:g('siT_taichinh')||null,si_nhom_kh:g('siT_nhom')||null,si_giay_phep:g('siT_gpkd')||null,
       si_fanpage:g('siT_fanpage')||null,si_phan_loai:g('siT_phanloai')||null,
@@ -4090,7 +4100,7 @@ function rptSiEditRow(leadId){
   const esc=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const ip='width:100%;box-sizing:border-box;height:34px;padding:5px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:12.5px;font-family:var(--font);outline:none';
   const lb=t=>'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">'+t+'</div>';
-  const o=RPT_SI_SUA.map(([k,nhan])=>'<div>'+lb(nhan)+'<input id="siE_'+k+'" value="'+esc(cu[k])+'" style="'+ip+'"></div>').join('');
+  const o=RPT_SI_SUA.map(([k,nhan])=>'<div>'+lb(nhan)+rptSiO('siE_'+k,k,cu[k],ip)+'</div>').join('');
   let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
   m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
    +'<div style="background:var(--surface);border-radius:16px;max-width:760px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
@@ -5186,6 +5196,8 @@ function rptSlBuildMasterRaw(){
       const sh=mn.si_sheet||{};
       r.sh=sh;
       if(!r.siDiaChi&&sh.dia_chi)r.siDiaChi=[sh.dia_chi,sh.quan,sh.tinh].filter(Boolean).join(', ');
+      // Bỏ ô Tỉnh/TP riêng (24/9/2026): khách chỉ có tỉnh mà chưa có địa chỉ thì Địa chỉ hiện tạm tỉnh đó
+      if(!r.siDiaChi)r.siDiaChi=[sh.quan,mn.si_tinh||sh.tinh].filter(Boolean).join(', ');
       if(!r.siMoHinh)r.siMoHinh=sh.mo_hinh||'';
       if(!r.siDienTich)r.siDienTich=sh.dien_tich||'';
       if(!r.siTaiChinh)r.siTaiChinh=sh.tai_chinh||'';
@@ -5814,7 +5826,6 @@ function rptSlShowCustomer(key){
     ...(rptSlType()==='Sỉ'?[
       // Các trường hồ sơ cửa hàng đã gỡ khỏi bảng Master cho đỡ rối -- xem đầy đủ ở đây.
       fld('Người đại diện',esc((r.sh||{}).nguoi_dai_dien)),
-      fld('Tỉnh/TP',esc([(r.sh||{}).quan,(r.sh||{}).tinh].filter(Boolean).join(', '))),
       fld('Địa chỉ',esc(r.siDiaChi)),
       fld('Mô hình hợp tác',esc(r.siMoHinh)),
       fld('Diện tích showroom',esc(r.siDienTich)),
