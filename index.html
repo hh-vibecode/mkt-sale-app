@@ -5262,17 +5262,13 @@ function rptSiDashHtml(all){
   const lauRoi=coLS.filter(x=>x.n>=RPT_SI_LAU_NGAY);
   const chuaTT=all.filter(r=>!String(r.siPhanLoai||'').trim());
   window._rptSiDashList=all;
-  const tienChot=chot.reduce((s,r)=>s+Number(r.revenue||0)+Number(r.repeatRevenue||0),0);
-  const xa=lauRoi.length?Math.max.apply(null,lauRoi.map(x=>x.n)):0;
   return '<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px">'
     +'<div onclick="rptSiDashNguon()" style="cursor:pointer" title="Bấm để xem tách Online / Offline">'
-      +mkKpi(ic('users'),'Tổng khách hàng',num(all.length),'bấm để xem Online / Offline','g-blue')+'</div>'
-    +mkKpi(ic('check'),'Khách đã chốt đơn',num(chot.length),
-      (all.length?pct(chot.length/all.length*100):'0%')+' · '+vnd(tienChot),'g-green')
-    +mkKpi(ic('chat'),'Đang chăm sóc',num(dangCham.length),'có lượt chăm trong '+RPT_SI_LAU_NGAY+' ngày gần nhất','g-teal')
-    +mkKpi(ic('clock'),'Lâu chưa chăm sóc',num(lauRoi.length),
-      lauRoi.length?('quá '+RPT_SI_LAU_NGAY+' ngày · xa nhất '+num(xa)+' ngày'):'không có khách nào bị bỏ quên','g-red')
-    +mkKpi(ic('clipboard'),'Chưa cập nhật trạng thái',num(chuaTT.length),'chưa chọn phân loại KH','g-purple')
+      +mkKpi(ic('users'),'Tổng khách hàng',num(all.length),'','g-blue')+'</div>'
+    +mkKpi(ic('check'),'Khách đã chốt đơn',num(chot.length),'','g-green')
+    +mkKpi(ic('chat'),'Đang chăm sóc',num(dangCham.length),'','g-teal')
+    +mkKpi(ic('clock'),'Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',num(lauRoi.length),'','g-red')
+    +mkKpi(ic('clipboard'),'Chưa cập nhật trạng thái',num(chuaTT.length),'','g-purple')
     +'</div>';
 }
 // Bấm ô Tổng khách hàng -> tách theo nguồn khách, kèm số đã chốt và doanh số của từng nguồn.
