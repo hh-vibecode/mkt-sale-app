@@ -2563,9 +2563,14 @@ async function dhManualDel(id){
   // XOÁ là thao tác không hoàn tác được -> hỏi 2 lớp và nói rõ đang xoá ai.
   if(!confirm('XOÁ khách "'+(r.customer_name||'?')+'"'+(r.kiot_code?' (mã '+r.kiot_code+')':'')+' khỏi Data nhập tay?\n\nDoanh thu của khách này sẽ biến mất khỏi báo cáo Sale Lẻ.'))return;
   if(!confirm('Xác nhận lần cuối: xoá "'+(r.customer_name||'?')+'"? Thao tác này KHÔNG hoàn tác được.'))return;
-  const res=await fetch(`${SUPABASE_URL}/rest/v1/datahub_manual?id=eq.${id}`,{method:'DELETE',
-    headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+  const H0={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY};
+  const lead='M-'+String(id).padStart(4,'0');
+  // dọn hồ sơ + lượt chăm sóc gắn với khách này trước, để không sót dữ liệu mồ côi
+  await fetch(SUPABASE_URL+'/rest/v1/salesi_crm?lead_id=eq.'+lead,{method:'DELETE',headers:H0});
+  await fetch(SUPABASE_URL+'/rest/v1/saleretail_manual?lead_id=eq.'+lead,{method:'DELETE',headers:H0});
+  const res=await fetch(`${SUPABASE_URL}/rest/v1/datahub_manual?id=eq.${id}`,{method:'DELETE',headers:H0});
   if(!res.ok){alert('Xoá lỗi '+res.status);return;}
+  if(typeof rptSlManual!=='undefined')delete rptSlManual[lead];
   logAct('D','datahub_manual','M-'+String(id).padStart(4,'0'),r.customer_name,null,
     [r.created_date,r.kenh,r.phone,r.kiot_code].filter(Boolean).join(' · '),null);
   await dhLoadManual(true);qcCloseModal();renderDataHub();
@@ -4092,7 +4097,8 @@ async function rptSiXoaKhach(leadId){
   try{
     if(luot){const a=await fetch(SUPABASE_URL+'/rest/v1/salesi_crm?lead_id=eq.'+encodeURIComponent(leadId),{method:'DELETE',headers:H});
       if(!a.ok)throw new Error('xoá lượt chăm sóc lỗi '+a.status);}
-    await fetch(SUPABASE_URL+'/rest/v1/saleretail_manual?lead_id=eq.'+encodeURIComponent(leadId),{method:'DELETE',headers:H});
+    const hs=await fetch(SUPABASE_URL+'/rest/v1/saleretail_manual?lead_id=eq.'+encodeURIComponent(leadId),{method:'DELETE',headers:H});
+    if(!hs.ok)throw new Error('xoá hồ sơ lỗi '+hs.status);
     const b=await fetch(SUPABASE_URL+'/rest/v1/datahub_manual?id=eq.'+id,{method:'DELETE',headers:H});
     if(!b.ok)throw new Error('xoá khách lỗi '+b.status);
     logAct('D','datahub_manual',leadId,ten,'Xoá khách Sỉ',(luot?luot+' lượt chăm sóc':'')+(tien?' · '+vnd(tien):''),'');
@@ -5193,6 +5199,19 @@ function rptSlBuildMasterRaw(){
     // bằng chứng thì KHÔNG cắt oan; chỉ cắt khi khách thật sự có Pancake và đã tắt tương tác.
     return !(r.orders&&r.orders.length);
   };
+  // LUẬT SỈ/LẺ THEO CHI NHÁNH áp cả khi Sale dán Mã KH vào ghi chú Pancake: báo cáo LẺ không nhận đơn
+  // ở chi nhánh Sỉ / của khách buôn (rà 24/9/2026: 3 đơn 4.548.000đ của KH007485, KH007517 bị tính
+  // ở CẢ Lẻ lẫn Sỉ vì lead Lẻ mang Mã KH của khách Sỉ). Đơn bị gạt vẫn hiện trong hồ sơ để Sale thấy.
+  if(rptSlType()!=='Sỉ'){
+    const kcS=kiotCustByCode();
+    rows.forEach(r=>{
+      const giu=[],bo=[];
+      (r.kords||[]).forEach(x=>{(KIOT_CN_SI.test(x.branch_name||'')||kiotLoaiKhach(kcS[x.customer_code])==='Sỉ'?bo:giu).push(x);});
+      if(!bo.length)return;
+      r.kords=giu;r.donCuaSi=bo;
+      r.revenue=giu.filter(x=>!x.khongTinh).reduce((a,x)=>a+Number(x.total||0),0);
+    });
+  }
   rows.forEach(r=>{
     const all=r.kords||[];
     if(!all.length){r.repeatOrds=[];r.staleOrds=[];r.repeatRevenue=0;return;}

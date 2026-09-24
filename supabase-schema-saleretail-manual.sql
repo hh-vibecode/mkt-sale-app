@@ -41,3 +41,7 @@ alter table public.saleretail_manual add column if not exists si_gc_quyet_dinh t
 alter table public.saleretail_manual add column if not exists si_gc_yeu_to     text;
 alter table public.saleretail_manual add column if not exists si_gc_luu_y      text;
 alter table public.saleretail_manual add column if not exists si_gc_khac       text;
+
+-- 24/9/2026 -- thiếu quyền xoá nên nút "Xoá khách" để lại hồ sơ mồ côi (M-0383). Bổ sung cho giống 2 bảng kia.
+drop policy if exists saleretail_manual_del on public.saleretail_manual;
+create policy saleretail_manual_del on public.saleretail_manual for delete using (true);
