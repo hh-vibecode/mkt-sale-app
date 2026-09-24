@@ -134,7 +134,10 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .kpi::after{content:none}
 .kpi::before{content:none}
-.kpi-lbl{font-size:13.5px;font-weight:700;color:var(--text2);margin-bottom:8px;letter-spacing:.02em;text-transform:uppercase}
+.kpi-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;flex:0 0 auto;background:var(--kpi-tint,var(--accent-l));color:var(--kpi-color,var(--accent))}
+.kpi-icon svg{width:21px;height:21px}
+.kpi-top{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.kpi-lbl{font-size:13.5px;font-weight:700;color:var(--text2);letter-spacing:.02em;text-transform:uppercase;line-height:1.25;min-width:0}
 .kpi-val{font-size:23px;font-weight:800;font-family:var(--font);letter-spacing:-.02em;line-height:1.15;color:var(--text)}
 .kpi-sub{font-size:11.5px;color:var(--muted);margin-top:5px;font-weight:500}
 .g-blue{--kpi-tint:var(--accent-l);--kpi-color:var(--accent)}
@@ -1883,9 +1886,8 @@ function calcKPI(rows){
 }
 
 // ── Helpers ──
-// Thẻ dash: TIÊU ĐỀ in hoa đậm + con số, bỏ icon (anh Hải 24/9/2026).
-// Tham số icon giữ lại cho khỏi phải sửa 53 chỗ gọi, không dùng tới nữa.
-function mkKpi(icon,label,val,sub,grad){return`<div class="kpi ${grad}"><div class="kpi-lbl">${label}</div><div class="kpi-val">${val}</div>${sub?`<div class="kpi-sub">${sub}</div>`:''}</div>`;}
+// Thẻ dash: icon + TIÊU ĐỀ in hoa đứng cùng một hàng, con số nằm dưới (anh Hải 24/9/2026).
+function mkKpi(icon,label,val,sub,grad){return`<div class="kpi ${grad}"><div class="kpi-top"><div class="kpi-icon">${icon}</div><div class="kpi-lbl">${label}</div></div><div class="kpi-val">${val}</div>${sub?`<div class="kpi-sub">${sub}</div>`:''}</div>`;}
 // Icon SVG thật (họ Heroicons outline, cùng style với sidebar) -- nay chỉ còn dùng ngoài thẻ dash, giữ lại
 // emoji riêng cho 4 brand () vì đó là tín hiệu nhận diện màu sắc theo từng brand, đổi sang icon
 // đơn sắc sẽ mất tác dụng phân biệt nhanh bằng mắt.
