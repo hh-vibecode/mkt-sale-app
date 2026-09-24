@@ -23,7 +23,7 @@ const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 // dùng khoá quản trị: trên GitHub lấy từ secret, trên máy lấy từ supabase-keys.local.txt.
 const KHOA = process.env.SUPABASE_SERVICE_ROLE_KEY || (() => {
   try { return (require('fs').readFileSync(path.join(GOC, 'supabase-keys.local.txt'), 'utf8')
-    .match(/SERVICE_ROLE_KEY:s*(eyJ[A-Za-z0-9._-]+)/) || [])[1]; } catch (e) { return ''; }
+    .match(/SERVICE_ROLE_KEY:\s*(eyJ[A-Za-z0-9._-]+)/) || [])[1]; } catch (e) { return ''; }
 })() || ANON;
 const H = { apikey: KHOA, Authorization: 'Bearer ' + KHOA };
 const tai = async (bang, truyVan) => {
