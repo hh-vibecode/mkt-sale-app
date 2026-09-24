@@ -1,5 +1,5 @@
 {
- "luc": "2026-09-24T04:04:07.735Z",
+ "luc": "2026-09-24T05:55:36.167Z",
  "so": {
   "le_thangNay_doanhThu": 202926968,
   "le_thangNay_khach": 48,
@@ -17,15 +17,15 @@
   "si_tatCa_khach": 410,
   "si_tatCa_chot": 107,
   "si_tatCa_boPhieuTam": 5085340640,
-  "mkt_chiPhi": 55142597,
-  "mkt_mess": 1381,
+  "mkt_chiPhi": 55843553,
+  "mkt_mess": 1401,
   "mkt_doanhSo": 324046968,
   "mkt_don": 49,
   "mkt_le": 202926968,
   "mkt_si": 121120000,
-  "nguon_donPancake": 2578,
-  "nguon_donKiot": 3032,
-  "nguon_khachKiot": 7607,
+  "nguon_donPancake": 2586,
+  "nguon_donKiot": 3033,
+  "nguon_khachKiot": 7608,
   "nguon_nhapTay": 381
  }
 }
