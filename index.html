@@ -130,6 +130,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
    (thay vì phủ gradient kín cả thẻ như trước). Class .g-* giữ nguyên tên (JS mkKpi() không đổi gì) nhưng
    giờ chỉ set 2 biến màu cho ô icon, không set background của cả thẻ nữa. */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+[hidden]{display:none!important}   /* phần tử đánh dấu hidden luôn ẩn, kể cả khi có display inline */
 .kpi{border-radius:16px;padding:20px;background:var(--surface);border:1.5px solid var(--border);position:relative;overflow:hidden;transition:box-shadow .2s,transform .2s}
 .kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .kpi::after{content:none}
@@ -6139,7 +6140,7 @@ function rptSiGanHtml(){
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const sale=saleNhanSuDS().filter(x=>x.doi==='Sỉ'&&x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);
   const dong=list.slice(0,300).map(r=>'<tr>'
-    +'<td style="width:34px"><input type="checkbox" class="siGanTick" value="'+e(r.leadId)+'"></td>'
+    +'<td style="width:34px"><input type="checkbox" class="siGanTick" value="'+e(r.leadId)+'" onchange="siGanDemLai()" style="cursor:pointer;width:15px;height:15px"></td>'
     +'<td style="white-space:nowrap">'+(dmy(r.created)||'—')+'</td>'
     +'<td class="name">'+e(r.name)+'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+e(r.kh||r.leadId)+'</div></td>'
     +'<td style="white-space:nowrap;font-size:11.5px">'+rptSlSdtHtml(r)+'</td>'
@@ -6150,17 +6151,17 @@ function rptSiGanHtml(){
     +'<div class="tbl-title">Data chưa có Sale phụ trách</div><div class="tbl-count">'+num(ds.length)+'</div>'
     +'<input value="'+e(window._siGanQ||'')+'" oninput="siGanTim(this.value)" placeholder="Tìm tên, SĐT, Mã KH…" '
     +'style="margin-left:auto;height:28px;box-sizing:border-box;padding:2px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:600;font-family:var(--font);outline:none;width:210px"></div>'
-    +'<div style="display:flex;align-items:center;gap:9px;padding:11px 16px;flex-wrap:wrap;border-bottom:1px solid var(--border)">'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;cursor:pointer">'
-    +'<input type="checkbox" onchange="siGanTickHet(this.checked)"> Chọn hết trang này</label>'
-    +'<span id="siGanDem" style="font-size:11.5px;color:var(--muted);font-weight:700">đã chọn 0</span>'
-    +'<span style="margin-left:auto;display:flex;align-items:center;gap:8px">'
-    +'<span style="font-size:11.5px;font-weight:700;color:var(--muted)">Gán cho</span>'
-    +'<select id="siGanSale" style="height:30px;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:700;font-family:var(--font);cursor:pointer">'
-    +'<option value="">— chọn Sale —</option>'+sale.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select>'
-    +'<button onclick="siGanChay()" class="refresh-btn" style="padding:6px 16px;font-size:12px">Gán</button></span></div>'
+    // THANH THAO TÁC HÀNG LOẠT (kiểu Pancake, anh Hải 24/9/2026): tích từ 1 dòng trở lên thì thanh này
+    // bật ra trên đầu bảng: đã chọn N · chọn Sale · Xác nhận (chỉ sáng khi đã chọn Sale) · Bỏ chọn.
+    +'<div id="siGanBar" hidden style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;background:var(--accent-l);border-bottom:1.5px solid var(--accent)">'
+    +'<span id="siGanDem" style="font-size:12.5px;font-weight:800;color:var(--accent)">Đã chọn 0 khách</span>'
+    +'<select id="siGanSale" onchange="siGanNut()" style="height:32px;min-width:200px;padding:3px 10px;border:1.5px solid var(--accent);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer">'
+    +'<option value="">Chọn Sale phụ trách…</option>'+sale.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select>'
+    +'<button id="siGanOk" onclick="siGanChay()" disabled class="refresh-btn" style="padding:7px 20px;font-size:12px;font-weight:800;opacity:.4;cursor:not-allowed">Xác nhận</button>'
+    +'<button onclick="siGanTickHet(false)" class="btn-ghost" style="margin-left:auto;padding:6px 14px;font-size:12px">Bỏ chọn</button>'
+    +'</div>'
     +'<div id="siGanMsg" style="padding:0 16px;font-size:12px;font-weight:700"></div>'
-    +'<div class="tbl-scroll"><table><thead><tr><th></th><th>Ngày tạo</th><th>Khách hàng</th><th>SĐT</th><th>Nguồn · Kênh</th><th>Phân loại</th><th>Doanh thu</th></tr></thead>'
+    +'<div class="tbl-scroll"><table><thead><tr><th style="width:34px"><input type="checkbox" id="siGanHet" onchange="siGanTickHet(this.checked)" title="Chọn hết" style="cursor:pointer;width:15px;height:15px"></th><th>Ngày tạo</th><th>Khách hàng</th><th>SĐT</th><th>Nguồn · Kênh</th><th>Phân loại</th><th>Doanh thu</th></tr></thead>'
     +'<tbody>'+(dong||'<tr><td colspan="7" style="padding:22px;text-align:center;color:var(--muted)">Không còn data nào chưa có Sale phụ trách</td></tr>')+'</tbody></table></div>'
     +(list.length>300?'<div style="padding:10px;text-align:center;font-size:11px;color:var(--muted)">hiện 300 dòng đầu — dùng ô tìm để lọc bớt</div>':'')
     +'</div>';
@@ -6168,11 +6169,21 @@ function rptSiGanHtml(){
 function siGanTim(v){window._siGanQ=v;clearTimeout(window._siGanT);window._siGanT=setTimeout(rptSlRender,350);}
 function siGanTickHet(on){
   document.querySelectorAll('.siGanTick').forEach(c=>{c.checked=on;});
+  const h=document.getElementById('siGanHet');if(h)h.checked=on;
   siGanDemLai();
 }
 function siGanDemLai(){
-  const n=document.querySelectorAll('.siGanTick:checked').length;
-  const el=document.getElementById('siGanDem');if(el)el.textContent='đã chọn '+n;
+  const tat=document.querySelectorAll('.siGanTick'),n=document.querySelectorAll('.siGanTick:checked').length;
+  const el=document.getElementById('siGanDem');if(el)el.textContent='Đã chọn '+n+' khách';
+  const bar=document.getElementById('siGanBar');if(bar)bar.hidden=n<1;
+  const h=document.getElementById('siGanHet');if(h)h.checked=n>0&&n===tat.length;
+  siGanNut();
+}
+// Nút Xác nhận chỉ SÁNG khi đã tích ít nhất 1 khách VÀ đã chọn Sale
+function siGanNut(){
+  const b=document.getElementById('siGanOk');if(!b)return;
+  const on=!!(document.getElementById('siGanSale')||{}).value&&document.querySelectorAll('.siGanTick:checked').length>0;
+  b.disabled=!on;b.style.opacity=on?'1':'.4';b.style.cursor=on?'pointer':'not-allowed';
 }
 async function siGanChay(){
   const msg=document.getElementById('siGanMsg');
