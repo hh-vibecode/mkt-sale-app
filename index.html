@@ -4446,15 +4446,28 @@ function rptSlOverviewHtml(){
       </table></div>
     </div>
     ${(()=>{
-      // Khách CHƯA chốt, sắp theo giá trị tiềm năng giảm dần -> quản lý nhìn ngay tiền còn đang treo ở đâu.
-      const top=rptSlSortNew(master.filter(r=>!r.isChot&&r.status!=='Mất lead'),rptSlNgayTao);
-      const tong=top.reduce((s,r)=>s+(r.potential||0),0);
+      // Báo cáo TỔNG HỢP là màn hình để NHÌN, không phải chỗ thao tác -> bảng này chỉ liệt kê gọn
+      // 10 khách tiềm năng giá trị nhất kèm doanh số, không bê nguyên bảng Master kèm ô chọn/nút sửa
+      // sang đây nữa (anh Hải 24/9/2026). Muốn thao tác thì sang đúng báo cáo Sale Lẻ / Sale Sỉ.
+      const tien=r=>Number(r.revenue||0)+Number(r.repeatRevenue||0);
+      const top=master.filter(r=>!r.isChot&&r.status!=='Mất lead')
+        .sort((a,b)=>(Number(b.potential||0)-Number(a.potential||0))||(tien(b)-tien(a)))
+        .slice(0,10);
+      const tong=master.filter(r=>!r.isChot&&r.status!=='Mất lead').reduce((s,r)=>s+(r.potential||0),0);
+      const esc=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       return `<div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">Top khách hàng tiềm năng</div><div class="tbl-count">${num(top.length)}</div>
         <span style="margin-left:auto;font-size:11px;color:var(--muted)">Giá trị tiềm năng: <b style="color:var(--orange,#f97316)">${vnd(tong)}</b></span></div>
-      ${top.length?`<div class="tbl-scroll"><table><thead><tr>${RPT_SL_MASTER_HEAD}</tr></thead>
-        <tbody>${top.slice(0,50).map(rptSlMasterRow).join('')}</tbody></table></div>
-        ${top.length>50?'<div style="padding:10px;text-align:center;font-size:11px;color:var(--muted)">hiện 50 khách có giá trị tiềm năng cao nhất</div>':''}`
+      ${top.length?`<div class="tbl-scroll"><table>
+        <thead><tr><th>Tên khách</th><th>Sales phụ trách</th><th>Kênh</th><th>Liên hệ cuối</th><th>Giá trị tiềm năng</th><th>Doanh số cộng dồn</th></tr></thead>
+        <tbody>${top.map(r=>`<tr>
+          <td class="name">${esc(r.name)}${r.kh?`<div style="font-size:10.5px;font-weight:700;color:var(--muted)">${esc(r.kh)}</div>`:''}</td>
+          <td>${esc(r.staff||'—')}</td>
+          <td style="font-size:11.5px">${esc(r.kenh||'—')}</td>
+          <td style="white-space:nowrap">${dmy(r.careDate)||'—'}</td>
+          <td class="num" style="font-weight:700;color:${r.potential?'var(--orange,#f97316)':'inherit'}">${r.potential?vnd(r.potential):'—'}</td>
+          <td class="num" style="font-weight:800;color:${tien(r)?'var(--green)':'inherit'}">${tien(r)?vnd(tien(r)):'—'}</td>
+        </tr>`).join('')}</tbody></table></div>`
         :'<div style="padding:22px;text-align:center;color:var(--muted);font-size:12.5px;font-weight:600">Chưa có khách tiềm năng nào trong kỳ</div>'}
     </div>`;})()}`;
 }
