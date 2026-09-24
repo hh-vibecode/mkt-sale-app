@@ -383,6 +383,16 @@ function toggleSidebar(){sbApplyMode(SB_MODES[(SB_MODES.indexOf(sbMode())+1)%SB_
 const AUTH_USERS={};
 const AUTH_ALLOWED_IPS=[]; // thêm IP máy bạn vào đây (vd '113.161.x.x') để vào thẳng khỏi đăng nhập
 function togglePass(){const p=document.getElementById('loginPass'),e=document.getElementById('loginEye');if(!p)return;if(p.type==='password'){p.type='text';e.textContent='🙈';e.style.color='#4361ee';}else{p.type='password';e.textContent='👁';e.style.color='#94a3b8';}}
+function dashLuuTaiKhoan(account){
+  localStorage.setItem('dashRole','account');
+  localStorage.setItem('dashUser',account.name);
+  localStorage.setItem('dashUserId',account.user_id);
+  localStorage.setItem('dashPosition',account.position_title||'sales');
+  localStorage.setItem('dashPermissions',JSON.stringify(account.permissions||[]));
+  localStorage.setItem('dashDataSales',JSON.stringify(account.data_sales||[]));
+  localStorage.setItem('dashDataTypes',JSON.stringify(account.data_types||[]));
+  document.getElementById('loginGate').style.display='none';applyRole();
+}
 async function doLogin(){
   const u=(document.getElementById('loginUser').value||'').trim().toLowerCase();
   const p=document.getElementById('loginPass').value||'';
@@ -397,6 +407,15 @@ async function doLogin(){
     localStorage.removeItem('dashPermissions');localStorage.removeItem('dashUserId');
     document.getElementById('loginGate').style.display='none';applyRole();return;
   }
+  // ĐĂNG NHẬP KIỂU MỚI (24/9/2026): qua Edge Function dang-nhap -> nhận thêm THẺ PHIÊN.
+  try{
+    const r=await _fetchGoc(`${SUPABASE_URL}/functions/v1/dang-nhap`,{method:'POST',
+      headers:{apikey:SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    if(r.status===401){document.getElementById('loginErr').textContent='Sai tên đăng nhập hoặc mật khẩu';return;}
+    if(r.ok){const j=await r.json();
+      if(j.account&&j.session){localStorage.setItem('sbPhien',JSON.stringify(j.session));dashLuuTaiKhoan(j.account);return;}}
+  }catch(e){console.warn('dang-nhap lỗi, dùng cách cũ:',e.message);}
+  if(SB_BAT_BUOC_PHIEN){document.getElementById('loginErr').textContent='Chưa đăng nhập được, thử lại sau ít phút';return;}
   // Tài khoản tạo qua Admin > Cài đặt (bảng sales_users/sales_user_credentials, xem app_login() trong Supabase)
   try{
     const res=await fetch(`${SUPABASE_URL}/rest/v1/rpc/app_login`,{
@@ -404,16 +423,7 @@ async function doLogin(){
       body:JSON.stringify({p_username:u,p_password:p})
     });
     const account=await res.json();
-    if(account){
-      localStorage.setItem('dashRole','account');
-      localStorage.setItem('dashUser',account.name);
-      localStorage.setItem('dashUserId',account.user_id);
-      localStorage.setItem('dashPosition',account.position_title||'sales');
-      localStorage.setItem('dashPermissions',JSON.stringify(account.permissions||[]));
-      localStorage.setItem('dashDataSales',JSON.stringify(account.data_sales||[]));
-      localStorage.setItem('dashDataTypes',JSON.stringify(account.data_types||[]));
-      document.getElementById('loginGate').style.display='none';applyRole();return;
-    }
+    if(account){dashLuuTaiKhoan(account);return;}
   }catch(e){console.warn('app_login lỗi:',e.message);}
   document.getElementById('loginErr').textContent='Sai tên đăng nhập hoặc mật khẩu';
 }
@@ -567,7 +577,7 @@ function applyRole(){
   if(allowed&&allowed.length)switchPage(allowed[0]);
   else if(allowed)document.body.innerHTML='<div style="padding:40px;font:600 14px var(--font)">Tài khoản chưa được cấp quyền xem trang nào. Liên hệ admin.</div>';
 }
-function logout(){['dashDataSales','dashDataTypes','dashViewAs'].forEach(k=>localStorage.removeItem(k));localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
+function logout(){['dashDataSales','dashDataTypes','dashViewAs','sbPhien'].forEach(k=>localStorage.removeItem(k));localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
 function canReassign(){return['supreme','admin','manager'].includes(localStorage.getItem('dashPosition')||'admin');}
 // Tài khoản vị trí "Sales" chỉ được xem khách được gán cho mình (chuẩn CRM: Sale không thấy data cả công ty).
 // Admin/Manager xem tất cả. 4 tài khoản cũ (admin/admin2/ngoc.onl/mkt) không có user_id thật trong bảng
@@ -601,6 +611,7 @@ function initAuth(){
   // Phiên cũ không có dashUserId (đăng nhập từ trước khi có làm mới quyền) thì không tra lại quyền được
   // -> bắt đăng nhập lại, thay vì để người dùng ngồi nhìn menu thiếu mục mà không hiểu vì sao.
   if(role0==='account'&&!localStorage.getItem('dashUserId')){logout();return;}
+  if(role0&&SB_BAT_BUOC_PHIEN&&!sbPhien()){logout();return;}   // chưa có thẻ phiên -> đăng nhập lại 1 lần
   if(role0){gate.style.display='none';applyRole();dashRefreshPerms();return;}
   gate.style.display='flex';
   fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{
@@ -794,6 +805,54 @@ async function loadData(){
 // ── Supabase: nguồn data mới cho MKT + Sale Online (đang thay dần Google Sheets, xem project_supabase-migration-mkt-saleonline) ──
 const SUPABASE_URL='https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjcnB4ZnZ2anNqcHZia3NxemxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNzE0OTgsImV4cCI6MjEwMjg0NzQ5OH0.XGEUvHP1YBhxYKD9Xq1yH2gl95-V9VgaY5HfsAnFb2c';
+// ── PHIÊN ĐĂNG NHẬP (24/9/2026) ─────────────────────────────────────────────────────────────────
+// Đăng nhập qua Edge Function 'dang-nhap' -> nhận THẺ PHIÊN (JWT Supabase Auth, hạn 1 giờ, tự gia hạn).
+// Mọi lượt gọi Supabase tự gắn thẻ phiên thay cho khoá công khai (bọc fetch bên dưới), nên không phải
+// sửa từng chỗ gọi. Khi CSDL đã khoá (chỉ mở cho người đăng nhập) thì khoá công khai một mình vô dụng.
+// SB_BAT_BUOC_PHIEN: false = giai đoạn chạy song song (chưa có thẻ vẫn dùng khoá công khai như cũ);
+//                    true  = đã khoá CSDL, chưa có thẻ phiên hợp lệ thì bắt đăng nhập lại.
+const SB_BAT_BUOC_PHIEN=false;
+const _fetchGoc=window.fetch.bind(window);
+function sbPhien(){try{return JSON.parse(localStorage.getItem('sbPhien')||'null');}catch(e){return null;}}
+let _sbDangLamMoi=null;
+async function sbLamMoiPhien(){
+  const s=sbPhien();if(!s||!s.refresh_token)return s;
+  if(s.expires_at*1000-Date.now()>10*60000)return s;          // còn hơn 10 phút thì chưa cần gia hạn
+  if(_sbDangLamMoi)return _sbDangLamMoi;
+  _sbDangLamMoi=(async()=>{
+    try{
+      const r=await _fetchGoc(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',
+        headers:{apikey:SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token})});
+      if(r.ok){const j=await r.json();
+        const moi={access_token:j.access_token,refresh_token:j.refresh_token,expires_at:j.expires_at||Math.floor(Date.now()/1000)+(j.expires_in||3600)};
+        localStorage.setItem('sbPhien',JSON.stringify(moi));return moi;}
+      const s2=sbPhien();                                   // tab khác vừa gia hạn trước -> dùng bản của nó
+      if(s2&&s2.refresh_token!==s.refresh_token&&s2.expires_at*1000>Date.now())return s2;
+      if(r.status===400||r.status===401)localStorage.removeItem('sbPhien');
+      return null;
+    }catch(e){return s;}
+    finally{setTimeout(()=>{_sbDangLamMoi=null;},0);}
+  })();
+  return _sbDangLamMoi;
+}
+// Bọc fetch: lượt gọi tới Supabase (trừ chính việc đăng nhập / gia hạn) tự gắn thẻ phiên nếu có.
+window.fetch=async function(input,init){
+  const url=typeof input==='string'?input:((input&&input.url)||'');
+  if(url.indexOf(SUPABASE_URL)===0&&url.indexOf('/auth/v1/')<0&&url.indexOf('/functions/v1/dang-nhap')<0){
+    const s=await sbLamMoiPhien();
+    if(s&&s.access_token){
+      init=Object.assign({},init);const h={},goc=(init&&init.headers)||{};
+      if(typeof goc.forEach==='function'&&!Array.isArray(goc))goc.forEach((v,k)=>{h[k]=v;});else Object.assign(h,goc);
+      Object.keys(h).forEach(k=>{if(k.toLowerCase()==='authorization')delete h[k];});
+      h.Authorization='Bearer '+s.access_token;init.headers=h;}
+    const res=await _fetchGoc(input,init);
+    if(res.status===401&&SB_BAT_BUOC_PHIEN&&typeof logout==='function'){localStorage.removeItem('sbPhien');logout();}
+    return res;
+  }
+  return _fetchGoc(input,init);
+};
+setInterval(()=>{sbLamMoiPhien();},4*60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)sbLamMoiPhien();});
 // anon key chỉ có quyền ĐỌC (RLS chặn ghi) nên lộ ra client-side là an toàn, giống pattern publish-to-web của Google Sheets trước đây
 async function sbFetchAll(table,query){
   const pageSize=1000;
