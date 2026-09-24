@@ -16,6 +16,8 @@
 | 4 | **Soát đơn huỷ / phiếu tạm** — 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
 | 14 | **Khách gắn CHỐT ĐƠN mà 0 đồng** (Sale cần kiểm): L-CT-0196 Nguyễn Đức Thuận và L-CT2-0031 Đoàn Nguyễn Minh Tài mang Mã KH của khách SỈ (KH007485, KH007517) — nghi dán nhầm mã · L-HT-0296 Thuỳ Trâm mã KH002561 không có đơn nào (đơn thật nằm ở KH007352/M-0019) · còn lại là phiếu tạm/không dấu vết tiền (Vạn Linh An 1,57 tỷ phiếu tạm không cọc…) | báo Sale sửa mã trên Pancake |
 | 15 | 3 khách Lẻ chưa có Sale phụ trách: M-0018 Nguyễn Thị Hồng Vân · L-TTV-0371 Trần Hải Long · L-CT-0308 Hoàng Lan | gán Sale |
+| 16 | **57 khách Online Sỉ T9 quá đông**: 4 có thẻ tiềm năng/chốt · 47 chỉ có KH SỈ + SĐT (thẻ LEAD ĐẠT, chưa ai mua) · 6 Sale thêm tay | chọn: (1) chỉ giữ tiềm năng/chốt ≈10 · (2) KH SỈ+SĐT phải có BÀN GIAO ≈25 · (3) giữ 57, tách 47 lead mới thành ô dash riêng |
+| 17 | 2 dòng Đinh Thị Hường (M-0332, M-0338) khác SĐT, khác page, Master đang gộp làm 1 vì trùng tên (không có doanh thu) | cùng 1 người hay 2 người |
 | 12 | M-0197 (Sỉ "Ngoquoc Duy") và M-0021 (Lẻ "KL ANH DUY") chung SĐT …349764439 — KHÔNG gộp vì khác Lẻ/Sỉ | chỉ để anh biết |
 
 ## 2. CLAUDE ĐANG NỢ (tự làm, không cần hỏi)
