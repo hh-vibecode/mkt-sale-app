@@ -6142,13 +6142,24 @@ async function renderSettings(){
         :(CRM_POSITION_LABEL[a.position_title]||a.position_title||'—')}</td>
       <td>${a.department||'—'}</td>
       <td style="font-size:11px">${(()=>{
+        // RÚT GỌN 1 DÒNG: chỉ đếm số lượng, rê chuột mới xem danh sách đầy đủ -- bảng tài khoản vốn
+        // đã nhiều cột, đổ hết tên Sale và tên trang ra thì tràn màn hình (anh Hải 24/9/2026).
         const ds=a.data_sales||[],dt=a.data_types||[];
-        if(a.position_title==='supreme'||(!ds.length&&!dt.length))return'<span style="color:var(--muted)">toàn bộ data</span>';
-        return(ds.length?ds.join(', '):'mọi Sale')+(dt.length?' · chỉ '+dt.join('/'):'');
+        if(a.position_title==='supreme'||a.position_title==='admin'||(!ds.length&&!dt.length))
+          return'<span style="color:var(--muted)">toàn bộ data</span>';
+        const day=(ds.length?ds.join(', '):'mọi Sale')+(dt.length?' · chỉ '+dt.join('/'):'');
+        const gon=(ds.length?ds.length+' Sale':'mọi Sale')+(dt.length?' · '+dt.join('/'):'');
+        return'<span title="'+day.replace(/"/g,'&quot;')+'" style="display:inline-block;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom">'+gon+'</span>';
       })()}</td>
-      <td style="font-size:11px;color:var(--muted)">${(a.permissions||[]).indexOf(PERM_ALL)>=0
-        ?'<span style="color:var(--green);font-weight:800">TOÀN QUYỀN</span> <span style="color:var(--muted)">(mọi trang, cả module thêm sau)</span>'
-        :((a.permissions||[]).map(p=>(CRM_PERMISSION_PAGES.find(x=>x[0]===p)||[,p])[1]).join(', ')||'—')}</td>
+      <td style="font-size:11px;color:var(--muted)">${(()=>{
+        const p=a.permissions||[];
+        if(p.indexOf(PERM_ALL)>=0||a.position_title==='supreme'||a.position_title==='admin')
+          return'<span style="color:var(--green);font-weight:800">TOÀN QUYỀN</span>';
+        if(!p.length)return'—';
+        const ten=p.map(x=>(CRM_PERMISSION_PAGES.find(y=>y[0]===x)||[,x])[1]);
+        return'<span title="'+ten.join(', ').replace(/"/g,'&quot;')+'" style="display:inline-block;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom">'
+          +ten.length+' trang · '+ten[0]+(ten.length>1?'…':'')+'</span>';
+      })()}</td>
       <td>${a.status==='active'?'<span style="color:var(--green);font-weight:700">Đang hoạt động</span>':'<span style="color:var(--muted)">Đã khoá</span>'}</td>
       <td style="white-space:nowrap">
         <button class="btn-ghost" style="padding:4px 10px;font-size:11px" onclick="openCrmEditAccount('${a.user_id}')">Sửa</button>
