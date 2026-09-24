@@ -3778,13 +3778,35 @@ function rptSlChatUrl(r){
 }
 // Mã gắn NGAY DƯỚI TÊN KHÁCH cho gọn bảng: đã có Mã KH Kiot thì hiện Mã KH (bấm mở sang Kiot),
 // chưa có thì hiện Lead ID do app sinh. Popup chi tiết vẫn giữ ĐỦ cả Lead ID lẫn Mã KH.
+// Gom các dòng CÙNG 1 lần liên hệ (lead Pancake + dòng nhập tay chép từ sheet: cùng ngày, cùng SĐT) thành 1 nguồn.
+// Tên page ưu tiên bản Pancake (L-...) vì đó là page thật khách nhắn vào.
+function rptSlNguonGon(r){
+  const g={};
+  (r.nguonLienHe||[]).forEach(x=>{
+    const sdt=[...new Set((x.sdt||[]).map(rptSlLast9).filter(Boolean))].sort().join('|');
+    const k=(sdt||x.leadId)+'@'+(x.ngay||'');
+    const o=g[k]=g[k]||{ngay:x.ngay,kenh:'',sdt:[],leadIds:[]};
+    if(!o.kenh||/^L-/.test(x.leadId))o.kenh=x.kenh||o.kenh;
+    (x.sdt||[]).forEach(p=>{if(!o.sdt.some(q=>rptSlLast9(q)===rptSlLast9(p)))o.sdt.push(p);});
+    o.leadIds.push(x.leadId);
+  });
+  return Object.values(g).sort((a,b)=>String(a.ngay).localeCompare(String(b.ngay)));
+}
+function rptSlNhanNguon(r){
+  const ds=rptSlNguonGon(r);if(ds.length<2)return '';
+  const sdt=[...new Set(ds.flatMap(x=>x.sdt||[]).map(x=>rptSlLast9(x)))].filter(Boolean).length;
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const tip=ds.map(x=>(dmy(x.ngay)||'?')+' · '+(x.kenh||'?')+' · '+((x.sdt||[]).join(', ')||'chưa có SĐT')+' · '+x.leadIds.join(', ')).join('&#10;');
+  return ' <span title="'+e(tip).replace(/&amp;#10;/g,'&#10;')+'" style="display:inline-block;margin-left:4px;padding:0 6px;border-radius:10px;background:var(--accent-l);color:var(--accent);font-size:10px;font-weight:800;cursor:help">'
+    +ds.length+' nguồn'+(sdt>1?' · '+sdt+' SĐT':'')+'</span>';
+}
 function rptSlMaDuoiTen(r){
   const ma=r.kh||r.manualKH||'';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const oNho='font-size:10.5px;font-weight:700;color:var(--muted);margin-top:1px';
   if(ma)return '<div style="'+oNho+'" title="Lead ID: '+e(r.leadId)+'">'
-    +rptSlKiotLink(ma,'<span style="color:var(--accent)">'+e(ma)+'</span>')+'</div>';
-  return r.leadId?'<div style="'+oNho+'">'+e(r.leadId)+'</div>':'';
+    +rptSlKiotLink(ma,'<span style="color:var(--accent)">'+e(ma)+'</span>')+rptSlNhanNguon(r)+'</div>';
+  return r.leadId?'<div style="'+oNho+'">'+e(r.leadId)+rptSlNhanNguon(r)+'</div>':'';
 }
 function rptSlTenKhach(r){
   const ten=String(r.name||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;');
@@ -5078,9 +5100,15 @@ function rptSlBuildMasterRaw(){
     rows.filter(r=>!r._merged).forEach(r=>{const k=khoa(r);if(k)(m[k]=m[k]||[]).push(r);});
     return Object.values(m).filter(g=>g.length>1);
   };
+  // NGUỒN LIÊN HỆ: 1 khách nhắn nhiều page / nhiều SĐT thì kê đủ từng nguồn (anh Hải 24/9/2026).
+  // Tích luỹ qua MỌI bước gộp (Mã KH -> SĐT -> tên), không ghi đè như mergedRows.
+  const nguonCua=r=>r.nguonLienHe||[{leadId:r.leadId,kenh:r.kenh||r.source||'',ngay:String(r.created||'').slice(0,10),
+    sdt:[...new Set([...(r.phones||[]).filter(p=>!p.tuKiot).map(p=>p.so),r.phone].filter(Boolean).map(x=>String(x).trim()))],soDon:(r.orders||[]).length}];
   const gopNhom=g=>{
     g.sort((a,b)=>String(a.created).localeCompare(String(b.created)));
     const keep=g[0],rest=g.slice(1);
+    {const co={};keep.nguonLienHe=g.flatMap(nguonCua).filter(x=>co[x.leadId]?false:(co[x.leadId]=true))
+      .sort((a,b)=>String(a.ngay).localeCompare(String(b.ngay)));}
     keep.orders=g.flatMap(r=>r.orders).sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
     // đơn đặt hàng phải LỌC TRÙNG theo mã đơn, nếu không gộp xong vẫn cộng 2 lần
     const seen={};keep.kords=g.flatMap(r=>r.kords).filter(i=>seen[i.code]?false:(seen[i.code]=true))
@@ -5809,7 +5837,11 @@ function rptSlShowCustomer(key){
     // Phần CHĂM SÓC -- trước đây modal chỉ có thông tin đơn/khách, thiếu hẳn thứ Sale ghi hằng ngày.
     fld('Ngày chăm sóc',esc(dmy(r.careDate))),
     fld('Giá trị tiềm năng',r.isChot?'':(r.potential?vnd(r.potential):''),r.potential?'var(--orange,#f97316)':''),
-  ].join('')+`<div style="grid-column:1/-1">
+  ].join('')+(rptSlNguonGon(r).length>1?`<div style="grid-column:1/-1">
+    <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">Nguồn liên hệ · ${rptSlNguonGon(r).length} nguồn (cùng 1 khách)</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted);font-size:10.5px;text-align:left"><th style="padding:4px 8px">Ngày</th><th style="padding:4px 8px">Page / kênh</th><th style="padding:4px 8px">SĐT</th><th style="padding:4px 8px">Lead ID</th></tr></thead><tbody>
+    ${rptSlNguonGon(r).map(x=>`<tr style="border-top:1px solid var(--border)"><td style="padding:5px 8px;white-space:nowrap">${dmy(x.ngay)||'—'}</td><td style="padding:5px 8px;font-weight:700">${esc(x.kenh||'—')}</td><td style="padding:5px 8px;white-space:nowrap">${esc((x.sdt||[]).join(', ')||'—')}</td><td style="padding:5px 8px;color:var(--muted);font-weight:700">${esc(x.leadIds.join(' · '))}</td></tr>`).join('')}
+    </tbody></table></div>`:'')+`<div style="grid-column:1/-1">
     <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Nội dung trao đổi gần nhất</div>
     <div style="font-size:12.5px;font-weight:600;margin-top:4px;white-space:pre-wrap;line-height:1.5">${r.content?esc(r.content):'<span style="color:var(--muted);font-weight:600">—</span>'}</div></div>`;
   const tl=[

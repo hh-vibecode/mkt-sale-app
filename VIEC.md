@@ -16,7 +16,6 @@
 | 4 | **Soát đơn huỷ / phiếu tạm** — 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
 | 14 | **Khách gắn CHỐT ĐƠN mà 0 đồng** (Sale cần kiểm): L-CT-0196 Nguyễn Đức Thuận và L-CT2-0031 Đoàn Nguyễn Minh Tài mang Mã KH của khách SỈ (KH007485, KH007517) — nghi dán nhầm mã · L-HT-0296 Thuỳ Trâm mã KH002561 không có đơn nào (đơn thật nằm ở KH007352/M-0019) · còn lại là phiếu tạm/không dấu vết tiền (Vạn Linh An 1,57 tỷ phiếu tạm không cọc…) | báo Sale sửa mã trên Pancake |
 | 15 | 3 khách Lẻ chưa có Sale phụ trách: M-0018 Nguyễn Thị Hồng Vân · L-TTV-0371 Trần Hải Long · L-CT-0308 Hoàng Lan | gán Sale |
-| 17 | 2 dòng Đinh Thị Hường (M-0332, M-0338) khác SĐT, khác page, Master đang gộp làm 1 vì trùng tên (không có doanh thu) | cùng 1 người hay 2 người |
 | 12 | M-0197 (Sỉ "Ngoquoc Duy") và M-0021 (Lẻ "KL ANH DUY") chung SĐT …349764439 — KHÔNG gộp vì khác Lẻ/Sỉ | chỉ để anh biết |
 
 ## 2. CLAUDE ĐANG NỢ (tự làm, không cần hỏi)
@@ -45,6 +44,7 @@
 - **Master Sỉ** mặc định lọc 3 ngày gần nhất, tính theo NGÀY TẠO khách (anh chốt 24/9, không đổi sang ngày chăm sóc). Thẻ dash: icon + tên (chữ thường, đậm) cùng hàng, không dòng phụ.
 - **Lead ID**: dùng mã app sinh; khách đã có Mã KH Kiot thì cột đó hiện thẳng Mã KH.
 - **Tên khách Ở ĐÂU cũng kèm mã** ngay dưới (hoặc cạnh, trong tiêu đề popup): có Mã KH Kiot thì hiện Mã KH, chưa có thì Lead ID. Dùng chung hàm `rptSlMaDuoiTen` — thêm bảng mới phải gọi hàm này.
+- **1 khách nhắn nhiều nguồn** (nhiều page / nhiều SĐT) thì kê đủ: nhãn "N nguồn · M SĐT" dưới tên + bảng Nguồn liên hệ trong hồ sơ. Lead Pancake + dòng sheet cùng ngày cùng SĐT = 1 nguồn. Đinh Thị Hường (Shidai 0359752313 + Tự Tại Viên 0378682341) là 1 người — anh xác nhận 24/9.
 - Mọi thứ Claude tạo ký tên **Monsieur Claude**.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
 
