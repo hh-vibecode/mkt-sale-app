@@ -14,7 +14,6 @@
 | 1 | **Kéo full hoá đơn Kiot về hub** — 23/09 anh bảo **TẠM ĐỂ ĐÓ**, khi nào cần thì làm. Xem mục 6 bên dưới trước khi bắt tay | khi nào cần thì anh gọi |
 | 3 | **Tăng tỉ lệ có SĐT của Pancake** để nối Ad ID theo SĐT ăn thua hơn (hiện chỉ 19% đơn có SĐT nên chỉ vá được 2 lead). Cách: kéo SĐT từ API hội thoại Pancake | cho thử vài trăm hội thoại đo tỉ lệ không |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
-| 9 | **Master Sỉ lọc 3 ngày** đang tính theo NGÀY TẠO khách → mở ra chỉ thấy vài khách mới | đổi sang theo ngày chăm sóc gần nhất không |
 | 10 | **Top khách tiềm năng (Báo cáo tổng hợp)**: đang lọc khách CHƯA chốt nên cột doanh số gần như trống | giữ vậy hay đổi sang top 10 theo doanh số |
 | 11 | Master Lẻ còn nhãn "Chi tiết" ở cột cuối · nút "Cho nghỉ"/"Khoá TK" chưa hỏi xác nhận | có đồng bộ nốt không |
 | 12 | M-0197 (Sỉ "Ngoquoc Duy") và M-0021 (Lẻ "KL ANH DUY") chung SĐT …349764439 — KHÔNG gộp vì khác Lẻ/Sỉ | chỉ để anh biết |
@@ -43,7 +42,7 @@
 - **Data Online vào Master Sỉ** khi: có thẻ LEAD TIỀM NĂNG / CHỐT ĐƠN, HOẶC có thẻ KH SỈ + khách đã gửi SĐT.
 - **Lượt chăm sóc "Chốt đơn"** bắt buộc điền mã đơn đặt hàng CÓ THẬT bên Kiot.
 - **Nút Xoá** luôn nằm TRONG form Sửa, bấm phải hỏi xác nhận. **Thu hồi data** (chỉ Admin) = Sale về botsale sỉ → rơi vào tab Gán data.
-- **Master + CRM Sỉ** mặc định lọc 3 ngày gần nhất. Thẻ dash: icon + tên (chữ thường, đậm) cùng hàng, không dòng phụ.
+- **Master Sỉ** mặc định lọc 3 ngày gần nhất, tính theo NGÀY TẠO khách (anh chốt 24/9, không đổi sang ngày chăm sóc). Thẻ dash: icon + tên (chữ thường, đậm) cùng hàng, không dòng phụ.
 - **Lead ID**: dùng mã app sinh; khách đã có Mã KH Kiot thì cột đó hiện thẳng Mã KH.
 - Mọi thứ Claude tạo ký tên **Monsieur Claude**.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
