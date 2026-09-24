@@ -3,7 +3,7 @@
 > Sổ này thay cho việc đọc lại hội thoại cũ. **Claude phải mở file này đầu mỗi phiên làm việc.**
 > Xong việc nào thì xoá khỏi mục ĐANG NỢ và ghi 1 dòng vào NHẬT KÝ (gộp lại khi quá dài).
 > **Anh đã quyết rồi thì LÀM, đừng xếp lại vào mục "chờ anh quyết" để hỏi lại** (mắc lỗi này 23/9 với việc tự tạo data nhập tay).
-> Cập nhật lần cuối: 23/09/2026.
+> Cập nhật lần cuối: 24/09/2026 (tối).
 
 ---
 
@@ -14,7 +14,13 @@
 | 1 | **Kéo full hoá đơn Kiot về hub** — 23/09 anh bảo **TẠM ĐỂ ĐÓ**, khi nào cần thì làm. Xem mục 6 bên dưới trước khi bắt tay | khi nào cần thì anh gọi |
 | 3 | **Tăng tỉ lệ có SĐT của Pancake** để nối Ad ID theo SĐT ăn thua hơn (hiện chỉ 19% đơn có SĐT nên chỉ vá được 2 lead). Cách: kéo SĐT từ API hội thoại Pancake | cho thử vài trăm hội thoại đo tỉ lệ không |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
-| 6 | **Tình trạng hỗ trợ (CRM Sỉ)** — 996/1.000 lượt đều là "Đã xong", cột gần như vô nghĩa | có bổ sung lựa chọn khác không (Chờ kế toán, Chờ giao hàng, Cần giá sỉ…) |
+| 7 | **Gộp 4 cặp dòng Data nhập tay trùng người**: M-0372←M-0053 (ANH DŨNG-HY) · M-0373←M-0054 (GIÁC BÀI) · M-0350←M-0015 (C Hiền-HN) · M-0339←M-0340 (Hồng Nguyễn Thị Vân). Script có sẵn `scratchpad/gopdong.js` (chuyển lượt chăm sóc + hồ sơ si_* sang dòng giữ rồi mới xoá). Chạy thử OK; bước ghi thật bị chế độ tự động chặn | anh bấm duyệt lúc chạy `GHI=1` |
+| 8 | **Nguyễn Thuỳ Trâm (Lẻ)**: M-0019 gắn mã KH007352 mà tên Kiot là "KL Anh Tân - TN" → nghi dán nhầm, dòng đang mang 10.590.000đ. Dòng kia L-HT-0296 mã KH002561 "KL C Trâm" | mã đúng là KH002561? |
+| 9 | **Master Sỉ lọc 3 ngày** đang tính theo NGÀY TẠO khách → mở ra chỉ thấy vài khách mới | đổi sang theo ngày chăm sóc gần nhất không |
+| 10 | **Top khách tiềm năng (Báo cáo tổng hợp)**: đang lọc khách CHƯA chốt nên cột doanh số gần như trống | giữ vậy hay đổi sang top 10 theo doanh số |
+| 11 | Master Lẻ còn nhãn "Chi tiết" ở cột cuối · nút "Cho nghỉ"/"Khoá TK" chưa hỏi xác nhận | có đồng bộ nốt không |
+| 12 | M-0197 (Sỉ "Ngoquoc Duy") và M-0021 (Lẻ "KL ANH DUY") chung SĐT …349764439 — KHÔNG gộp vì khác Lẻ/Sỉ | chỉ để anh biết |
+| 13 | 4 khách có ghi chú trong sheet Sỉ chưa có trong app: MỞ MỚI CỬA HÀNG (0916050878) · KH005476 (0934687350) · KH007548 (0975427001) | có tạo khách cho họ không |
 
 ## 2. CLAUDE ĐANG NỢ (tự làm, không cần hỏi)
 
@@ -35,7 +41,11 @@
 - **Hub = nguồn**, giữ hết và vẫn update bình thường; từ nguồn ra báo cáo phải qua bộ lọc. Bộ lọc hiện tại: **chỉ khách Lẻ nguồn Online**.
 - **Sỉ lấy full lịch sử** (không giới hạn T6). Riêng TAB Data nhập tay chỉ HIỆN từ 1/6/2026 cho đỡ dài, dòng cũ vẫn vào báo cáo.
 - **MKT chỉ lấy Sỉ Online**, Sỉ Offline chỉ vào báo cáo Sale Sỉ.
-- **Cột trạng thái của Sỉ**: Master = Phân loại KH · CRM = Tình trạng hỗ trợ.
+- **Cột trạng thái của Sỉ**: Master = Phân loại KH. Tab CRM Sỉ ĐÃ GỠ (24/9) — lịch sử chăm sóc nằm trong popup hồ sơ khách (3 tab: Thông tin · Ghi chú riêng · Lịch sử chăm sóc), vẫn lưu ở bảng `salesi_crm`.
+- **Data Online vào Master Sỉ** khi: có thẻ LEAD TIỀM NĂNG / CHỐT ĐƠN, HOẶC có thẻ KH SỈ + khách đã gửi SĐT.
+- **Lượt chăm sóc "Chốt đơn"** bắt buộc điền mã đơn đặt hàng CÓ THẬT bên Kiot.
+- **Nút Xoá** luôn nằm TRONG form Sửa, bấm phải hỏi xác nhận. **Thu hồi data** (chỉ Admin) = Sale về botsale sỉ → rơi vào tab Gán data.
+- **Master + CRM Sỉ** mặc định lọc 3 ngày gần nhất. Thẻ dash: icon + tên IN HOA cùng hàng, không dòng phụ.
 - **Lead ID**: dùng mã app sinh; khách đã có Mã KH Kiot thì cột đó hiện thẳng Mã KH.
 - Mọi thứ Claude tạo ký tên **Monsieur Claude**.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
@@ -50,6 +60,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **24/09 chiều-tối** — Deploy pancake-note v6 (gắn thẻ TIỀM NĂNG). Master/CRM Sỉ bỏ hết dash cũ, gỡ hẳn tab CRM Sỉ (2.005 lượt đã nối hết vào khách, 0 mồ côi). Popup hồ sơ khách Sỉ 3 tab; tab Ghi chú riêng nạp 94 khách từ sheet 1.MASTER DATA SỈ (7 cột si_gc_*). salesi_crm thêm phan_hoi/trang_thai/ma_don. Master Sỉ 5 dash (Tổng khách bấm ra Online/Offline · Đã chốt · Đang chăm · Lâu chưa chăm >10 ngày · Chưa cập nhật trạng thái). Tab lên ngang tiêu đề ở mọi báo cáo. Nút Xoá chuyển vào form Sửa (Data nhập tay có form Sửa mới). Thu hồi data cho Admin. Top khách tiềm năng ở Tổng hợp rút về 10 dòng. Siết luật Online vào Master Sỉ (chưa rơi khách nào).
 - **24/09** — Gộp khách trùng ở Master Sỉ/Lẻ: ngoài Mã KH giờ gộp thêm theo SĐT (9 số cuối) và tên bỏ dấu; Sỉ 571 → 410 khách, hết trùng SĐT/tên, doanh thu không đổi. Bộ kiểm số liệu nay cộng cả đơn mua lại cho khớp bảng trong app. Master Sỉ thêm nút Thêm khách mới; nhân sự Sỉ chỉ còn Toàn và Huế (19 khách của 7 người kia chuyển về botsale sỉ). Phân quyền rút gọn 2 cột Phạm vi/Quyền. Thêm tab Gán data bên Sỉ.
 - **23/09** — Kiot raw data: đổi tên tab, bỏ đơn huỷ + 640 phiếu tạm không cọc. Data Hub thêm mục Kho dữ liệu (dung lượng DB). Tab nhập tay lọc từ T6. Sửa lỗi nick quản lý hụt 40 khách Sỉ / 477tr (khách chưa gán Sale bị giấu) + vòng lặp vô hạn `dashCan` ↔ `dashCanViewAs`. Phân loại Sỉ/Lẻ theo chi nhánh (347 khách trước đây không xếp được). Nạp nốt 159 dòng sheet Master Sỉ (giờ 386/386). Brand Sỉ mặc định Shidai. Dựng lại dash Master/CRM (4 dash/hàng). CRM Sỉ mặc định lọc 3 ngày. Suy Ad ID theo SĐT. Tăng tốc tải trang (2.803 ms → 1.075 ms). Sửa workflow Pancake fail hàng loạt do bộ chặn phân trang.
 - **22/09** — Sửa tận gốc lỗi báo cáo Sỉ trắng tinh (trùng id `rptSlBody`). Dựng lại Master/CRM Sỉ theo khung sheet. Bộ kiểm số liệu. MKT tách 2 tab.
