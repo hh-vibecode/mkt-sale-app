@@ -25,9 +25,13 @@ jobs:
           node-version: '20'
 
       - name: So chỉ số hiện tại với mốc đang lưu
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/kiem-so-lieu.js
 
       - name: Chụp mốc mới (chỉ chạy khi bước trên đã xanh)
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/kiem-so-lieu.js --luu
 
       - name: Ghi mốc mới vào repo

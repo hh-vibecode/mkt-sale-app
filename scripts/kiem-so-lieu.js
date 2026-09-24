@@ -19,7 +19,13 @@ const NGUONG_PHAN_TRAM = 5;          // lệch quá 5% coi là bất thường
 const SUPABASE_URL = 'https://bcrpxfvvjsjpvbksqzls.supabase.co/rest/v1';
 const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjcnB4ZnZ2anNqcHZia3NxemxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNzE0OTgsImV4cCI6MjEwMjg0NzQ5OH0.XGEUvHP1YBhxYKD9Xq1yH2gl95-V9VgaY5HfsAnFb2c';
 
-const H = { apikey: ANON, Authorization: 'Bearer ' + ANON };
+// Từ khi CSDL khoá chỉ cho người đăng nhập (24/9/2026), khoá công khai KHÔNG đọc được gì nữa -> script
+// dùng khoá quản trị: trên GitHub lấy từ secret, trên máy lấy từ supabase-keys.local.txt.
+const KHOA = process.env.SUPABASE_SERVICE_ROLE_KEY || (() => {
+  try { return (require('fs').readFileSync(path.join(GOC, 'supabase-keys.local.txt'), 'utf8')
+    .match(/SERVICE_ROLE_KEY:s*(eyJ[A-Za-z0-9._-]+)/) || [])[1]; } catch (e) { return ''; }
+})() || ANON;
+const H = { apikey: KHOA, Authorization: 'Bearer ' + KHOA };
 const tai = async (bang, truyVan) => {
   let ra = [], tu = 0;
   for (;;) {

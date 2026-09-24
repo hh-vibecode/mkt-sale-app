@@ -10,9 +10,21 @@ const ALLOWED: Record<string, string> = {
   kiot: 'sync-kiot.yml',         // KiotViet: đơn đặt hàng + hoá đơn
   mkt: 'sync-mkt.yml',           // Meta Ads
 };
+// ── Chỉ người ĐÃ ĐĂNG NHẬP APP mới gọi được (24/9/2026). Bật bằng secret BAT_BUOC_PHIEN=1 lúc khoá CSDL;
+// chưa bật thì chạy như cũ để không gãy người đang dùng khoá công khai.
+const URL_SB = Deno.env.get('SUPABASE_URL') ?? '';
+const ANON_SB = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+const BAT_BUOC = Deno.env.get('BAT_BUOC_PHIEN') === '1';
+async function daDangNhap(req: Request): Promise<boolean> {
+  const t = (req.headers.get('authorization') || '').replace(/^Bearers+/i, '');
+  if (!t || !URL_SB) return false;
+  const r = await fetch(URL_SB + '/auth/v1/user', { headers: { apikey: ANON_SB, Authorization: 'Bearer ' + t } }).catch(() => null);
+  return !!r && r.ok;   // khoá công khai không có người dùng -> /auth/v1/user từ chối
+}
+const CRON_KEY = Deno.env.get('CRON_KEY') ?? '';   // lịch hẹn giờ trên CSDL (goi_sync) gửi kèm mã này
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-key',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 const json = (o: unknown, status = 200) =>
@@ -22,6 +34,8 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'Chỉ nhận POST' }, 405);
   if (!GH_TOKEN) return json({ error: 'Chưa cấu hình GH_DISPATCH_TOKEN' }, 500);
+  const tuLich = !!CRON_KEY && req.headers.get('x-cron-key') === CRON_KEY;
+  if (BAT_BUOC && !tuLich && !(await daDangNhap(req))) return json({ error: 'Cần đăng nhập app' }, 401);
 
   const { job = 'datahub', backfill = false } = await req.json().catch(() => ({}));
   const wf = ALLOWED[job];

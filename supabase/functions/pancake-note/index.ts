@@ -8,6 +8,17 @@
 const PC = Deno.env.get('PANCAKE_SESSION_TOKEN') ?? '';
 const SB_URL = Deno.env.get('SB_URL') ?? '';
 const SB_KEY = Deno.env.get('SB_SERVICE_KEY') ?? '';
+// ── Chỉ người ĐÃ ĐĂNG NHẬP APP mới gọi được (24/9/2026). Bật bằng secret BAT_BUOC_PHIEN=1 lúc khoá CSDL;
+// chưa bật thì chạy như cũ để không gãy người đang dùng khoá công khai.
+const URL_SB = Deno.env.get('SUPABASE_URL') ?? '';
+const ANON_SB = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+const BAT_BUOC = Deno.env.get('BAT_BUOC_PHIEN') === '1';
+async function daDangNhap(req: Request): Promise<boolean> {
+  const t = (req.headers.get('authorization') || '').replace(/^Bearers+/i, '');
+  if (!t || !URL_SB) return false;
+  const r = await fetch(URL_SB + '/auth/v1/user', { headers: { apikey: ANON_SB, Authorization: 'Bearer ' + t } }).catch(() => null);
+  return !!r && r.ok;   // khoá công khai không có người dùng -> /auth/v1/user từ chối
+}
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -20,6 +31,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'Chỉ nhận POST' }, 405);
   if (!PC) return json({ error: 'Chưa cấu hình PANCAKE_SESSION_TOKEN' }, 500);
+  if (BAT_BUOC && !(await daDangNhap(req))) return json({ error: 'Cần đăng nhập app' }, 401);
 
   const { shop_id, order_id, code, status, chot, the, who } = await req.json().catch(() => ({}));
   if (!shop_id || !order_id) return json({ error: 'Thiếu shop_id / order_id' }, 400);

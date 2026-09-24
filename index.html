@@ -413,7 +413,8 @@ async function doLogin(){
       headers:{apikey:SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
     if(r.status===401){document.getElementById('loginErr').textContent='Sai tên đăng nhập hoặc mật khẩu';return;}
     if(r.ok){const j=await r.json();
-      if(j.account&&j.session){localStorage.setItem('sbPhien',JSON.stringify(j.session));dashLuuTaiKhoan(j.account);return;}}
+      if(j.account&&j.session){localStorage.setItem('sbPhien',JSON.stringify(j.session));dashLuuTaiKhoan(j.account);
+        if(SB_BAT_BUOC_PHIEN){location.reload();}return;}}
   }catch(e){console.warn('dang-nhap lỗi, dùng cách cũ:',e.message);}
   if(SB_BAT_BUOC_PHIEN){document.getElementById('loginErr').textContent='Chưa đăng nhập được, thử lại sau ít phút';return;}
   // Tài khoản tạo qua Admin > Cài đặt (bảng sales_users/sales_user_credentials, xem app_login() trong Supabase)
@@ -846,7 +847,7 @@ window.fetch=async function(input,init){
       Object.keys(h).forEach(k=>{if(k.toLowerCase()==='authorization')delete h[k];});
       h.Authorization='Bearer '+s.access_token;init.headers=h;}
     const res=await _fetchGoc(input,init);
-    if(res.status===401&&SB_BAT_BUOC_PHIEN&&typeof logout==='function'){localStorage.removeItem('sbPhien');logout();}
+    if(res.status===401&&SB_BAT_BUOC_PHIEN&&s&&s.access_token&&typeof logout==='function'){localStorage.removeItem('sbPhien');logout();}
     return res;
   }
   return _fetchGoc(input,init);
@@ -6971,7 +6972,7 @@ async function crmInlineSave(el){
 
 window.onload=function(){
   initAuth();
-  loadData();
+  if(!SB_BAT_BUOC_PHIEN||sbPhien())loadData();
 };
 </script>
 </body>
