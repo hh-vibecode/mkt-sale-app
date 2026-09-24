@@ -4362,6 +4362,10 @@ async function rptSlRenderPage(type){
       <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         <button onclick="rptSlSetViewMode('master')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='master'?'var(--accent)':'var(--surface)'};color:${mode==='master'?'#fff':'var(--text2)'}">Master Data</button>
         <button onclick="rptSlSetViewMode('crm')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='crm'?'var(--accent)':'var(--surface)'};color:${mode==='crm'?'#fff':'var(--text2)'}">CRM</button>
+        ${rptSlType()==='Sỉ'?(()=>{const n=rptSlBuildMaster().filter(r=>r.staff===RPT_SL_BOT_SI).length;
+          return '<button onclick="rptSlSetViewMode('+String.fromCharCode(39)+'gan'+String.fromCharCode(39)+')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:'
+            +(mode==='gan'?'var(--accent)':'var(--surface)')+';color:'+(mode==='gan'?'#fff':'var(--text2)')+'">Gán data'
+            +(n?' <span style="background:var(--yellow);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+num(n)+'</span>':'')+'</button>';})():''}
         <button onclick="rptSlSetViewMode('input')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='input'?'var(--accent)':'var(--surface)'};color:${mode==='input'?'#fff':'var(--text2)'}">Nhập Liệu${(()=>{const n=rptSlTodoCount();return n?' <span style="background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+n+'</span>':'';})()}</button>
       </span>
     </div>
@@ -4371,7 +4375,7 @@ async function rptSlRenderPage(type){
   const than=el.querySelector('.rptSlBody');   // tìm trong ĐÚNG trang đang vẽ, không dùng id dùng chung
   if(!than)return;
   try{
-    const html=mode==='input'?rptSlInputHtml():mode==='crm'?rptSlCrmHtml():rptSlMasterHtml();
+    const html=mode==='gan'?rptSiGanHtml():mode==='input'?rptSlInputHtml():mode==='crm'?rptSlCrmHtml():rptSlMasterHtml();
     if(!html||!String(html).trim())throw new Error('Bảng dựng ra rỗng (mode='+mode+', khách='+rptSlBuildMaster().length+')');
     than.innerHTML=html;
   }catch(e){
@@ -5041,7 +5045,9 @@ function rptSlBuildMasterRaw(){
         .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
       const ten=don.length?String(don[don.length-1].sold_by_name).trim():'';
       r.staffKiot=ten;
-      r.staff=ten||RPT_SL_BOT_SI;
+      // Ưu tiên người được GÁN TAY ở tab 'Gán data'; chưa gán thì lấy người tạo đơn Kiot; không có nữa thì bot.
+      const mnS=rptSlManual[r.leadId]||{};
+      r.staff=(mnS.si_sale||'').trim()||ten||RPT_SL_BOT_SI;
     });
     const ky={};
     (typeof siCrmRows!=='undefined'?siCrmRows:[]).forEach(c=>{
@@ -5719,6 +5725,68 @@ function rptSlSetViewAs(id){
   applyRole();                       // dựng lại menu bên trái theo quyền tài khoản vừa chọn
   const p=window._trangHienTai;
   if(p&&dashCan(p))switchPage(p);    // trang đang mở vẫn xem được thì vẽ lại tại chỗ
+}
+// ── TAB GÁN DATA (chỉ báo cáo SỈ) ─────────────────────────────────────────────────────────────
+// Gom hết khách đang để 'botsale sỉ' (chưa biết ai phụ trách) vào 1 chỗ, tích 1 hoặc nhiều dòng rồi
+// chọn Sale -> gán hàng loạt. Ghi vào saleretail_manual.si_sale, ưu tiên hơn người tạo đơn bên Kiot.
+function rptSiGanHtml(){
+  const ds=rptSlSortNew(rptSlBuildMaster().filter(r=>r.staff===RPT_SL_BOT_SI),rptSlNgayTao);
+  const q=(window._siGanQ||'').trim().toLowerCase();
+  const list=q?ds.filter(r=>(r.name||'').toLowerCase().includes(q)
+      ||(r.phones||[]).some(p=>p.so.includes(q))||(r.kh||'').toLowerCase().includes(q)):ds;
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const sale=saleNhanSuDS().filter(x=>x.doi==='Sỉ'&&x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);
+  const dong=list.slice(0,300).map(r=>'<tr>'
+    +'<td style="width:34px"><input type="checkbox" class="siGanTick" value="'+e(r.leadId)+'"></td>'
+    +'<td style="white-space:nowrap">'+(dmy(r.created)||'—')+'</td>'
+    +'<td class="name">'+e(r.name)+'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+e(r.kh||r.leadId)+'</div></td>'
+    +'<td style="white-space:nowrap;font-size:11.5px">'+rptSlSdtHtml(r)+'</td>'
+    +'<td style="font-size:11.5px">'+e(r.nguon||'')+(r.kenh?' · '+e(r.kenh):'')+'</td>'
+    +'<td style="font-size:11.5px">'+e(r.siPhanLoai||'—')+'</td>'
+    +'<td class="num">'+(r.revenue>0?vnd(r.revenue):'—')+'</td></tr>').join('');
+  return '<div class="tbl-card"><div class="tbl-head">'
+    +'<div class="tbl-title">Data chưa có Sale phụ trách</div><div class="tbl-count">'+num(ds.length)+'</div>'
+    +'<input value="'+e(window._siGanQ||'')+'" oninput="siGanTim(this.value)" placeholder="Tìm tên, SĐT, Mã KH…" '
+    +'style="margin-left:auto;height:28px;box-sizing:border-box;padding:2px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:600;font-family:var(--font);outline:none;width:210px"></div>'
+    +'<div style="display:flex;align-items:center;gap:9px;padding:11px 16px;flex-wrap:wrap;border-bottom:1px solid var(--border)">'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;cursor:pointer">'
+    +'<input type="checkbox" onchange="siGanTickHet(this.checked)"> Chọn hết trang này</label>'
+    +'<span id="siGanDem" style="font-size:11.5px;color:var(--muted);font-weight:700">đã chọn 0</span>'
+    +'<span style="margin-left:auto;display:flex;align-items:center;gap:8px">'
+    +'<span style="font-size:11.5px;font-weight:700;color:var(--muted)">Gán cho</span>'
+    +'<select id="siGanSale" style="height:30px;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:700;font-family:var(--font);cursor:pointer">'
+    +'<option value="">— chọn Sale —</option>'+sale.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select>'
+    +'<button onclick="siGanChay()" class="refresh-btn" style="padding:6px 16px;font-size:12px">Gán</button></span></div>'
+    +'<div id="siGanMsg" style="padding:0 16px;font-size:12px;font-weight:700"></div>'
+    +'<div class="tbl-scroll"><table><thead><tr><th></th><th>Ngày tạo</th><th>Khách hàng</th><th>SĐT</th><th>Nguồn · Kênh</th><th>Phân loại</th><th>Doanh thu</th></tr></thead>'
+    +'<tbody>'+(dong||'<tr><td colspan="7" style="padding:22px;text-align:center;color:var(--muted)">Không còn data nào chưa có Sale phụ trách</td></tr>')+'</tbody></table></div>'
+    +(list.length>300?'<div style="padding:10px;text-align:center;font-size:11px;color:var(--muted)">hiện 300 dòng đầu — dùng ô tìm để lọc bớt</div>':'')
+    +'</div>';
+}
+function siGanTim(v){window._siGanQ=v;clearTimeout(window._siGanT);window._siGanT=setTimeout(rptSlRender,350);}
+function siGanTickHet(on){
+  document.querySelectorAll('.siGanTick').forEach(c=>{c.checked=on;});
+  siGanDemLai();
+}
+function siGanDemLai(){
+  const n=document.querySelectorAll('.siGanTick:checked').length;
+  const el=document.getElementById('siGanDem');if(el)el.textContent='đã chọn '+n;
+}
+async function siGanChay(){
+  const msg=document.getElementById('siGanMsg');
+  const ten=(document.getElementById('siGanSale')||{}).value||'';
+  const ids=[...document.querySelectorAll('.siGanTick:checked')].map(c=>c.value);
+  if(!ten){if(msg)msg.innerHTML='<span style="color:var(--red)">Chưa chọn Sale</span>';return;}
+  if(!ids.length){if(msg)msg.innerHTML='<span style="color:var(--red)">Chưa tích dòng nào</span>';return;}
+  if(msg)msg.textContent='Đang gán '+ids.length+' khách cho '+ten+'…';
+  let ok=0,loi=0;
+  for(const id of ids){
+    try{await rptSlSaveManual(id,{si_sale:ten});ok++;}catch(e){loi++;}
+  }
+  logAct('U','saleretail_manual',null,null,'Gán Sale phụ trách','botsale sỉ',ten+' · '+ok+' khách');
+  window._kiotOrdByCode=null;rptSlXoaCache();
+  if(msg)msg.innerHTML='<span style="color:var(--green)">Đã gán '+ok+' khách cho '+ten+(loi?(' · lỗi '+loi):'')+'</span>';
+  rptSlRender();
 }
 function rptSlInputHtml(){
   const b=rptSlTodoBuckets();
