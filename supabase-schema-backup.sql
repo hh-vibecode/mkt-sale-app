@@ -15,13 +15,14 @@ create table if not exists public.backup_snapshots (
 create index if not exists backup_snapshots_at_idx on public.backup_snapshots(at desc);
 alter table public.backup_snapshots enable row level security;  -- chỉ service key đọc được
 
+-- 24/9/2026: thêm salesi_crm (lịch sử chăm sóc Sỉ, 2.005 lượt nhập tay) + sale_nhan_su vào bản chụp.
 create or replace function public.chup_backup()
 returns text
 language plpgsql security definer set search_path to 'public'
 as $$
 declare t text; n int; ket text := '';
 begin
-  foreach t in array array['saleretail_manual','datahub_manual','sales_users'] loop
+  foreach t in array array['saleretail_manual','datahub_manual','sales_users','salesi_crm','sale_nhan_su'] loop
     execute format('insert into public.backup_snapshots(bang, so_dong, du_lieu)
                     select %L, count(*), coalesce(jsonb_agg(to_jsonb(x)), ''[]''::jsonb) from %I x', t, t);
     get diagnostics n = row_count;
