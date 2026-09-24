@@ -3044,7 +3044,8 @@ async function renderReportTongHop(){
   if(!el)return;
   if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo tổng hợp');
   try{
-    await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad()]);
+    await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),
+      saleNhanSuLoad().catch(()=>null)]);
     await rptSlLockChot();
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo tổng hợp',e,'renderReportTongHop');return;}
   const cur=rptThTab();
@@ -4341,7 +4342,8 @@ async function rptSlRenderPage(type){
   try{
     // 5 nguồn này độc lập nhau -> tải CÙNG LÚC (trước đây nối tiếp, cộng dồn ~3 giây).
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),
-      rptSlType()==='Sỉ'?siCrmLoad():Promise.resolve()]);
+      rptSlType()==='Sỉ'?siCrmLoad():Promise.resolve(),
+      saleNhanSuLoad().catch(()=>null)]);
     await rptSlLockChot();   // phải chạy sau vì đọc dữ liệu vừa tải xong
   }catch(e){
     el.innerHTML=rptTaiLoi('Báo cáo · '+cfg.title,e,cfg.render);
@@ -6121,6 +6123,7 @@ async function renderSettings(){
   const el=document.getElementById('page-settings');
   if(!el)return;
   try{await dhLoadOrders();}catch(e){}   // để ô "Xem data của Sale" có danh sách tên mới nhất
+  try{await saleNhanSuLoad(true);}catch(e){}   // bảng Nhân sự Sale hiện ngay dưới danh sách tài khoản
   el.innerHTML='<div style="padding:60px;text-align:center;color:var(--muted)">Đang tải danh sách tài khoản...</div>';
   let accounts=[];
   try{accounts=await sbFetchAll('sales_users','select=*&has_login=eq.true&order=created_at.desc');}
@@ -6167,7 +6170,10 @@ async function renderSettings(){
         <thead><tr><th>Họ tên</th><th>Username</th><th>Vị trí</th><th>Bộ phận</th><th>Phạm vi dữ liệu</th><th>Quyền truy cập</th><th>Trạng thái</th><th></th></tr></thead>
         <tbody>${rows||'<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted)">Chưa có tài khoản nào — bấm "Tạo tài khoản" để thêm Sale đầu tiên</td></tr>'}</tbody>
       </table></div>
-    </div>`;
+    </div>
+    <div style="height:18px"></div>
+    <div class="page-title" style="font-size:17px">Nhân sự Sale</div>
+    ${(()=>{window._rptSlAccs=accounts;return dhNhanSuHtml();})()}`;
 }
 function openCrmAddAccount(){
   const body=`
