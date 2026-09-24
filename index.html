@@ -3420,7 +3420,7 @@ function siCrmHtml(){
       +'<td style="'+oNho+'">'+siEsc(r.hinh_thuc||'')+'</td>'
       +'<td style="'+oNho+';max-width:420px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+siEsc(r.noi_dung||'')+'">'+siEsc(r.noi_dung||'—')+'</div></td>'
       +'<td>'+rptSiPhanLoaiHtml(r.phan_loai,siEsc)+'</td>'
-      +'<td style="'+oNho+'">'+(r.tinh_trang?('<span style="font-weight:800;color:'+(/xong/i.test(r.tinh_trang)?'var(--green)':'var(--yellow)')+'">'+siEsc(r.tinh_trang)+'</span>'):'<span style="color:var(--muted)">—</span>')+'</td>'
+
       +'<td style="white-space:nowrap;'+oNho+'">'+(dmy(r.ngay_chot)||'—')+'</td>'
       +'<td class="num" style="font-weight:800;color:'+(r.gia_tri_chot?'var(--green)':'inherit')+'">'+(r.gia_tri_chot?vnd(r.gia_tri_chot):'—')+'</td>'
       +'<td style="white-space:nowrap"><button onclick="siCrmChiTiet('+r.id+')" class="btn-ghost" style="padding:3px 9px;font-size:11px;color:var(--accent);font-weight:700">Chi tiết</button>'
@@ -3454,8 +3454,8 @@ function siCrmHtml(){
     +'<button onclick="siCrmForm(0)" class="refresh-btn" style="padding:5px 14px;font-size:11.5px">+ Thêm lượt chăm sóc</button></div>'
     +'<div class="tbl-scroll"><table><thead><tr>'
     +'<th>Ngày chăm sóc</th><th>Khách hàng</th><th>Hình thức</th><th>Nội dung chăm sóc</th><th>Phân loại KH</th>'
-    +'<th>Tình trạng hỗ trợ</th><th>Ngày chốt đơn</th><th>Tổng giá trị chốt</th><th></th></tr></thead><tbody>'
-    +(tr||'<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted)">Chưa có lượt chăm sóc nào trong kỳ</td></tr>')
+    +'<th>Ngày chốt đơn</th><th>Tổng giá trị chốt</th><th></th></tr></thead><tbody>'
+    +(tr||'<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted)">Chưa có lượt chăm sóc nào trong kỳ</td></tr>')
     +'</tbody></table></div>'+phanTrang+'</div>';
 }
 // Popup 1 lượt chăm sóc: chứa ĐỦ mọi trường, kể cả những cột đã gỡ khỏi bảng cho đỡ rối.
@@ -3475,7 +3475,6 @@ function siCrmChiTiet(id){
     o('Sales phụ trách',siEsc(r.sales)),
     o('Hình thức chăm sóc',siEsc(r.hinh_thuc)),
     o('Phân loại KH',rptSiPhanLoaiHtml(r.phan_loai,siEsc)),
-    o('Tình trạng hỗ trợ',siEsc(r.tinh_trang),/xong/i.test(r.tinh_trang||'')?'var(--green)':'var(--yellow)'),
     o('Ngày hẹn tiếp theo',dmy(r.ngay_hen)),
     o('Ngày chốt đơn',dmy(r.ngay_chot)),
     o('Tổng giá trị chốt',r.gia_tri_chot?vnd(r.gia_tri_chot):'',r.gia_tri_chot?'var(--green)':''),
@@ -3657,17 +3656,13 @@ const RPT_SL_MIN_DATE='2026-06-01';
 // THÊM/BỚT SALE: sửa đúng 1 mảng này, không phải tìm chỗ nào khác.
 // Khách Sỉ chưa có Mã KH -> chưa biết ai bán, tạm gán tên này cho khỏi trống.
 const RPT_SL_BOT_SI='botsale sỉ';
-const RPT_SL_SALE_DROPDOWN=[
-  'Nguyễn Thảo Ngọc',
-  'Vân Ngọc',
-  'Chánh Tâm Ngọc Diệp',
-  'Phạm Thị Lệ',
-  'Nguyễn Thị Huế',
-  'Nguyễn Hữu Toàn',
-  RPT_SL_BOT_SI,         // khách Sỉ chưa có Mã KH
-];
-// Ai thuộc đội SỈ -- dùng để tách nhóm trong ô Phân quyền; còn lại coi là đội LẺ.
-const RPT_SL_SALE_DOI_SI=['Nguyễn Thị Huế','Nguyễn Hữu Toàn'];
+// Đội LẺ (Pancake / 2 cửa hàng đồ thờ)
+const RPT_SL_SALE_LE=['Nguyễn Thảo Ngọc','Vân Ngọc','Chánh Tâm Ngọc Diệp','Phạm Thị Lệ'];
+// Đội SỈ = người thật sự tạo đơn ở chi nhánh Tổng kho sỉ, còn hoạt động trong 2026.
+// Gắn ĐỦ ở đây để Sale không phải gõ tay tên mình (Sale báo 24/9/2026: 'sales không tìm thấy tên mình').
+const RPT_SL_SALE_DOI_SI=['Nguyễn Thị Huế','Nguyễn Hữu Toàn','Nguyễn Thị Chuyện','Vũ Thanh Bình',
+  'Hà Minh Ngọc','Đặng Phương Anh','Nguyễn Thị Thanh','Hồ Xuân Thịnh','Đỗ Xuân Hoàng',RPT_SL_BOT_SI];
+const RPT_SL_SALE_DROPDOWN=[...RPT_SL_SALE_LE,...RPT_SL_SALE_DOI_SI];
 function rptSlDoiCuaSale(ten){
   if(RPT_SL_SALE_DOI_SI.includes(ten))return 'Sỉ';
   // Tài khoản tạo qua Phân quyền: xếp đội theo VỊ TRÍ đã chọn lúc tạo.
@@ -3907,6 +3902,58 @@ function rptSlParseMoney(raw){
 // POPUP SỬA CẢ HÀNG: bấm icon ✏️ nhỏ ở bất kỳ ô cần điền nào -> hiện TẤT CẢ ô Sale điền được của khách đó
 // trong 1 bảng (cùng khung với bảng Chi tiết), bấm Lưu ghi 1 lần xuống saleretail_manual.
 // Khách đã chốt: trạng thái khoá "Chốt đơn", không có giá trị tiềm năng / nguyên nhân mất lead.
+// SỬA HỒ SƠ KHÁCH SỈ ngay ở Master (Sale báo 24/9/2026: khai thác được thông tin mới thì không biết
+// điền vào đâu -- trước đây chỉ sửa được bên CRM). Ghi vào saleretail_manual, dùng chung với CRM.
+const RPT_SI_SUA=[
+  ['si_nguoi_dai_dien','Người đại diện','text'],
+  ['si_sdt','SĐT','text'],
+  ['si_tinh','Tỉnh/TP','text'],
+  ['si_dia_chi','Địa chỉ','text'],
+  ['si_mo_hinh','Mô hình hợp tác','text'],
+  ['si_dien_tich','Diện tích showroom','text'],
+  ['si_tai_chinh','Khả năng tài chính','text'],
+  ['si_nhom_kh','Nhóm khách hàng','text'],
+  ['si_giay_phep','Giấy phép kinh doanh','text'],
+  ['si_fanpage','Fanpage / website','text'],
+];
+function rptSiEditRow(leadId){
+  const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
+  if(!r)return;
+  const sh=r.sh||{};
+  const mn=rptSlManual[leadId]||{};
+  const cu={si_nguoi_dai_dien:mn.si_nguoi_dai_dien||sh.nguoi_dai_dien||'',
+    si_sdt:mn.si_sdt||sh.sdt||((r.phones||[])[0]||{}).so||'',
+    si_tinh:mn.si_tinh||sh.tinh||'',si_dia_chi:r.siDiaChi||'',si_mo_hinh:r.siMoHinh||'',
+    si_dien_tich:r.siDienTich||'',si_tai_chinh:r.siTaiChinh||'',si_nhom_kh:r.siNhomKH||'',
+    si_giay_phep:r.siGiayPhep||'',si_fanpage:r.siFanpage||''};
+  const esc=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const ip='width:100%;box-sizing:border-box;height:34px;padding:5px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:12.5px;font-family:var(--font);outline:none';
+  const lb=t=>'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">'+t+'</div>';
+  const o=RPT_SI_SUA.map(([k,nhan])=>'<div>'+lb(nhan)+'<input id="siE_'+k+'" value="'+esc(cu[k])+'" style="'+ip+'"></div>').join('');
+  let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
+  m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
+   +'<div style="background:var(--surface);border-radius:16px;max-width:760px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
+   +'<div style="display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border)">'
+   +'<div style="font-size:15px;font-weight:800">Sửa hồ sơ · '+esc(r.name)+'</div>'
+   +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
+   +'<div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">'+o+'</div>'
+   +'<div style="padding:0 20px 16px;display:flex;align-items:center;gap:10px">'
+   +'<div id="siE_msg" style="font-size:12px;font-weight:700"></div>'
+   +'<button onclick="rptSiSaveRow('+String.fromCharCode(39)+leadId+String.fromCharCode(39)+')" class="refresh-btn" style="margin-left:auto;padding:7px 20px">Lưu</button></div>'
+   +'</div></div>';
+}
+async function rptSiSaveRow(leadId){
+  const g=x=>(document.getElementById(x)||{}).value;
+  const msg=document.getElementById('siE_msg');
+  const patch={};
+  RPT_SI_SUA.forEach(([k])=>{patch[k]=String(g('siE_'+k)||'').trim()||null;});
+  try{
+    if(msg)msg.textContent='Đang lưu…';
+    await rptSlSaveManual(leadId,patch);
+    window._kiotOrdByCode=null;rptSlXoaCache();
+    qcCloseModal();rptSlRender();
+  }catch(e){if(msg)msg.innerHTML='<span style="color:var(--red)">Chưa lưu được: '+e.message+'</span>';}
+}
 function rptSlEditRow(leadId){
   const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
   if(!r)return;
@@ -5084,7 +5131,9 @@ function rptSlMasterRowSi(r){
     +'<td class="num"><span style="font-weight:700;color:'+mauNghi+'">'+(nghi2==null?'—':num(nghi2))+'</span></td>'
     +'<td style="'+nho+';max-width:280px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(ndCuoi)+'">'+e(ndCuoi||'—')+'</div></td>'
     +'<td class="num" style="font-weight:800;color:'+(congDon>0?'var(--green)':'inherit')+'">'+(congDon>0?vnd(congDon):'—')+'</td>'
-    +'<td></td></tr>';
+    +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
+      +'<button onclick="rptSiEditRow('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" class="btn-ghost" style="padding:3px 10px;font-size:11px;color:var(--accent);font-weight:700">Sửa</button>'
+      +'<button onclick="rptSlShowCustomer('+String.fromCharCode(39)+r.key.replace(/'/g,String.fromCharCode(92,39))+String.fromCharCode(39)+')" class="btn-ghost" style="padding:3px 10px;font-size:11px;margin-left:4px">Chi tiết</button></td></tr>';
 }
 function rptSlSetMasterPage(p){window._rptSlMasterPage=p;rptSlRender();}
 function rptSlMasterSearch(){return(document.getElementById('rptSlMasterSearch')||{}).value||'';}
@@ -5228,7 +5277,6 @@ function rptSlShowCustomer(key){
       fld('Ngày chốt đầu',esc(dmy(r.kords&&r.kords.length?String(r.kords[0].purchase_date).slice(0,10):((r.sh||{}).ngay_chot_dau||'')))),
       fld('Giá trị đơn đầu',(()=>{const v=r.kords&&r.kords.length?Number(r.kords[0].total||0):Number((r.sh||{}).gia_tri_don_dau||0);return v>0?vnd(v):'';})()),
       fld('Số lượt chăm sóc',r.siLuot?num(r.siLuot)+' lượt':''),
-      fld('Tình trạng hỗ trợ',esc(r.siHoTro)),
     ]:[]),
     fld('Hội thoại',rptSlChatUrl(r)?'<a href="'+rptSlChatUrl(r)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat Pancake</a>':''),
     fld('Nguồn gốc (Pancake)',esc(r.source)),
