@@ -3016,7 +3016,7 @@ async function renderDataHub(){
   if(mode==='manual'&&!canLe)mode=canSi?'manual-si':(canRaw?'overview':'manual');
   if(mode==='manual-si'&&!canSi)mode=canLe?'manual':(canRaw?'overview':'manual-si');
   if(mode==='kenh'&&!canRaw)mode=canLe?'manual':'manual-si';
-  if(mode==='nhansu'&&!canRaw)mode=canLe?'manual':'manual-si';
+  if(mode==='nhansu')mode=canRaw?'overview':(canLe?'manual':'manual-si');   // tab Nhân sự Sale đã chuyển hẳn sang trang Phân quyền (24/9/2026)
   if(mode==='overview')await dhLoadOrders();
   const dhConfirmed=dhOrders.filter(dhIsOrder);
   const dhNew=dhOrders.filter(o=>o.customer_status==='Mới').length;
@@ -3067,13 +3067,11 @@ async function renderDataHub(){
     +`${canRaw?tabBtn('overview','Tổng Quan'):''}`
     +`${canLe?tabBtn('manual','Nhập tay Lẻ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')!=='Sỉ').length+')'):''}`
     +`${canSi?tabBtn('manual-si','Nhập tay Sỉ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')==='Sỉ').length+')'):''}`
-    +`${canRaw?tabBtn('kenh','Kiot raw data'):''}`
-    +`${canRaw?tabBtn('nhansu','Nhân sự Sale'):''}`+'</span>';
+    +`${canRaw?tabBtn('kenh','Kiot raw data'):''}`+'</span>';
   const header=modHeader('Data Hub','','datahub','renderDataHub',tabs);
   const kho=dbDungLuongHtml();   // dung lượng kho dữ liệu -- hiện ở đầu MỌI tab của Data Hub
   if(mode==='manual'||mode==='manual-si'){el.innerHTML=header+kho+dhManualHtml();tblAlign(el);return;}
   if(mode==='kenh'){el.innerHTML=header+kho+dhKenhHtml();tblAlign(el);return;}
-  if(mode==='nhansu'){el.innerHTML=header+dhNhanSuHtml();tblAlign(el);return;}
   el.innerHTML=header+kho+pancakeOrdersHtml+dhExcludedHtml();
   dhRenderTable();
 }
