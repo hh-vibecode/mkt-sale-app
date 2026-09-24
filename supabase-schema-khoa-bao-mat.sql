@@ -56,3 +56,17 @@ do $$ declare f record; d text; begin
     end if;
   end loop;
 end $$;
+
+-- 5) NGOẠI LỆ cho DASHBOARD CŨ (repo Dashboard-Meta, vẫn đang dùng) -- nó gọi bằng khoá công khai, không có
+--    thẻ phiên. Chỉ mở lại 3 bảng KHÔNG chứa dữ liệu khách / doanh thu:
+--      product_faq       (Edge faq-chat đọc nội dung FAQ)      -> chỉ đọc
+--      dash_presence     (ai đang online trên dashboard)       -> đọc + ghi
+--      social_page_stats (số liệu page mạng xã hội)            -> chỉ đọc
+do $$ declare p record; begin
+  for p in select tablename, policyname from pg_policies
+           where schemaname = 'public' and tablename in ('product_faq','dash_presence','social_page_stats') loop
+    execute format('alter policy %I on public.%I to public', p.policyname, p.tablename);
+  end loop;
+end $$;
+grant select on public.product_faq, public.social_page_stats to anon;
+grant select, insert, update on public.dash_presence to anon;
