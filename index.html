@@ -2499,6 +2499,63 @@ async function dhManualAdd(){
     renderDataHub();
   }catch(e){msg.innerHTML='<span style="color:var(--red)">'+e.message+'</span>';}
 }
+const DH_MANUAL_SUA=[['created_date','Ngày tạo','date'],['customer_name','Tên khách','text'],
+  ['phone','SĐT','text'],['kiot_code','Mã KH Kiot','text']];
+function dhManualEdit(id){
+  const r=dhManual.find(x=>x.id===id);if(!r)return;
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const ip='width:100%;box-sizing:border-box;height:34px;padding:5px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:12.5px;font-family:var(--font);outline:none';
+  const lb=t=>'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">'+t+'</div>';
+  const loai=(r.sale_type||'Lẻ')==='Sỉ'?'Sỉ':'Lẻ';
+  const sale=saleNhanSuDS().filter(x=>x.doi===loai&&x.dang_lam!==false).map(x=>x.ten);
+  if(r.staff_name&&sale.indexOf(r.staff_name)<0)sale.unshift(r.staff_name);   // giữ đúng người đang phụ trách
+  const o=DH_MANUAL_SUA.map(function(x){return '<div>'+lb(x[1])+'<input id="dhE_'+x[0]+'" type="'+x[2]+'" value="'
+    +e(x[2]==='date'?String(r[x[0]]||'').slice(0,10):(r[x[0]]||''))+'" style="'+ip+'"></div>';}).join('');
+  let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
+  m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
+   +'<div style="background:var(--surface);border-radius:16px;max-width:680px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
+   +'<div style="display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border)">'
+   +'<div style="font-size:15px;font-weight:800">Sửa data nhập tay · '+e(r.customer_name||'')+'</div>'
+   +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
+   +'<div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">'+o
+   +'<div>'+lb('Nguồn khách')+'<select id="dhE_nguon" style="'+ip+';cursor:pointer">'
+     +['Online','Offline'].map(function(x){return '<option'+(String(r.nguon||'')===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div>'
+   +'<div>'+lb('Kênh')+'<input id="dhE_kenh" list="dhE_kenhDS" value="'+e(r.kenh||'')+'" style="'+ip+'">'
+   +'<datalist id="dhE_kenhDS">'+DH_MANUAL_KENH.map(function(x){return '<option value="'+e(x)+'">';}).join('')+'</datalist></div>'
+   +'<div>'+lb('Sale phụ trách')+'<select id="dhE_staff_name" style="'+ip+';cursor:pointer"><option value="">— chưa gán —</option>'
+     +sale.map(function(x){return '<option'+(r.staff_name===x?' selected':'')+'>'+e(x)+'</option>';}).join('')+'</select></div>'
+   +'</div>'
+   +'<div style="padding:0 20px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+   +'<button onclick="dhManualDel('+id+')" class="btn-ghost" style="padding:7px 16px;font-size:12px;font-weight:700;color:var(--red);border:1.5px solid var(--red)">Xoá khách này</button>'
+   +'<div id="dhE_msg" style="font-size:12px;font-weight:700"></div>'
+   +'<button onclick="dhManualSave('+id+')" class="refresh-btn" style="margin-left:auto;padding:7px 20px">Lưu</button></div>'
+   +'</div></div>';
+}
+async function dhManualSave(id){
+  const g=x=>String(((document.getElementById('dhE_'+x)||{}).value)||'').trim();
+  const msg=document.getElementById('dhE_msg');
+  const bao=t=>{if(msg)msg.innerHTML='<span style="color:var(--red)">'+t+'</span>';};
+  const ten=g('customer_name');if(!ten)return bao('Chưa có tên khách');
+  const ma=g('kiot_code').toUpperCase();
+  if(ma&&!kiotCustByCode()[ma])return bao('Bên Kiot không có mã '+ma);
+  const cu=dhManual.find(x=>x.id===id)||{};
+  const kenh=g('kenh');
+  const patch={created_date:g('created_date')||cu.created_date,customer_name:ten,phone:g('phone')||null,
+    kiot_code:ma||null,nguon:g('nguon')||null,kenh:kenh||null,staff_name:g('staff_name')||null,
+    updated_at:new Date().toISOString()};
+  try{
+    if(msg)msg.textContent='Đang lưu…';
+    const res=await fetch(SUPABASE_URL+'/rest/v1/datahub_manual?id=eq.'+id,{method:'PATCH',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify(patch)});
+    if(!res.ok)throw new Error('lỗi '+res.status);
+    Object.keys(patch).forEach(function(k){if(k!=='updated_at'&&String(cu[k]||'')!==String(patch[k]||''))
+      logAct('U','datahub_manual','M-'+String(id).padStart(4,'0'),ten,k,cu[k],patch[k]);});
+    await dhLoadManual(true);
+    window._kiotOrdByCode=null;if(typeof rptSlXoaCache==='function')rptSlXoaCache();
+    qcCloseModal();renderDataHub();
+  }catch(e){bao('Chưa lưu được: '+e.message);}
+}
 async function dhManualDel(id){
   const r=dhManual.find(x=>x.id===id)||{};
   // XOÁ là thao tác không hoàn tác được -> hỏi 2 lớp và nói rõ đang xoá ai.
@@ -2509,7 +2566,7 @@ async function dhManualDel(id){
   if(!res.ok){alert('Xoá lỗi '+res.status);return;}
   logAct('D','datahub_manual','M-'+String(id).padStart(4,'0'),r.customer_name,null,
     [r.created_date,r.kenh,r.phone,r.kiot_code].filter(Boolean).join(' · '),null);
-  await dhLoadManual(true);renderDataHub();
+  await dhLoadManual(true);qcCloseModal();renderDataHub();
 }
 async function dhManualSet(id,field,value,el){
   const before=(dhManual.find(r=>r.id===id)||{})[field];
@@ -2701,7 +2758,7 @@ function dhManualHtml(){
       <td style="font-size:11px">${kc?kc.name:'<span style="color:var(--muted)">—</span>'}</td>
       <td class="num" style="font-weight:800;color:${v?'var(--green)':'inherit'}">${v?vnd(v):'—'}</td>
       <td style="font-size:11px;color:var(--muted)">${r.created_by||"—"}</td>
-      <td><button onclick="dhManualDel(${r.id})" style="border:none;background:var(--bg2);color:var(--red);border-radius:7px;width:26px;height:26px;cursor:pointer;font-size:13px">✕</button></td>
+      <td><button onclick="dhManualEdit(${r.id})" class="btn-ghost" style="padding:3px 10px;font-size:11px;font-weight:700">Sửa</button></td>
     </tr>`;}).join('');
   const tong=mine.reduce((s,r)=>s+(inv[r.kiot_code]||0),0);
   return dhManualForm()+`
@@ -5253,7 +5310,8 @@ function rptSlCsFormHtml(r){
       +'<textarea id="csNoiDung" rows="3" style="'+ip+';resize:vertical">'+e(cu.noi_dung||'')+'</textarea></div>'
     +'<div style="margin-top:12px">'+lb('Khách phản hồi cần lưu ý')
       +'<textarea id="csPhanHoi" rows="2" placeholder="để trống nếu không có" style="'+ip+';resize:vertical">'+e(cu.phan_hoi||'')+'</textarea></div>'
-    +'<div style="display:flex;align-items:center;gap:10px;margin-top:12px">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">'
+      +(id?'<button onclick="rptSlCsXoa('+id+')" class="btn-ghost" style="padding:7px 16px;font-size:12px;font-weight:700;color:var(--red);border:1.5px solid var(--red)">Xoá lượt này</button>':'')
       +'<div id="csMsg" style="font-size:12px;font-weight:700"></div>'
       +'<button onclick="rptSlCsDongForm()" class="btn-ghost" style="margin-left:auto;padding:7px 16px;font-size:12px">Huỷ</button>'
       +'<button onclick="rptSlCsLuu()" class="refresh-btn" style="padding:7px 20px">Lưu lượt chăm sóc</button>'
@@ -5278,8 +5336,7 @@ function rptSlCsTabHtml(r){
         +(x.ma_don?'<div style="font-size:10.5px;font-weight:700;color:var(--muted);margin-top:3px">'+e(x.ma_don)+'</div>':'')
         +(x.gia_tri_chot?'<div style="font-size:11px;font-weight:800;color:var(--green);margin-top:2px">'+vnd(x.gia_tri_chot)+'</div>':'')+'</td>'
       +'<td style="padding:9px 12px;vertical-align:top;white-space:nowrap">'
-        +'<button onclick="rptSlCsMoForm('+x.id+')" class="btn-ghost" style="padding:3px 9px;font-size:11px">Sửa</button>'
-        +'<button onclick="rptSlCsXoa('+x.id+')" class="btn-ghost" style="padding:3px 9px;font-size:11px;margin-left:4px;color:var(--red)">Xoá</button></td>'
+        +'<button onclick="rptSlCsMoForm('+x.id+')" class="btn-ghost" style="padding:3px 9px;font-size:11px">Sửa</button></td>'
     +'</tr>';}).join('');
   return '<div style="display:flex;align-items:center;gap:10px;padding:14px 20px 10px">'
       +'<div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Lịch sử chăm sóc · '+num(ds.length)+' lượt</div>'
@@ -5356,6 +5413,7 @@ async function rptSlCsXoa(id){
     if(!res.ok)throw new Error('lỗi '+res.status);
     logAct('D','salesi_crm','#'+id,r.name,'Lượt chăm sóc',(x.ngay_cham||'')+' · '+String(x.noi_dung||'').slice(0,80),'');
     await siCrmLoad(true);
+    window._rptSlCsForm=undefined;   // vừa xoá xong thì đóng form sửa, không để mở form của dòng đã mất
     rptSlShowCustomer(window._rptSlCusKey);rptSlRender();
   }catch(err){alert('Chưa xoá được: '+err.message);}
 }
