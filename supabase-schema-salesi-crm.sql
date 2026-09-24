@@ -43,3 +43,9 @@ drop policy if exists salesi_crm_upd on public.salesi_crm;
 create policy salesi_crm_upd on public.salesi_crm for update using (true) with check (true);
 drop policy if exists salesi_crm_del on public.salesi_crm;
 create policy salesi_crm_del on public.salesi_crm for delete using (true);
+
+-- 24/9/2026 -- Lịch sử chăm sóc gộp vào popup Master Sỉ (anh Hải chốt):
+-- mỗi lượt ghi thêm phản hồi đáng lưu ý của khách, trạng thái lượt đó, và mã đơn khi chốt.
+alter table public.salesi_crm add column if not exists phan_hoi   text;  -- khách phản hồi gì cần lưu ý
+alter table public.salesi_crm add column if not exists trang_thai text;  -- Chăm sóc định kỳ / Chốt đơn
+alter table public.salesi_crm add column if not exists ma_don     text;  -- mã đơn đặt hàng Kiot khi chốt
