@@ -3956,10 +3956,37 @@ function rptSiEditRow(leadId){
    +'<div style="font-size:15px;font-weight:800">Sửa hồ sơ · '+esc(r.name)+'</div>'
    +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
    +'<div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">'+o+'</div>'
-   +'<div style="padding:0 20px 16px;display:flex;align-items:center;gap:10px">'
+   +'<div style="padding:0 20px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+   +(/^M-[0-9]+$/.test(leadId)
+     ?'<button onclick="rptSiXoaKhach('+String.fromCharCode(39)+leadId+String.fromCharCode(39)+')" class="btn-ghost" style="padding:7px 16px;font-size:12px;font-weight:700;color:var(--red);border:1.5px solid var(--red)">Xoá khách này</button>'
+     :'<span style="font-size:11px;color:var(--muted);font-weight:600">Khách từ Pancake — không xoá trong app được</span>')
    +'<div id="siE_msg" style="font-size:12px;font-weight:700"></div>'
    +'<button onclick="rptSiSaveRow('+String.fromCharCode(39)+leadId+String.fromCharCode(39)+')" class="refresh-btn" style="margin-left:auto;padding:7px 20px">Lưu</button></div>'
    +'</div></div>';
+}
+// XOÁ 1 khách Sỉ thêm tay: xoá dòng Data nhập tay + hồ sơ + các lượt chăm sóc của khách đó.
+// Hỏi 2 lớp, nói rõ mất những gì (doanh thu, số lượt chăm sóc) để khỏi bấm nhầm.
+async function rptSiXoaKhach(leadId){
+  const id=Number(String(leadId).slice(2));if(!id)return;
+  const r=rptSlBuildMaster().find(x=>x.leadId===leadId)||{};
+  const ten=r.name||leadId;
+  const luot=(typeof siCrmRows!=='undefined'?siCrmRows:[]).filter(c=>c.lead_id===leadId).length;
+  const tien=Number(r.revenue||0)+Number(r.repeatRevenue||0);
+  if(!confirm('XOÁ khách "'+ten+'" ('+leadId+')?\n\nSẽ xoá luôn hồ sơ, ghi chú riêng'+(luot?' và '+luot+' lượt chăm sóc':'')
+    +(tien?'.\nDoanh thu '+vnd(tien)+' của khách này sẽ biến khỏi báo cáo':'')+'.'))return;
+  if(!confirm('Xác nhận lần cuối: xoá "'+ten+'"? Thao tác này KHÔNG hoàn tác được.'))return;
+  const H={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY};
+  try{
+    if(luot){const a=await fetch(SUPABASE_URL+'/rest/v1/salesi_crm?lead_id=eq.'+encodeURIComponent(leadId),{method:'DELETE',headers:H});
+      if(!a.ok)throw new Error('xoá lượt chăm sóc lỗi '+a.status);}
+    await fetch(SUPABASE_URL+'/rest/v1/saleretail_manual?lead_id=eq.'+encodeURIComponent(leadId),{method:'DELETE',headers:H});
+    const b=await fetch(SUPABASE_URL+'/rest/v1/datahub_manual?id=eq.'+id,{method:'DELETE',headers:H});
+    if(!b.ok)throw new Error('xoá khách lỗi '+b.status);
+    logAct('D','datahub_manual',leadId,ten,'Xoá khách Sỉ',(luot?luot+' lượt chăm sóc':'')+(tien?' · '+vnd(tien):''),'');
+    delete rptSlManual[leadId];
+    await Promise.all([dhLoadManual(true),luot?siCrmLoad(true):Promise.resolve()]);
+    window._kiotOrdByCode=null;rptSlXoaCache();qcCloseModal();rptSlRender();
+  }catch(e){alert('Chưa xoá được: '+e.message);}
 }
 async function rptSiSaveRow(leadId){
   const g=x=>(document.getElementById(x)||{}).value;
