@@ -3693,7 +3693,16 @@ const RPT_SL_MIN_DATE='2026-06-01';
 //    Chỉ Ô CHỌN (lọc báo cáo, phạm vi phân quyền, form nhập tay) là dùng đúng danh sách dưới đây.
 // THÊM/BỚT SALE: sửa đúng 1 mảng này, không phải tìm chỗ nào khác.
 // Khách Sỉ chưa có Mã KH -> chưa biết ai bán, tạm gán tên này cho khỏi trống.
-const RPT_SL_BOT_SI='botsale sỉ';
+const RPT_SL_BOT_SI='botsale sỉ';   // tên CŨ của 'chưa có Sale' -- từ 24/9/2026 để TRỐNG, chỉ còn để đọc dữ liệu cũ
+// Sale GÁN TAY của 1 khách (cột saleretail_manual.si_sale, dùng cho cả Lẻ lẫn Sỉ):
+//   null  = chưa từng gán tay -> app tự suy như cũ
+//   ''    = đã THU HỒI -> để trống, KHÔNG tự suy lại (nếu không, Sỉ sẽ tự lấy lại người tạo đơn Kiot)
+function rptSlSaleGanTay(leadId){
+  const v=(rptSlManual[leadId]||{}).si_sale;
+  if(v===null||v===undefined)return null;
+  const t=String(v).trim();
+  return t===RPT_SL_BOT_SI?'':t;
+}
 // ── NHÂN SỰ SALE ──────────────────────────────────────────────────────────────────────────────
 // Danh sách nằm trong bảng sale_nhan_su (thêm/sửa ngay trong app, mục Nhân sự Sale ở Data Hub),
 // KHÔNG còn sửa code mỗi lần có người mới (anh Hải chốt 24/9/2026). Mảng dưới chỉ là bản dự phòng
@@ -3717,7 +3726,7 @@ const RPT_SL_SALE_LE=['Nguyễn Thảo Ngọc','Vân Ngọc','Chánh Tâm Ngọc
 // Đội SỈ = người thật sự tạo đơn ở chi nhánh Tổng kho sỉ, còn hoạt động trong 2026.
 // Gắn ĐỦ ở đây để Sale không phải gõ tay tên mình (Sale báo 24/9/2026: 'sales không tìm thấy tên mình').
 const RPT_SL_SALE_DOI_SI=['Nguyễn Thị Huế','Nguyễn Hữu Toàn','Nguyễn Thị Chuyện','Vũ Thanh Bình',
-  'Hà Minh Ngọc','Đặng Phương Anh','Nguyễn Thị Thanh','Hồ Xuân Thịnh','Đỗ Xuân Hoàng',RPT_SL_BOT_SI];
+  'Hà Minh Ngọc','Đặng Phương Anh','Nguyễn Thị Thanh','Hồ Xuân Thịnh','Đỗ Xuân Hoàng'];
 const RPT_SL_SALE_DROPDOWN_MAC_DINH=[...RPT_SL_SALE_LE,...RPT_SL_SALE_DOI_SI];
 function rptSlDoiCuaSale(ten){
   const x=saleNhanSuDS().find(y=>String(y.ten).trim()===String(ten).trim());
@@ -4076,7 +4085,7 @@ async function rptSiThemKhach(){
       si_dia_chi:g('siT_diachi')||null,si_mo_hinh:g('siT_mohinh')||null,si_dien_tich:g('siT_dientich')||null,
       si_tai_chinh:g('siT_taichinh')||null,si_nhom_kh:g('siT_nhom')||null,si_giay_phep:g('siT_gpkd')||null,
       si_fanpage:g('siT_fanpage')||null,si_phan_loai:g('siT_phanloai')||null,
-      si_sale:g('siT_sale')||RPT_SL_BOT_SI};
+      si_sale:g('siT_sale')||null};
     try{await rptSlSaveManual(leadId,hoSo);}catch(e){console.warn('[Master Sỉ] chưa lưu được hồ sơ:',e.message);}
     logAct('C','datahub_manual',leadId,ten,'Khách Sỉ mới','',g('siT_ngay')||todayISO());
     await dhLoadManual(true);
@@ -4437,10 +4446,10 @@ async function rptSlRenderPage(type){
       `<span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         <button onclick="rptSlSetViewMode('master')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='master'?'var(--accent)':'var(--surface)'};color:${mode==='master'?'#fff':'var(--text2)'}">Master Data</button>
         ${rptSlType()==='Sỉ'?''/* Sỉ: lịch sử chăm sóc nằm trong hồ sơ khách, không còn tab CRM riêng */:`<button onclick="rptSlSetViewMode('crm')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='crm'?'var(--accent)':'var(--surface)'};color:${mode==='crm'?'#fff':'var(--text2)'}">CRM</button>`}
-        ${rptSlType()==='Sỉ'?(()=>{const n=rptSlBuildMaster().filter(r=>r.staff===RPT_SL_BOT_SI).length;
+        ${(()=>{const n=rptSlBuildMaster().filter(r=>!r.staff).length;
           return '<button onclick="rptSlSetViewMode('+String.fromCharCode(39)+'gan'+String.fromCharCode(39)+')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:'
             +(mode==='gan'?'var(--accent)':'var(--surface)')+';color:'+(mode==='gan'?'#fff':'var(--text2)')+'">Gán data'
-            +(n?' <span style="background:var(--yellow);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+num(n)+'</span>':'')+'</button>';})():''}
+            +(n?' <span style="background:var(--yellow);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+num(n)+'</span>':'')+'</button>';})()}
         <button onclick="rptSlSetViewMode('input')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='input'?'var(--accent)':'var(--surface)'};color:${mode==='input'?'#fff':'var(--text2)'}">Nhập Liệu${(()=>{const n=rptSlTodoCount();return n?' <span style="background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+n+'</span>':'';})()}</button>
       </span>`)}
     <div class="rptSlBody"></div>`;
@@ -5163,6 +5172,10 @@ function rptSlBuildMasterRaw(){
   // MASTER SỈ = TỔNG HỢP XUYÊN SUỐT: hồ sơ khách (mô hình, showroom, tài chính, phân loại...) + rút gọn
   // toàn bộ nhật ký chăm sóc bên CRM (lượt gần nhất, số lượt, bao lâu chưa liên hệ). Sale Sỉ chủ yếu gọi
   // điện / Zalo chứ không chat Pancake, nên diễn biến nằm hết ở nhật ký tự nhập.
+  if(rptSlType()!=='Sỉ'){
+    // LẺ: Sale gán ở tab Gán data (hoặc thu hồi về trống) ưu tiên hơn người phụ trách bên Pancake
+    rows.forEach(r=>{const gan=rptSlSaleGanTay(r.leadId);if(gan!==null)r.staff=gan;});
+  }
   if(rptSlType()==='Sỉ'){
     // SALE PHỤ TRÁCH BÊN SỈ (anh Hải chốt 23/9/2026): KHÔNG lấy người phụ trách bên Pancake nữa.
     //   1) Lấy người TẠO ĐƠN trên Kiot gắn với khách (đơn gần nhất).
@@ -5175,8 +5188,8 @@ function rptSlBuildMasterRaw(){
       const ten=don.length?String(don[don.length-1].sold_by_name).trim():'';
       r.staffKiot=ten;
       // Ưu tiên người được GÁN TAY ở tab 'Gán data'; chưa gán thì lấy người tạo đơn Kiot; không có nữa thì bot.
-      const mnS=rptSlManual[r.leadId]||{};
-      r.staff=(mnS.si_sale||'').trim()||ten||RPT_SL_BOT_SI;
+      const gan=rptSlSaleGanTay(r.leadId);
+      r.staff=gan!==null?gan:(ten||'');   // chưa có ai phụ trách thì để TRỐNG (anh Hải 24/9/2026)
     });
     const ky={};
     (typeof siCrmRows!=='undefined'?siCrmRows:[]).forEach(c=>{
@@ -5403,7 +5416,7 @@ function rptSlMasterRowSi(r){
     +'<td class="num" style="font-weight:800;color:'+(congDon>0?'var(--green)':'inherit')+'">'+(congDon>0?vnd(congDon):'—')+'</td>'
     +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
       +'<button onclick="rptSiEditRow('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" class="btn-ghost" style="padding:3px 10px;font-size:11px;color:var(--accent);font-weight:700">Sửa</button>'
-      +(dashToanQuyen()&&r.staff!==RPT_SL_BOT_SI
+      +(dashToanQuyen()&&r.staff
         ?'<button onclick="rptSiThuHoi('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+','+String.fromCharCode(39)+String(r.name||'').replace(/'/g,String.fromCharCode(92,39)).replace(/"/g,'&quot;')+String.fromCharCode(39)+')" class="btn-ghost" style="padding:3px 10px;font-size:11px;margin-left:4px;color:var(--red);font-weight:700">Thu hồi data</button>'
         :'')+'</td></tr>';
 }
@@ -5629,13 +5642,13 @@ async function rptSiGcLuu(){
 // thẳng vào tab Gán data để phân phối lại cho người khác.
 async function rptSiThuHoi(leadId,ten){
   if(!dashToanQuyen())return;
-  if(!confirm('Thu hồi data của khách "'+ten+'"?\n\nSale phụ trách sẽ chuyển về '+RPT_SL_BOT_SI
+  if(!confirm('Thu hồi data của khách "'+ten+'"?\n\nKhách sẽ về trạng thái CHƯA CÓ SALE'
     +' và khách nằm trong tab Gán data để chia lại.'))return;
   try{
     const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
     const cu=(r&&r.staff)||'';
-    await rptSlSaveManual(leadId,{si_sale:RPT_SL_BOT_SI});
-    logAct('U','saleretail_manual',leadId,ten,'Thu hồi data',cu,RPT_SL_BOT_SI);
+    await rptSlSaveManual(leadId,{si_sale:''});   // '' = đã thu hồi, không tự suy lại người tạo đơn
+    logAct('U','saleretail_manual',leadId,ten,'Thu hồi data',cu,'(trống)');
     window._kiotOrdByCode=null;rptSlXoaCache();rptSlRender();
   }catch(e){alert('Chưa thu hồi được: '+e.message);}
 }
@@ -6184,12 +6197,13 @@ function rptSlSetViewAs(id){
 // Gom hết khách đang để 'botsale sỉ' (chưa biết ai phụ trách) vào 1 chỗ, tích 1 hoặc nhiều dòng rồi
 // chọn Sale -> gán hàng loạt. Ghi vào saleretail_manual.si_sale, ưu tiên hơn người tạo đơn bên Kiot.
 function rptSiGanHtml(){
-  const ds=rptSlSortNew(rptSlBuildMaster().filter(r=>r.staff===RPT_SL_BOT_SI),rptSlNgayTao);
+  const ds=rptSlSortNew(rptSlBuildMaster().filter(r=>!r.staff),rptSlNgayTao);
   const q=(window._siGanQ||'').trim().toLowerCase();
   const list=q?ds.filter(r=>(r.name||'').toLowerCase().includes(q)
       ||(r.phones||[]).some(p=>p.so.includes(q))||(r.kh||'').toLowerCase().includes(q)):ds;
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  const sale=saleNhanSuDS().filter(x=>x.doi==='Sỉ'&&x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);
+  const loai=rptSlType()==='Sỉ'?'Sỉ':'Lẻ';
+  const sale=saleNhanSuDS().filter(x=>x.doi===loai&&x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);
   const dong=list.slice(0,300).map(r=>'<tr>'
     +'<td style="width:34px"><input type="checkbox" class="siGanTick" value="'+e(r.leadId)+'" onchange="siGanDemLai()" style="cursor:pointer;width:15px;height:15px"></td>'
     +'<td style="white-space:nowrap">'+(dmy(r.created)||'—')+'</td>'
@@ -6247,7 +6261,7 @@ async function siGanChay(){
   for(const id of ids){
     try{await rptSlSaveManual(id,{si_sale:ten});ok++;}catch(e){loi++;}
   }
-  logAct('U','saleretail_manual',null,null,'Gán Sale phụ trách','botsale sỉ',ten+' · '+ok+' khách');
+  logAct('U','saleretail_manual',null,null,'Gán Sale phụ trách','(trống)',ten+' · '+ok+' khách');
   window._kiotOrdByCode=null;rptSlXoaCache();
   if(msg)msg.innerHTML='<span style="color:var(--green)">Đã gán '+ok+' khách cho '+ten+(loi?(' · lỗi '+loi):'')+'</span>';
   rptSlRender();
