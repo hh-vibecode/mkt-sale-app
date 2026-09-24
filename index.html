@@ -4798,8 +4798,15 @@ function rptSlBuildMasterRaw(){
   // Master hết, không đòi phải có thêm thẻ TIỀM NĂNG / CHỐT ĐƠN. Lý do: Sale Sỉ chăm qua điện thoại
   // và Zalo, thẻ trên Pancake thường không được cập nhật -- bắt đủ thẻ là mất gần hết khách.
   const coSdt=o=>String(o.phone||'').replace(/\D/g,'').length>=9;
-  const duSi=o=>!dhHuy(o)&&coSdt(o);
-  const duDK=rptSlType()==='Sỉ'?(o=>dhIsQualified(o)||duSi(o)):dhIsQualified;
+  // 24/9/2026 anh Hải siết lại: data ONLINE chỉ vào Master Sỉ khi
+  //   (a) có thẻ LEAD TIỀM NĂNG hoặc CHỐT ĐƠN, HOẶC
+  //   (b) có thẻ KH SỈ và khách ĐÃ GỬI SỐ ĐIỆN THOẠI (đơn chưa huỷ).
+  // Mọi đơn tới nhánh này đều đã mang thẻ KH SỈ (xem dhSaleTypeOrder) nên (b) rút lại còn 'có SĐT'.
+  // Khách chỉ có thẻ BÀN GIAO mà chưa để lại số thì KHÔNG nhận -- đó là data thô, chưa phải khách.
+  const theSi=o=>{const t=String(o.customer_tags||'').toUpperCase();
+    return t.indexOf('TIỀM NĂNG')>=0||t.indexOf('CHỐT ĐƠN')>=0;};
+  const duSi=o=>theSi(o)||(!dhHuy(o)&&coSdt(o));
+  const duDK=rptSlType()==='Sỉ'?duSi:dhIsQualified;
   Object.keys(byKey).forEach(k=>{if(!byKey[k].some(duDK))delete byKey[k];});
   let rows=Object.entries(byKey).map(([key,orders])=>{
     orders.sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
