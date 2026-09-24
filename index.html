@@ -2519,7 +2519,7 @@ function dhManualForm(){
       ${fld('Nguồn khách',`<select id="dhmNguon" style="${inp}"><option>Online</option><option>Offline</option></select>`)}
       ${fld('Kênh',`<input id="dhmKenh" list="dhmKenhList" placeholder="VD: Tiktok Chánh Tâm" style="${inp}">
         <datalist id="dhmKenhList">${DH_MANUAL_KENH.map(x=>`<option value="${x}">`).join('')}</datalist>`)}
-      ${fld('Sales phụ trách',`<select id="dhmStaff" style="${inp};cursor:pointer"><option value="">— chọn Sale —</option>${rptSlSalesList().map(x=>`<option value="${x}">${x}</option>`).join('')}</select>`)}
+      ${fld('Sales phụ trách',`<select id="dhmStaff" style="${inp};cursor:pointer"><option value="">— chọn Sale —</option>${rptSlSaleCuaDoi(dhManualType()).map(x=>`<option value="${x}">${x}</option>`).join('')}</select>`)}
       ${dhManualType()==='Sỉ'?'':fld('Brand',`<select id="dhmBrand" style="${inp};cursor:pointer"><option value="">— tự suy từ kênh —</option>${
         Object.keys(DH_BRAND_LABEL).filter(b=>b!=='Other').map(b=>'<option value="'+b+'">'+DH_BRAND_LABEL[b]+'</option>').join('')}</select>`)}
       ${fld('Mã KH Kiot',`<input id="dhmKh" placeholder="KH0075xx" style="${inp}">`)}
@@ -3885,20 +3885,19 @@ function rptSlStaffHtml(r){
   if(r.staffRaw)return '<span style="color:var(--muted);font-size:11px" title="Đơn đang gán cho tài khoản chung bên Pancake ('+String(r.staffRaw).replace(/"/g,'')+') — cần gán đúng Sale phụ trách">tài khoản chung</span>';
   return '<span style="color:var(--muted)">chưa gán</span>';
 }
-function rptSlSalesList(){
-  // Danh sách cố định + những tên ĐÃ ĐƯỢC TICK trong phạm vi tài khoản nào đó (giữ lại để không
-  // âm thầm bỏ mất lựa chọn cũ của người dùng).
-  // Ưu tiên bảng nhân sự trong CSDL; chưa nạp được thì dùng mảng dự phòng trong code.
+// DROPDOWN SALE gắn CHUẨN vào bảng Nhân sự Sale (anh Hải 24/9/2026): báo cáo nào chỉ hiện Sale của đội đó,
+// không tự thêm tên từ phạm vi tài khoản hay từ dữ liệu (Đỗ Luân, Nguyễn Hưng… vẫn là người phụ trách trên
+// từng dòng nếu có, chỉ không vào ô chọn). Thêm / bớt người -> vào Phân quyền > Nhân sự Sale.
+function rptSlSaleCuaDoi(loai){
+  const doi=loai==='Sỉ'?'Sỉ':'Lẻ';
   const ds=saleNhanSuDS();
-  const goc=ds.length?ds.filter(x=>x.dang_lam!==false).map(x=>x.ten):RPT_SL_SALE_DROPDOWN_MAC_DINH;
-  const daTick=[];
-  // Tạo tài khoản cho ai thì người đó TỰ VÀO dropdown, khỏi phải sửa code (anh Hải 23/9/2026).
-  try{(window._rptSlAccs||[]).forEach(a=>{
-    // Chỉ tài khoản LÀ SALE mới vào ô chọn; admin/supreme/manager không phải người phụ trách data.
-    if(a.name&&/^(sale|sales)/i.test(a.position_title||''))daTick.push(String(a.name).trim());
-    (a.data_sales||[]).forEach(x=>daTick.push(x));});}catch(e){}
-  try{const c=JSON.parse(localStorage.getItem('dashDataSales')||'[]');if(Array.isArray(c))daTick.push(...c);}catch(e){}
-  return [...new Set([...goc,...daTick])].sort((a,b)=>a.localeCompare(b,'vi'));
+  const goc=ds.length?ds.filter(x=>x.doi===doi&&x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>String(x.ten).trim())
+    :(doi==='Sỉ'?['Nguyễn Thị Huế','Nguyễn Hữu Toàn']:RPT_SL_SALE_LE);
+  return [...new Set(goc)].sort((a,b)=>a.localeCompare(b,'vi'));
+}
+function rptSlSalesList(){
+  // Cả 2 đội (dùng cho ô tick phạm vi xem ở Phân quyền). Nguồn: bảng Nhân sự Sale.
+  return [...new Set([...rptSlSaleCuaDoi('Lẻ'),...rptSlSaleCuaDoi('Sỉ')])].sort((a,b)=>a.localeCompare(b,'vi'));
 }
 // Danh sách gom từ dữ liệu thật -- KHÔNG dùng cho dropdown nữa, giữ lại cho chỗ nào cần soát.
 function rptSlSalesTrongData(){
@@ -4579,7 +4578,7 @@ function rptSlOverviewHtml(){
 
   const bySale={};
   master.forEach(r=>{const s=r.staff||'(chưa gán)';bySale[s]=bySale[s]||{data:0,chot:0,rev:0,noi:0};bySale[s].data++;if(r.isChot)bySale[s].chot++;if(r.kh)bySale[s].noi++;bySale[s].rev+=r.revenue;});
-  const saleRows=Object.entries(bySale).filter(([s])=>rptSlSalesList().includes(s)).sort((a,b)=>b[1].rev-a[1].rev||b[1].chot-a[1].chot);
+  const saleRows=Object.entries(bySale).filter(([s])=>rptSlSaleCuaDoi(rptSlType()).includes(s)||s==='(chưa gán)').sort((a,b)=>b[1].rev-a[1].rev||b[1].chot-a[1].chot);
 
   const byKenh={};master.forEach(r=>{const k=r.kenh||'(không rõ)';byKenh[k]=byKenh[k]||{n:0,chot:0,rev:0};byKenh[k].n++;if(r.isChot)byKenh[k].chot++;byKenh[k].rev+=r.revenue;});
   const kenhRows=Object.entries(byKenh).sort((a,b)=>b[1].n-a[1].n);
@@ -4933,7 +4932,7 @@ function rptSlFilterBar(tab){
   // Dựng lựa chọn từ TOÀN BỘ khách, không phải từ phần đang hiển thị -- nếu lấy theo phần đang hiển thị
   // thì lọc ngày mặc định (hôm qua -> hôm nay) làm dropdown chỉ còn 1-2 mục, không lọc được gì nữa.
   const full=rptSlBuildMaster();
-  const sales=rptSlSalesList();
+  const sales=[...rptSlSaleCuaDoi(rptSlType()),'(chưa gán)'];
   // Trạng thái lấy danh sách CỐ ĐỊNH, không lấy theo giá trị đang có trong data.
   const stats=['Chốt đơn',...RPT_SL_STATUS_OPTS,'(chưa cập nhật)'];
   const brands=[...new Set(full.map(r=>DH_BRAND_LABEL[r.brand]||r.brand||'—'))].sort();
