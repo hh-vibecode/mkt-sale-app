@@ -45,7 +45,7 @@
 - **Data Online vào Master Sỉ** khi: có thẻ LEAD TIỀM NĂNG / CHỐT ĐƠN, HOẶC có thẻ KH SỈ + khách đã gửi SĐT.
 - **Lượt chăm sóc "Chốt đơn"** bắt buộc điền mã đơn đặt hàng CÓ THẬT bên Kiot.
 - **Nút Xoá** luôn nằm TRONG form Sửa, bấm phải hỏi xác nhận. **Thu hồi data** (chỉ Admin) = Sale về botsale sỉ → rơi vào tab Gán data.
-- **Master + CRM Sỉ** mặc định lọc 3 ngày gần nhất. Thẻ dash: icon + tên IN HOA cùng hàng, không dòng phụ.
+- **Master + CRM Sỉ** mặc định lọc 3 ngày gần nhất. Thẻ dash: icon + tên (chữ thường, đậm) cùng hàng, không dòng phụ.
 - **Lead ID**: dùng mã app sinh; khách đã có Mã KH Kiot thì cột đó hiện thẳng Mã KH.
 - Mọi thứ Claude tạo ký tên **Monsieur Claude**.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
