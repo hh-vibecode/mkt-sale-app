@@ -48,6 +48,17 @@
 - Mọi thứ Claude tạo ký tên **Monsieur Claude**.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
 
+## 3b. BẢO MẬT (khoá 24/9/2026)
+
+- CSDL CHỈ mở cho người đã đăng nhập app (thẻ phiên JWT, role authenticated). Khoá công khai trong index.html một mình không đọc/ghi được gì (trừ 3 bảng cho dashboard cũ: product_faq, dash_presence, social_page_stats).
+- Đăng nhập qua Edge Function `dang-nhap` → tài khoản bóng `<user_id>@mkt-sale.app` trong Supabase Auth (mật khẩu bóng ngẫu nhiên mỗi lần). Mật khẩu thật vẫn ở sales_user_credentials.
+- Hàm quản lý tài khoản kiểm quyền TRONG CSDL (`la_quan_tri()`: Supreme hoặc có quyền settings / *). Tự đăng ký Supabase đã TẮT.
+- Edge `pancake-note`, `sync-now` kiểm thẻ (secret BAT_BUOC_PHIEN=1); lịch hẹn giờ gọi sync-now bằng mã `x-cron-key` (secret CRON_KEY, trong hàm goi_sync).
+- Job đồng bộ + kiem-so-lieu dùng khoá quản trị → không bị khoá ảnh hưởng.
+- Sự cố: chạy `supabase-schema-mo-khoa-khan-cap.sql` + đặt SB_BAT_BUOC_PHIEN=false + BAT_BUOC_PHIEN=0.
+- Kiểm thử sau khoá cần tài khoản thử CHỈ trong Supabase Auth (không tạo trong sales_users — sẽ lọt vào danh sách Sale, anh đã nhắc 24/9). Xoá ngay sau khi thử.
+- Bài học: viết code qua chuỗi lồng nhau hay mất dấu `\` (đã dính 2 lần: `Bearer\s+`, `KEY:\s*`) → luôn kiểm lại file sau khi ghi.
+
 ## 4. CƠ CHẾ TỰ CHẠY (đang sống)
 
 - `sync-datahub-pancake` · `sync-kiot-orders` (có lấy kênh bán) · `sync-kiot-invoices` · `sync-mkt-from-meta` — lịch do pg_cron trên Supabase bắn.
@@ -58,6 +69,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **24/09 tối — KHOÁ BẢO MẬT**: trước khoá 23 chỗ hở (người lạ đọc mọi bảng, xoá dữ liệu, tạo tài khoản, đổi mật khẩu, khôi phục sao lưu) → sau khoá 0. App, job đồng bộ, số liệu y nguyên. Mọi người phải đăng nhập lại app 1 lần.
 - **24/09 rà toàn bộ** — 15 trang/tab + 120 popup vẽ sạch (0 lỗi JS, 0 undefined/NaN); 6 job GitHub Actions xanh hết; 0 đơn đếm 2 lần, 0 trùng Lead ID, 2.005 lượt chăm sóc 0 mồ côi. SỬA: 3 đơn chi nhánh Sỉ (4.548.000đ) bị tính cả ở Lẻ → Lẻ gạt; bảng saleretail_manual thiếu quyền xoá → nút Xoá khách để lại hồ sơ rác (đã thêm quyền + dọn). Gán data Sỉ thành thanh thao tác hàng loạt kiểu Pancake. Data Hub bỏ tab Nhân sự Sale (chỉ còn ở Phân quyền).
 - **24/09 khuya** — Rà lại toàn bộ sheet 1.MASTER DATA SỈ: 389/389 dòng đều có khách trong app (4 "chưa có" hôm trước là do script nạp ghi chú dò thiếu khách Pancake). Bù hồ sơ cho 160 khách (chủ yếu khách Pancake L-SD-…): người đại diện 158 · phân loại 149 · tỉnh 147 · mô hình 139 · nhóm KH 4 · diện tích 3 · ghi chú riêng 2; chỉ bù ô trống, không ghi đè; rà lại còn 0 ô thiếu (`scripts/bu-truong-master-si-once.js`). Tổng hợp: Top 10 khách theo doanh số. Master Lẻ bỏ nhãn Chi tiết. Nút Cho nghỉ hỏi xác nhận.
 - **24/09 tối** — Gộp 4 cặp dòng Data nhập tay trùng người (xoá M-0053, M-0054, M-0015, M-0340 sau khi chuyển 4 lượt chăm sóc + 9 trường hồ sơ sang dòng giữ); nhập tay 381 → 377, doanh thu và số khách không đổi, 2.005 lượt chăm sóc 0 mồ côi. Ca Thuỳ Trâm: mã KH007352 ĐÚNG (SĐT M-0019 = SĐT KH007352 bên Kiot, đơn DH002098 có trả 7,59tr + hoá đơn HD057808) — Kiot chỉ đặt tên khách theo "Anh Tân".
