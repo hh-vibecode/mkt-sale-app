@@ -2731,6 +2731,99 @@ function dhKenhKy(){
 function dhKenhDatKy(from,to){window._dhKenhKy={from:from||'',to:to||''};renderDataHub();}
 function dhKenhLoc(){dhKenhKy();renderDataHub();}
 function dhKenhShow(key){const d=(window._dhKenhLists||{})[key];if(d)dataModal(d);}
+// ── NHÂN SỰ SALE (tab trong Data Hub) ─────────────────────────────────────────────────────────
+// Liệt kê Sale Lẻ / Sale Sỉ, kèm những tài khoản đang được xem data của từng người, và nút thêm
+// nhân sự. Thêm xong là áp cho MỌI dropdown/bộ lọc trong app. Chỉ ADMIN trở lên được thêm/sửa.
+function dhNhanSuHtml(){
+  const ds=saleNhanSuDS();
+  const accs=window._rptSlAccs||[];
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const suaDuoc=dashToanQuyen();
+  const q=String.fromCharCode(39);
+  const aiXem=ten=>{
+    const l=accs.filter(a=>{
+      const sc=a.data_sales||[];
+      if(a.position_title==='supreme'||a.position_title==='admin')return true;   // xem hết
+      return sc.includes(ten);
+    }).map(a=>a.name);
+    return l;
+  };
+  const khoi=(doi,mau)=>{
+    const list=ds.filter(x=>x.doi===doi);
+    const dong=list.map(x=>{
+      const ai=aiXem(x.ten);
+      return '<tr'+(x.dang_lam===false?' style="opacity:.5"':'')+'>'
+        +'<td class="name">'+e(x.ten)+(x.dang_lam===false?' <span style="font-size:10px;color:var(--muted)">(nghỉ)</span>':'')+'</td>'
+        +'<td><span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:800;color:#fff;background:'+mau+'">'+doi+'</span></td>'
+        +'<td style="font-size:11.5px">'+(ai.length?ai.map(e).join(', '):'<span style="color:var(--red)">chưa ai xem được</span>')+'</td>'
+        +'<td class="num">'+num(ai.length)+'</td>'
+        +'<td style="white-space:nowrap">'+(suaDuoc
+          ?('<button onclick="dhNhanSuDoiDoi('+x.id+','+q+(doi==='Lẻ'?'Sỉ':'Lẻ')+q+')" class="btn-ghost" style="padding:3px 9px;font-size:11px">Đổi sang '+(doi==='Lẻ'?'Sỉ':'Lẻ')+'</button>'
+            +'<button onclick="dhNhanSuNghi('+x.id+','+(x.dang_lam===false?'true':'false')+')" class="btn-ghost" style="padding:3px 9px;font-size:11px;margin-left:4px;color:'+(x.dang_lam===false?'var(--green)':'var(--red)')+'">'+(x.dang_lam===false?'Cho làm lại':'Cho nghỉ')+'</button>')
+          :'<span style="font-size:11px;color:var(--muted)">chỉ admin sửa được</span>')+'</td></tr>';
+    }).join('');
+    return '<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head" style="border-left:4px solid '+mau+'">'
+      +'<div class="tbl-title">Sale '+doi+'</div><div class="tbl-count">'+num(list.length)+'</div></div>'
+      +'<div class="tbl-scroll"><table><thead><tr><th>Tên nhân sự</th><th>Đội</th><th>Tài khoản xem được data của người này</th><th>Số TK</th><th></th></tr></thead>'
+      +'<tbody>'+(dong||'<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--muted)">chưa có ai</td></tr>')+'</tbody></table></div></div>';
+  };
+  const nutThem=suaDuoc
+    ?'<button onclick="dhNhanSuThemForm()" class="refresh-btn" style="padding:6px 16px;font-size:12px">+ Thêm nhân sự Sale</button>'
+    :'<span style="font-size:11.5px;color:var(--muted);font-weight:600">Chỉ Admin trở lên mới thêm được nhân sự</span>';
+  return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
+    +'<div style="font-size:11.5px;color:var(--muted);font-weight:600">Thêm ở đây là áp cho mọi ô chọn Sale trong app: bộ lọc báo cáo, phạm vi phân quyền, form nhập tay.</div>'
+    +'<span style="margin-left:auto">'+nutThem+'</span></div>'
+    +khoi('Lẻ','#4361ee')+khoi('Sỉ','#7209b7');
+}
+function dhNhanSuThemForm(){
+  if(!dashToanQuyen())return;
+  const ip='width:100%;box-sizing:border-box;height:36px;padding:6px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--font);outline:none';
+  let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
+  m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
+   +'<div style="background:var(--surface);border-radius:16px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
+   +'<div style="display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border)">'
+   +'<div style="font-size:15px;font-weight:800">Thêm nhân sự Sale</div>'
+   +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
+   +'<div style="padding:16px 20px;display:grid;gap:12px">'
+   +'<div><div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Họ tên *</div>'
+   +'<input id="nsTen" placeholder="Ghi ĐÚNG tên hiển thị trên Pancake/Kiot" style="'+ip+'"></div>'
+   +'<div><div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Đội</div>'
+   +'<select id="nsDoi" style="'+ip+';cursor:pointer"><option value="Lẻ">Sale Lẻ</option><option value="Sỉ">Sale Sỉ</option></select></div>'
+   +'<div id="nsMsg" style="font-size:12px;font-weight:700;color:var(--red)"></div>'
+   +'<button onclick="dhNhanSuThem()" class="refresh-btn" style="padding:9px">Thêm</button></div></div></div>';
+}
+async function dhNhanSuThem(){
+  const ten=(document.getElementById('nsTen')||{}).value||'';
+  const doi=(document.getElementById('nsDoi')||{}).value||'Lẻ';
+  const msg=document.getElementById('nsMsg');
+  if(!ten.trim()){if(msg)msg.textContent='Chưa nhập tên';return;}
+  try{
+    await sbInsert('sale_nhan_su',{ten:ten.trim(),doi,created_by:logWho()});
+    logAct('C','sale_nhan_su',null,ten.trim(),'Nhân sự Sale','',doi);
+    await saleNhanSuLoad(true);
+    qcCloseModal();renderDataHub();
+  }catch(e){if(msg)msg.textContent='Chưa thêm được: '+e.message;}
+}
+async function dhNhanSuDoiDoi(id,doi){
+  if(!dashToanQuyen())return;
+  try{
+    const r=await fetch(SUPABASE_URL+'/rest/v1/sale_nhan_su?id=eq.'+id,{method:'PATCH',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({doi})});
+    if(!r.ok)throw new Error('lỗi '+r.status);
+    await saleNhanSuLoad(true);renderDataHub();
+  }catch(e){rptBaoLoi('Đổi đội nhân sự',e);}
+}
+async function dhNhanSuNghi(id,lam){
+  if(!dashToanQuyen())return;
+  try{
+    const r=await fetch(SUPABASE_URL+'/rest/v1/sale_nhan_su?id=eq.'+id,{method:'PATCH',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({dang_lam:!!lam})});
+    if(!r.ok)throw new Error('lỗi '+r.status);
+    await saleNhanSuLoad(true);renderDataHub();
+  }catch(e){rptBaoLoi('Đổi trạng thái nhân sự',e);}
+}
 function dhKenhHtml(){
   return `<div class="tbl-card" style="margin-bottom:16px">
     <div class="tbl-head"><div class="tbl-title">Kiot raw data — phân bổ theo kênh bán</div>
@@ -2842,7 +2935,8 @@ async function renderDataHub(){
   // CHỈ TẢI THỨ TAB ĐANG XEM CẦN. Tab Nhập tay và tab Kênh bán không đụng tới data thô Pancake
   // (datahub_orders ~1,9 MB) -> bỏ hẳn lượt tải đó, mở trang nhanh hơn hẳn cho tài khoản Sale.
   await Promise.all([dhLoadManual(),kiotLoadInvoices(),rptSlLoadManual(),
-    dbTaiDungLuong().catch(()=>null)]);
+    dbTaiDungLuong().catch(()=>null),saleNhanSuLoad().catch(()=>null),
+    (typeof rptSlLoadAccs==='function'&&!window._rptSlAccs?rptSlLoadAccs():Promise.resolve())]);
   // Quyền từng tab: 'datahub' = data thô Pancake · 'datahub-manual' = nhập tay LẺ · 'datahub-manual-si' = nhập tay SỈ.
   // Chỉ có quyền 'datahub-manual' -> bị khoá cứng ở tab Nhập tay (đổi localStorage cũng không vào được).
   const canRaw=dashCan('datahub'),canLe=canRaw||dashCan('datahub-manual'),canSi=canRaw||dashCan('datahub-manual-si');
@@ -2851,6 +2945,7 @@ async function renderDataHub(){
   if(mode==='manual'&&!canLe)mode=canSi?'manual-si':(canRaw?'overview':'manual');
   if(mode==='manual-si'&&!canSi)mode=canLe?'manual':(canRaw?'overview':'manual-si');
   if(mode==='kenh'&&!canRaw)mode=canLe?'manual':'manual-si';
+  if(mode==='nhansu'&&!canRaw)mode=canLe?'manual':'manual-si';
   if(mode==='overview')await dhLoadOrders();
   const dhConfirmed=dhOrders.filter(dhIsOrder);
   const dhNew=dhOrders.filter(o=>o.customer_status==='Mới').length;
@@ -2905,11 +3000,13 @@ async function renderDataHub(){
         ${canLe?tabBtn('manual','Nhập tay Lẻ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')!=='Sỉ').length+')'):''}
         ${canSi?tabBtn('manual-si','Nhập tay Sỉ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')==='Sỉ').length+')'):''}
         ${canRaw?tabBtn('kenh','Kiot raw data'):''}
+        ${canRaw?tabBtn('nhansu','Nhân sự Sale'):''}
       </span>
     </div>`;
   const kho=dbDungLuongHtml();   // dung lượng kho dữ liệu -- hiện ở đầu MỌI tab của Data Hub
   if(mode==='manual'||mode==='manual-si'){el.innerHTML=header+kho+dhManualHtml();tblAlign(el);return;}
   if(mode==='kenh'){el.innerHTML=header+kho+dhKenhHtml();tblAlign(el);return;}
+  if(mode==='nhansu'){el.innerHTML=header+dhNhanSuHtml();tblAlign(el);return;}
   el.innerHTML=header+kho+pancakeOrdersHtml+dhExcludedHtml();
   dhRenderTable();
 }
@@ -3656,14 +3753,34 @@ const RPT_SL_MIN_DATE='2026-06-01';
 // THÊM/BỚT SALE: sửa đúng 1 mảng này, không phải tìm chỗ nào khác.
 // Khách Sỉ chưa có Mã KH -> chưa biết ai bán, tạm gán tên này cho khỏi trống.
 const RPT_SL_BOT_SI='botsale sỉ';
+// ── NHÂN SỰ SALE ──────────────────────────────────────────────────────────────────────────────
+// Danh sách nằm trong bảng sale_nhan_su (thêm/sửa ngay trong app, mục Nhân sự Sale ở Data Hub),
+// KHÔNG còn sửa code mỗi lần có người mới (anh Hải chốt 24/9/2026). Mảng dưới chỉ là bản dự phòng
+// khi chưa nạp được bảng -- app vẫn chạy chứ không trắng dropdown.
+let saleNhanSu=[],saleNhanSuLoaded=false;
+async function saleNhanSuLoad(force){
+  if(saleNhanSuLoaded&&!force)return saleNhanSu;
+  try{saleNhanSu=await sbFetchAll('sale_nhan_su','select=id,ten,doi,dang_lam,ghi_chu&order=doi,ten');}
+  catch(e){saleNhanSu=[];}
+  saleNhanSuLoaded=true;
+  try{localStorage.setItem('dashSaleNhanSu',JSON.stringify(saleNhanSu));}catch(e){}
+  return saleNhanSu;
+}
+function saleNhanSuDS(){
+  if(saleNhanSu.length)return saleNhanSu;
+  try{const c=JSON.parse(localStorage.getItem('dashSaleNhanSu')||'[]');if(c.length)return c;}catch(e){}
+  return [];
+}
 // Đội LẺ (Pancake / 2 cửa hàng đồ thờ)
 const RPT_SL_SALE_LE=['Nguyễn Thảo Ngọc','Vân Ngọc','Chánh Tâm Ngọc Diệp','Phạm Thị Lệ'];
 // Đội SỈ = người thật sự tạo đơn ở chi nhánh Tổng kho sỉ, còn hoạt động trong 2026.
 // Gắn ĐỦ ở đây để Sale không phải gõ tay tên mình (Sale báo 24/9/2026: 'sales không tìm thấy tên mình').
 const RPT_SL_SALE_DOI_SI=['Nguyễn Thị Huế','Nguyễn Hữu Toàn','Nguyễn Thị Chuyện','Vũ Thanh Bình',
   'Hà Minh Ngọc','Đặng Phương Anh','Nguyễn Thị Thanh','Hồ Xuân Thịnh','Đỗ Xuân Hoàng',RPT_SL_BOT_SI];
-const RPT_SL_SALE_DROPDOWN=[...RPT_SL_SALE_LE,...RPT_SL_SALE_DOI_SI];
+const RPT_SL_SALE_DROPDOWN_MAC_DINH=[...RPT_SL_SALE_LE,...RPT_SL_SALE_DOI_SI];
 function rptSlDoiCuaSale(ten){
+  const x=saleNhanSuDS().find(y=>String(y.ten).trim()===String(ten).trim());
+  if(x)return x.doi==='Sỉ'?'Sỉ':'Lẻ';
   if(RPT_SL_SALE_DOI_SI.includes(ten))return 'Sỉ';
   // Tài khoản tạo qua Phân quyền: xếp đội theo VỊ TRÍ đã chọn lúc tạo.
   try{const a=(window._rptSlAccs||[]).find(x=>String(x.name||'').trim()===ten);
@@ -3739,6 +3856,9 @@ function rptSlStaffHtml(r){
 function rptSlSalesList(){
   // Danh sách cố định + những tên ĐÃ ĐƯỢC TICK trong phạm vi tài khoản nào đó (giữ lại để không
   // âm thầm bỏ mất lựa chọn cũ của người dùng).
+  // Ưu tiên bảng nhân sự trong CSDL; chưa nạp được thì dùng mảng dự phòng trong code.
+  const ds=saleNhanSuDS();
+  const goc=ds.length?ds.filter(x=>x.dang_lam!==false).map(x=>x.ten):RPT_SL_SALE_DROPDOWN_MAC_DINH;
   const daTick=[];
   // Tạo tài khoản cho ai thì người đó TỰ VÀO dropdown, khỏi phải sửa code (anh Hải 23/9/2026).
   try{(window._rptSlAccs||[]).forEach(a=>{
@@ -3746,7 +3866,7 @@ function rptSlSalesList(){
     if(a.name&&/^(sale|sales)/i.test(a.position_title||''))daTick.push(String(a.name).trim());
     (a.data_sales||[]).forEach(x=>daTick.push(x));});}catch(e){}
   try{const c=JSON.parse(localStorage.getItem('dashDataSales')||'[]');if(Array.isArray(c))daTick.push(...c);}catch(e){}
-  return [...new Set([...RPT_SL_SALE_DROPDOWN,...daTick])].sort((a,b)=>a.localeCompare(b,'vi'));
+  return [...new Set([...goc,...daTick])].sort((a,b)=>a.localeCompare(b,'vi'));
 }
 // Danh sách gom từ dữ liệu thật -- KHÔNG dùng cho dropdown nữa, giữ lại cho chỗ nào cần soát.
 function rptSlSalesTrongData(){
