@@ -130,7 +130,8 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
    (thay vì phủ gradient kín cả thẻ như trước). Class .g-* giữ nguyên tên (JS mkKpi() không đổi gì) nhưng
    giờ chỉ set 2 biến màu cho ô icon, không set background của cả thẻ nữa. */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
-[hidden]{display:none!important}   /* phần tử đánh dấu hidden luôn ẩn, kể cả khi có display inline */
+[hidden]{display:none!important}
+.va-item:hover{background:var(--bg2)}   /* phần tử đánh dấu hidden luôn ẩn, kể cả khi có display inline */
 .kpi{border-radius:16px;padding:20px;background:var(--surface);border:1.5px solid var(--border);position:relative;overflow:hidden;transition:box-shadow .2s,transform .2s}
 .kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .kpi::after{content:none}
@@ -6100,14 +6101,24 @@ function dashViewAsRender(){
   const v=dashViewAs(),accs=window._rptSlAccs;
   if(!accs){rptSlLoadAccs();}
   const esc=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  const mo=a=>{const p=[(a.data_sales||[]).length?(a.data_sales||[]).join(', '):'mọi Sale',
-                        (a.data_types||[]).length?'chỉ '+(a.data_types||[]).join('/'):''].filter(Boolean).join(' · ');
-    return '<option value="'+esc(a.user_id)+'"'+(v&&v.id===a.user_id?' selected':'')+'>'+esc(a.name)+' — '+esc(p)+'</option>';};
   box.innerHTML=(v?'<span title="Cả app đang hiển thị theo quyền của tài khoản này" style="font-size:11px;font-weight:800;color:#fff;background:var(--red);border-radius:20px;padding:4px 11px;white-space:nowrap">Đang xem như '+esc(v.name)+'</span>':'')
-    +'<select onchange="rptSlSetViewAs(this.value)" title="Xem app bằng góc nhìn của một tài khoản khác"'
-    +' style="height:30px;padding:3px 9px;border:1.5px solid '+(v?'var(--red)':'var(--border)')+';border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;max-width:260px">'
-    +'<option value="">— Xem như: chính tôi —</option>'+(accs?accs.map(mo).join(''):'<option disabled>đang tải…</option>')+'</select>';
+    // Gọn lại thành 1 ICON NGƯỜI (anh Hải 24/9/2026): bấm vào mới xổ danh sách tên tài khoản để chọn.
+    +'<span style="position:relative;display:inline-flex">'
+    +'<button onclick="dashViewAsMo(event)" title="'+(v?'Đang xem như '+esc(v.name)+' — bấm để đổi':'Xem app bằng góc nhìn của tài khoản khác')+'"'
+    +' style="width:34px;height:34px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;'
+    +'border:1.5px solid '+(v?'var(--red)':'var(--border)')+';background:'+(v?'var(--red)':'var(--surface)')+';color:'+(v?'#fff':'var(--text2)')+'">'
+    +'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path stroke-linecap="round" d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg></button>'
+    +'<div id="viewAsMenu" hidden style="position:absolute;right:0;top:40px;z-index:3000;min-width:230px;max-height:60vh;overflow:auto;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,.18);padding:6px">'
+    +'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:6px 10px 4px">Xem như tài khoản</div>'
+    +[{user_id:'',name:'Chính tôi'}].concat(accs||[]).map(a=>{const on=a.user_id?(v&&v.id===a.user_id):!v;
+      return '<div onclick="rptSlSetViewAs('+String.fromCharCode(39)+''+esc(a.user_id)+''+String.fromCharCode(39)+');dashViewAsDong()" style="padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:'+(on?'800':'600')+';color:'+(on?'var(--accent)':'var(--text)')+(on?';background:var(--accent-l)':'')+'" class="va-item">'
+        +(on?'✓ ':'')+esc(a.name)+'</div>';}).join('')
+    +(accs?'':'<div style="padding:8px 10px;font-size:12px;color:var(--muted)">đang tải…</div>')
+    +'</div></span>';
 }
+function dashViewAsMo(ev){if(ev)ev.stopPropagation();const m=document.getElementById('viewAsMenu');if(m)m.hidden=!m.hidden;}
+function dashViewAsDong(){const m=document.getElementById('viewAsMenu');if(m)m.hidden=true;}
+document.addEventListener('click',ev=>{const m=document.getElementById('viewAsMenu');if(m&&!m.hidden&&!m.contains(ev.target))m.hidden=true;});
 async function rptSlLoadAccs(){
   if(window._rptSlAccsLoading)return; window._rptSlAccsLoading=true;
   let list=[];
@@ -6157,8 +6168,8 @@ function rptSiGanHtml(){
     +'<span id="siGanDem" style="font-size:12.5px;font-weight:800;color:var(--accent)">Đã chọn 0 khách</span>'
     +'<select id="siGanSale" onchange="siGanNut()" style="height:32px;min-width:200px;padding:3px 10px;border:1.5px solid var(--accent);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer">'
     +'<option value="">Chọn Sale phụ trách…</option>'+sale.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select>'
-    +'<button id="siGanOk" onclick="siGanChay()" disabled class="refresh-btn" style="padding:7px 20px;font-size:12px;font-weight:800;opacity:.4;cursor:not-allowed">Xác nhận</button>'
-    +'<button onclick="siGanTickHet(false)" class="btn-ghost" style="margin-left:auto;padding:6px 14px;font-size:12px">Bỏ chọn</button>'
+    +'<button id="siGanOk" onclick="siGanChay()" disabled style="margin:0;height:32px;padding:0 20px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:800;font-family:var(--font);opacity:.4;cursor:not-allowed">Xác nhận</button>'
+    +'<button onclick="siGanTickHet(false)" class="btn-ghost" style="margin:0;height:32px;padding:0 14px;font-size:12px">Bỏ chọn</button>'
     +'</div>'
     +'<div id="siGanMsg" style="padding:0 16px;font-size:12px;font-weight:700"></div>'
     +'<div class="tbl-scroll"><table><thead><tr><th style="width:34px"><input type="checkbox" id="siGanHet" onchange="siGanTickHet(this.checked)" title="Chọn hết" style="cursor:pointer;width:15px;height:15px"></th><th>Ngày tạo</th><th>Khách hàng</th><th>SĐT</th><th>Nguồn · Kênh</th><th>Phân loại</th><th>Doanh thu</th></tr></thead>'
