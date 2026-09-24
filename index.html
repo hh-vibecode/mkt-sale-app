@@ -2750,7 +2750,7 @@ function dhManualHtml(){
     const v=((inv[r.sale_type==='Sỉ'?'Sỉ':'Lẻ']||{})[r.kiot_code])||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
     return `<tr>
       <td>${dmy(r.created_date)||'—'}</td>
-      <td class="name">${r.customer_name}</td>
+      <td class="name">${r.customer_name}<div style="font-size:10.5px;font-weight:700;color:var(--muted);margin-top:1px">${r.kiot_code?`<span style="color:var(--accent)">${r.kiot_code}</span>`:'M-'+String(r.id).padStart(4,'0')}</div></td>
       <td>${r.phone||'<span style="color:var(--muted)">—</span>'}</td>
       <td style="font-size:11px">${r.nguon||'—'}</td>
       <td style="font-size:11px">${r.kenh||'—'}</td>
@@ -3802,7 +3802,7 @@ function rptSlEditContent(leadId){
       <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border)">
         <span style="width:38px;height:38px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted);flex:0 0 auto"></span>
         <div style="min-width:0">
-          <div style="font-size:15px;font-weight:800">${esc(r.name)}</div>
+          <div style="font-size:15px;font-weight:800">${esc(r.name)} <span style="font-size:12px;font-weight:700;color:var(--muted)">· ${esc(r.kh||r.leadId||'')}</span></div>
           <div style="font-size:11.5px;color:var(--muted);font-weight:600">${esc(r.phone||'chưa có SĐT')} · ${esc(r.kenh)} · ${esc(r.staff||'chưa có sales')}</div>
         </div>
         <button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text);flex:0 0 auto">✕</button>
@@ -4015,7 +4015,7 @@ function rptSlEditRow(leadId){
       <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border)">
         <span style="width:38px;height:38px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 auto">✏️</span>
         <div style="min-width:0">
-          <div style="font-size:15px;font-weight:800">${esc(r.name)}</div>
+          <div style="font-size:15px;font-weight:800">${esc(r.name)} <span style="font-size:12px;font-weight:700;color:var(--muted)">· ${esc(r.kh||r.leadId||'')}</span></div>
           <div style="font-size:11.5px;color:var(--muted);font-weight:600">${esc(r.phone||'chưa có SĐT')} · ${esc(r.kenh)} · ${esc(r.staff||'chưa có sales')}${r.kh?' · '+esc(r.kh):''}</div>
         </div>
         <button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text);flex:0 0 auto">✕</button>
@@ -4492,7 +4492,7 @@ function rptSlOverviewHtml(){
         <thead><tr><th>#</th><th>Tên khách</th><th>Sales phụ trách</th><th>Kênh</th><th>Số đơn</th><th>Đơn gần nhất</th><th>Doanh số</th></tr></thead>
         <tbody>${top.map((r,i)=>`<tr>
           <td class="num" style="color:var(--muted);font-weight:700">${i+1}</td>
-          <td class="name">${esc(r.name)}${r.kh?`<div style="font-size:10.5px;font-weight:700;color:var(--muted)">${esc(r.kh)}</div>`:''}</td>
+          <td class="name">${esc(r.name)}${rptSlMaDuoiTen(r)}</td>
           <td>${esc(r.staff||'—')}</td>
           <td style="font-size:11.5px">${esc(r.kenh||'—')}</td>
           <td class="num">${num((r.kords||[]).length+(r.repeatOrds||[]).length)}</td>
@@ -5334,7 +5334,7 @@ function rptSiDashNguonDs(nguon){
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   dataModal({title:'Khách '+nguon,
     cols:['Ngày tạo','Sales phụ trách','Tên khách','Kênh','Phân loại KH','Doanh số'],
-    rows:ds.map(r=>[dmy(rptSlNgayTao(r))||'—',e(r.staff||'—'),e(r.name)+(r.kh?' <span style="color:var(--muted);font-weight:600">· '+e(r.kh)+'</span>':''),
+    rows:ds.map(r=>[dmy(rptSlNgayTao(r))||'—',e(r.staff||'—'),e(r.name)+' <span style="color:var(--muted);font-weight:600">· '+e(r.kh||r.leadId||'')+'</span>',
       e(r.kenh||'—'),e(r.siPhanLoai||'—'),tien(r)?vnd(tien(r)):'—'])});
 }
 function rptSlMasterHtmlRaw(){
@@ -5694,7 +5694,7 @@ function rptSlShowCustomer(key){
       <div style="display:flex;align-items:center;gap:13px;padding:16px 20px;border-bottom:1px solid var(--border)">
         <span style="width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:21px;color:var(--muted);flex:0 0 auto"></span>
         <div style="min-width:0">
-          <div style="font-size:16px;font-weight:800;color:var(--text)">${esc(r.name)}</div>
+          <div style="font-size:16px;font-weight:800;color:var(--text)">${esc(r.name)} <span style="font-size:12.5px;font-weight:700;color:var(--muted)">· ${esc(r.kh||r.leadId||'')}</span></div>
           <div style="font-size:12px;color:var(--muted);font-weight:600">${(r.phones||[]).length?(r.phones||[]).map(p=>esc(p.so)).join(' · '):'chưa có SĐT'} · ${esc(r.kenh)} · ${esc(r.staff||'chưa có sales')}</div>
         </div>
         <button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text);flex:0 0 auto">✕</button>
@@ -6056,7 +6056,7 @@ function rptSlInputHtml(){
   const b=rptSlTodoBuckets();
   const info=r=>`<td>${dmy(r.created)||'—'}</td>
     <td>${rptSlSrcBadge(r)}</td>
-    <td class="name">${rptSlTenKhach(r)}</td>
+    <td class="name">${rptSlTenKhach(r)}${rptSlMaDuoiTen(r)}</td>
     <td style="white-space:nowrap">${rptSlSdtHtml(r,'<span style="color:var(--red);font-size:11px">chưa có SĐT</span>')}</td>
     <td style="font-size:11px">${r.kenh||'—'}</td>
     <td>${rptSlStaffHtml(r)}</td>`;
@@ -6123,7 +6123,7 @@ function rptSlInputHtml(){
   const sLoi=tbl('<th>Ngày tạo</th><th>Khách</th><th>Mã KH</th><th>Lỗi hệ thống</th><th>Lúc</th><th></th>',
     b.loiHT.map(r=>{const mn=rptSlManual[r.leadId]||{};
       return '<tr><td>'+(dmy(r.created)||'—')+'</td>'
-        +'<td class="name">'+String(r.name||'').replace(/</g,'&lt;')+'</td>'
+        +'<td class="name">'+String(r.name||'').replace(/</g,'&lt;')+rptSlMaDuoiTen(r)+'</td>'
         +'<td style="font-size:11px">'+((r.kh||mn.kiot_code)?rptSlKiotLink(r.kh||mn.kiot_code,'<code>'+(r.kh||mn.kiot_code)+'</code>'):'—')+'</td>'
         +'<td style="font-size:11px;color:var(--red);font-weight:700;max-width:420px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'
         +String(mn.sync_error||'').replace(/"/g,'&quot;')+'">'+String(mn.sync_error||'').replace(/</g,'&lt;')+'</div></td>'
@@ -6186,7 +6186,7 @@ function rptSlCrmHtmlRaw(){
       r.careAuto?'Ngày tạo đơn Pancake đầu tiên — app tự lấy, không sửa tay':dmy(r.careDate),r)}
     <td>${rptSlSrcBadge(r)}</td>
     <td>${rptSlStaffHtml(r)}</td>
-    <td class="name">${rptSlTenKhach(r)}</td>
+    <td class="name">${rptSlTenKhach(r)}${rptSlMaDuoiTen(r)}</td>
     ${lock(r.content
           ? '<span style="font-size:11.5px;display:block;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+String(r.content).replace(/</g,'&lt;')+'</span>'
           : '<span style="font-size:11.5px;color:var(--muted)">—</span>', r.content, r)}

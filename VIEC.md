@@ -41,6 +41,7 @@
 - **Nút Xoá** luôn nằm TRONG form Sửa, bấm phải hỏi xác nhận. **Thu hồi data** (chỉ Admin) = Sale về botsale sỉ → rơi vào tab Gán data.
 - **Master Sỉ** mặc định lọc 3 ngày gần nhất, tính theo NGÀY TẠO khách (anh chốt 24/9, không đổi sang ngày chăm sóc). Thẻ dash: icon + tên (chữ thường, đậm) cùng hàng, không dòng phụ.
 - **Lead ID**: dùng mã app sinh; khách đã có Mã KH Kiot thì cột đó hiện thẳng Mã KH.
+- **Tên khách Ở ĐÂU cũng kèm mã** ngay dưới (hoặc cạnh, trong tiêu đề popup): có Mã KH Kiot thì hiện Mã KH, chưa có thì Lead ID. Dùng chung hàm `rptSlMaDuoiTen` — thêm bảng mới phải gọi hàm này.
 - Mọi thứ Claude tạo ký tên **Monsieur Claude**.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
 
