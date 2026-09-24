@@ -16,7 +16,7 @@ const URL_SB = Deno.env.get('SUPABASE_URL') ?? '';
 const ANON_SB = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const BAT_BUOC = Deno.env.get('BAT_BUOC_PHIEN') === '1';
 async function daDangNhap(req: Request): Promise<boolean> {
-  const t = (req.headers.get('authorization') || '').replace(/^Bearers+/i, '');
+  const t = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
   if (!t || !URL_SB) return false;
   const r = await fetch(URL_SB + '/auth/v1/user', { headers: { apikey: ANON_SB, Authorization: 'Bearer ' + t } }).catch(() => null);
   return !!r && r.ok;   // khoá công khai không có người dùng -> /auth/v1/user từ chối
