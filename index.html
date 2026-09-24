@@ -5239,6 +5239,57 @@ function rptSlEmptyHtml(coFilter){
 }
 function rptSlMasterHtml(){try{return rptSlMasterHtmlRaw();}catch(e){rptBaoLoi('Bảng Master',e);
   return '<div class="tbl-card" style="padding:16px 18px;border-left:4px solid var(--red)"><b style="color:var(--red)">Bảng Master lỗi</b><div style="font-size:12px;color:var(--text2);margin-top:6px">'+String(e&&e.message||e).replace(/</g,'&lt;')+'</div></div>';}}
+// ── 5 DASH CỦA MASTER SỈ (nhảy theo bộ lọc ngày đang chọn) ──
+// Ngưỡng "lâu chưa chăm sóc": lượt chăm gần nhất cách đây từ 10 ngày trở lên.
+// Khách CHƯA CÓ lượt chăm nào thì KHÔNG tính vào đây (anh Hải chốt 24/9/2026) -- họ nằm ở ô
+// "Chưa cập nhật trạng thái" nếu chưa phân loại.
+const RPT_SI_LAU_NGAY=10;
+function rptSiNgayChamCuoi(r){
+  const ds=rptSlCsRows(r);
+  if(!ds.length)return null;
+  const d=ds.map(x=>String(x.ngay_cham||'').slice(0,10)).filter(Boolean).sort().pop();
+  return d||null;
+}
+function rptSiSoNgayChua(r){
+  const d=rptSiNgayChamCuoi(r);
+  if(!d)return null;
+  return Math.floor((new Date(todayISO()).getTime()-new Date(d).getTime())/86400000);
+}
+function rptSiDashHtml(all){
+  const chot=all.filter(r=>r.isChot);
+  const coLS=all.map(r=>({r,n:rptSiSoNgayChua(r)})).filter(x=>x.n!==null);
+  const dangCham=coLS.filter(x=>x.n<RPT_SI_LAU_NGAY);
+  const lauRoi=coLS.filter(x=>x.n>=RPT_SI_LAU_NGAY);
+  const chuaTT=all.filter(r=>!String(r.siPhanLoai||'').trim());
+  window._rptSiDashList=all;
+  const tienChot=chot.reduce((s,r)=>s+Number(r.revenue||0)+Number(r.repeatRevenue||0),0);
+  const xa=lauRoi.length?Math.max.apply(null,lauRoi.map(x=>x.n)):0;
+  return '<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px">'
+    +'<div onclick="rptSiDashNguon()" style="cursor:pointer" title="Bấm để xem tách Online / Offline">'
+      +mkKpi(ic('users'),'Tổng khách hàng',num(all.length),'bấm để xem Online / Offline','g-blue')+'</div>'
+    +mkKpi(ic('check'),'Khách đã chốt đơn',num(chot.length),
+      (all.length?pct(chot.length/all.length*100):'0%')+' · '+vnd(tienChot),'g-green')
+    +mkKpi(ic('chat'),'Đang chăm sóc',num(dangCham.length),'có lượt chăm trong '+RPT_SI_LAU_NGAY+' ngày gần nhất','g-teal')
+    +mkKpi(ic('clock'),'Lâu chưa chăm sóc',num(lauRoi.length),
+      lauRoi.length?('quá '+RPT_SI_LAU_NGAY+' ngày · xa nhất '+num(xa)+' ngày'):'không có khách nào bị bỏ quên','g-red')
+    +mkKpi(ic('clipboard'),'Chưa cập nhật trạng thái',num(chuaTT.length),'chưa chọn phân loại KH','g-purple')
+    +'</div>';
+}
+// Bấm ô Tổng khách hàng -> tách theo nguồn khách, kèm số đã chốt và doanh số của từng nguồn.
+function rptSiDashNguon(){
+  const all=window._rptSiDashList||[];
+  const g={};
+  all.forEach(r=>{
+    const k=/offline/i.test(r.nguon||'')?'Offline':(/online/i.test(r.nguon||'')?'Online':'Chưa rõ nguồn');
+    const o=g[k]=g[k]||{n:0,chot:0,tien:0};
+    o.n++;if(r.isChot)o.chot++;o.tien+=Number(r.revenue||0)+Number(r.repeatRevenue||0);
+  });
+  const thuTu=['Online','Offline','Chưa rõ nguồn'].filter(k=>g[k]);
+  dataModal({title:'Khách Sỉ theo nguồn',
+    cols:['Nguồn khách','Số khách','Tỉ trọng','Đã chốt','Tỉ lệ chốt','Doanh số'],
+    rows:thuTu.map(k=>[k,num(g[k].n),pct(all.length?g[k].n/all.length*100:0),num(g[k].chot),
+      pct(g[k].n?g[k].chot/g[k].n*100:0),g[k].tien?vnd(g[k].tien):'—'])});
+}
 function rptSlMasterHtmlRaw(){
   const allRaw=rptSlPeriod();
   const all=rptSlSortNew(rptSlApplyF('master',allRaw),rptSlNgayTao);
@@ -5253,7 +5304,7 @@ function rptSlMasterHtmlRaw(){
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(rptSlMasterRow).join('');
   const rev=list.reduce((s,r)=>s+r.revenue,0);
   return `
-    ${rptSlType()==='Sỉ'?'':(()=>{
+    ${rptSlType()==='Sỉ'?rptSiDashHtml(all):(()=>{
       // MASTER = NHÌN TỔNG QUAN: bao nhiêu khách, chốt được bao nhiêu, ra bao nhiêu tiền, mỗi khách bao nhiêu.
       // Việc chăm sóc (lâu chưa liên hệ, đang theo ai) thuộc về tab CRM, không để lẫn ở đây.
       const chot=all.filter(r=>r.isChot);
