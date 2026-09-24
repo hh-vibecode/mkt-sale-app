@@ -31,3 +31,13 @@ create policy saleretail_manual_update on public.saleretail_manual for update us
 -- và tab Nhập Liệu luôn liệt kê các khách đang bị gỡ kèm lý do + người gỡ.
 alter table public.saleretail_manual add column if not exists excluded boolean not null default false;
 alter table public.saleretail_manual add column if not exists excluded_reason text;
+
+-- 24/9/2026 -- Tab "Ghi chú riêng" trong hồ sơ khách Sỉ: chân dung khách do Sale ghi, nguồn gốc là
+-- cột "Ghi chú KH (ngày sinh, sở thích, tính cách,...)" của sheet 1.MASTER DATA SỈ (6 mục ①..⑥).
+alter table public.saleretail_manual add column if not exists si_gc_tinh_cach  text;
+alter table public.saleretail_manual add column if not exists si_gc_giao_tiep  text;
+alter table public.saleretail_manual add column if not exists si_gc_ky_tinh    text;
+alter table public.saleretail_manual add column if not exists si_gc_quyet_dinh text;
+alter table public.saleretail_manual add column if not exists si_gc_yeu_to     text;
+alter table public.saleretail_manual add column if not exists si_gc_luu_y      text;
+alter table public.saleretail_manual add column if not exists si_gc_khac       text;
