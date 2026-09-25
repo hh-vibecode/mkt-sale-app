@@ -1,0 +1,47 @@
+name: Chốt mốc số liệu
+
+# Chụp lại mốc các chỉ số báo cáo 3 LẦN / NGÀY, cách nhau 8 tiếng (00:00 · 08:00 · 16:00 giờ VN).
+# Vì sao cần: mốc để lâu thì data mới về làm chỉ số trôi dần, tới lúc sửa logic thật thì không còn
+# biết con số nhảy là do mình sửa hay do data. Chụp đều đặn thì mỗi lần so chỉ còn chênh lệch của 8 tiếng.
+#
+# NGUYÊN TẮC AN TOÀN: KHÔNG bao giờ chụp đè khi đang có chỉ số nhảy bất thường.
+# Chạy so sánh trước; lệch quá 5% thì giữ nguyên mốc cũ và để job FAIL để còn nhận được mail cảnh báo
+# -- nếu cứ chụp đè thì một lỗi làm doanh thu sai sẽ được "hợp thức hoá" thành mốc mới, mất luôn tác dụng.
+on:
+  schedule:
+    - cron: '0 17,1,9 * * *'   # UTC -> 00:00, 08:00, 16:00 giờ VN
+  workflow_dispatch: {}        # bấm chạy tay từ tab Actions
+
+permissions:
+  contents: write
+
+jobs:
+  moc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: So chỉ số hiện tại với mốc đang lưu
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/kiem-so-lieu.js
+
+      - name: Chụp mốc mới (chỉ chạy khi bước trên đã xanh)
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/kiem-so-lieu.js --luu
+
+      - name: Ghi mốc mới vào repo
+        run: |
+          if git diff --quiet -- scripts/moc-so-lieu.json; then
+            echo "Mốc không đổi -- không commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/moc-so-lieu.json
+          git commit -m "Chot moc so lieu tu dong ($(date -u +'%Y-%m-%d %H:%M') UTC)"
+          git push

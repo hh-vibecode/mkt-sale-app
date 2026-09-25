@@ -1,0 +1,24 @@
+name: Sync MKT report from Meta Ads
+
+# LỊCH CHẠY DO SUPABASE ĐIỀU PHỐI (từ 21/9/2026).
+# GitHub Actions giãn cron dưới 1 giờ thành 2-5 tiếng, nên lịch đã chuyển sang pg_cron trên Supabase:
+# pg_cron -> Edge Function 'sync-now' -> workflow_dispatch (loại kích này chạy NGAY, không bị giãn).
+# Xem lịch hiện hành: bảng cron.job trên Supabase, hoặc mục "Lịch chạy tự động" trong app.
+# Ở đây chỉ giữ workflow_dispatch để Supabase và người dùng bấm chạy được.
+on:
+  workflow_dispatch: {} # cho phép bấm chạy tay từ tab Actions trên GitHub, tiện để test/chạy bù
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Sync hôm qua
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          META_AD_ACCOUNT_ID: ${{ secrets.META_AD_ACCOUNT_ID }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/sync-mkt-from-meta.js

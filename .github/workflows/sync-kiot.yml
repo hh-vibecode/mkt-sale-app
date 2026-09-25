@@ -1,0 +1,46 @@
+name: Sync KiotViet (đơn đặt hàng + hoá đơn)
+
+# LỊCH CHẠY DO SUPABASE ĐIỀU PHỐI (từ 21/9/2026).
+# GitHub Actions giãn cron dưới 1 giờ thành 2-5 tiếng, nên lịch đã chuyển sang pg_cron trên Supabase:
+# pg_cron -> Edge Function 'sync-now' -> workflow_dispatch (loại kích này chạy NGAY, không bị giãn).
+# Xem lịch hiện hành: bảng cron.job trên Supabase, hoặc mục "Lịch chạy tự động" trong app.
+# Ở đây chỉ giữ workflow_dispatch để Supabase và người dùng bấm chạy được.
+on:
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: 'Quét lại toàn bộ hoá đơn từ 1/6/2026'
+        type: boolean
+        default: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Sync hoá đơn KiotViet -> Supabase
+        env:
+          KIOT_CLIENT_ID: ${{ secrets.KIOT_CLIENT_ID }}
+          KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BACKFILL: ${{ (github.event.schedule == '5 0 * * *' || inputs.backfill) && '1' || '0' }}
+        run: node scripts/sync-kiot-invoices.js
+      # Đơn đặt hàng = nguồn doanh số + ngày chốt của báo cáo Sale (hoá đơn phía trên chỉ để đối soát).
+      # Luôn quét lại toàn bộ từ 1/6 (~9 request) để bắt cả đơn cũ bị huỷ / đổi tiền.
+      - name: Sync đơn đặt hàng KiotViet -> Supabase
+        if: always()
+        env:
+          KIOT_CLIENT_ID: ${{ secrets.KIOT_CLIENT_ID }}
+          KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/sync-kiot-orders.js
+
+      # Sau khi có đơn mới: tự tạo dòng Data nhập tay cho khách LẺ mua qua kênh ONLINE từ 1/6/2026
+      # mà app chưa có, để doanh thu về đúng báo cáo Sale/MKT mà Sale không phải gõ tay.
+      - name: Tự tạo data nhập tay từ đơn Kiot
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/tu-tao-nhap-tay.js
