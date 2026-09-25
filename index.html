@@ -4598,7 +4598,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 15:54';
+const APP_VERSION='25/09 15:56';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6495,9 +6495,15 @@ function rptSlTodoBuckets(){
 function rptSlTodoCount(){
   if(!rptSlManualLoaded||!dhLoaded||!kiotLoaded)return 0;
   const b=rptSlTodoBuckets();
-  // KHÔNG đếm "chưa có giá trị dự kiến" và "chưa ghi nội dung trao đổi": đó là phần ghi thêm cho đẹp hồ sơ,
-  // không phải việc buộc phải làm -- để trong số đếm thì badge lúc nào cũng đỏ, Sale nhờn, việc thật bị lẫn.
-  return b.thieuMa.length+b.maSai.length+b.chuaTT.length;
+  return rptSlTongViec(b);
+}
+// TỔNG VIỆC CẦN LÀM -- badge tab Nhập Liệu và ô dashboard dùng CHUNG công thức này.
+// Nghi trùng khách tính theo NHÓM (1 nhóm = 1 việc phải xử) -- anh Hải 25/9/2026 bảo phải tính vào.
+// KHÔNG đếm "chưa có giá trị dự kiến" và "chưa ghi nội dung trao đổi": đó là phần ghi thêm cho đẹp hồ sơ,
+// không phải việc buộc phải làm -- để trong số đếm thì badge lúc nào cũng đỏ, Sale nhờn, việc thật bị lẫn.
+function rptSlTongViec(b,nghi){
+  const n=(nghi||rptSlNghiTrung(b.all)).length+(b.trungMa||[]).length;
+  return b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length+n;
 }
 // 3 mục QUAN TRỌNG NHẤT luôn mở sẵn data lỗi; các mục còn lại gập lại, bấm tiêu đề mới bung ra.
 function rptSlSecOpen(id){return !!(window._rptSlSecOpen||{})[id];}
@@ -6864,10 +6870,16 @@ function rptSlNlDashDs(k){
   const mau=(t,c)=>'<span style="font-weight:800;color:'+c+'">'+t+'</span>';
   if(k==='tong'){
     const viec=[['thieuMa','Chốt đơn chưa có Mã KH','var(--red)'],['maNgo','Mã KH nghi gán nhầm','var(--red)'],
-      ['loiHT','Lỗi hệ thống','var(--red)'],['maSai','Mã KH không có bên Kiot','var(--yellow)'],['chuaTT','Chưa cập nhật trạng thái','var(--accent)']];
-    return dataModal({title:'Tổng việc cần làm',cols:COT.concat(['Việc cần làm','Doanh số']),
-      rows:viec.flatMap(([kk,nhan,c])=>(b[kk]||[]).map(r=>co(r).concat([mau(nhan,c),tien(r)?vnd(tien(r)):'—']))),
-      keys:viec.flatMap(([kk])=>(b[kk]||[]).map(r=>r.key))});
+      ['loiHT','Lỗi hệ thống','var(--red)'],['maSai','Mã KH không có bên Kiot','var(--yellow)'],['chuaTT','Chưa cập nhật trạng thái','var(--yellow)']];
+    const rows=viec.flatMap(([kk,nhan,c])=>(b[kk]||[]).map(r=>co(r).concat([mau(nhan,c),tien(r)?vnd(tien(r)):'—'])));
+    const keys=viec.flatMap(([kk])=>(b[kk]||[]).map(r=>r.key));
+    // nghi trùng: 1 nhóm = 1 việc -> 1 dòng, tên kê đủ cả nhóm
+    (window._rptSlNlNghi||[]).forEach(g=>{const r=g.rows[0];
+      rows.push([dmy(rptSlNgayTao(r))||'—',g.rows.map(x=>rptSlSaleHien(x.staff)).filter((v,i,a)=>a.indexOf(v)===i).join(', '),
+        g.rows.map(ten).join('<br>'),g.rows.map(x=>e(x.kenh||'—')).join('<br>'),mau('Nghi trùng khách · '+(g.ly||[]).join(', '),'var(--red)'),
+        (()=>{const t=g.rows.reduce((s2,x)=>s2+tien(x),0);return t?vnd(t):'—';})()]);keys.push(r.key);});
+    (b.trungMa||[]).forEach(r=>{rows.push(co(r).concat([mau('Nghi trùng · '+(r.nguonLienHe||[]).length+' dòng chung mã','var(--red)'),tien(r)?vnd(tien(r)):'—']));keys.push(r.key);});
+    return dataModal({title:'Tổng việc cần làm',cols:COT.concat(['Việc cần làm','Doanh số']),rows,keys});
   }
   if(k==='thieuMa')return dataModal({title:'Đơn chốt chưa có Mã KH',cols:COT.concat(['Thẻ Pancake','Gợi ý theo SĐT']),
     rows:b.thieuMa.map(r=>co(r).concat([e(r.tagStatus||'—'),(r.suggest||[]).map(c=>e(c.code)).join(', ')||'—'])),keys:b.thieuMa.map(r=>r.key)});
@@ -6968,7 +6980,11 @@ function rptSlInputHtml(){
         +'<button onclick="rptSlBoQuaLoi('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" class="btn-ghost" style="margin-left:5px;padding:4px 10px;font-size:11px">Đã xử lý tay</button></td></tr>';}).join(''));
   window._rptSlTrungAll=b.all;
   const nghi=rptSlNghiTrung(b.all);   // việc KIỂM TRA, không cộng vào tổng việc cần làm
-  const tong=b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length;   // 2 mục ghi thêm không tính
+  // QUY TẮC MÀU (anh Hải 25/9/2026, áp luôn về sau): mục ĐỎ và VÀNG = việc cần làm, tính vào tổng;
+  // mục màu khác (xanh) chỉ là ghi thêm cho đủ hồ sơ, không tính. Thêm mục mới thì chọn màu theo đúng quy tắc
+  // này VÀ sửa rptSlTongViec cho khớp.
+  const tong=rptSlTongViec(b,nghi);   // gồm cả nghi trùng; 2 mục ghi thêm không tính
+  window._rptSlNlNghi=nghi;
   window._rptSlNlDash=b;
   const bam=(k,tip,the)=>'<div onclick="rptSlNlDashDs(\''+k+'\')" style="cursor:pointer" title="'+tip+'">'+the+'</div>';
   return `
@@ -6979,11 +6995,11 @@ function rptSlInputHtml(){
       ${bam('chuaTT','Bấm để xem khách chưa cập nhật trạng thái',mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow'))}
     </div>
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
-    ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất — không tính vào tổng việc cần làm',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}
+    ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}
     ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
     ${rptSlInputSec('sLoi','','Lỗi hệ thống — cần báo người tạo app kiểm tra','số liệu trong app vẫn đúng, chỉ chưa đẩy được sang Pancake',b.loiHT.length,'var(--red)',sLoi,true)}
     ${rptSlInputSec('s2','','Mã KH đã điền nhưng không tồn tại bên Kiot','dán lại mã đúng, app ghi sang Pancake',b.maSai.length,'var(--yellow)',s2,true)}
-    ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
+    ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--yellow)',s3)}
     ${rptSlInputSec('s8','',rptSlType()==='Sỉ'?'Chưa cập nhật lịch sử chăm sóc':'Chưa ghi nội dung trao đổi',rptSlType()==='Sỉ'?'khách chưa có lượt chăm nào — không tính vào tổng việc cần làm':'ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuND.length,'var(--accent)',s8)}
     ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
 `;
