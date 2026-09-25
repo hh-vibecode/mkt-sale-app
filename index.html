@@ -5566,6 +5566,13 @@ function rptSiPhanLoaiHtml(v,esc){
   return '<span style="display:inline-block;white-space:nowrap;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:800;'
     +'color:'+mau+';background:color-mix(in srgb,'+mau+' 14%,transparent);border:1px solid color-mix(in srgb,'+mau+' 38%,transparent)">'+chu+'</span>';
 }
+// Cột Nguồn của Master Sỉ = Nguồn khách Online / Offline (anh Hải 25/9/2026), chưa ghi thì để "—".
+function rptSiNguonChip(r){
+  const n=rptSiNguonCua(r);
+  if(n!=='Online'&&n!=='Offline')return '<span style="color:var(--muted)">—</span>';
+  const m=n==='Online'?['var(--accent-l)','var(--accent)']:['rgba(245,158,11,.15)','#b45309'];
+  return '<span style="display:inline-block;padding:2px 8px;border-radius:20px;background:'+m[0]+';color:'+m[1]+';font-size:10.5px;font-weight:800;white-space:nowrap">'+n+'</span>';
+}
 function rptSlMasterRowSi(r){
   const e=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const nho='font-size:11px';
@@ -5583,6 +5590,7 @@ function rptSlMasterRowSi(r){
   const congDon=(r.revenue+r.repeatRevenue)||Number(sh.gia_tri_cong_don||0);
   return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\',false)">'
     +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+rptSlNhanCu(r.created||sh.ngay_tao,'mua lại')+'</td>'
+    +'<td>'+rptSiNguonChip(r)+'</td>'
     +'<td>'+rptSlStaffHtml(r)+'</td>'
     +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+'</td>'
     +'<td style="white-space:nowrap">'+rptSlSdtHtml(r)+'</td>'
@@ -5609,7 +5617,7 @@ const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Nguồn kh�
 // và nhiều trường chỉ điền được 1/4 số khách (người dùng chốt 22/9/2026).
 // MASTER SỈ = đúng khung sheet "Master Data Sỉ" (khác hoàn toàn Lẻ): hồ sơ đại lý + diễn biến chăm sóc
 // + kết quả đơn hàng. Các trường ít dùng (GPKD, fanpage, ghi chú KH, link hồ sơ) nằm trong Chi tiết khách.
-const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Sales phụ trách</th>'
+const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Sales phụ trách</th>'
   +'<th>Tên cửa hàng</th><th>SĐT</th><th>Phân loại KH</th>'
   +'<th>Ngày CS cuối</th><th>Ngày chưa liên hệ</th>'
   +'<th>Giá trị cộng dồn</th><th></th>';
