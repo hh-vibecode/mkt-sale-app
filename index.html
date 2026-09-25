@@ -3784,6 +3784,11 @@ const RPT_SL_BOT_SI='botsale sỉ';   // tên CŨ của 'chưa có Sale' -- từ
 // Chữ GIỮ CHỖ trong sheet Master Sỉ cũ -- không phải dữ liệu thật, hiện ra chỉ làm chật bảng (anh Hải 25/9/2026).
 // Chỉ khớp NGUYÊN Ô, nên các giá trị thật có chữ "chưa" như "Chưa liên hệ được" không bị đụng tới.
 const RPT_SI_GIU_CHO=/^(chưa khai thác|chua khai thac|chưa có( thông tin)?|chưa rõ|không rõ|chưa cập nhật|chưa xác định|n\/a|#n\/a|-+|\.+|x)$/i;
+function rptSlSaleGanTayDong(r){
+  const ids=rptSlIdsCua(r);
+  for(const id of [r.leadId].concat(ids)){const v=rptSlSaleGanTay(id);if(v!==null)return v;}
+  return null;
+}
 function rptSlSaleGanTay(leadId){
   const v=(rptSlManual[leadId]||{}).si_sale;
   if(v===null||v===undefined)return null;
@@ -5342,9 +5347,9 @@ function rptSlBuildMasterRaw(){
   // Tích luỹ qua MỌI bước gộp (Mã KH -> SĐT -> tên), không ghi đè như mergedRows.
   const nguonCua=r=>r.nguonLienHe||[{leadId:r.leadId,kenh:r.kenh||r.source||'',ngay:String(r.created||'').slice(0,10),
     sdt:[...new Set([...(r.phones||[]).filter(p=>!p.tuKiot).map(p=>p.so),r.phone].filter(Boolean).map(x=>String(x).trim()))],soDon:(r.orders||[]).length}];
-  const gopNhom=g=>{
+  const gopNhom=(g,chinh)=>{
     g.sort((a,b)=>String(a.created).localeCompare(String(b.created)));
-    const keep=g[0],rest=g.slice(1);
+    const keep=(chinh&&typeof chinh==='object')?chinh:g[0],rest=g.filter(x=>x!==keep);   // forEach truyền số thứ tự vào đây -> chỉ nhận khi đúng là 1 dòng khách
     {const co={};keep.nguonLienHe=g.flatMap(nguonCua).filter(x=>co[x.leadId]?false:(co[x.leadId]=true))
       .sort((a,b)=>String(a.ngay).localeCompare(String(b.ngay)));}
     keep.orders=g.flatMap(r=>r.orders).sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
@@ -5384,6 +5389,18 @@ function rptSlBuildMasterRaw(){
     const ma=[...new Set(g.map(r=>r.kh).filter(Boolean))];
     return ma.length<=1;
   }).forEach(gopNhom);
+  // 4) GỘP TAY (25/9/2026): Sale bấm Hợp nhất ở Nhập Liệu > Nghi trùng khách -> dòng phụ có gop_vao = Lead ID
+  //    dòng chính. Lead ID của 1 dòng lấy từ nguonLienHe (đủ qua mọi bước gộp), không từ mergedFrom.
+  {
+    const song=rows.filter(r=>!r._merged);
+    const dongCua={};song.forEach(r=>rptSlIdsCua(r).forEach(id=>{dongCua[id]=r;}));
+    const dichCua=r=>rptSlIdsCua(r).map(id=>(rptSlManual[id]||{}).gop_vao).find(Boolean);
+    const cha=new Map();song.forEach(r=>cha.set(r,r));
+    const goc=x=>{while(cha.get(x)!==x){cha.set(x,cha.get(cha.get(x)));x=cha.get(x);}return x;};
+    song.forEach(r=>{const d=dichCua(r),c=d&&dongCua[d];if(c&&c!==r)cha.set(goc(r),goc(c));});
+    const nhom=new Map();song.forEach(r=>{const g=goc(r);if(!nhom.has(g))nhom.set(g,[]);nhom.get(g).push(r);});
+    nhom.forEach(g=>{if(g.length<2)return;gopNhom(g,g.find(r=>!dichCua(r))||null);});
+  }
   rows=rows.filter(r=>!r._merged);
   rptSlSuyAdId(rows);
   // Khách bị GỠ không vào bất kỳ tab nào (Tổng Quan / Master / CRM / Nhập Liệu) -- chỉ còn ở mục
@@ -5396,7 +5413,7 @@ function rptSlBuildMasterRaw(){
   // điện / Zalo chứ không chat Pancake, nên diễn biến nằm hết ở nhật ký tự nhập.
   if(rptSlType()!=='Sỉ'){
     // LẺ: Sale gán ở tab Gán data (hoặc thu hồi về trống) ưu tiên hơn người phụ trách bên Pancake
-    rows.forEach(r=>{const gan=rptSlSaleGanTay(r.leadId);if(gan!==null)r.staff=gan;});
+    rows.forEach(r=>{const gan=rptSlSaleGanTayDong(r);if(gan!==null)r.staff=gan;});
   }
   if(rptSlType()==='Sỉ'){
     // SALE PHỤ TRÁCH BÊN SỈ (anh Hải chốt 23/9/2026): KHÔNG lấy người phụ trách bên Pancake nữa.
@@ -5410,7 +5427,7 @@ function rptSlBuildMasterRaw(){
       const ten=don.length?rptSlSaleName(don[don.length-1].sold_by_name):'';   // quy về tên Phân quyền
       r.staffKiot=ten;
       // Ưu tiên người được GÁN TAY ở tab 'Gán data'; chưa gán thì lấy người tạo đơn Kiot; không có nữa thì bot.
-      const gan=rptSlSaleGanTay(r.leadId);
+      const gan=rptSlSaleGanTayDong(r);
       r.staff=gan!==null?(gan&&rptSlSaleName(gan)):(ten||'');   // chưa có ai phụ trách thì để TRỐNG (anh Hải 24/9/2026)
     });
     const ky={};
@@ -5419,7 +5436,9 @@ function rptSlBuildMasterRaw(){
       (ky[k]=ky[k]||[]).push(c);
     });
     rows.forEach(r=>{
-      const mn=rptSlManual[r.leadId]||{};
+      // hồ sơ gộp: ô nào của dòng chính trống thì lấy từ các Lead ID đã gộp vào (gộp tự động lẫn gộp tay)
+      const mn=Object.assign({},...rptSlIdsCua(r).filter(id=>id!==r.leadId).map(id=>Object.fromEntries(Object.entries(rptSlManual[id]||{}).filter(([k,v])=>v!==null&&v!==undefined&&v!==''))),
+        Object.fromEntries(Object.entries(rptSlManual[r.leadId]||{}).filter(([k,v])=>v!==null&&v!==undefined&&v!=='')));
       r.siDiaChi=mn.si_dia_chi||'';r.siGiayPhep=mn.si_giay_phep||'';r.siFanpage=mn.si_fanpage||'';
       r.siMoHinh=mn.si_mo_hinh||'';r.siDienTich=mn.si_dien_tich||'';r.siTaiChinh=mn.si_tai_chinh||'';
       r.siPhanLoai=mn.si_phan_loai||'';r.siNhomKH=mn.si_nhom_kh||'';
@@ -5446,7 +5465,7 @@ function rptSlBuildMasterRaw(){
       if(!r.siFanpage)r.siFanpage=sh.fanpage||'';
       ['siNguoiDaiDien','siDiaChi','siMoHinh','siDienTich','siTaiChinh','siNhomKH','siGiayPhep','siFanpage']
         .forEach(f=>{if(RPT_SI_GIU_CHO.test(String(r[f]||'').trim()))r[f]='';});
-      const ds=(ky[r.leadId]||[]).concat(r.kh?(ky['MA:'+r.kh]||[]):[])
+      const ds=[...new Map(rptSlIdsCua(r).flatMap(id=>ky[id]||[]).concat(r.kh?(ky['MA:'+r.kh]||[]):[]).map(c=>[c.id,c])).values()]
         .sort((a,b)=>String(b.ngay_cham).localeCompare(String(a.ngay_cham)));
       r.siLuot=ds.length;
       if(ds.length){
@@ -5906,7 +5925,7 @@ function rptSlCsRows(r){
   const ma=String(r.kh||'').toUpperCase();
   const ten=String(r.name||'').trim().toLowerCase();
   return (typeof siCrmRows!=='undefined'?siCrmRows:[]).filter(x=>
-      (r.leadId&&x.lead_id===r.leadId)
+      (x.lead_id&&rptSlIdsCua(r).includes(x.lead_id))
     ||(ma&&String(x.kiot_code||'').toUpperCase()===ma)
     ||(ten&&String(x.customer_name||'').trim().toLowerCase()===ten))
    .sort((a,b)=>String(b.ngay_cham||'').localeCompare(String(a.ngay_cham||''))||(b.id-a.id));
@@ -6404,6 +6423,150 @@ function rptSlSecToggle(id){
   const o=window._rptSlSecOpen=window._rptSlSecOpen||{};
   o[id]=!rptSlSecOpen(id);rptSlRender();
 }
+// ── NGHI TRÙNG KHÁCH + HỢP NHẤT TAY (anh Hải chốt 25/9/2026, chị Sale đề xuất) ─────────────────────────
+// Gộp tự động (Mã KH -> SĐT đầu -> tên) vẫn sót khách trùng: chung SĐT phụ, tên có danh xưng ("KL C Hiền"
+// với "Hiền"), tên ngắn nằm trọn trong tên dài. Mục "Nghi trùng khách" ở tab Nhập Liệu liệt kê các nhóm đó
+// để Sale tự quyết: Hợp nhất (dòng phụ ghi gop_vao = Lead ID dòng chính) hoặc "Không phải cùng 1 người"
+// (ghi khac_nguoi, không nhắc lại). Tách ra = đặt gop_vao về trống, dữ liệu gốc không mất gì.
+// Cần 2 cột trong saleretail_manual: chạy supabase-schema-gop-khach.sql trước.
+const RPT_DANH_XUNG=new Set(['anh','chi','c','a','co','chu','em','shop','kl','kb','ctv','npp','dl','ms','mr','ong','ba','bac','cua','hang','ch']);
+function rptSlBoDau(x){return String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/gi,'d').toLowerCase();}
+// tách tên thành các chữ (GIỮ dấu, chữ thường), bỏ danh xưng và phần địa danh sau dấu " - "
+function rptSlChuTen(ten){
+  const goc=String(ten||'').split(' - ')[0].toLowerCase().replace(/[^\p{L}\p{N}\s]/gu,' ');
+  // chỉ bỏ danh xưng ĐỨNG ĐẦU tên ("KL C Hiền", "Em Thuỳ") -- bỏ cả chữ giữa tên thì "Nguyễn Bá Tuấn" thành "Nguyễn Tuấn"
+  const c=goc.split(/\s+/).filter(Boolean);
+  while(c.length>1&&RPT_DANH_XUNG.has(rptSlBoDau(c[0])))c.shift();
+  return c;
+}
+// mọi Lead ID của 1 khách (khách đã gộp mang nhiều Lead ID trong nguonLienHe)
+function rptSlIdsCua(r){return [...new Set((r.nguonLienHe||[]).map(x=>x.leadId).concat([r.leadId]).filter(Boolean))];}
+function rptSlKhacNguoiCua(r){
+  const s=new Set();
+  rptSlIdsCua(r).forEach(id=>String((rptSlManual[id]||{}).khac_nguoi||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(x=>s.add(x)));
+  return s;
+}
+function rptSlNghiTrung(all){
+  const ds=all.filter(r=>!r.excludedTay);
+  const cha=new Map(),lyDo=new Map();
+  ds.forEach(r=>cha.set(r,r));
+  const goc=x=>{while(cha.get(x)!==x){cha.set(x,cha.get(cha.get(x)));x=cha.get(x);}return x;};
+  const khacNguoi=new Map(ds.map(r=>[r,rptSlKhacNguoiCua(r)]));
+  const daXacNhanKhac=(a,b)=>rptSlIdsCua(b).some(id=>khacNguoi.get(a).has(id))||rptSlIdsCua(a).some(id=>khacNguoi.get(b).has(id));
+  const noi=(a,b,ly)=>{if(a===b||daXacNhanKhac(a,b))return;cha.set(goc(a),goc(b));
+    [a,b].forEach(x=>{const l=lyDo.get(x)||new Set();l.add(ly);lyDo.set(x,l);});};
+  const khacMa=(a,b)=>a.kh&&b.kh&&a.kh!==b.kh;
+  // 1) chung BẤT KỲ số điện thoại nào (kể cả số lấy từ Kiot) -- khác Mã KH vẫn đưa vào
+  const theoSdt={};
+  ds.forEach(r=>(r.phones||[]).concat(r.phone?[{so:r.phone}]:[]).forEach(p=>{const k=rptSlLast9(p.so);if(k&&k.length===9)(theoSdt[k]=theoSdt[k]||new Set()).add(r);}));
+  Object.entries(theoSdt).forEach(([so,set])=>{const a=[...set];for(let i=1;i<a.length;i++)noi(a[0],a[i],'trùng SĐT …'+so.slice(-6));});
+  // 2) trùng tên (bỏ dấu, bỏ danh xưng) -- khác Mã KH thì bỏ qua
+  const theoTen={};
+  ds.forEach(r=>{const c=rptSlChuTen(r.name);const k=c.map(rptSlBoDau).join(' ');if(c.length>=2&&k.replace(/\s/g,'').length>=4)(theoTen[k]=theoTen[k]||[]).push(r);});   // trùng tên phải từ 2 chữ
+  Object.values(theoTen).forEach(a=>{for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++)if(!khacMa(a[i],a[j]))noi(a[i],a[j],'trùng tên');});
+  // 3) tên ngắn (từ 2 chữ) nằm TRỌN trong tên dài, cùng tên gọi ở cuối -- so GIỮ DẤU ("Văn" khác "Vân")
+  const theoTenGoi={};
+  ds.forEach(r=>{const c=rptSlChuTen(r.name);if(c.length)(theoTenGoi[c[c.length-1]]=theoTenGoi[c[c.length-1]]||[]).push([r,c]);});
+  const chua=(dai,ngan)=>{for(let i=0;i+ngan.length<=dai.length;i++){if(ngan.every((t,j)=>dai[i+j]===t))return true;}return false;};
+  Object.values(theoTenGoi).forEach(a=>{if(a.length>40)return;
+    for(let i=0;i<a.length;i++)for(let j=0;j<a.length;j++){if(i===j)continue;const [r1,c1]=a[i],[r2,c2]=a[j];
+      if(c2.length>=2&&c1.length>c2.length&&chua(c1,c2)&&!khacMa(r1,r2))noi(r1,r2,'tên gần giống');}});
+  const nhom={};
+  ds.forEach(r=>{if(!lyDo.has(r))return;const g=goc(r);(nhom[ds.indexOf(g)]=nhom[ds.indexOf(g)]||[]).push(r);});
+  return Object.values(nhom).filter(g=>g.length>1).map(g=>({
+    rows:g.slice().sort((a,b)=>String(a.created||'').localeCompare(String(b.created||''))),
+    ly:[...new Set(g.flatMap(r=>[...(lyDo.get(r)||[])]))]}));
+}
+function rptSlTrungHtml(nhomDs){
+  window._rptSlNghiTrung=nhomDs;
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const tien=r=>Number(r.revenue||0)+Number(r.repeatRevenue||0);
+  const q=String.fromCharCode(39);
+  const bar='<div id="gopBar" hidden style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;background:var(--accent-l);border-bottom:1.5px solid var(--accent)">'
+    +'<span id="gopDem" style="font-size:12.5px;font-weight:800;color:var(--accent)">Đã chọn 0 khách</span>'
+    +'<span style="font-size:11.5px;font-weight:700;color:var(--muted)">Hồ sơ chính</span>'
+    +'<select id="gopChinh" style="height:32px;min-width:220px;padding:3px 10px;border:1.5px solid var(--accent);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer"></select>'
+    +'<button id="gopOk" onclick="rptSlHopNhat()" disabled style="margin:0;height:32px;padding:0 20px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:800;font-family:var(--font);opacity:.4;cursor:not-allowed">Hợp nhất dữ liệu</button>'
+    +'<button onclick="rptSlGopBoChon()" class="btn-ghost" style="margin:0;height:32px;padding:0 14px;font-size:12px">Bỏ chọn</button>'
+    +'<span id="gopMsg" style="font-size:11.5px;font-weight:700;color:var(--red)"></span></div>';
+  const khoi=nhomDs.map((g,i)=>'<div style="border-top:1px solid var(--border)">'
+    +'<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:var(--bg2);flex-wrap:wrap">'
+    +'<span style="font-size:12px;font-weight:800">Nhóm '+(i+1)+' · '+g.rows.length+' khách</span>'
+    +g.ly.map(l=>'<span style="font-size:10.5px;font-weight:800;padding:1px 8px;border-radius:10px;background:var(--yellow);color:#fff">'+e(l)+'</span>').join('')
+    +'<button onclick="rptSlKhacNguoi('+i+')" class="btn-ghost" style="margin-left:auto;padding:3px 10px;font-size:11px">Không phải cùng 1 người</button></div>'
+    +'<table style="width:100%"><tbody>'+g.rows.map(r=>'<tr>'
+      +'<td style="width:34px"><input type="checkbox" class="gopTick" data-nhom="'+i+'" value="'+e(r.leadId)+'" onchange="rptSlGopDem()" style="cursor:pointer;width:15px;height:15px"></td>'
+      +'<td style="white-space:nowrap">'+(dmy(r.created)||'—')+'</td>'
+      +'<td>'+rptSlSrcBadge(r)+'</td>'
+      +'<td class="name">'+e(r.name)+rptSlMaDuoiTen(r)+'</td>'
+      +'<td style="white-space:nowrap;font-size:11.5px">'+e((r.phones||[]).map(p=>p.so).join(', ')||r.phone||'—')+'</td>'
+      +'<td style="font-size:11.5px">'+e(r.kenh||'—')+'</td>'
+      +'<td style="font-size:11.5px">'+e(r.staff||'—')+'</td>'
+      +'<td style="font-size:11.5px">'+e(r.siPhanLoai||r.status||'—')+'</td>'
+      +'<td class="num" style="font-weight:800;color:'+(tien(r)?'var(--green)':'inherit')+'">'+(tien(r)?vnd(tien(r)):'—')+'</td></tr>').join('')
+    +'</tbody></table></div>').join('');
+  // danh sách đã hợp nhất tay -> nút Tách ra
+  const idsTrongLoai=new Set((window._rptSlTrungAll||[]).flatMap(rptSlIdsCua));
+  const daGop=Object.entries(rptSlManual).filter(([id,m])=>m&&m.gop_vao&&idsTrongLoai.has(id));
+  const gopHtml=daGop.length?'<div style="border-top:1.5px solid var(--border);padding:10px 16px">'
+    +'<div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px">Đã hợp nhất tay · '+daGop.length+'</div>'
+    +daGop.map(([id,m])=>'<div style="display:flex;align-items:center;gap:10px;padding:4px 0;font-size:12px">'
+      +'<b>'+e(id)+'</b><span style="color:var(--muted)">gộp vào</span><b>'+e(m.gop_vao)+'</b>'
+      +'<button onclick="rptSlTachRa('+q+e(id)+q+')" class="btn-ghost" style="margin-left:auto;padding:2px 10px;font-size:11px">Tách ra</button></div>').join('')+'</div>':'';
+  if(!nhomDs.length)return '<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không có nhóm nào nghi trùng</div>'+gopHtml;
+  return bar+khoi+gopHtml;
+}
+function rptSlGopDem(){
+  const tick=[...document.querySelectorAll('.gopTick:checked')];
+  const bar=document.getElementById('gopBar');if(bar)bar.hidden=tick.length<1;
+  const dem=document.getElementById('gopDem');if(dem)dem.textContent='Đã chọn '+tick.length+' khách';
+  const nhom=[...new Set(tick.map(c=>c.getAttribute('data-nhom')))];
+  const msg=document.getElementById('gopMsg');
+  if(msg)msg.textContent=nhom.length>1?'Chỉ hợp nhất các khách trong CÙNG 1 nhóm':'';
+  const sel=document.getElementById('gopChinh');
+  if(sel){const cu=sel.value;const g=(window._rptSlNghiTrung||[])[Number(nhom[0])]||{rows:[]};
+    const ds=g.rows.filter(r=>tick.some(c=>c.value===r.leadId));
+    sel.innerHTML=ds.map(r=>'<option value="'+r.leadId+'">'+String(r.name).replace(/</g,'&lt;')+' · '+r.leadId+' · '+(dmy(r.created)||'')+'</option>').join('');
+    if(ds.some(r=>r.leadId===cu))sel.value=cu;}
+  const ok=tick.length>=2&&nhom.length===1;
+  const b=document.getElementById('gopOk');if(b){b.disabled=!ok;b.style.opacity=ok?'1':'.4';b.style.cursor=ok?'pointer':'not-allowed';}
+}
+function rptSlGopBoChon(){document.querySelectorAll('.gopTick').forEach(c=>{c.checked=false;});rptSlGopDem();}
+function rptSlLoiCot(e){return /gop_vao|khac_nguoi/.test(String(e&&e.message||e))
+  ?'CSDL chưa có cột mới — chạy file supabase-schema-gop-khach.sql trong Supabase > SQL Editor rồi thử lại':String(e&&e.message||e);}
+async function rptSlHopNhat(){
+  const tick=[...document.querySelectorAll('.gopTick:checked')].map(c=>c.value);
+  const chinh=(document.getElementById('gopChinh')||{}).value;
+  if(tick.length<2||!chinh)return;
+  const tat=(window._rptSlNghiTrung||[]).flatMap(g=>g.rows);
+  const ten=id=>((tat.find(r=>r.leadId===id)||{}).name||id)+' ('+id+')';
+  const phu=tick.filter(id=>id!==chinh);
+  if(!confirm('Hợp nhất '+tick.length+' khách thành 1?\n\nHồ sơ chính: '+ten(chinh)+'\nGộp vào: '+phu.map(ten).join(', ')
+    +'\n\nĐơn, doanh thu, SĐT, lịch sử chăm sóc sẽ về 1 khách. Tách lại được ở cuối mục này.'))return;
+  try{
+    for(const id of phu){await rptSlSaveManual(id,{gop_vao:chinh});logAct('U','saleretail_manual',id,null,'Hợp nhất khách','',chinh);}
+    window._kiotOrdByCode=null;rptSlXoaCache();rptSlRender();
+  }catch(e){alert('Chưa hợp nhất được: '+rptSlLoiCot(e));}
+}
+async function rptSlKhacNguoi(i){
+  const g=(window._rptSlNghiTrung||[])[i];if(!g)return;
+  if(!confirm('Xác nhận '+g.rows.length+' khách này KHÔNG phải cùng 1 người?\n\n'+g.rows.map(r=>r.name+' ('+r.leadId+')').join('\n')+'\n\nApp sẽ không nhắc lại nhóm này nữa.'))return;
+  try{
+    for(const r of g.rows){
+      const cu=String((rptSlManual[r.leadId]||{}).khac_nguoi||'').split(',').map(x=>x.trim()).filter(Boolean);
+      const moi=[...new Set(cu.concat(g.rows.filter(x=>x!==r).flatMap(rptSlIdsCua)))].join(',');
+      await rptSlSaveManual(r.leadId,{khac_nguoi:moi});
+    }
+    logAct('U','saleretail_manual',null,null,'Không phải cùng 1 người','',g.rows.map(r=>r.leadId).join(', '));
+    rptSlXoaCache();rptSlRender();
+  }catch(e){alert('Chưa lưu được: '+rptSlLoiCot(e));}
+}
+async function rptSlTachRa(id){
+  if(!confirm('Tách '+id+' ra thành khách riêng như trước khi hợp nhất?'))return;
+  try{await rptSlSaveManual(id,{gop_vao:null});logAct('U','saleretail_manual',id,null,'Tách khách','đã hợp nhất','');
+    window._kiotOrdByCode=null;rptSlXoaCache();rptSlRender();}
+  catch(e){alert('Chưa tách được: '+rptSlLoiCot(e));}
+}
 function rptSlInputSec(id,icon,title,desc,count,color,body,luonMo){
   const mo=luonMo||rptSlSecOpen(id);
   const than=count?body:'<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không còn việc nào</div>';
@@ -6617,6 +6780,8 @@ function rptSlInputHtml(){
         +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
         +'<button onclick="rptSlThuLai('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" style="border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:700">Thử lại</button>'
         +'<button onclick="rptSlBoQuaLoi('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" class="btn-ghost" style="margin-left:5px;padding:4px 10px;font-size:11px">Đã xử lý tay</button></td></tr>';}).join(''));
+  window._rptSlTrungAll=b.all;
+  const nghi=rptSlNghiTrung(b.all);   // việc KIỂM TRA, không cộng vào tổng việc cần làm
   const tong=b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length;   // 2 mục ghi thêm không tính
   return `
     <div class="kpi-grid" style="margin-bottom:14px">
@@ -6632,6 +6797,7 @@ function rptSlInputHtml(){
     ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
     ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
     ${rptSlInputSec('s8','','Chưa ghi nội dung trao đổi','ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuND.length,'var(--accent)',s8)}
+    ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất — không tính vào tổng việc cần làm',nghi.length,'var(--yellow)',rptSlTrungHtml(nghi))}
 `;
 }
 // ── CRM: TOÀN BỘ khách chốt + tiềm năng từ Master đổ sang, mỗi khách 1 DÒNG.
