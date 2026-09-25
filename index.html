@@ -4620,7 +4620,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 16:52';
+const APP_VERSION='25/09 16:56';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5781,9 +5781,8 @@ function rptSlMasterRowSi(r){
     +'<td class="num"><span style="font-weight:700;color:'+mauNghi+'">'+(nghi2==null?'—':num(nghi2))+'</span></td>'
     +'<td class="num" style="font-weight:800;color:'+(congDon>0?'var(--green)':'inherit')+'">'+(congDon>0?vnd(congDon):'—')+'</td>'
     +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
-      +'<button onclick="rptSiEditRow('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" class="btn-ghost" style="padding:3px 10px;font-size:11px;color:var(--accent);font-weight:700">Sửa</button>'
       +(dashToanQuyen()&&r.staff
-        ?'<button onclick="rptSiThuHoi('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+','+String.fromCharCode(39)+String(r.name||'').replace(/'/g,String.fromCharCode(92,39)).replace(/"/g,'&quot;')+String.fromCharCode(39)+')" class="btn-ghost" style="padding:3px 10px;font-size:11px;margin-left:4px;color:var(--red);font-weight:700">Thu hồi data</button>'
+        ?'<button onclick="rptSiThuHoi('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+','+String.fromCharCode(39)+String(r.name||'').replace(/'/g,String.fromCharCode(92,39)).replace(/"/g,'&quot;')+String.fromCharCode(39)+')" class="btn-ghost" style="padding:3px 10px;font-size:11px;color:var(--red);font-weight:700">Thu hồi data</button>'
         :'')+'</td></tr>';
 }
 function rptSlSetMasterPage(p){window._rptSlMasterPage=p;rptSlRender();}
@@ -6273,7 +6272,6 @@ function rptSlShowCustomer(key,sua){
   const thanhSua=suaSi?`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 20px;background:var(--accent-l);border-bottom:1px solid var(--border)">
     <span style="font-size:12px;font-weight:700;color:var(--accent)">✏️ Chế độ sửa — bấm bút chì cạnh ô cần sửa. Số liệu app tự tính đang ẩn, bấm Xong để xem đủ hồ sơ.</span>
     <span style="margin-left:auto;display:flex;gap:6px">
-      ${/^M-[0-9]+$/.test(r.leadId)?'<button onclick="rptSiXoaKhach('+q+r.leadId+q+')" class="btn-ghost" style="height:28px;padding:0 12px;font-size:11.5px;font-weight:700;color:var(--red);border:1.5px solid var(--red)">Xoá khách này</button>':''}
       <button onclick="rptSlShowCustomer(${q}${key.replace(/'/g,"\\'")}${q},false)" class="refresh-btn" style="height:28px;padding:0 14px;font-size:11.5px">Xong</button>
     </span></div>`:'';
   const tl=[
@@ -6297,6 +6295,14 @@ function rptSlShowCustomer(key,sua){
   const tabGc=coTab&&window._rptSlCusTab==='gc';
   const nutTab=(ma,nhan)=>{const on=ma==='cs'?tabCs:ma==='gc'?tabGc:(!tabCs&&!tabGc);
     return `<button onclick="rptSlCusTab('${ma}')" style="border:none;background:transparent;cursor:pointer;font-family:var(--font);font-size:12.5px;font-weight:800;padding:9px 14px;color:${on?'var(--accent)':'var(--muted)'};border-bottom:2.5px solid ${on?'var(--accent)':'transparent'}">${nhan}</button>`;};
+  // NÚT SỬA / XOÁ nằm trên đầu hồ sơ, cùng hàng tên khách (anh Hải 25/9/2026) -- cuối hàng Master không còn nút Sửa.
+  // Sỉ: Sửa = bật chế độ sửa (bút chì từng ô) · Lẻ: Sửa = popup sửa thông tin chăm sóc (khách đã chốt thì khoá).
+  // Xoá chỉ có ở khách nhập tay / tự tạo (M-...): khách Pancake xoá ở đây cũng sẽ tự vào lại. Xoá hỏi xác nhận 2 lần.
+  const nutDau=[
+    laSi?(suaSi?'':'<button onclick="rptSlShowCustomer('+q+String(key).replace(/'/g,'')+q+',true)" class="btn-ghost" style="margin:0;height:30px;padding:0 14px;font-size:12px;font-weight:800;color:var(--accent);border:1.5px solid var(--accent)">Sửa</button>')
+      :(r.isChot?'':'<button onclick="rptSlEditRow('+q+r.leadId+q+')" class="btn-ghost" style="margin:0;height:30px;padding:0 14px;font-size:12px;font-weight:800;color:var(--accent);border:1.5px solid var(--accent)">Sửa</button>'),
+    /^M-[0-9]+$/.test(r.leadId)?'<button onclick="rptSiXoaKhach('+q+r.leadId+q+')" class="btn-ghost" style="margin:0;height:30px;padding:0 14px;font-size:12px;font-weight:800;color:var(--red);border:1.5px solid var(--red)">Xoá</button>':''
+  ].join('');
   let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
   m.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)qcCloseModal()">
     <div style="background:var(--surface);border-radius:16px;max-width:1000px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">
@@ -6306,7 +6312,8 @@ function rptSlShowCustomer(key,sua){
           <div style="font-size:16px;font-weight:800;color:var(--text)">${esc(r.name)} <span style="font-size:12.5px;font-weight:700;color:var(--muted)">· ${esc(r.kh||r.leadId||'')}</span></div>
           <div style="font-size:12px;color:var(--muted);font-weight:600">${[...(r.phones||[]).map(p=>p.so),r.kenh,r.staff].filter(Boolean).map(esc).join(' · ')}</div>
         </div>
-        <button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text);flex:0 0 auto">✕</button>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex:0 0 auto">${nutDau}</span>
+        <button onclick="qcCloseModal()" style="background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text);flex:0 0 auto">✕</button>
       </div>
       ${coTab?`<div style="display:flex;gap:6px;padding:10px 20px 0;border-bottom:1px solid var(--border)">${nutTab('info','Thông tin khách hàng')}${nutTab('gc','Ghi chú riêng')}${nutTab('cs','Lịch sử chăm sóc')}</div>`:''}
       <div style="overflow:auto">
