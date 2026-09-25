@@ -5465,8 +5465,9 @@ function rptSlBuildMasterRaw(){
       if(!r.siFanpage)r.siFanpage=sh.fanpage||'';
       ['siNguoiDaiDien','siDiaChi','siMoHinh','siDienTich','siTaiChinh','siNhomKH','siGiayPhep','siFanpage']
         .forEach(f=>{if(RPT_SI_GIU_CHO.test(String(r[f]||'').trim()))r[f]='';});
-      const ds=[...new Map(rptSlIdsCua(r).flatMap(id=>ky[id]||[]).concat(r.kh?(ky['MA:'+r.kh]||[]):[]).map(c=>[c.id,c])).values()]
-        .sort((a,b)=>String(b.ngay_cham).localeCompare(String(a.ngay_cham)));
+      // DÙNG CHUNG 1 cách tìm với tab "Lịch sử chăm sóc" (Lead ID · Mã KH · tên) -- trước đây Master chỉ tìm
+      // theo Lead ID + Mã KH nên ~100 khách mở hồ sơ thấy lịch sử mà cột "CS cuối" vẫn trống (25/9/2026).
+      const ds=rptSlCsRows(r);
       r.siLuot=ds.length;
       if(ds.length){
         const m=ds[0];
@@ -6330,6 +6331,7 @@ function rptSlMaNgo(all){
                       :'Mã này đang gán cho '+dongs.length+' khách khác số nhau')
       :(lechSdt&&lechTen?'Khách bên Kiot khác cả SĐT lẫn tên'
       :(!sdtKH.length&&lechTen?'Khách không có SĐT trên Pancake, tên cũng khác hẳn bên Kiot':''));
+    r.ngoLoai=(nhieuKhach&&thieuSo.length)?'trung':'';   // câu hỏi 'có phải 1 người' -> mục Nghi trùng
     return!!r.ngoVi;
   });
 }
@@ -6390,7 +6392,9 @@ function rptSlTodoBuckets(){
     // 2. Mã KH đã điền nhưng sai (không tồn tại bên Kiot).
     maSai:all.filter(r=>r.manualKH&&!r.kiotCusts.length),
     // 2b. Mã KH có thật nhưng nghi gán nhầm người -> doanh thu đang tính sang khách khác.
-    maNgo:rptSlMaNgo(all),
+    maNgo:rptSlMaNgo(all).filter(r=>r.ngoLoai!=='trung'),
+    // 2d. Chung 1 Mã KH, có dòng không có SĐT đối chiếu -> hỏi 'cùng 1 người?' ở mục Nghi trùng
+    trungMa:all.filter(r=>r.ngoLoai==='trung'),
     // 2c. Bước 1 (ghi trong app) xong nhưng bước 2 (đẩy ngược sang Pancake) hỏng -> LỖI HỆ THỐNG.
     //     Số liệu báo cáo vẫn đúng, nhưng Pancake chưa khớp; Sale không tự sửa được, cần người tạo app.
     loiHT:all.filter(r=>(rptSlManual[r.leadId]||{}).sync_error),
@@ -6406,8 +6410,12 @@ function rptSlTodoBuckets(){
     // 7. Chưa ghi nội dung trao đổi -- thứ DUY NHẤT không hệ thống nào suy ra được, phải Sale ghi.
     //    Khách đã chốt thì hồ sơ đã khoá, không sửa được nữa -> không nhắc.
     //    Khách MẤT LEAD cũng thôi nhắc: đã bỏ rồi thì ghi nội dung trao đổi cũng không để làm gì.
-    thieuND:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!rptSlMatLeadSi(r)
-      &&!String(r.content||'').trim()&&!String(r.siNDCuoi||'').trim()&&!String((r.sh||{}).nd_cham_cuoi||'').trim()),
+    // Sỉ (anh Hải 25/9/2026): nội dung chăm khách = nội dung lượt GẦN NHẤT trong Lịch sử chăm sóc, nên chỉ báo
+    // khách CHƯA CÓ lượt chăm nào. Lẻ giữ như cũ: chưa ghi ô nội dung trao đổi.
+    thieuND:rptSlType()==='Sỉ'
+      ?all.filter(r=>!rptSlMatLeadSi(r)&&!(r.siLuot>0))
+      :all.filter(r=>!r.isChot&&r.status!=='Mất lead'
+        &&!String(r.content||'').trim()&&!String(r.siNDCuoi||'').trim()&&!String((r.sh||{}).nd_cham_cuoi||'').trim()),
   };
 }
 function rptSlTodoCount(){
@@ -6477,7 +6485,39 @@ function rptSlNghiTrung(all){
     rows:g.slice().sort((a,b)=>String(a.created||'').localeCompare(String(b.created||''))),
     ly:[...new Set(g.flatMap(r=>[...(lyDo.get(r)||[])]))]}));
 }
-function rptSlTrungHtml(nhomDs){
+// Nghi trùng loại 2: MỘT Mã KH dùng cho nhiều dòng (đã tự gộp thành 1 khách) nhưng có dòng KHÔNG có SĐT
+// Pancake để chứng minh là cùng người (vd KH007517: Phương Nga có số 0976343276, "Đoàn Nguyễn Minh Tài"
+// nhắn TikTok không để lại số, chỉ có mã Sale gõ vào ghi chú). Đây là câu hỏi "có phải 1 người không"
+// nên nằm ở mục Nghi trùng (anh Hải 25/9/2026), không nằm ở "Mã KH nghi gán nhầm".
+function rptSlTrungMaHtml(ds){
+  if(!ds||!ds.length)return '';
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const q=String.fromCharCode(39);
+  return ds.map(r=>{
+    const kc=(r.kiotCusts||[])[0]||{};
+    const nguon=rptSlNguonGon(r);
+    return '<div style="border-top:1px solid var(--border)">'
+      +'<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:var(--bg2);flex-wrap:wrap">'
+      +'<span style="font-size:12px;font-weight:800">'+e(r.name)+' · '+nguon.length+' dòng chung mã '+e(r.kh)+'</span>'
+      +'<span style="font-size:10.5px;font-weight:800;padding:1px 8px;border-radius:10px;background:var(--red);color:#fff">có dòng không có SĐT để đối chiếu</span>'
+      +'<span style="margin-left:auto;display:flex;gap:6px">'
+      +'<button onclick="rptSlShowTrungMa('+q+String(r.key).replace(/'/g,'')+q+')" class="btn-ghost" style="padding:3px 10px;font-size:11px">Xem chi tiết</button>'
+      +'<button onclick="rptSlMaOk('+q+r.leadId+q+','+q+String(r.name||'').replace(/'/g,'')+q+')" class="btn-ghost" style="padding:3px 10px;font-size:11px;color:var(--green);font-weight:800">✓ Cùng 1 người</button>'
+      +'</span></div>'
+      +'<table style="width:100%"><tbody>'
+      +nguon.map(x=>'<tr>'
+        +'<td style="white-space:nowrap;width:90px">'+(dmy(x.ngay)||'—')+'</td>'
+        +'<td style="font-size:11.5px;font-weight:700">'+e(x.kenh||'—')+'</td>'
+        +'<td style="white-space:nowrap;font-size:11.5px">'+((x.sdt||[]).length?e(x.sdt.join(', ')):'<span style="color:var(--red);font-weight:700">không có SĐT</span>')+'</td>'
+        +'<td style="font-size:11px;color:var(--muted);font-weight:700">'+e(x.leadIds.join(' · '))+'</td></tr>').join('')
+      +'<tr><td style="color:var(--muted);font-size:11px">bên Kiot</td><td colspan="3" style="font-size:11.5px">'
+        +rptSlKiotLink(r.kh,e(kc.name||r.kh)+' ↗')+(kc.phone?' · '+e(kc.phone):'')+'</td></tr>'
+      +'</tbody></table>'
+      +'<div style="padding:6px 16px 10px;font-size:11px;color:var(--muted)">Không phải cùng 1 người → sửa lại Mã KH trong ghi chú Pancake của dòng không có SĐT.</div>'
+      +'</div>';
+  }).join('');
+}
+function rptSlTrungHtml(nhomDs,them){
   window._rptSlNghiTrung=nhomDs;
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const tien=r=>Number(r.revenue||0)+Number(r.repeatRevenue||0);
@@ -6513,8 +6553,8 @@ function rptSlTrungHtml(nhomDs){
     +daGop.map(([id,m])=>'<div style="display:flex;align-items:center;gap:10px;padding:4px 0;font-size:12px">'
       +'<b>'+e(id)+'</b><span style="color:var(--muted)">gộp vào</span><b>'+e(m.gop_vao)+'</b>'
       +'<button onclick="rptSlTachRa('+q+e(id)+q+')" class="btn-ghost" style="margin-left:auto;padding:2px 10px;font-size:11px">Tách ra</button></div>').join('')+'</div>':'';
-  if(!nhomDs.length)return '<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không có nhóm nào nghi trùng</div>'+gopHtml;
-  return bar+khoi+gopHtml;
+  if(!nhomDs.length)return (them||'<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không có nhóm nào nghi trùng</div>')+gopHtml;
+  return bar+khoi+(them||'')+gopHtml;
 }
 function rptSlGopDem(){
   const tick=[...document.querySelectorAll('.gopTick:checked')];
@@ -6763,7 +6803,15 @@ function rptSlInputHtml(){
         onkeydown="if(event.key==='Enter')this.blur()" onblur="if(this.value.trim())rptSlSetPotential('${r.leadId}',this.value,this)"
         style="height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--accent);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;width:120px;text-align:right"></td></tr>`).join(''));
   // Nội dung trao đổi thường dài -> không nhét ô input vào bảng, bấm nút mở popup sửa cả hàng.
-  const s8=tbl(HEAD+'<th>Trạng thái</th><th>Ngày chăm sóc</th><th style="'+RPT_SL_TH_EDIT+'">Nội dung trao đổi</th>',
+  const laSi=rptSlType()==='Sỉ';
+  const s8=laSi
+    ?tbl(HEAD+'<th>Phân loại KH</th><th>Lượt chăm gần nhất</th><th style="'+RPT_SL_TH_EDIT+'">Lịch sử chăm sóc</th>',
+      b.thieuND.map(r=>`<tr>${info(r)}
+      <td>${r.siPhanLoai?String(r.siPhanLoai).replace(/</g,'&lt;'):'<span style="color:var(--muted)">—</span>'}</td>
+      <td><span style="color:var(--red);font-weight:700;font-size:11px">chưa có lượt nào</span></td>
+      <td onclick="rptSlStop(event)"><button onclick="rptSlShowCustomer('${String(r.key).replace(/'/g,'')}');rptSlCsMoForm()"
+        style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">+ Tạo lượt chăm sóc</button></td></tr>`).join(''))
+    :tbl(HEAD+'<th>Trạng thái</th><th>Ngày chăm sóc</th><th style="'+RPT_SL_TH_EDIT+'">Nội dung trao đổi</th>',
     b.thieuND.map(r=>`<tr>${info(r)}
       <td>${r.isChot?rptSlStatusPill('Chốt đơn'):(r.manualStatus?rptSlStatusPill(r.manualStatus):'<span style="color:var(--muted)">—</span>')}</td>
       <td>${dmy(r.careDate)||'—'}</td>
@@ -6791,13 +6839,13 @@ function rptSlInputHtml(){
       ${mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow')}
     </div>
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
-    ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất — không tính vào tổng việc cần làm',nghi.length,'var(--red)',rptSlTrungHtml(nghi),true)}
+    ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất — không tính vào tổng việc cần làm',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}
     ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
     ${rptSlInputSec('sLoi','','Lỗi hệ thống — cần báo người tạo app kiểm tra','số liệu trong app vẫn đúng, chỉ chưa đẩy được sang Pancake',b.loiHT.length,'var(--red)',sLoi,true)}
     ${rptSlInputSec('s2','','Mã KH đã điền nhưng không tồn tại bên Kiot','dán lại mã đúng, app ghi sang Pancake',b.maSai.length,'var(--yellow)',s2,true)}
     ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
+    ${rptSlInputSec('s8','',rptSlType()==='Sỉ'?'Chưa cập nhật lịch sử chăm sóc':'Chưa ghi nội dung trao đổi',rptSlType()==='Sỉ'?'khách chưa có lượt chăm nào — không tính vào tổng việc cần làm':'ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuND.length,'var(--accent)',s8)}
     ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
-    ${rptSlInputSec('s8','','Chưa ghi nội dung trao đổi','ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuND.length,'var(--accent)',s8)}
 `;
 }
 // ── CRM: TOÀN BỘ khách chốt + tiềm năng từ Master đổ sang, mỗi khách 1 DÒNG.
