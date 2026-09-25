@@ -767,6 +767,12 @@ function switchPage(p){
   }
   // Data Hub mở được nếu có 1 trong 2 mức quyền; bên trong renderDataHub sẽ khoá tiếp tab data thô.
   if(!dashCan(p)&&!(p==='datahub'&&dashCan('datahub-manual')))return;
+  // Rời trang Sale Lẻ / Sale Sỉ thì XOÁ SẠCH trang đó: 2 trang vẽ cùng bộ id (thanh Hợp nhất, ô tích...),
+  // để lại trang ẩn thì thao tác ở trang kia bấm nhầm vào phần tử của trang ẩn (anh Hải 25/9/2026:
+  // chuyển trang rồi quay lại thì tích không hiện thanh gộp). Quay lại là vẽ mới, ô tích trống như thường.
+  ['report-saleretail','report-salesi'].forEach(x=>{
+    if(x===p)return;const el=document.getElementById('page-'+x);if(el&&el.innerHTML)el.innerHTML='';
+  });
   ['datahub','settings','report-saleretail','report-salesi','report-mkt','report-tonghop','log'].forEach(x=>{
     const el=document.getElementById('page-'+x);if(el)el.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);if(nav)nav.classList.toggle('active',x===p);
@@ -4592,7 +4598,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 15:47';
+const APP_VERSION='25/09 15:54';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6648,17 +6654,20 @@ function rptSlTrungHtml(nhomDs,them){
   if(!nhomDs.length&&!them)return ('<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không có nhóm nào nghi trùng</div>')+gopHtml;
   return bar+khoi+(them||'')+gopHtml;
 }
+// Trang Sale Lẻ và Sale Sỉ đều vẽ sẵn thanh Hợp nhất (cùng id gopBar...) -> phải tìm trong TRANG ĐANG MỞ,
+// không thì tích bên Sỉ lại bật thanh đang ẩn bên Lẻ, bấm không thấy gì (anh Hải 25/9/2026).
+function rptSlGopGoc(){return document.querySelector('.tab-page.active')||document;}
 function rptSlGopDem(){
-  const tick=[...document.querySelectorAll('.gopTick:checked')];
-  const bar=document.getElementById('gopBar');if(bar)bar.hidden=tick.length<1;
-  const dem=document.getElementById('gopDem');if(dem)dem.textContent='Đã chọn '+tick.length+' khách';
+  const tick=[...rptSlGopGoc().querySelectorAll('.gopTick:checked')];
+  const bar=rptSlGopGoc().querySelector('#gopBar');if(bar)bar.hidden=tick.length<1;
+  const dem=rptSlGopGoc().querySelector('#gopDem');if(dem)dem.textContent='Đã chọn '+tick.length+' khách';
   const nhom=[...new Set(tick.map(c=>c.getAttribute('data-nhom')))];
-  const msg=document.getElementById('gopMsg');
+  const msg=rptSlGopGoc().querySelector('#gopMsg');
   if(msg)msg.textContent=nhom.length>1?'Chỉ hợp nhất các khách trong CÙNG 1 nhóm':'';
   const laMa=nhom.length===1&&String(nhom[0]).charAt(0)==='m';
-  ['gopChinh','gopChinhNhan'].forEach(id=>{const x=document.getElementById(id);if(x)x.hidden=laMa;});
-  const nut=document.getElementById('gopOk');if(nut)nut.textContent=laMa?'Xác nhận cùng 1 người':'Hợp nhất dữ liệu';
-  const sel=document.getElementById('gopChinh');
+  ['gopChinh','gopChinhNhan'].forEach(id=>{const x=rptSlGopGoc().querySelector('#'+id);if(x)x.hidden=laMa;});
+  const nut=rptSlGopGoc().querySelector('#gopOk');if(nut)nut.textContent=laMa?'Xác nhận cùng 1 người':'Hợp nhất dữ liệu';
+  const sel=rptSlGopGoc().querySelector('#gopChinh');
   if(sel&&!laMa){const cu=sel.value;const g=(window._rptSlNghiTrung||[])[Number(nhom[0])]||{rows:[]};
     const ds=g.rows.filter(r=>tick.some(c=>c.value===r.leadId));
     sel.innerHTML=ds.map(r=>'<option value="'+r.leadId+'">'+String(r.name).replace(/</g,'&lt;')+' · '+r.leadId+' · '+(dmy(r.created)||'')+'</option>').join('');
@@ -6666,18 +6675,18 @@ function rptSlGopDem(){
   const ok=tick.length>=2&&nhom.length===1;
   const b=nut;if(b){b.disabled=!ok;b.style.opacity=ok?'1':'.4';b.style.cursor=ok?'pointer':'not-allowed';}
 }
-function rptSlGopBoChon(){document.querySelectorAll('.gopTick').forEach(c=>{c.checked=false;});rptSlGopDem();}
+function rptSlGopBoChon(){rptSlGopGoc().querySelectorAll('.gopTick').forEach(c=>{c.checked=false;});rptSlGopDem();}
 function rptSlLoiCot(e){return /gop_vao|khac_nguoi/.test(String(e&&e.message||e))
   ?'CSDL chưa có cột mới — chạy file supabase-schema-gop-khach.sql trong Supabase > SQL Editor rồi thử lại':String(e&&e.message||e);}
 async function rptSlHopNhat(){
-  const nhomTick=[...new Set([...document.querySelectorAll('.gopTick:checked')].map(c=>c.getAttribute('data-nhom')))];
+  const nhomTick=[...new Set([...rptSlGopGoc().querySelectorAll('.gopTick:checked')].map(c=>c.getAttribute('data-nhom')))];
   if(nhomTick.length===1&&String(nhomTick[0]).charAt(0)==='m'){   // chung mã: đã là 1 khách, chỉ cần xác nhận
     const r=(window._rptSlTrungMa||[])[Number(nhomTick[0].slice(1))];
     if(r)await rptSlMaOk(r.leadId,r.name);
     return;
   }
-  const tick=[...document.querySelectorAll('.gopTick:checked')].map(c=>c.value);
-  const chinh=(document.getElementById('gopChinh')||{}).value;
+  const tick=[...rptSlGopGoc().querySelectorAll('.gopTick:checked')].map(c=>c.value);
+  const chinh=(rptSlGopGoc().querySelector('#gopChinh')||{}).value;
   if(tick.length<2||!chinh)return;
   const tat=(window._rptSlNghiTrung||[]).flatMap(g=>g.rows);
   const ten=id=>((tat.find(r=>r.leadId===id)||{}).name||id)+' ('+id+')';
