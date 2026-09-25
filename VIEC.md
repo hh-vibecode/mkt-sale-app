@@ -24,6 +24,9 @@
 |---|---|---|
 | 1 | **GỘP KHÁCH TRÙNG BẰNG TAY** (anh Hải chốt 25/9, chị Sale đề xuất): tab **Nhập Liệu** thêm mục **"Nghi trùng khách"**, vì Nhập Liệu là chỗ kiểm lỗi. Làm **giống tab Gán data**: đầu mỗi dòng có ô tích; tích từ 2 dòng trở lên thì hiện thanh **"Hợp nhất dữ liệu"**. Chi tiết ở mục 2b bên dưới | **BƯỚC 0 — anh làm trên máy gốc:** vào Supabase → SQL Editor, chạy `supabase-schema-gop-khach.sql` (thêm 2 cột `gop_vao`, `khac_nguoi` vào `saleretail_manual`, chỉ thêm cột, không đụng dữ liệu cũ). Chưa chạy thì nút Hợp nhất sẽ báo lỗi thiếu cột |
 
+| 2 | **SỰ CỐ 25/9 — GitHub mất 64 file, đã khôi phục, còn phải kiểm hậu quả.** Commit `3e1e471` (08:49 25/9, sửa Nhân sự Sale) cuốn theo lệnh gỡ file đang chờ sẵn trong git (không rõ lệnh này từ đâu ra) → GitHub mất hết `scripts/`, `.github/workflows/` (5 job), SQL, README, logo, `.gitignore`, `VIEC.md`. File trên máy không mất. Đã khôi phục ở commit `6d2838c`: đủ 64 file, đối chiếu giống hệt bản `d9f2b2f`, repo về lại 66 file | Máy gốc làm: **(a)** mở tab Actions trên GitHub, soát các lượt chạy từ **08:49 tới lúc có `6d2838c` (~10:00) ngày 25/9**. Job nào đỏ hoặc bị lỡ (sync-datahub, sync-kiot, sync-mkt, sync-sale-review) thì bấm "Run workflow" chạy lại, rồi chạy `scripts/kiem-so-lieu.js` xem số liệu có hụt không. **(b)** Pull về xong thì chạy `git status` trên máy gốc, xem máy đó có đang chờ sẵn lệnh gỡ file nào không, và tìm xem lệnh gỡ file đó do đâu ra (tool khác / phiên Claude khác / thao tác tay). **(c)** Quy tắc mới: trước mỗi commit phải chạy `git diff --cached --stat`, chỉ có đúng file mình sửa mới được commit |
+| 3 | **Mật khẩu DB bị lộ trong hội thoại 25/9.** Lúc soát file `supabase-keys.local.txt`, lệnh che giá trị bị sót dòng `DB_PASSWORD` nên mật khẩu hiện nguyên văn trong kết quả lệnh của phiên Claude. Không ra khỏi máy, không nằm trong commit nào | Anh quyết: có đổi mật khẩu DB không (Supabase → Project Settings → Database → Reset password), đổi thì nhớ cập nhật lại `supabase-keys.local.txt` và mọi chỗ đang dùng mật khẩu này. Khoá quản trị (service role) và khoá công khai KHÔNG bị hiện |
+
 ### 2b. Kế hoạch "Nghi trùng khách" (25/9, chưa code dòng nào)
 
 **Tìm nhóm nghi trùng** (chạy trên danh sách Master SAU các bước gộp tự động Mã KH → SĐT → tên, chỉ trong loại đang xem Sỉ hoặc Lẻ):
@@ -72,6 +75,8 @@
 - **1 khách nhắn nhiều nguồn** (nhiều page / nhiều SĐT) thì kê đủ: nhãn "N nguồn · M SĐT" dưới tên + bảng Nguồn liên hệ trong hồ sơ. Lead Pancake + dòng sheet cùng ngày cùng SĐT = 1 nguồn. Đinh Thị Hường (Shidai 0359752313 + Tự Tại Viên 0378682341) là 1 người — anh xác nhận 24/9.
 - Mọi thứ Claude tạo ký tên **Monsieur Claude**.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
+- **Commit (từ 25/9):** sửa xong thì tự pull → commit → push, không hỏi. Nhưng TRƯỚC MỖI COMMIT phải chạy `git diff --cached --stat`, chỉ có đúng file mình sửa mới commit (bài học sự cố 25/9).
+- **Đổi cấu trúc DB** (thêm cột/bảng): viết file `supabase-schema-*.sql` rồi để anh chạy trong SQL Editor. Không tự kết nối DB bằng `supabase-keys.local.txt`.
 
 ## 3b. BẢO MẬT (khoá 24/9/2026)
 
@@ -93,6 +98,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **25/09 ~10:00 — SỰ CỐ + KHÔI PHỤC**: commit `3e1e471` làm GitHub mất 64 file (xem mục 2 việc #2). Đã khôi phục ở `6d2838c`, nội dung giống hệt bản trước sự cố. Cũng phiên này: Claude thử kết nối thẳng vào DB để thêm cột thì bị hệ thống chặn; lệnh che giá trị khi soát file key bị sót, làm lộ mật khẩu DB trong hội thoại (việc #3). Việc Gộp khách trùng chưa code dòng nào, chờ anh chạy SQL (việc #1).
 
 - **25/09 sáng** — Master Sỉ: nút **Sửa** mở popup hồ sơ, có bút chì ✏️ ở từng ô sửa được (khách Pancake không sửa tên/nguồn/kênh vì job đồng bộ ghi đè). Phân loại Sỉ thêm **"Lead mới"** (không gắn thẻ Pancake). Master Sỉ thêm cột **SĐT** và cột **Nguồn** (Online · Pancake / Online · Nhập tay / Offline), bỏ cột Nội dung CS cuối. Ô trống hiện **"—"**, không còn chữ "chưa gán / chưa có / chưa cập nhật"; chữ giữ chỗ trong sheet cũ ("Chưa khai thác"…) coi như trống. Sửa lỗi ô tìm kiếm mất con trỏ sau mỗi ký tự. Form Thêm khách Sỉ: 6 ô bắt buộc (sao đỏ). Nhân sự Sale: thêm xong vẽ lại đúng trang Phân quyền, chặn thêm trùng tên, dropdown tự tải lại sau 60 giây. **Tên Sale từ Pancake/Kiot tự quy về tên ở Phân quyền** (`rptSlKhopNhanSu`, vd "Nguyễn Vân Ngọc" → "Vân Ngọc"; khớp 2 người trở lên thì giữ tên gốc).
 
