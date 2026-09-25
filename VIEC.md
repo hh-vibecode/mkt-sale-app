@@ -22,7 +22,6 @@
 | # | Việc | Ghi chú |
 |---|---|---|
 
-| 16 | **CHẠY `supabase-schema-gop-khach.sql`** (Supabase → SQL Editor): thêm 2 cột `gop_vao`, `khac_nguoi`. Tính năng "Nghi trùng khách" đã code xong, CHƯA chạy SQL thì bấm Hợp nhất sẽ báo "CSDL chưa có cột mới" | anh chạy SQL |
 | 17 | **Nguyễn Thuỳ Trâm** (L-HT-0296) mã KH002561 không có đơn; đơn thật nghi là DH002098 dưới mã KH007352 "KL Anh Tân" (M-0019) | Sale xác nhận rồi sửa ghi chú Pancake |
 | 3 | **Mật khẩu DB bị lộ trong hội thoại 25/9.** Lúc soát file `supabase-keys.local.txt`, lệnh che giá trị bị sót dòng `DB_PASSWORD` nên mật khẩu hiện nguyên văn trong kết quả lệnh của phiên Claude. Không ra khỏi máy, không nằm trong commit nào | Anh quyết: có đổi mật khẩu DB không (Supabase → Project Settings → Database → Reset password), đổi thì nhớ cập nhật lại `supabase-keys.local.txt` và mọi chỗ đang dùng mật khẩu này. Khoá quản trị (service role) và khoá công khai KHÔNG bị hiện |
 
@@ -75,7 +74,7 @@
 - Mọi thứ Claude tạo ký tên **Monsieur Claude**.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
 - **Commit (từ 25/9):** sửa xong thì tự pull → commit → push, không hỏi. Nhưng TRƯỚC MỖI COMMIT phải chạy `git diff --cached --stat`, chỉ có đúng file mình sửa mới commit (bài học sự cố 25/9).
-- **Đổi cấu trúc DB** (thêm cột/bảng): viết file `supabase-schema-*.sql` rồi để anh chạy trong SQL Editor. Không tự kết nối DB bằng `supabase-keys.local.txt`.
+- **Đổi cấu trúc DB** (thêm cột/bảng, sửa luật): Claude **TỰ CHẠY** rồi báo lại, KHÔNG giao việc cho anh (anh chốt 25/9: "mắc gì tự làm được mà giao việc cho t"). Máy gốc chạy qua Management API (thẻ sbp_ trong supabase-keys.local.txt). Máy nào bị chặn thì mới nhờ anh, và phải nói rõ vì sao. Luôn lưu kèm file supabase-schema-*.sql để còn tra lại.
 
 ## 3b. BẢO MẬT (khoá 24/9/2026)
 
