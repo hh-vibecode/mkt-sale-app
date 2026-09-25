@@ -4264,9 +4264,9 @@ function rptSiOSua(r){
   o.si_nhom_kh={kieu:'text',gt:r.siNhomKH||'',noi:'mn',cot:'si_nhom_kh'};
   o.si_giay_phep={kieu:'text',gt:r.siGiayPhep||'',noi:'mn',cot:'si_giay_phep'};
   o.si_fanpage={kieu:'text',gt:r.siFanpage||'',noi:'mn',cot:'si_fanpage'};
-  if(!r.careAuto)o.ngay_cs={kieu:'date',gt:r.careDate||'',noi:'mn',cot:'care_date'};
   if(!r.isChot)o.tiem_nang={kieu:'tien',gt:r.potential?num(r.potential):'',noi:'mn',cot:'potential_value'};
-  o.noi_dung={kieu:'dai',gt:r.content||'',noi:'mn',cot:'content'};
+  // Ngày chăm sóc / Nội dung trao đổi của Sỉ = lượt GẦN NHẤT trong Lịch sử chăm sóc -> không sửa ở đây,
+  // muốn đổi thì thêm/sửa lượt chăm sóc ở tab Lịch sử chăm sóc (anh Hải 25/9/2026).
   return o;
 }
 function rptSiMoO(k){
@@ -6116,17 +6116,17 @@ function rptSlShowCustomer(key,sua){
     fld('Ngày chưa liên hệ',r.daysIdle===null?'':num(r.daysIdle)+' ngày',r.isChot&&r.daysIdle>=10?'var(--red)':''),
     ...(laSi?[]:[fld('Địa chỉ',esc(r.diaChi))]),
     // Phần CHĂM SÓC -- trước đây modal chỉ có thông tin đơn/khách, thiếu hẳn thứ Sale ghi hằng ngày.
-    fld('Ngày chăm sóc',esc(dmy(r.careDate)),'','ngay_cs'),
+    // Sỉ: lấy từ lượt chăm sóc gần nhất (tab Lịch sử chăm sóc), chưa có lượt nào thì mới dùng số cũ
+    fld('Ngày chăm sóc',esc(dmy(laSi?(r.siCSCuoi||(r.sh||{}).ngay_cham_cuoi||r.careDate):r.careDate))),
     fld('Giá trị tiềm năng',r.isChot?'':(r.potential?vnd(r.potential):''),r.potential?'var(--orange,#f97316)':'','tiem_nang'),
   ].join('')+(!suaSi&&rptSlNguonGon(r).length>1?`<div style="grid-column:1/-1">
     <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">Nguồn liên hệ · ${rptSlNguonGon(r).length} nguồn (cùng 1 khách)</div>
     <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted);font-size:10.5px;text-align:left"><th style="padding:4px 8px">Ngày</th><th style="padding:4px 8px">Page / kênh</th><th style="padding:4px 8px">SĐT</th><th style="padding:4px 8px">Lead ID</th></tr></thead><tbody>
     ${rptSlNguonGon(r).map(x=>`<tr style="border-top:1px solid var(--border)"><td style="padding:5px 8px;white-space:nowrap">${dmy(x.ngay)||'—'}</td><td style="padding:5px 8px;font-weight:700">${esc(x.kenh||'—')}</td><td style="padding:5px 8px;white-space:nowrap">${esc((x.sdt||[]).join(', ')||'—')}</td><td style="padding:5px 8px;color:var(--muted);font-weight:700">${esc(x.leadIds.join(' · '))}</td></tr>`).join('')}
-    </tbody></table></div>`:'')+(dsSua.noi_dung&&window._rptSiOSua==='noi_dung'
-    ?fld('Nội dung trao đổi gần nhất','','','noi_dung')
-    :`<div style="grid-column:1/-1">
-    <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Nội dung trao đổi gần nhất${butChi('noi_dung')}</div>
-    <div style="font-size:12.5px;font-weight:600;margin-top:4px;white-space:pre-wrap;line-height:1.5">${r.content?esc(r.content):'<span style="color:var(--muted);font-weight:600">—</span>'}</div></div>`);
+    </tbody></table></div>`:'')+(suaSi?'':`<div style="grid-column:1/-1">
+    <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Nội dung trao đổi gần nhất</div>
+    <div style="font-size:12.5px;font-weight:600;margin-top:4px;white-space:pre-wrap;line-height:1.5">${(()=>{const nd=laSi?(r.siNDCuoi||(r.sh||{}).nd_cham_cuoi||r.content):r.content;
+      return nd?esc(nd):'<span style="color:var(--muted);font-weight:600">—</span>';})()}</div></div>`);
   // Thanh báo chế độ sửa: nói rõ ô nào sửa được, kèm nút Xoá khách (trước nằm ở form sửa cũ) và nút Xong.
   const q=String.fromCharCode(39);
   const thanhSua=suaSi?`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 20px;background:var(--accent-l);border-bottom:1px solid var(--border)">
