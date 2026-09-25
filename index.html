@@ -3807,10 +3807,11 @@ async function saleNhanSuLoad(force){
   try{localStorage.setItem('dashSaleNhanSu',JSON.stringify(saleNhanSu));}catch(e){}
   return saleNhanSu;
 }
+let _saleNhanSuMay=null;
 function saleNhanSuDS(){
   if(saleNhanSu.length)return saleNhanSu;
-  try{const c=JSON.parse(localStorage.getItem('dashSaleNhanSu')||'[]');if(c.length)return c;}catch(e){}
-  return [];
+  if(!_saleNhanSuMay){try{_saleNhanSuMay=JSON.parse(localStorage.getItem('dashSaleNhanSu')||'[]');}catch(e){_saleNhanSuMay=[];}}
+  return _saleNhanSuMay;
 }
 // Đội LẺ (Pancake / 2 cửa hàng đồ thờ)
 const RPT_SL_SALE_LE=['Nguyễn Thảo Ngọc','Vân Ngọc','Chánh Tâm Ngọc Diệp','Phạm Thị Lệ'];
@@ -3963,10 +3964,45 @@ const RPT_SL_SALE_ALIAS={
   'thảo ngọc':'Nguyễn Thảo Ngọc',
   'ngọc diệp':'Chánh Tâm Ngọc Diệp',
 };
+// TỰ QUY TÊN VỀ ĐÚNG TÊN TRONG PHÂN QUYỀN > NHÂN SỰ SALE (anh Hải 25/9/2026): tên kéo từ Pancake/Kiot
+// hay lệch 1-2 chữ so với tên Sale khai ở Phân quyền (Pancake "Nguyễn Vân Ngọc" = Phân quyền "Vân Ngọc").
+// Báo cáo, bộ lọc, phân quyền xem data đều chạy theo TÊN PHÂN QUYỀN, không theo tên bên Pancake.
+// Thứ tự khớp (dừng ở bước đầu tiên khớp được):
+//   1) bảng bí danh ghi tay RPT_SL_SALE_ALIAS (ca đặc biệt, tên khác hẳn nhau)
+//   2) trùng tên, không phân biệt hoa/thường · 3) trùng tên sau khi bỏ dấu ("Van Ngoc")
+//   4) một tên CHỨA TRỌN tên kia, cùng tên gọi ở cuối, tên ngắn có từ 2 chữ trở lên
+//      ("Nguyễn Vân Ngọc" ⊃ "Vân Ngọc"; "Nguyễn Thảo Ngọc" KHÔNG khớp "Vân Ngọc")
+// Bước 4 chỉ nhận khi khớp ĐÚNG 1 người -- khớp 2 người trở lên thì giữ nguyên tên gốc, không đoán bừa.
+function rptSlBoDau(t){
+  return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[đĐ]/g,'d').toLowerCase().replace(/\s+/g,' ').trim();
+}
+function rptSlKhopNhanSu(t,ds){
+  // normalize('NFC'): cùng chữ "ọ" nhưng gõ dấu kiểu tổ hợp thì máy so vẫn thấy khác
+  const ten=[...new Set(ds.map(x=>String(x.ten||'').normalize('NFC').replace(/\s+/g,' ').trim()).filter(x=>x&&x!==RPT_SL_BOT_SI))];
+  const thuong=t.normalize('NFC').toLowerCase();
+  const y=ten.find(x=>x.toLowerCase()===thuong);if(y)return y;
+  const a=rptSlBoDau(t);
+  const bd=ten.filter(x=>rptSlBoDau(x)===a);if(bd.length===1)return bd[0];
+  // So từng chữ GIỮ DẤU: bỏ dấu thì "Văn" = "Vân", "Lê Văn Ngọc" sẽ khớp nhầm "Vân Ngọc"
+  const ta=thuong.split(' ');
+  const ung=ten.filter(x=>{
+    const tb=x.toLowerCase().split(' ');
+    const ngan=ta.length<=tb.length?ta:tb,dai=ta.length<=tb.length?tb:ta;
+    return ngan.length>=2&&ngan.length<dai.length&&ngan[ngan.length-1]===dai[dai.length-1]&&ngan.every(w=>dai.includes(w));
+  });
+  return ung.length===1?ung[0]:null;
+}
+let _rptSlTenCache=null;   // nhớ kết quả theo tên gốc, xoá khi danh sách nhân sự đổi (hàm này chạy cho từng đơn)
 function rptSlSaleName(x){
   const t=String(x||'').replace(/\s+/g,' ').trim();
   if(!t)return'';
-  return RPT_SL_SALE_ALIAS[t.toLowerCase()]||t;
+  const al=RPT_SL_SALE_ALIAS[t.toLowerCase()];if(al)return al;
+  const ds=saleNhanSuDS();
+  if(!ds.length)return t;
+  if(!_rptSlTenCache||_rptSlTenCache.ds!==ds)_rptSlTenCache={ds,m:new Map()};
+  const c=_rptSlTenCache.m;
+  if(!c.has(t))c.set(t,rptSlKhopNhanSu(t,ds)||t);
+  return c.get(t);
 }
 // ── Dữ liệu Sale NHẬP TAY (bảng saleretail_manual) -> đổ thẳng sang Master Data ──
 // Tách riêng khỏi datahub_orders/kiot_* vì 2 bảng đó bị job sync ghi đè mỗi lần chạy.
@@ -5369,11 +5405,11 @@ function rptSlBuildMasterRaw(){
       const don=[].concat(r.kords||[],r.repeatOrds||[],r.staleOrds||[])
         .filter(o=>o&&o.sold_by_name)
         .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
-      const ten=don.length?String(don[don.length-1].sold_by_name).trim():'';
+      const ten=don.length?rptSlSaleName(don[don.length-1].sold_by_name):'';   // quy về tên Phân quyền
       r.staffKiot=ten;
       // Ưu tiên người được GÁN TAY ở tab 'Gán data'; chưa gán thì lấy người tạo đơn Kiot; không có nữa thì bot.
       const gan=rptSlSaleGanTay(r.leadId);
-      r.staff=gan!==null?gan:(ten||'');   // chưa có ai phụ trách thì để TRỐNG (anh Hải 24/9/2026)
+      r.staff=gan!==null?(gan&&rptSlSaleName(gan)):(ten||'');   // chưa có ai phụ trách thì để TRỐNG (anh Hải 24/9/2026)
     });
     const ky={};
     (typeof siCrmRows!=='undefined'?siCrmRows:[]).forEach(c=>{
