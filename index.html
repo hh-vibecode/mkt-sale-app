@@ -2908,6 +2908,12 @@ function dhNhanSuHtml(){
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;align-items:start">'
     +khoi('Lẻ','#4361ee')+khoi('Sỉ','#7209b7')+'</div>';
 }
+// Bảng Nhân sự Sale đã chuyển sang trang Phân quyền (24/9/2026) nhưng thêm/sửa xong vẫn gọi renderDataHub()
+// -> trang Phân quyền không vẽ lại, người vừa thêm chưa hiện (anh Hải báo 25/9/2026). Vẽ lại đúng trang đang mở.
+function dhNhanSuVeLai(){
+  const st=document.getElementById('page-settings');
+  if(st&&st.classList.contains('active'))renderSettings();else renderDataHub();
+}
 function dhNhanSuThemForm(){
   if(!dashToanQuyen())return;
   const ip='width:100%;box-sizing:border-box;height:36px;padding:6px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--font);outline:none';
@@ -2930,11 +2936,13 @@ async function dhNhanSuThem(){
   const doi=(document.getElementById('nsDoi')||{}).value||'Lẻ';
   const msg=document.getElementById('nsMsg');
   if(!ten.trim()){if(msg)msg.textContent='Chưa nhập tên';return;}
+  const trung=saleNhanSuDS().find(x=>x.doi===doi&&String(x.ten).trim().toLowerCase()===ten.trim().toLowerCase());
+  if(trung){if(msg)msg.textContent='Sale '+doi+' đã có "'+trung.ten+'"'+(trung.dang_lam===false?' (đang nghỉ — bấm "Cho làm lại" ở bảng)':'');return;}
   try{
     await sbInsert('sale_nhan_su',{ten:ten.trim(),doi,created_by:logWho()});
     logAct('C','sale_nhan_su',null,ten.trim(),'Nhân sự Sale','',doi);
     await saleNhanSuLoad(true);
-    qcCloseModal();renderDataHub();
+    qcCloseModal();dhNhanSuVeLai();
   }catch(e){if(msg)msg.textContent='Chưa thêm được: '+e.message;}
 }
 async function dhNhanSuDoiDoi(id,doi){
@@ -2944,7 +2952,7 @@ async function dhNhanSuDoiDoi(id,doi){
       headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
       body:JSON.stringify({doi})});
     if(!r.ok)throw new Error('lỗi '+r.status);
-    await saleNhanSuLoad(true);renderDataHub();
+    await saleNhanSuLoad(true);dhNhanSuVeLai();
   }catch(e){rptBaoLoi('Đổi đội nhân sự',e);}
 }
 async function dhNhanSuNghi(id,lam){
@@ -2956,7 +2964,7 @@ async function dhNhanSuNghi(id,lam){
       headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
       body:JSON.stringify({dang_lam:!!lam})});
     if(!r.ok)throw new Error('lỗi '+r.status);
-    await saleNhanSuLoad(true);renderDataHub();
+    await saleNhanSuLoad(true);dhNhanSuVeLai();
   }catch(e){rptBaoLoi('Đổi trạng thái nhân sự',e);}
 }
 function dhKenhHtml(){
@@ -3787,11 +3795,15 @@ function rptSlSaleGanTay(leadId){
 // KHÔNG còn sửa code mỗi lần có người mới (anh Hải chốt 24/9/2026). Mảng dưới chỉ là bản dự phòng
 // khi chưa nạp được bảng -- app vẫn chạy chứ không trắng dropdown.
 let saleNhanSu=[],saleNhanSuLoaded=false;
+// Nạp lại khi bản đang giữ cũ hơn 60 giây: người khác vừa thêm Sale ở Phân quyền thì dropdown máy này
+// cũng thấy, không phải F5 (anh Hải 25/9/2026). Không nạp mỗi lần vẽ vì trang báo cáo vẽ lại theo từng phím gõ.
+let saleNhanSuLuc=0;
 async function saleNhanSuLoad(force){
-  if(saleNhanSuLoaded&&!force)return saleNhanSu;
+  if(saleNhanSuLoaded&&!force&&Date.now()-saleNhanSuLuc<60000)return saleNhanSu;
+  // Tải lỗi thì GIỮ danh sách đang có (trước đây xoá trắng cả bản lưu trên máy -> dropdown Sale rỗng)
   try{saleNhanSu=await sbFetchAll('sale_nhan_su','select=id,ten,doi,dang_lam,ghi_chu&order=doi,ten');}
-  catch(e){saleNhanSu=[];}
-  saleNhanSuLoaded=true;
+  catch(e){saleNhanSuLoaded=true;return saleNhanSu;}
+  saleNhanSuLoaded=true;saleNhanSuLuc=Date.now();
   try{localStorage.setItem('dashSaleNhanSu',JSON.stringify(saleNhanSu));}catch(e){}
   return saleNhanSu;
 }
