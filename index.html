@@ -4603,7 +4603,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 15:58';
+const APP_VERSION='25/09 16:12';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6297,7 +6297,17 @@ const RPT_SL_DANG_LUU=new Set();
 async function rptSlSaveKH(leadId,val,el,chotLuon){
   const ma=String(val||'').trim();
   if(!ma){if(el)el.focus();return;}
-  const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
+  const tat=rptSlBuildMaster();
+  let r=tat.find(x=>x.leadId===leadId);
+  // Lead ID đã bị GỘP vào khách khác (vd dòng TikTok dùng chung mã với Phương Nga): tìm đúng đơn Pancake
+  // của riêng dòng đó, không dán nhầm vào đơn của khách chính.
+  if(!r){const g=tat.find(x=>rptSlIdsCua(x).includes(leadId));
+    if(g){const theo={};(g.orders||[]).forEach(o=>{(theo[rptSlCustKey(o)]=theo[rptSlCustKey(o)]||[]).push(o);});
+      const ords=Object.values(theo).map(a=>a.slice().sort((x,y)=>String(x.order_date).localeCompare(String(y.order_date))))
+        .find(a=>rptSlLeadId(a[0])===leadId)||[];
+      const o1=ords.slice(-1)[0];
+      if(o1)r=Object.assign({},g,{leadId,orders:ords,isChot:dhIsOrder(o1),
+        name:((g.nguonLienHe||[]).find(x=>x.leadId===leadId)||{}).ten||g.name});}}
   const o=r&&(r.orders||[]).slice(-1)[0];   // dán vào đơn Pancake mới nhất của khách
   if(!o){alert('Khách này không có đơn Pancake để dán mã — dòng nhập tay thì điền bên Data Hub.');return;}
   // kiểm tại chỗ: sai dạng hoặc không có bên Kiot thì báo ngay, khỏi đi mạng
@@ -6390,8 +6400,23 @@ function rptSlMaNgo(all){
     if(!r.kh||!r.kiotCusts.length)return false;
     // Sale đã xác nhận đúng khách -> thôi báo. Ghi kèm CHÍNH MÃ đã xác nhận: sau này ai dán mã khác
     // vào khách đó thì cảnh báo bật lại, không im luôn vĩnh viễn.
-    const xn=rptSlManual[r.leadId]||{};
-    if(xn.ma_ok&&(!xn.ma_ok_code||xn.ma_ok_code===r.kh))return false;
+    // XÁC NHẬN THEO TỪNG DÒNG (anh Hải 25/9/2026): nhóm chung mã, Sale tích 2 dòng "cùng 1 người" thì CHỈ 2 dòng
+    // đó được xác nhận; dòng còn lại (khác tên, không để lại số) quay về mục "Mã KH nghi gán nhầm khách".
+    const daXN=id=>{const m=rptSlManual[id]||{};return !!m.ma_ok&&(!m.ma_ok_code||m.ma_ok_code===r.kh);};
+    const cacDong=(r.nguonLienHe&&r.nguonLienHe.length?r.nguonLienHe:[{leadId:r.leadId,ten:r.name,sdt:(r.phones||[]).filter(p=>!p.tuKiot).map(p=>p.so)}])
+      .map(x=>({id:x.leadId,name:x.ten||'',ds:(x.sdt||[]).map(rptSlLast9).filter(Boolean)}));
+    const daDong=cacDong.filter(d=>daXN(d.id));
+    if(daDong.length===cacDong.length)return false;
+    if(daDong.length){
+      // dòng chưa xác nhận mà trùng tên + trùng số với dòng đã xác nhận thì coi là cùng người luôn
+      const ten9=t=>rptSlChuTen(t).map(rptSlBoDau).join(' ');
+      const con=cacDong.filter(d=>!daXN(d.id)&&!daDong.some(c=>ten9(c.name)===ten9(d.name)&&d.ds.some(k=>c.ds.includes(k))));
+      if(!con.length)return false;
+      r.ngoVi='Mã '+r.kh+' đã xác nhận là của '+daDong[0].name+'; còn '+con.map(d=>d.name+' ('+d.id+(d.ds.length?'':', không để lại SĐT')+')').join(', ')+' đang dùng chung mã';
+      r.ngoLoai='';r.ngoSuaId=con[0].id;   // ô "Dán lại mã đúng" sửa đúng dòng bị nghi, không sửa dòng đã xác nhận
+      return true;
+    }
+    r.ngoSuaId='';
     if(rptSlTienKhop(r))return false;                      // tiền khớp số dự kiến -> khỏi soi
     const kc=r.kiotCusts[0];
     const sdtKH=(r.phones||[]).filter(p=>!p.tuKiot).map(p=>rptSlLast9(p.so)).filter(Boolean);
@@ -6421,7 +6446,7 @@ async function rptSlMaOk(leadId,ten){
   if(!confirm('Xác nhận Mã KH này đang gán ĐÚNG khách "'+(ten||'')+'"?\nSau khi xác nhận, app sẽ không cảnh báo dòng này nữa.'))return;
   try{
     const r=rptSlBuildMaster().find(x=>x.leadId===leadId);
-    await rptSlSaveManual(leadId,{ma_ok:true,ma_ok_code:r?r.kh:null});
+    for(const id of (r?rptSlIdsCua(r):[leadId]))await rptSlSaveManual(id,{ma_ok:true,ma_ok_code:r?r.kh:null});
     logAct('U','saleretail_manual',leadId,ten,'Mã KH nghi gán nhầm','đang cảnh báo','Sale xác nhận đúng khách');
     rptSlRender();
   }catch(e){alert('Chưa lưu được: '+e.message);}
@@ -6693,7 +6718,18 @@ async function rptSlHopNhat(){
   const nhomTick=[...new Set([...rptSlGopGoc().querySelectorAll('.gopTick:checked')].map(c=>c.getAttribute('data-nhom')))];
   if(nhomTick.length===1&&String(nhomTick[0]).charAt(0)==='m'){   // chung mã: đã là 1 khách, chỉ cần xác nhận
     const r=(window._rptSlTrungMa||[])[Number(nhomTick[0].slice(1))];
-    if(r)await rptSlMaOk(r.leadId,r.name);
+    if(!r)return;
+    const tich=[...rptSlGopGoc().querySelectorAll('.gopTick:checked')].map(c=>c.value);
+    const tatCa=rptSlIdsCua(r),boQua=tatCa.filter(id=>!tich.includes(id));
+    const ten=id=>((r.nguonLienHe||[]).find(x=>x.leadId===id)||{}).ten||id;
+    if(!confirm('Xác nhận CÙNG 1 NGƯỜI, dùng đúng mã '+r.kh+':\n'+tich.map(id=>'  '+ten(id)+' ('+id+')').join('\n')
+      +(boQua.length?'\n\nDòng không tích sẽ chuyển sang mục "Mã KH nghi gán nhầm khách":\n'+boQua.map(id=>'  '+ten(id)+' ('+id+')').join('\n'):'')))return;
+    try{
+      for(const id of tich)await rptSlSaveManual(id,{ma_ok:true,ma_ok_code:r.kh});
+      for(const id of boQua)if((rptSlManual[id]||{}).ma_ok)await rptSlSaveManual(id,{ma_ok:false,ma_ok_code:null});
+      logAct('U','saleretail_manual',r.leadId,r.name,'Nghi trùng chung mã','','cùng 1 người: '+tich.join(', ')+(boQua.length?' · chưa xác nhận: '+boQua.join(', '):''));
+      rptSlXoaCache();rptSlRender();
+    }catch(e){alert('Chưa lưu được: '+e.message);}
     return;
   }
   const tick=[...rptSlGopGoc().querySelectorAll('.gopTick:checked')].map(c=>c.value);
@@ -6916,10 +6952,10 @@ function rptSlInputHtml(){
     : '<span style="color:var(--muted)">không có gợi ý</span>'}</td>`;
 
   // Ô nhập Mã KH + nút Lưu -> ghi thẳng sang ghi chú nội bộ đơn Pancake.
-  const maO=r=>`<td onclick="rptSlStop(event)" style="white-space:nowrap">
-    <input placeholder="KH007620" onkeydown="if(event.key==='Enter')rptSlSaveKH('${r.leadId}',this.value,this)"
+  const maO=(r,id)=>`<td onclick="rptSlStop(event)" style="white-space:nowrap">${id&&id!==r.leadId?'<div style="font-size:10.5px;color:var(--muted);font-weight:700;margin-bottom:3px">sửa cho '+id+'</div>':''}
+    <input placeholder="KH007620" onkeydown="if(event.key==='Enter')rptSlSaveKH('${id||r.leadId}',this.value,this)"
       style="height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--accent);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;width:104px">
-    <button onclick="rptSlSaveKH('${r.leadId}',this.previousElementSibling.value,this.previousElementSibling)"
+    <button onclick="rptSlSaveKH('${id||r.leadId}',this.previousElementSibling.value,this.previousElementSibling)"
       style="margin-left:5px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:700">Lưu</button></td>`;
   const s1=tbl(HEAD+'<th style="'+RPT_SL_TH_EDIT+'">Điền Mã KH Kiot</th><th>Gợi ý theo SĐT (tra bên Kiot)</th><th>Doanh thu</th>',
     b.thieuMa.map(r=>`${rptSlTrMo(r)}${info(r)}${maO(r)}${goiY(r)}<td class="num"><span style="color:var(--muted)">—</span></td></tr>`).join(''));
@@ -6934,7 +6970,7 @@ function rptSlInputHtml(){
           style="display:block;margin-top:4px;border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:24px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">Xem ${num(1+(r.mergedRows||[]).length)} khách</button>
         <button onclick="rptSlMaOk('${r.leadId}','${String(r.name||'').replace(/'/g,"\\'")}')" title="Đã kiểm tra, mã gán đúng người"
           style="display:block;margin-top:4px;border:1.5px solid var(--green);background:var(--surface);color:var(--green);border-radius:7px;height:24px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">Đúng khách rồi</button></td>
-      <td class="num" style="font-weight:800">${r.revenue>0?vnd(r.revenue):'—'}</td>${maO(r)}</tr>`;}).join(''));
+      <td class="num" style="font-weight:800">${r.revenue>0?vnd(r.revenue):'—'}</td>${maO(r,r.ngoSuaId)}</tr>`;}).join(''));
   // Ô TRẠNG THÁI trong Nhập Liệu. SỈ DÙNG BỘ KHÁC HẲN LẺ: Sale Sỉ đánh Phân loại KH (6 mức) và ghi
   // vào đúng ô si_phan_loai mà Master và CRM đang dùng. Trước đây Sỉ hiện nhầm 4 trạng thái của Lẻ
   // và ghi sang ô khác, nên điền xong dòng vẫn quay lại mục 'chưa cập nhật' (anh Hải báo 23/9/2026).
