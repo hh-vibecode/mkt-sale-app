@@ -4090,7 +4090,7 @@ function rptSiO(id,khoa,gt,ip){
 // qua Data Hub). Mở ra là đủ mọi trường Master đang có; lưu xong khách hiện ngay trong bảng.
 // Tạo 1 dòng datahub_manual (khách Sỉ) + hồ sơ trong saleretail_manual, giống hệt khách nhập tay.
 const RPT_SI_THEM=[
-  ['ten','Tên khách / cửa hàng *','text'],
+  ['ten','Tên khách / cửa hàng','text'],
   ['nguoi','Người đại diện','text'],
   ['sdt','SĐT','text'],
   ['ma','Mã KH Kiot','text'],
@@ -4102,12 +4102,16 @@ const RPT_SI_THEM=[
   ['gpkd','Giấy phép kinh doanh','text'],
   ['fanpage','Fanpage / website','text'],
 ];
+// 6 ô bắt buộc khi thêm khách Sỉ mới -> [id ô, tên để báo thiếu]
+const RPT_SI_THEM_BB=['siT_ngay','siT_nguon','siT_kenh','siT_sale','siT_phanloai','siT_ten'];
+const RPT_SI_THEM_BB_TEN={siT_ngay:'Ngày tạo',siT_nguon:'Nguồn khách',siT_kenh:'Kênh',siT_sale:'Sale phụ trách',siT_phanloai:'Phân loại KH',siT_ten:'Tên khách / cửa hàng'};
 function rptSiThemKhachForm(){
   const ip='width:100%;box-sizing:border-box;height:34px;padding:5px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:12.5px;font-family:var(--font);outline:none';
-  const lb=t=>'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">'+t+'</div>';
+  // * đỏ = BẮT BUỘC (anh Hải 25/9/2026): thiếu 1 trong 6 ô này thì không cho tạo khách.
+  const lb=(t,bb)=>'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">'+t+(bb?' <span style="color:var(--red)">*</span>':'')+'</div>';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const sale=saleNhanSuDS().filter(x=>x.doi==='Sỉ'&&x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);
-  const o=RPT_SI_THEM.map(([k,nhan])=>'<div>'+lb(nhan)+rptSiO('siT_'+k,k,'',ip)+'</div>').join('');
+  const o=RPT_SI_THEM.map(([k,nhan])=>'<div>'+lb(nhan,RPT_SI_THEM_BB.includes('siT_'+k))+rptSiO('siT_'+k,k,'',ip)+'</div>').join('');
   let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
   m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
    +'<div style="background:var(--surface);border-radius:16px;max-width:820px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
@@ -4115,13 +4119,13 @@ function rptSiThemKhachForm(){
    +'<div style="font-size:15px;font-weight:800">Thêm khách Sỉ mới</div>'
    +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
    +'<div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">'
-   +'<div>'+lb('Ngày tạo')+'<input id="siT_ngay" type="date" value="'+todayISO()+'" style="'+ip+'"></div>'
-   +'<div>'+lb('Nguồn khách')+'<select id="siT_nguon" style="'+ip+';cursor:pointer"><option>Offline</option><option>Online</option></select></div>'
-   +'<div>'+lb('Kênh')+'<input id="siT_kenh" list="siT_kenhDS" placeholder="VD: Sales trực tiếp" style="'+ip+'">'
+   +'<div>'+lb('Ngày tạo',1)+'<input id="siT_ngay" type="date" value="'+todayISO()+'" style="'+ip+'"></div>'
+   +'<div>'+lb('Nguồn khách',1)+'<select id="siT_nguon" style="'+ip+';cursor:pointer"><option value="">— chọn —</option><option>Offline</option><option>Online</option></select></div>'
+   +'<div>'+lb('Kênh',1)+'<input id="siT_kenh" list="siT_kenhDS" placeholder="VD: Sales trực tiếp" style="'+ip+'">'
    +'<datalist id="siT_kenhDS">'+(typeof DH_MANUAL_KENH!=='undefined'?DH_MANUAL_KENH:[]).map(x=>'<option value="'+e(x)+'">').join('')+'</datalist></div>'
-   +'<div>'+lb('Sale phụ trách')+'<select id="siT_sale" style="'+ip+';cursor:pointer"><option value="">— chọn Sale —</option>'
+   +'<div>'+lb('Sale phụ trách',1)+'<select id="siT_sale" style="'+ip+';cursor:pointer"><option value="">— chọn Sale —</option>'
      +sale.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select></div>'
-   +'<div>'+lb('Phân loại KH')+'<select id="siT_phanloai" style="'+ip+';cursor:pointer"><option value="">—</option>'
+   +'<div>'+lb('Phân loại KH',1)+'<select id="siT_phanloai" style="'+ip+';cursor:pointer"><option value="">— chọn —</option>'
      +RPT_SI_PHANLOAI_DS.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select></div>'
    +o
    +'<div style="grid-column:1/-1">'+lb('Ghi chú')+'<input id="siT_ghichu" style="'+ip+'"></div>'
@@ -4135,7 +4139,10 @@ async function rptSiThemKhach(){
   const g=x=>String((document.getElementById(x)||{}).value||'').trim();
   const msg=document.getElementById('siT_msg');
   const ten=g('siT_ten');
-  if(!ten){if(msg)msg.innerHTML='<span style="color:var(--red)">Chưa nhập tên khách</span>';return;}
+  // Thiếu ô bắt buộc nào thì viền đỏ ô đó + kể tên đủ các ô còn thiếu, chưa tạo khách.
+  const thieu=RPT_SI_THEM_BB.filter(id=>{const el=document.getElementById(id);const t=!g(id);
+    if(el)el.style.borderColor=t?'var(--red)':'var(--border)';return t;});
+  if(thieu.length){if(msg)msg.innerHTML='<span style="color:var(--red)">Còn thiếu: '+thieu.map(id=>RPT_SI_THEM_BB_TEN[id]).join(', ')+'</span>';return;}
   const ma=g('siT_ma').toUpperCase();
   if(ma&&!kiotCustByCode()[ma]){if(msg)msg.innerHTML='<span style="color:var(--red)">Bên Kiot không có mã '+ma+'</span>';return;}
   try{
