@@ -4796,7 +4796,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 17:51';
+const APP_VERSION='25/09 17:53';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7355,7 +7355,7 @@ function rptSlCrmHtmlRaw(){
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày chăm sóc</th><th>Nguồn</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái</th><th>Mã KH Kiot</th><th>Ngày chốt</th><th>Doanh thu</th><th></th></tr></thead>
+        <thead><tr><th>Ngày chăm sóc</th><th>Nguồn</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái${dmBut('le_trang_thai')}</th><th>Mã KH Kiot</th><th>Ngày chốt</th><th>Doanh thu</th><th></th></tr></thead>
         <tbody>${rows||'<tr><td colspan="10">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
