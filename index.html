@@ -4796,7 +4796,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 17:50';
+const APP_VERSION='25/09 17:51';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -4959,8 +4959,11 @@ function rptSlOverviewHtml(){
   const ordCount=master.reduce((s,r)=>s+r.kords.length,0);
   window._rptSlLists={};
   const L=(k,d)=>{window._rptSlLists[k]=d;return k;};
-  const custCols=['Ngày tạo','Lead ID','Họ tên','SĐT','Kênh','Sales','Trạng thái','Mã KH','Doanh thu'];
-  const custRows=list=>list.map(r=>[r.created,r.leadId,r.name,r.phone||'',r.kenh,r.staff||'',r.isChot?'Chốt đơn':(r.manualStatus||r.tagStatus||''),r.kh||'',r.revenue>0?vnd(r.revenue):'']);
+  // Danh sách khách trong báo cáo HIỆN + XẾP THEO NGÀY CHỐT (ngày tạo đơn đặt hàng Kiot trong kỳ), chốt gần nhất lên đầu
+  // -- anh Hải 25/9/2026, cả Lẻ lẫn Sỉ. Khách chưa chốt xếp sau, theo ngày tạo.
+  const custCols=['Ngày chốt','Ngày tạo','Lead ID','Họ tên','SĐT','Kênh','Sales','Trạng thái','Mã KH','Doanh thu'];
+  const theoChot=list=>list.slice().sort((a,b)=>String(b.closeDate||'').localeCompare(String(a.closeDate||''))||String(b.created||'').localeCompare(String(a.created||'')));
+  const custRows=list=>theoChot(list).map(r=>[dmy(r.closeDate)||'—',dmy(r.created)||'—',r.leadId,r.name,r.phone||'',r.kenh,rptSlSaleHien(r.staff),r.isChot?'Chốt đơn':(r.manualStatus||r.tagStatus||''),r.kh||'',r.revenue>0?vnd(r.revenue):'']);
   const ordCols=['Ngày','Đơn','Brand','Khách hàng','SĐT','Sales','Thẻ Pancake'];
   const ordRows=list=>list.map(o=>[dmy(o.order_date),'#'+o.system_id,DH_BRAND_LABEL[o.brand]||o.brand,o.customer_name||'',o.phone||'',o.staff_name||'',o.customer_tags||'']);
   L('ovData',{title:'Toàn bộ data Lẻ từ Pancake',cols:ordCols,rows:ordRows(le)});
