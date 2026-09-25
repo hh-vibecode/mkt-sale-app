@@ -6060,7 +6060,9 @@ function rptSlShowCustomer(key,sua){
   const suaSi=rptSlType()==='Sỉ'&&!!window._rptSiSua;
   const dsSua=suaSi?rptSiOSua(r):{};
   const butChi=k=>dsSua[k]?`<span onclick="rptSiMoO('${k}')" title="Sửa ô này" style="cursor:pointer;margin-left:6px;font-size:11px;padding:1px 5px;border-radius:5px;background:var(--accent-l);text-transform:none">✏️</span>`:'';
-  const fld=(label,val,color,k)=>k&&dsSua[k]&&window._rptSiOSua===k
+  // Chế độ sửa chỉ hiện các ô SỬA ĐƯỢC -- ô số liệu tự tính ẩn hết cho gọn (anh Hải 25/9/2026)
+  const fld=(label,val,color,k)=>suaSi&&!(k&&dsSua[k])?''
+    :k&&dsSua[k]&&window._rptSiOSua===k
     ?`<div style="min-width:0;${dsSua[k].kieu==='dai'?'grid-column:1/-1':''}">
     <div style="font-size:10.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">${label}</div>${rptSiONhap(k,dsSua[k])}</div>`
     :`<div style="min-width:0">
@@ -6116,7 +6118,7 @@ function rptSlShowCustomer(key,sua){
     // Phần CHĂM SÓC -- trước đây modal chỉ có thông tin đơn/khách, thiếu hẳn thứ Sale ghi hằng ngày.
     fld('Ngày chăm sóc',esc(dmy(r.careDate)),'','ngay_cs'),
     fld('Giá trị tiềm năng',r.isChot?'':(r.potential?vnd(r.potential):''),r.potential?'var(--orange,#f97316)':'','tiem_nang'),
-  ].join('')+(rptSlNguonGon(r).length>1?`<div style="grid-column:1/-1">
+  ].join('')+(!suaSi&&rptSlNguonGon(r).length>1?`<div style="grid-column:1/-1">
     <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">Nguồn liên hệ · ${rptSlNguonGon(r).length} nguồn (cùng 1 khách)</div>
     <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted);font-size:10.5px;text-align:left"><th style="padding:4px 8px">Ngày</th><th style="padding:4px 8px">Page / kênh</th><th style="padding:4px 8px">SĐT</th><th style="padding:4px 8px">Lead ID</th></tr></thead><tbody>
     ${rptSlNguonGon(r).map(x=>`<tr style="border-top:1px solid var(--border)"><td style="padding:5px 8px;white-space:nowrap">${dmy(x.ngay)||'—'}</td><td style="padding:5px 8px;font-weight:700">${esc(x.kenh||'—')}</td><td style="padding:5px 8px;white-space:nowrap">${esc((x.sdt||[]).join(', ')||'—')}</td><td style="padding:5px 8px;color:var(--muted);font-weight:700">${esc(x.leadIds.join(' · '))}</td></tr>`).join('')}
@@ -6128,7 +6130,7 @@ function rptSlShowCustomer(key,sua){
   // Thanh báo chế độ sửa: nói rõ ô nào sửa được, kèm nút Xoá khách (trước nằm ở form sửa cũ) và nút Xong.
   const q=String.fromCharCode(39);
   const thanhSua=suaSi?`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 20px;background:var(--accent-l);border-bottom:1px solid var(--border)">
-    <span style="font-size:12px;font-weight:700;color:var(--accent)">✏️ Chế độ sửa — bấm bút chì cạnh ô cần sửa. Ô không có bút chì là số liệu app tự tính hoặc lấy từ Pancake.</span>
+    <span style="font-size:12px;font-weight:700;color:var(--accent)">✏️ Chế độ sửa — bấm bút chì cạnh ô cần sửa. Số liệu app tự tính đang ẩn, bấm Xong để xem đủ hồ sơ.</span>
     <span style="margin-left:auto;display:flex;gap:6px">
       ${/^M-[0-9]+$/.test(r.leadId)?'<button onclick="rptSiXoaKhach('+q+r.leadId+q+')" class="btn-ghost" style="height:28px;padding:0 12px;font-size:11.5px;font-weight:700;color:var(--red);border:1.5px solid var(--red)">Xoá khách này</button>':''}
       <button onclick="rptSlShowCustomer(${q}${key.replace(/'/g,"\\'")}${q},false)" class="refresh-btn" style="height:28px;padding:0 14px;font-size:11.5px">Xong</button>
@@ -6164,9 +6166,9 @@ function rptSlShowCustomer(key,sua){
       <div style="overflow:auto">
         ${tabCs?rptSlCsTabHtml(r):tabGc?rptSiGcTabHtml(r):`${thanhSua}
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px 18px;padding:16px 20px;border-bottom:1px solid var(--border)">${info}</div>
-        <div style="padding:12px 20px 4px;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Lịch sử phát sinh</div>
+        ${suaSi?'':`<div style="padding:12px 20px 4px;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Lịch sử phát sinh</div>
         <table style="width:100%;border-collapse:collapse">
-          <tbody>${tl||'<tr><td style="padding:20px;text-align:center;color:var(--muted)">Chưa có phát sinh</td></tr>'}</tbody></table>`}
+          <tbody>${tl||'<tr><td style="padding:20px;text-align:center;color:var(--muted)">Chưa có phát sinh</td></tr>'}</tbody></table>`}`}
       </div>
     </div></div>`;
 }
