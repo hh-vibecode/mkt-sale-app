@@ -97,7 +97,9 @@ function mapOrder(o, shopMeta) {
   };
 }
 
+const { khuTrung } = require('./lib/khu-trung.js');   // bỏ dòng trùng khoá trước khi upsert
 async function upsertOrders(rows) {
+  rows = khuTrung(rows, (r) => r.shop_id + '|' + r.order_id);
   if (!rows.length) return;
   const res = await fetch(`${SUPABASE_URL}/rest/v1/datahub_orders?on_conflict=shop_id,order_id`, {
     method: 'POST',

@@ -75,7 +75,9 @@ async function fetchInsights(adAccountId, TARGET_DATE) {
   return allRows;
 }
 
+const { khuTrung } = require('./lib/khu-trung.js');   // bỏ dòng trùng khoá trước khi upsert
 async function upsertMktSpend(rows) {
+  rows = khuTrung(rows, (r) => r.ad_id + '|' + r.ad_date);
   if (!rows.length) { console.log('Không có dòng nào để ghi.'); return; }
   const res = await fetch(`${SUPABASE_URL}/rest/v1/mkt_spend?on_conflict=ad_id,ad_date`, {
     method: 'POST',

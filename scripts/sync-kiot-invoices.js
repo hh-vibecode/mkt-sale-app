@@ -87,7 +87,9 @@ function mapCustomer(c) {
     kiot_created_date: vnTime(c.createdDate), kiot_modified_date: vnTime(c.modifiedDate),
   };
 }
+const { khuTrung } = require('./lib/khu-trung.js');   // bỏ dòng trùng khoá trước khi upsert
 async function upsertRows(table, rows, conflict) {
+  rows = khuTrung(rows, (r) => String(conflict).split(',').map((k) => r[k.trim()]).join('|'));
   if (!rows.length) return;
   const CHUNK = 500;
   for (let i = 0; i < rows.length; i += CHUNK) {

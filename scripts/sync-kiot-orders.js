@@ -136,7 +136,9 @@ function mapOrder(o) {
   };
 }
 
+const { khuTrung } = require('./lib/khu-trung.js');   // bỏ dòng trùng khoá trước khi upsert
 async function upsert(rows) {
+  rows = khuTrung(rows, (r) => r.id);
   for (let i = 0; i < rows.length; i += 500) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/kiot_orders?on_conflict=id`, {
       method: 'POST',
