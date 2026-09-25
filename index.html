@@ -99,6 +99,8 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .nav-icon svg{width:18px;height:18px}
 .nav-label{transition:opacity .2s,width .2s;overflow:hidden}
 .sidebar.collapsed .nav-label{opacity:0;width:0}
+/* menu không icon (anh Hải 25/9/2026): thu gọn thì hiện chữ viết tắt */
+.sidebar.collapsed .nav-item[data-tat]::before{content:attr(data-tat);font-size:10.5px;font-weight:800;width:22px;text-align:center;flex-shrink:0}
 .nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;flex-shrink:0;transition:opacity .2s}
 .sidebar.collapsed .nav-badge{opacity:0}
 .sb-admin{position:absolute;left:0;right:0;bottom:0;padding:8px 0 10px;border-top:1.5px solid var(--border);background:var(--surface)}
@@ -275,21 +277,21 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     <div class="sb-strip"></div>
     <div class="sb-section" id="sec-qt-label" style="margin-top:12px">Quản trị</div>
     <nav id="sec-qt">
-      <div class="nav-item" onclick="switchPage('report-tonghop')" id="nav-report-tonghop"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span><span class="nav-label">Báo cáo tổng hợp</span></div>
+      <div class="nav-item" onclick="switchPage('report-tonghop')" id="nav-report-tonghop" data-tat="TH"><span class="nav-label">Báo cáo tổng hợp</span></div>
     </nav>
     <div class="sb-section" id="sec-report-label" style="margin-top:12px">Báo cáo</div>
     <nav id="sec-report">
-      <div class="nav-item" onclick="switchPage('report-mkt')" id="nav-report-mkt"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 17V9m5 8V5m5 12v-6m5 6V7"/><path stroke-linecap="round" d="M2 21h20"/></svg></span><span class="nav-label">Báo cáo MKT</span></div>
-      <div class="nav-item" onclick="switchPage('report-saleretail')" id="nav-report-saleretail"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18M8 17V10m5 7V6m5 11v-4"/></svg></span><span class="nav-label">Báo cáo Sale Lẻ</span></div>
-      <div class="nav-item" onclick="switchPage('report-salesi')" id="nav-report-salesi"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h13l2 5H3zM3 7V5m0 7v5h14m-9 3a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0m6 0a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0"/></svg></span><span class="nav-label">Báo cáo Sale Sỉ</span></div>
+      <div class="nav-item" onclick="switchPage('report-mkt')" id="nav-report-mkt" data-tat="MKT"><span class="nav-label">Báo cáo MKT</span></div>
+      <div class="nav-item" onclick="switchPage('report-saleretail')" id="nav-report-saleretail" data-tat="LẺ"><span class="nav-label">Báo cáo Sale Lẻ</span></div>
+      <div class="nav-item" onclick="switchPage('report-salesi')" id="nav-report-salesi" data-tat="SỈ"><span class="nav-label">Báo cáo Sale Sỉ</span></div>
     </nav>
     <!-- Phân quyền + Nhật ký là việc của admin, không phải việc hằng ngày -> gom vào 1 nút cờ lê
          ghim đáy sidebar, bấm mới bung menu. Giữ id nav-settings/nav-log để applyRole() vẫn ẩn/hiện được. -->
     <div class="sb-admin">
       <div class="sb-admin-menu" id="sbAdminMenu">
-        <div class="nav-item" onclick="sbAdminGo('datahub')" id="nav-datahub"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="5" rx="8" ry="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg></span><span class="nav-label">Data Hub</span></div>
+        <div class="nav-item" onclick="sbAdminGo('datahub')" id="nav-datahub" data-tat="DH"><span class="nav-label">Data Hub</span></div>
         <div class="nav-item" onclick="sbAdminGo('settings')" id="nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9.5 12 1.8 1.8L15 10"/></svg></span><span class="nav-label">Phân quyền</span></div>
-        <div class="nav-item" onclick="sbAdminGo('log')" id="nav-log"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m-6 7h6m-6 4h4"/></svg></span><span class="nav-label">Nhật ký chỉnh sửa</span></div>
+        <div class="nav-item" onclick="sbAdminGo('log')" id="nav-log" data-tat="LOG"><span class="nav-label">Nhật ký chỉnh sửa</span></div>
       </div>
       <div id="appVer" title="Bấm để tải lại bản mới nhất" onclick="location.reload(true)"
         style="margin:6px 14px 2px;font-size:10px;color:var(--muted);font-weight:700;cursor:pointer;letter-spacing:.02em"></div>
@@ -2244,7 +2246,7 @@ function dhRenderTable(){
 // kiotOrders = ĐƠN ĐẶT HÀNG (DH…) -> nguồn doanh số + ngày chốt của báo cáo SALE.
 // kiotInvoices = HOÁ ĐƠN (HD…) -> CHỈ dùng cho đối soát tiền về, KHÔNG dùng cho báo cáo Sale
 // (hoá đơn xuất lúc giao/thu tiền, trễ nhiều ngày so với lúc khách chốt).
-let kiotInvoices=[],kiotOrders=[],kiotCustomers=[],kiotLoaded=false;
+let kiotInvoices=[],kiotOrders=[],kiotCustomers=[],kiotLoaded=false,kiotGiuTinh=new Set();
 async function kiotLoadInvoices(force){
   if(kiotLoaded&&!force)return;
   [kiotInvoices,kiotOrders,kiotCustomers]=await Promise.all([
@@ -2254,6 +2256,8 @@ async function kiotLoadInvoices(force){
     sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,total_payment,status,status_value,sale_channel'),
     sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name,debt'),
   ]);
+  // đơn từng được tính nhờ khách có cọc -> giữ tính dù công nợ đổi về sau (bảng kiot_don_giu_tinh, 25/9/2026)
+  try{kiotGiuTinh=new Set((await sbFetchAll('kiot_don_giu_tinh','select=code')).map(x=>String(x.code).toUpperCase()));}catch(e){}
   kiotLoaded=true;
   window._kiotOrdByCode=null;window._kiotCNKhach=null;window._kiotRetailByPhone=null;window._rptSlHdKhach=null;
   if(typeof rptSlXoaCache==="function")rptSlXoaCache();
@@ -4792,7 +4796,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 17:47';
+const APP_VERSION='25/09 17:50';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5394,7 +5398,9 @@ function rptSlHoaDonTheoKhach(){
   window._rptSlHdNguon=(kiotInvoices||[]).length;
   return window._rptSlHdKhach=m;
 }
+function rptSlGiuTinh(o){return !!(o&&o.code&&kiotGiuTinh.has(String(o.code).toUpperCase()));}
 function rptSlCoDauVetTien(o){
+  if(rptSlGiuTinh(o))return true;   // từng được tính nhờ cọc -> giữ
   if(Number(o.total_payment||0)>0)return true;
   if((rptSlHoaDonTheoKhach()[o.customer_code]||0)>0)return true;
   return rptSlKhachCoCoc(o.customer_code);
@@ -5413,6 +5419,7 @@ function rptSlKhachCoCoc(code){
 function rptSlPhieuTreo(o){
   if(!o||o.status!==1||o.direct)return false;     // chỉ xét đơn đang ở trạng thái Phiếu tạm
   if(Number(o.total_payment||0)>0)return false;   // case 1: đã trả tiền trên phiếu
+  if(rptSlGiuTinh(o))return false;                  // từng được tính nhờ cọc -> giữ, không loại khi công nợ đổi
   if(rptSlKhachCoCoc(o.customer_code))return false; // case 2: khách có cọc (nợ cần thu âm)
   return true;                                    // case 3: phiếu báo giá, không tính
 }

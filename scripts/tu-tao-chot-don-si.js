@@ -50,13 +50,14 @@ async function ghiLog(body, id) {
   if (!SERVICE_ROLE_KEY) { console.error('Thiếu SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); }
   const logId = CHI_XEM ? null : await ghiLog({ status: 'running' }).catch(() => null);
   try {
-    const [don, kh, hd, dm, dh, cs] = await Promise.all([
+    const [don, kh, hd, dm, dh, cs, giu] = await Promise.all([
       doc('kiot_orders', 'code,customer_code,customer_name,purchase_date,total,total_payment,status,branch_name,sold_by_name'),
       doc('kiot_customers', 'code,name,phone,debt,customer_group'),
       doc('kiot_invoices', 'customer_code,status'),
       doc('datahub_manual', 'kiot_code,sale_type'),
       doc('datahub_orders', 'internal_note'),
       doc('salesi_crm', 'id,kiot_code,ma_don,ngay_chot,gia_tri_chot,trang_thai'),
+      doc('kiot_don_giu_tinh', 'code'),
     ]);
     const byCode = {}; kh.forEach(c => { byCode[c.code] = c; });
     // Sỉ hay Lẻ: giống tu-tao-nhap-tay.js -- nhóm khách nếu ghi rõ, không thì theo chi nhánh đa số
@@ -75,8 +76,19 @@ async function ghiLog(body, id) {
     // dấu vết tiền -- cùng luật với app (rptSlDonKhongTinh)
     const coHD = {}; hd.forEach(i => { if (i.customer_code && i.status === 1) coHD[i.customer_code] = true; });
     const coCoc = m => Number((byCode[m] || {}).debt || 0) < 0;
+    // ĐƠN GIỮ TÍNH (anh Hải 25/9/2026): đơn đang được tính NHỜ CỌC thì ghi nhớ, sau này công nợ đổi vẫn tính
+    const giuTinh = new Set(giu.map(x => String(x.code).toUpperCase()));
+    const nhoCoc = don.filter(o => o.status !== 4 && Number(o.total || 0) > 0 && Number(o.total_payment || 0) <= 0
+      && coCoc(o.customer_code) && !giuTinh.has(String(o.code).toUpperCase()));
+    if (nhoCoc.length && !CHI_XEM) {
+      const r = await fetch(SUPABASE_URL + '/rest/v1/kiot_don_giu_tinh', { method: 'POST', headers: { ...H, Prefer: 'resolution=ignore-duplicates,return=minimal' },
+        body: JSON.stringify(nhoCoc.map(o => ({ code: o.code, customer_code: o.customer_code, ly_do: 'khách có cọc' }))) });
+      console.log('Ghi nhớ ' + nhoCoc.length + ' đơn tính nhờ cọc: ' + (r.ok ? 'ok' : r.status));
+    }
+    nhoCoc.forEach(o => giuTinh.add(String(o.code).toUpperCase()));
     const duDK = o => {
       if (o.status === 4 || !(Number(o.total || 0) > 0)) return false;   // huỷ / đơn 0 đồng (tách, điều chỉnh)
+      if (giuTinh.has(String(o.code).toUpperCase())) return true;          // từng tính nhờ cọc -> giữ
       if (o.status === 1 && Number(o.total_payment || 0) <= 0 && !coCoc(o.customer_code)) return false;   // phiếu báo giá
       if (ngay(o.purchase_date) >= MOC && !(Number(o.total_payment || 0) > 0 || coHD[o.customer_code] || coCoc(o.customer_code))) return false;
       return true;

@@ -69,7 +69,7 @@ function moiTruong() {
 
 async function dongSo() {
   const ctx = moiTruong();
-  const [dh, hd, dat, kh, dm, sm, crm, ads] = await Promise.all([
+  const [dh, hd, dat, kh, dm, sm, crm, ads, giu] = await Promise.all([
     tai('datahub_orders', 'select=*'),
     tai('kiot_invoices', 'select=*'),
     tai('kiot_orders', 'select=*'),
@@ -78,11 +78,13 @@ async function dongSo() {
     tai('saleretail_manual', 'select=*'),
     tai('salesi_crm', 'select=*'),
     tai('mkt_spend', 'select=*'),
+    tai('kiot_don_giu_tinh', 'select=code'),
   ]);
-  ctx.__d = { dh, hd, dat, kh, dm, sm, crm, ads };
+  ctx.__d = { dh, hd, dat, kh, dm, sm, crm, ads, giu };
   vm.runInContext(`
     dhOrders=__d.dh;kiotInvoices=__d.hd;kiotOrders=__d.dat;kiotCustomers=__d.kh;dhManual=__d.dm;
     siCrmRows=__d.crm;
+    kiotGiuTinh=new Set((__d.giu||[]).map(x=>String(x.code).toUpperCase()));
     dhLoaded=kiotLoaded=dhManualLoaded=rptSlManualLoaded=siCrmLoaded=true;
     rptSlManual={};__d.sm.forEach(r=>rptSlManual[r.lead_id]=r);
     window.allRowsRaw=[];allRows=[];
