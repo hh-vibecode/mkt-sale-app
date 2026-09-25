@@ -4329,90 +4329,75 @@ function rptSiOSua(r){
   // muốn đổi thì thêm/sửa lượt chăm sóc ở tab Lịch sử chăm sóc (anh Hải 25/9/2026).
   return o;
 }
-function rptSiMoO(k){
-  window._rptSiOSua=k;rptSlShowCustomer(window._rptSlCusKey);
-  const el=document.getElementById('siO_'+k);if(el)el.focus();
-}
-function rptSiHuyO(){window._rptSiOSua=null;rptSlShowCustomer(window._rptSlCusKey);}
-// Ô đang sửa: ô nhập + nút Lưu/Huỷ. Enter = lưu (ô dài thì Ctrl+Enter), Esc = huỷ.
+function rptSiHuyO(){rptSlShowCustomer(window._rptSlCusKey,false);}
+// Ô sửa trong CHẾ ĐỘ SỬA: mở sẵn, viền sáng, không nút riêng -- Enter = Lưu tất cả (ô dài thì Ctrl+Enter), Esc = Huỷ.
 function rptSiONhap(k,o){
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  const ip='width:100%;box-sizing:border-box;height:30px;padding:4px 8px;border:1.5px solid var(--accent);border-radius:8px;background:var(--surface);color:var(--text);font-size:12.5px;font-family:var(--font);outline:none';
+  const ip='width:100%;box-sizing:border-box;height:32px;padding:4px 9px;border:1.5px solid var(--accent);border-radius:8px;background:var(--accent-l);color:var(--text);font-size:12.5px;font-weight:600;font-family:var(--font);outline:none';
   const phim='onkeydown="if(event.key===\'Escape\')rptSiHuyO();else if(event.key===\'Enter\''
-    +(o.kieu==='dai'?'&&(event.ctrlKey||event.metaKey)':'')+'){event.preventDefault();rptSiLuuO(\''+k+'\');}"';
-  let nhap;
+    +(o.kieu==='dai'?'&&(event.ctrlKey||event.metaKey)':'')+'){event.preventDefault();rptSiLuuTatCa();}"';
   if(o.kieu==='chon'){
     const ds=o.gt&&o.ds.indexOf(o.gt)<0?[o.gt].concat(o.ds):o.ds;   // giữ cả giá trị cũ lạ nếu có
-    nhap='<select id="siO_'+k+'" '+phim+' style="'+ip+';cursor:pointer"><option value="">'+(o.rong||'—')+'</option>'
+    return '<select id="siO_'+k+'" '+phim+' style="'+ip+';cursor:pointer"><option value="">'+(o.rong||'—')+'</option>'
       +ds.map(x=>'<option value="'+e(x)+'"'+(x===o.gt?' selected':'')+'>'+e(x)+'</option>').join('')+'</select>';
-  }else if(o.kieu==='dai'){
-    nhap='<textarea id="siO_'+k+'" rows="5" '+phim+' style="'+ip+';height:auto;line-height:1.5;resize:vertical">'+e(o.gt)+'</textarea>';
-  }else{
-    nhap='<input id="siO_'+k+'" type="'+(o.kieu==='date'?'date':'text')+'" value="'+e(o.gt)+'" '
-      +(o.kieu==='tien'?'inputmode="numeric" placeholder="vd 15tr, 500k" ':'')
-      +(o.goiY?'list="siO_goiY_'+k+'" ':'')+phim+' style="'+ip+'">'
-      +(o.goiY?'<datalist id="siO_goiY_'+k+'">'+o.goiY.map(x=>'<option value="'+e(x)+'">').join('')+'</datalist>':'');
   }
-  return nhap+'<div style="display:flex;align-items:center;gap:6px;margin-top:5px">'
-    +'<button onclick="rptSiLuuO(\''+k+'\')" class="refresh-btn" style="height:26px;padding:0 12px;font-size:11px">Lưu</button>'
-    +'<button onclick="rptSiHuyO()" class="btn-ghost" style="height:26px;padding:0 10px;font-size:11px">Huỷ</button>'
-    +'<span style="font-size:10.5px;color:var(--muted);font-weight:600">'+(o.kieu==='dai'?'Ctrl+Enter':'Enter')+' lưu · Esc huỷ</span></div>'
-    +'<div id="siO_msg" style="font-size:11px;font-weight:700;margin-top:4px"></div>';
+  if(o.kieu==='dai')return '<textarea id="siO_'+k+'" rows="5" '+phim+' style="'+ip+';height:auto;line-height:1.5;resize:vertical">'+e(o.gt)+'</textarea>';
+  return '<input id="siO_'+k+'" type="'+(o.kieu==='date'?'date':'text')+'" value="'+e(o.gt)+'" '
+    +(o.kieu==='tien'?'inputmode="numeric" placeholder="vd 15tr, 500k" ':'')
+    +(o.goiY?'list="siO_goiY_'+k+'" ':'')+phim+' style="'+ip+'">'
+    +(o.goiY?'<datalist id="siO_goiY_'+k+'">'+o.goiY.map(x=>'<option value="'+e(x)+'">').join('')+'</datalist>':'');
 }
-async function rptSiLuuO(k){
+// LƯU TẤT CẢ ô đã đổi trong chế độ sửa. Kiểm lỗi hết trước rồi mới ghi, để không lưu dở dang nửa chừng.
+async function rptSiLuuTatCa(){
   const r=rptSlBuildMaster().find(x=>x.key===window._rptSlCusKey);if(!r)return;
-  const o=rptSiOSua(r)[k];if(!o)return;
-  const el=document.getElementById('siO_'+k),msg=document.getElementById('siO_msg');
+  const ds=rptSiOSua(r),msg=document.getElementById('siO_msg'),nut=document.getElementById('siO_luu');
   const bao=t=>{if(msg)msg.innerHTML='<span style="color:var(--red)">'+t+'</span>';};
-  const v=String(el?el.value:'').trim();
-  if(v===String(o.gt||'').trim())return rptSiHuyO();            // không đổi gì
-  const moLai=()=>{
-    window._rptSiOSua=null;window._kiotOrdByCode=null;rptSlXoaCache();rptSlRender();
-    const r2=rptSlBuildMaster().find(x=>x.leadId===r.leadId)||rptSlBuildMaster().find(x=>x.key===r.key);
-    if(r2)rptSlShowCustomer(r2.key,true);else qcCloseModal();
-  };
-  try{
-    if(o.noi==='pl'){
-      // Đi đúng hàm của ô chọn trên bảng -> vẫn gắn thẻ Pancake, chọn "Đã ra đơn" thì vào luồng chốt (hỏi Mã KH).
-      const vaoChot=rptSiTheTuPhanLoai(v)==='CHỐT ĐƠN'&&!r.isChot;
-      if(msg)msg.textContent='Đang lưu…';
-      window._rptSiOSua=null;
-      await rptSiSetPhanLoai(r.leadId,v,null);
-      if(!vaoChot)moLai();
-      return;
-    }
-    if(o.noi==='kh'){
-      const ma=rptSiChuanMa(v);
+  const doi={};
+  Object.keys(ds).forEach(k=>{const el=document.getElementById('siO_'+k);if(!el)return;
+    const v=String(el.value||'').trim();if(v!==String(ds[k].gt||'').trim())doi[k]=v;});
+  if(!Object.keys(doi).length)return rptSiHuyO();                  // không đổi gì
+  // 1) kiểm lỗi
+  const dhm={},mn={};let pl=null,kh=null;
+  for(const k of Object.keys(doi)){
+    const o=ds[k],v=doi[k];
+    if(o.noi==='pl'){pl=v;continue;}
+    if(o.noi==='kh'){const ma=rptSiChuanMa(v);
       if(!ma)return bao('Mã KH không đúng dạng. Ví dụ đúng: KH007620');
-      if(!kiotCustByCode()[ma])return bao('Bên Kiot không có mã '+ma);
-      window._rptSiOSua=null;qcCloseModal();
-      await rptSlSaveKH(r.leadId,ma,null,false);   // chạy ngầm như tab Nhập Liệu, dòng tự quay lại khi xong
-      return;
-    }
-    if(o.noi==='dhm'){
-      let gt=v||null;
+      if(!kiotCustByCode()[ma])return bao('Bên Kiot không có mã '+ma);kh=ma;continue;}
+    if(o.noi==='dhm'){let gt=v||null;
       if(o.cot==='customer_name'&&!gt)return bao('Chưa có tên khách');
       if(o.cot==='kiot_code'&&gt){gt=rptSiChuanMa(gt);if(!gt)return bao('Mã KH không đúng dạng. Ví dụ đúng: KH007620');
         if(!kiotCustByCode()[gt])return bao('Bên Kiot không có mã '+gt);}
-      const id=Number(r.key.slice(1));
-      const patch={[o.cot]:gt,updated_at:new Date().toISOString()};
-      if(o.cot==='kenh')patch.brand=dhManualBrand(gt||'','Sỉ');
-      if(msg)msg.textContent='Đang lưu…';
-      const res=await fetch(SUPABASE_URL+'/rest/v1/datahub_manual?id=eq.'+id,{method:'PATCH',
-        headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
-        body:JSON.stringify(patch)});
-      if(!res.ok)throw new Error('lỗi '+res.status);
-      logAct('U','datahub_manual',r.leadId,r.name,o.cot,o.gt,gt);
-      await dhLoadManual(true);
-      return moLai();
-    }
+      dhm[o.cot]=gt;if(o.cot==='kenh')dhm.brand=dhManualBrand(gt||'','Sỉ');continue;}
     let gt=v||null;
     if(o.kieu==='tien'){const n=rptSlParseMoney(v);if(isNaN(n))return bao('Không hiểu số tiền (vd 15tr, 500k, 15.000.000)');gt=n||null;}
     if(o.cot==='si_sale')gt=v;   // '' = để trống / thu hồi (null thì app lại tự suy người tạo đơn Kiot)
-    if(msg)msg.textContent='Đang lưu…';
-    await rptSlSaveManual(r.leadId,{[o.cot]:gt});
-    moLai();
-  }catch(e){bao('Chưa lưu được: '+e.message);}
+    mn[o.cot]=gt;
+  }
+  // 2) ghi
+  if(msg)msg.innerHTML='<span style="color:var(--muted)">Đang lưu…</span>';if(nut)nut.disabled=true;
+  try{
+    if(Object.keys(dhm).length){
+      const id=Number(r.key.slice(1));
+      const res=await fetch(SUPABASE_URL+'/rest/v1/datahub_manual?id=eq.'+id,{method:'PATCH',
+        headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify(Object.assign({},dhm,{updated_at:new Date().toISOString()}))});
+      if(!res.ok)throw new Error('lỗi '+res.status);
+      Object.keys(dhm).forEach(c=>{if(c!=='brand')logAct('U','datahub_manual',r.leadId,r.name,c,(Object.values(ds).find(o=>o.cot===c)||{}).gt,dhm[c]);});
+      await dhLoadManual(true);
+    }
+    if(Object.keys(mn).length)await rptSlSaveManual(r.leadId,mn);
+    window._kiotOrdByCode=null;rptSlXoaCache();
+    // Phân loại: đi đúng hàm của ô chọn trên bảng (gắn thẻ Pancake; chọn "Đã ra đơn" thì vào luồng chốt, hỏi Mã KH)
+    const vaoChot=pl!==null&&rptSiTheTuPhanLoai(pl)==='CHỐT ĐƠN'&&!r.isChot;
+    if(pl!==null)await rptSiSetPhanLoai(r.leadId,pl,null);
+    // Mã KH của khách Pancake: dán vào ghi chú đơn, chạy ngầm như tab Nhập Liệu
+    if(kh){qcCloseModal();await rptSlSaveKH(r.leadId,kh,null,false);return;}
+    if(vaoChot)return;
+    rptSlRender();
+    const r2=rptSlBuildMaster().find(x=>x.leadId===r.leadId)||rptSlBuildMaster().find(x=>x.key===r.key);
+    if(r2)rptSlShowCustomer(r2.key,false);else qcCloseModal();
+  }catch(e){if(nut)nut.disabled=false;bao('Chưa lưu được: '+e.message);}
 }
 // XOÁ 1 khách Sỉ thêm tay: xoá dòng Data nhập tay + hồ sơ + các lượt chăm sóc của khách đó.
 // Hỏi 2 lớp, nói rõ mất những gì (doanh thu, số lượt chăm sóc) để khỏi bấm nhầm.
@@ -4620,7 +4605,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 16:56';
+const APP_VERSION='25/09 16:59';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6187,17 +6172,16 @@ function rptSlShowCustomer(key,sua){
     if(m&&m.innerHTML.trim())rptSlShowCustomer(key);
   });}
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  // Chế độ sửa: ô nào có trong rptSiOSua thì có bút chì; đang sửa ô nào thì ô đó thành ô nhập.
+  // CHẾ ĐỘ SỬA (anh Hải 25/9/2026): bấm Sửa là MỌI ô sửa được mở sẵn thành ô nhập / dropdown sáng lên,
+  // không bút chì; điền xong bấm Lưu 1 lần trên thanh sửa. Ô số liệu tự tính ẩn hết cho gọn.
   const suaSi=rptSlType()==='Sỉ'&&!!window._rptSiSua;
   const dsSua=suaSi?rptSiOSua(r):{};
-  const butChi=k=>dsSua[k]?`<span onclick="rptSiMoO('${k}')" title="Sửa ô này" style="cursor:pointer;margin-left:6px;font-size:11px;padding:1px 5px;border-radius:5px;background:var(--accent-l);text-transform:none">✏️</span>`:'';
-  // Chế độ sửa chỉ hiện các ô SỬA ĐƯỢC -- ô số liệu tự tính ẩn hết cho gọn (anh Hải 25/9/2026)
   const fld=(label,val,color,k)=>suaSi&&!(k&&dsSua[k])?''
-    :k&&dsSua[k]&&window._rptSiOSua===k
+    :suaSi
     ?`<div style="min-width:0;${dsSua[k].kieu==='dai'?'grid-column:1/-1':''}">
     <div style="font-size:10.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">${label}</div>${rptSiONhap(k,dsSua[k])}</div>`
     :`<div style="min-width:0">
-    <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${label}${k?butChi(k):''}</div>
+    <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${label}</div>
     <div style="font-size:12.5px;font-weight:700;margin-top:3px;color:${color||'var(--text)'};word-break:break-word">${val||'<span style="color:var(--muted);font-weight:600">—</span>'}</div></div>`;
   const linkTxt=r.linkBy==='Mã KH'?'<span style="color:var(--green)">Mã KH Sale dán</span>'
     :r.linkBy==='Sale nhập'?'<span style="color:var(--accent)">Sale nhập ở tab Nhập Liệu</span>'
@@ -6270,9 +6254,11 @@ function rptSlShowCustomer(key,sua){
   // Thanh báo chế độ sửa: nói rõ ô nào sửa được, kèm nút Xoá khách (trước nằm ở form sửa cũ) và nút Xong.
   const q=String.fromCharCode(39);
   const thanhSua=suaSi?`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 20px;background:var(--accent-l);border-bottom:1px solid var(--border)">
-    <span style="font-size:12px;font-weight:700;color:var(--accent)">✏️ Chế độ sửa — bấm bút chì cạnh ô cần sửa. Số liệu app tự tính đang ẩn, bấm Xong để xem đủ hồ sơ.</span>
+    <span style="font-size:12px;font-weight:700;color:var(--accent)">Chế độ sửa — điền thẳng vào các ô sáng, xong bấm Lưu.</span>
+    <span id="siO_msg" style="font-size:11.5px;font-weight:700"></span>
     <span style="margin-left:auto;display:flex;gap:6px">
-      <button onclick="rptSlShowCustomer(${q}${key.replace(/'/g,"\\'")}${q},false)" class="refresh-btn" style="height:28px;padding:0 14px;font-size:11.5px">Xong</button>
+      <button onclick="rptSlShowCustomer(${q}${key.replace(/'/g,"\\'")}${q},false)" class="btn-ghost" style="margin:0;height:28px;padding:0 14px;font-size:11.5px">Huỷ</button>
+      <button id="siO_luu" onclick="rptSiLuuTatCa()" class="refresh-btn" style="margin:0;height:28px;padding:0 18px;font-size:11.5px;font-weight:800">Lưu</button>
     </span></div>`:'';
   const tl=[
     ...r.orders.map(o=>({d:o.order_date,t:'Đơn Pancake #'+esc(o.system_id),c:esc(o.internal_note||o.source||''),s:esc(o.customer_tags||''),v:''})),
