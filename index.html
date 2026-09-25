@@ -4592,7 +4592,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 15:34';
+const APP_VERSION='25/09 15:47';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5392,7 +5392,11 @@ function rptSlBuildMasterRaw(){
   // NGUỒN LIÊN HỆ: 1 khách nhắn nhiều page / nhiều SĐT thì kê đủ từng nguồn (anh Hải 24/9/2026).
   // Tích luỹ qua MỌI bước gộp (Mã KH -> SĐT -> tên), không ghi đè như mergedRows.
   const nguonCua=r=>r.nguonLienHe||[{leadId:r.leadId,kenh:r.kenh||r.source||'',ngay:String(r.created||'').slice(0,10),
-    sdt:[...new Set([...(r.phones||[]).filter(p=>!p.tuKiot).map(p=>p.so),r.phone].filter(Boolean).map(x=>String(x).trim()))],soDon:(r.orders||[]).length}];
+    ten:r.name||'',sale:r.staff||'',chat:rptSlChatUrl(r),tag:r.tagStatus||'',
+    sdt:(()=>{const muon=new Set((r.phones||[]).filter(p=>p.tuKiot).map(p=>rptSlLast9(p.so)));
+      const that=(r.phones||[]).filter(p=>!p.tuKiot).map(p=>p.so);
+      if(r.phone&&!r.phoneFromKiot&&!muon.has(rptSlLast9(r.phone)))that.push(r.phone);
+      return [...new Set(that.filter(Boolean).map(x=>String(x).trim()))];})(),soDon:(r.orders||[]).length}];
   const gopNhom=(g,chinh)=>{
     g.sort((a,b)=>String(a.created).localeCompare(String(b.created)));
     const keep=(chinh&&typeof chinh==='object')?chinh:g[0],rest=g.filter(x=>x!==keep);   // forEach truyền số thứ tự vào đây -> chỉ nhận khi đúng là 1 dòng khách
@@ -6558,25 +6562,48 @@ function rptSlTrungMaHtml(ds){
   if(!ds||!ds.length)return '';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const q=String.fromCharCode(39);
+  const nhan=(t,c)=>'<span style="display:inline-block;margin:1px 4px 1px 0;font-size:10.5px;font-weight:800;padding:1px 8px;border-radius:10px;background:'+c+';color:#fff;white-space:nowrap">'+t+'</span>';
+  const ten9=t=>rptSlChuTen(t).map(rptSlBoDau).join(' ');
   return ds.map((r,j)=>{
     const kc=(r.kiotCusts||[])[0]||{};
-    const nguon=rptSlNguonGon(r);
+    const dong=(r.nguonLienHe&&r.nguonLienHe.length?r.nguonLienHe:[{leadId:r.leadId,ngay:r.created,kenh:r.kenh,ten:r.name,sale:r.staff,sdt:[]}]);
+    const dau=dong[0];
+    const so9=x=>(x.sdt||[]).map(rptSlLast9).filter(Boolean);
+    // CHÚ THÍCH NHÓM (anh Hải 25/9/2026): chỉ ghi ĐIỂM CHUNG + LÝ DO NGHI, không gắn nhãn từng dòng.
+    const diem=['cùng Mã KH '+e(r.kh)];
+    const theoTen={};dong.forEach(x=>{const k=ten9(x.ten);if(k)(theoTen[k]=theoTen[k]||[]).push(x);});
+    Object.values(theoTen).filter(g=>g.length>1).forEach(g=>diem.push(g.length+' dòng cùng tên '+e(g[0].ten)));
+    const theoSo={};dong.forEach(x=>[...new Set(so9(x))].forEach(k=>(theoSo[k]=theoSo[k]||[]).push(x)));
+    Object.entries(theoSo).filter(([,g])=>g.length>1).forEach(([k,g])=>diem.push(g.length+' dòng cùng SĐT '+e((g[0].sdt||[]).find(p=>rptSlLast9(p)===k)||k)));
+    const nghi=dong.slice(1).map(x=>{
+      const khacTen=ten9(x.ten)!==ten9(dau.ten),coSo=so9(x).length>0,cungSo=so9(x).some(k=>so9(dau).includes(k));
+      if(!khacTen&&(cungSo||!coSo)&&coSo)return '';
+      const y=[khacTen?'khác tên':'',!coSo?'không để lại SĐT':(!cungSo?'khác SĐT':'')].filter(Boolean);
+      if(!y.length)return '';
+      return '<b>'+e(x.leadId)+'</b> ('+e(x.ten||'—')+') '+y.join(', ')+(khacTen&&!cungSo?' — chỉ nối được bằng Mã KH Sale ghi trong Pancake':'');
+    }).filter(Boolean);
     return '<div style="border-top:1px solid var(--border)">'
-      +'<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:var(--bg2);flex-wrap:wrap">'
-      +'<span style="font-size:12px;font-weight:800">'+e(r.name)+' · '+nguon.length+' dòng chung mã '+e(r.kh)+'</span>'
-      +'<span style="font-size:10.5px;font-weight:800;padding:1px 8px;border-radius:10px;background:var(--red);color:#fff">có dòng không có SĐT để đối chiếu</span>'
+      +'<div style="display:flex;align-items:center;gap:10px;padding:9px 16px 4px;background:var(--bg2);flex-wrap:wrap">'
+      +'<span style="font-size:12px;font-weight:800">Mã '+e(r.kh)+' đang dùng cho '+dong.length+' dòng</span>'
       +'<span style="margin-left:auto;display:flex;gap:6px">'
       +'<button onclick="rptSlShowTrungMa('+q+String(r.key).replace(/'/g,'')+q+')" class="btn-ghost" style="padding:3px 10px;font-size:11px">Xem chi tiết</button>'
       +'</span></div>'
+      +'<div style="padding:0 16px 8px;background:var(--bg2);font-size:11.5px;line-height:1.7">'
+        +'<div><span style="font-weight:800;color:var(--green)">Điểm chung:</span> '+diem.join(' · ')+'</div>'
+        +(nghi.length?'<div><span style="font-weight:800;color:var(--red)">Nghi vì:</span> '+nghi.join(' · ')+'</div>':'')+'</div>'
       +'<table style="width:100%"><tbody>'
-      +nguon.map(x=>rptSlTrMo(r)
-        +'<td style="width:34px" onclick="rptSlStop(event)"><input type="checkbox" class="gopTick" data-nhom="m'+j+'" value="'+e((x.leadIds||[])[0]||'')+'" onchange="rptSlGopDem()" style="cursor:pointer;width:15px;height:15px"></td>'
+      +dong.map((x,i)=>rptSlTrMo(r)
+        +'<td style="width:34px" onclick="rptSlStop(event)"><input type="checkbox" class="gopTick" data-nhom="m'+j+'" value="'+e(x.leadId||'')+'" onchange="rptSlGopDem()" style="cursor:pointer;width:15px;height:15px"></td>'
         +'<td style="white-space:nowrap;width:90px">'+(dmy(x.ngay)||'—')+'</td>'
+        +'<td class="name">'+(x.chat?'<a href="'+e(x.chat)+'" target="_blank" rel="noopener" onclick="rptSlStop(event)" title="Mở hội thoại Pancake" style="color:inherit;text-decoration:none;border-bottom:1px dashed var(--accent)">'+e(x.ten||'—')+'</a>':e(x.ten||'—'))
+          +'<div style="font-size:10.5px;font-weight:700;color:var(--muted);margin-top:1px">'+e(x.leadId||'')+'</div></td>'
         +'<td style="font-size:11.5px;font-weight:700">'+e(x.kenh||'—')+'</td>'
-        +'<td style="white-space:nowrap;font-size:11.5px">'+((x.sdt||[]).length?e(x.sdt.join(', ')):'<span style="color:var(--red);font-weight:700">không có SĐT</span>')+'</td>'
-        +'<td style="font-size:11px;color:var(--muted);font-weight:700">'+e(x.leadIds.join(' · '))+'</td></tr>').join('')
-      +'<tr><td></td><td style="color:var(--muted);font-size:11px">bên Kiot</td><td colspan="3" style="font-size:11.5px">'
-        +rptSlKiotLink(r.kh,e(kc.name||r.kh)+' ↗')+(kc.phone?' · '+e(kc.phone):'')+'</td></tr>'
+        +'<td style="font-size:11.5px">'+(x.sale?e(x.sale):'<span style="color:var(--muted)">—</span>')+'</td>'
+        +'<td style="white-space:nowrap;font-size:11.5px">'+((x.sdt||[]).length?e(x.sdt.join(', ')):'<span style="color:var(--red);font-weight:700">không để lại SĐT</span>')+'</td>'
+        +'</tr>').join('')
+      +'<tr><td></td><td style="color:var(--muted);font-size:11px">bên Kiot</td><td colspan="4" style="font-size:11.5px">'
+        +rptSlKiotLink(r.kh,e(kc.name||r.kh)+' ↗')+(kc.phone?' · '+e(kc.phone):'')
+        +((r.kords||[]).length?' · '+(r.kords||[]).map(o=>e(o.code)+' '+(dmy(String(o.purchase_date).slice(0,10))||'')+' '+vnd(o.total)).join(', '):'')+'</td></tr>'
       +'</tbody></table>'
       +'<div style="padding:6px 16px 10px;font-size:11px;color:var(--muted)">Cùng 1 người → tích các dòng rồi bấm Xác nhận. Không phải → sửa lại Mã KH trong ghi chú Pancake của dòng không có SĐT.</div>'
       +'</div>';
