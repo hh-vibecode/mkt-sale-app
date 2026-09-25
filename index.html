@@ -4592,7 +4592,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 15:31';
+const APP_VERSION='25/09 15:34';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -4601,9 +4601,16 @@ async function appKiemBanMoi(){
   try{
     const r=await fetch(location.pathname+'?v='+Date.now(),{method:'HEAD',cache:'no-store'});
     const et=r.headers.get('etag')||r.headers.get('last-modified')||'';
-    if(!et)return;
-    if(!window._appETag){window._appETag=et;return;}
-    if(window._appETag===et||document.getElementById('appBanMoi'))return;
+    if(!et||document.getElementById('appBanMoi'))return;
+    // Mốc so sánh = giờ sửa của CHÍNH bản đang chạy (document.lastModified), không phải lần hỏi đầu tiên:
+    // trình duyệt mở bản cũ từ bộ nhớ đệm thì lần hỏi đầu đã là bản mới -> trước đây lấy làm mốc nên
+    // không bao giờ báo (anh Hải 25/9/2026 bấm mãi không thấy tính năng mới).
+    const lmMay=Date.parse(r.headers.get('last-modified')||''),lmDangChay=Date.parse(document.lastModified||'');
+    const cuHon=lmMay&&lmDangChay&&lmMay-lmDangChay>60000;
+    if(!cuHon){
+      if(!window._appETag){window._appETag=et;return;}
+      if(window._appETag===et)return;
+    }
     const d=document.createElement('div');d.id='appBanMoi';
     d.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:4100;background:var(--accent);'
       +'color:#fff;border-radius:999px;padding:9px 16px;font-family:var(--font);font-size:12.5px;font-weight:700;'
@@ -4614,7 +4621,8 @@ async function appKiemBanMoi(){
     document.body.appendChild(d);
   }catch(e){}
 }
-setInterval(appKiemBanMoi,5*60*1000);setTimeout(appKiemBanMoi,4000);
+setInterval(appKiemBanMoi,2*60*1000);setTimeout(appKiemBanMoi,4000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)appKiemBanMoi();});   // quay lại tab app là hỏi ngay
 function rptBaoLoi(nguon,e){
   const msg=String((e&&(e.stack||e.message))||e||'').slice(0,600);
   window._loiCuoi={nguon,msg,luc:new Date().toISOString()};
