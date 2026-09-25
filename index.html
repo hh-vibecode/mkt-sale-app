@@ -4034,13 +4034,8 @@ function rptSlKhopNhanSu(t,ds){
     const duChu=ngan.length>=2||(ngan.length===1&&ngan===tb);
     return duChu&&ngan.length<dai.length&&ngan[ngan.length-1]===dai[dai.length-1]&&ngan.every(w=>dai.includes(w));
   });
-  if(ung.length===1)return ung[0];
-  // TRÙNG TÊN GỌI (chữ cuối, giữ dấu): chỉ đúng 1 Sale trong danh sách có tên gọi đó thì gộp luôn -- anh Hải
-  // 25/9/2026: thêm Sale "Đặng Thị Minh Oanh" thì người tạo đơn Kiot "Bùi Thị Kim Oanh" cũng về Oanh.
-  // Có từ 2 Sale cùng tên gọi (vd 2 Ngọc) thì KHÔNG đoán, giữ nguyên.
-  const goi=ta[ta.length-1];
-  const cungGoi=ten.filter(x=>{const tb=x.toLowerCase().split(' ');return tb[tb.length-1]===goi;});
-  return cungGoi.length===1?cungGoi[0]:null;
+  // KHÔNG gộp theo tên gọi (chữ cuối): Bùi Thị Kim Oanh và Đặng Thị Minh Oanh là 2 người khác nhau (anh Hải 25/9/2026)
+  return ung.length===1?ung[0]:null;
 }
 let _rptSlTenCache=null;   // nhớ kết quả theo tên gốc, xoá khi danh sách nhân sự đổi (hàm này chạy cho từng đơn)
 function rptSlSaleName(x){
