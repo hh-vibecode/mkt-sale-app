@@ -4123,8 +4123,10 @@ function rptSlParseMoney(raw){
 // SỬA HỒ SƠ KHÁCH SỈ ngay ở Master (Sale báo 24/9/2026: khai thác được thông tin mới thì không biết
 // điền vào đâu -- trước đây chỉ sửa được bên CRM). Ghi vào saleretail_manual, dùng chung với CRM.
 // Ô CHỌN của hồ sơ Sỉ -- đúng danh sách trong tab Dropdown List của sheet Sale Sỉ (anh Hải 24/9/2026).
-const RPT_SI_CHON={si_mo_hinh:['Hộ Kinh Doanh','Công Ty'],si_tai_chinh:['Thanh toán đúng hạn','Công nợ xấu']};
-RPT_SI_CHON.mohinh=RPT_SI_CHON.si_mo_hinh;RPT_SI_CHON.taichinh=RPT_SI_CHON.si_tai_chinh;
+// Nhóm khách hàng: 3 giá trị dropdown bên sheet Sale Sỉ (anh Hải 25/9/2026).
+const RPT_SI_CHON={si_mo_hinh:['Hộ Kinh Doanh','Công Ty'],si_tai_chinh:['Thanh toán đúng hạn','Công nợ xấu'],
+  si_nhom_kh:['Khách buôn','Đại Lí','Đại Lí Chiến Lược']};
+RPT_SI_CHON.mohinh=RPT_SI_CHON.si_mo_hinh;RPT_SI_CHON.taichinh=RPT_SI_CHON.si_tai_chinh;RPT_SI_CHON.nhom=RPT_SI_CHON.si_nhom_kh;
 // Vẽ 1 ô nhập: có trong RPT_SI_CHON thì là ô chọn (giữ cả giá trị cũ lạ nếu có), còn lại là ô gõ.
 function rptSiO(id,khoa,gt,ip){
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
@@ -4261,7 +4263,7 @@ function rptSiOSua(r){
   o.si_mo_hinh={kieu:'chon',ds:RPT_SI_CHON.si_mo_hinh,gt:r.siMoHinh||'',noi:'mn',cot:'si_mo_hinh'};
   o.si_dien_tich={kieu:'text',gt:r.siDienTich||'',noi:'mn',cot:'si_dien_tich'};
   o.si_tai_chinh={kieu:'chon',ds:RPT_SI_CHON.si_tai_chinh,gt:r.siTaiChinh||'',noi:'mn',cot:'si_tai_chinh'};
-  o.si_nhom_kh={kieu:'text',gt:r.siNhomKH||'',noi:'mn',cot:'si_nhom_kh'};
+  o.si_nhom_kh={kieu:'chon',ds:RPT_SI_CHON.si_nhom_kh,gt:r.siNhomKH||'',noi:'mn',cot:'si_nhom_kh'};
   o.si_giay_phep={kieu:'text',gt:r.siGiayPhep||'',noi:'mn',cot:'si_giay_phep'};
   o.si_fanpage={kieu:'text',gt:r.siFanpage||'',noi:'mn',cot:'si_fanpage'};
   if(!r.isChot)o.tiem_nang={kieu:'tien',gt:r.potential?num(r.potential):'',noi:'mn',cot:'potential_value'};
