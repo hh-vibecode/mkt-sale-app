@@ -6791,13 +6791,13 @@ function rptSlInputHtml(){
       ${mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow')}
     </div>
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
+    ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất — không tính vào tổng việc cần làm',nghi.length,'var(--red)',rptSlTrungHtml(nghi),true)}
     ${rptSlInputSec('s2','','Mã KH đã điền nhưng không tồn tại bên Kiot','dán lại mã đúng, app ghi sang Pancake',b.maSai.length,'var(--yellow)',s2,true)}
     ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
     ${rptSlInputSec('sLoi','','Lỗi hệ thống — cần báo người tạo app kiểm tra','số liệu trong app vẫn đúng, chỉ chưa đẩy được sang Pancake',b.loiHT.length,'var(--red)',sLoi,true)}
     ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--accent)',s3)}
     ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
     ${rptSlInputSec('s8','','Chưa ghi nội dung trao đổi','ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuND.length,'var(--accent)',s8)}
-    ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất — không tính vào tổng việc cần làm',nghi.length,'var(--yellow)',rptSlTrungHtml(nghi))}
 `;
 }
 // ── CRM: TOÀN BỘ khách chốt + tiềm năng từ Master đổ sang, mỗi khách 1 DÒNG.
