@@ -394,6 +394,8 @@ function dashLuuTaiKhoan(account){
   document.getElementById('loginGate').style.display='none';applyRole();
 }
 async function doLogin(){
+  // chặn bấm 2 lần / Enter + bấm nút cùng lúc -> 2 lượt đăng nhập song song (nhật ký 25/9/2026 thấy 2 lượt cách 0,3s)
+  if(window._dangDangNhap)return;window._dangDangNhap=true;setTimeout(()=>{window._dangDangNhap=false;},4000);
   const u=(document.getElementById('loginUser').value||'').trim().toLowerCase();
   const p=document.getElementById('loginPass').value||'';
   const acc=AUTH_USERS[u];
@@ -860,7 +862,10 @@ window.fetch=async function(input,init){
       if(s2&&s2.access_token&&s2.access_token!==s.access_token){
         const h2=Object.assign({},init&&init.headers);h2.Authorization='Bearer '+s2.access_token;
         res=await _fetchGoc(input,Object.assign({},init,{headers:h2}));}
-      if(res.status===401&&typeof logout==='function'&&localStorage.getItem('dashUser')){localStorage.removeItem('sbPhien');logout();}
+      // CHỈ đăng xuất khi phiên THẬT SỰ chết (không gia hạn được). Gia hạn được mà chỗ đó vẫn 401 thì là lỗi quyền
+      // của riêng chỗ đó, không phải hết phiên -> không đá người dùng ra (anh Hải 25/9/2026: 'thỉnh thoảng bị log ra').
+      const chet=!(s2&&s2.access_token);
+      if(res.status===401&&chet&&typeof logout==='function'&&localStorage.getItem('dashUser')){localStorage.removeItem('sbPhien');logout();}
     }
     return res;
   }
@@ -4646,7 +4651,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 17:27';
+const APP_VERSION='25/09 17:33';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
