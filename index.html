@@ -5566,12 +5566,15 @@ function rptSiPhanLoaiHtml(v,esc){
   return '<span style="display:inline-block;white-space:nowrap;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:800;'
     +'color:'+mau+';background:color-mix(in srgb,'+mau+' 14%,transparent);border:1px solid color-mix(in srgb,'+mau+' 38%,transparent)">'+chu+'</span>';
 }
-// Cột Nguồn của Master Sỉ = Nguồn khách Online / Offline (anh Hải 25/9/2026), chưa ghi thì để "—".
+// Cột Nguồn của Master Sỉ: ghi rõ cả nguồn khách lẫn đường vào app (anh Hải 25/9/2026), vì Online có
+// khách nhắn Pancake nhưng cũng có khách Online do Sale nhập tay:
+//   Online · Pancake  |  Online · Nhập tay  |  Offline  |  Nhập tay (chưa ghi Online/Offline)
 function rptSiNguonChip(r){
   const n=rptSiNguonCua(r);
-  if(n!=='Online'&&n!=='Offline')return '<span style="color:var(--muted)">—</span>';
-  const m=n==='Online'?['var(--accent-l)','var(--accent)']:['rgba(245,158,11,.15)','#b45309'];
-  return '<span style="display:inline-block;padding:2px 8px;border-radius:20px;background:'+m[0]+';color:'+m[1]+';font-size:10.5px;font-weight:800;white-space:nowrap">'+n+'</span>';
+  const chip=(t,nen,chu)=>'<span style="display:inline-block;padding:2px 8px;border-radius:20px;background:'+nen+';color:'+chu+';font-size:10.5px;font-weight:800;white-space:nowrap">'+t+'</span>';
+  if(n==='Offline')return chip('Offline','rgba(245,158,11,.15)','#b45309');
+  if(n==='Online')return r.isManual?chip('Online · Nhập tay','rgba(249,115,22,.14)','#c2410c'):chip('Online · Pancake','var(--accent-l)','var(--accent)');
+  return r.isManual?chip('Nhập tay','var(--bg2)','var(--text2)'):'<span style="color:var(--muted)">—</span>';
 }
 function rptSlMasterRowSi(r){
   const e=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
