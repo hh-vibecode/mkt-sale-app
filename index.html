@@ -6521,10 +6521,11 @@ function rptSlNghiTrung(all){
 // nhắn TikTok không để lại số, chỉ có mã Sale gõ vào ghi chú). Đây là câu hỏi "có phải 1 người không"
 // nên nằm ở mục Nghi trùng (anh Hải 25/9/2026), không nằm ở "Mã KH nghi gán nhầm".
 function rptSlTrungMaHtml(ds){
+  window._rptSlTrungMa=ds||[];
   if(!ds||!ds.length)return '';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const q=String.fromCharCode(39);
-  return ds.map(r=>{
+  return ds.map((r,j)=>{
     const kc=(r.kiotCusts||[])[0]||{};
     const nguon=rptSlNguonGon(r);
     return '<div style="border-top:1px solid var(--border)">'
@@ -6533,18 +6534,18 @@ function rptSlTrungMaHtml(ds){
       +'<span style="font-size:10.5px;font-weight:800;padding:1px 8px;border-radius:10px;background:var(--red);color:#fff">có dòng không có SĐT để đối chiếu</span>'
       +'<span style="margin-left:auto;display:flex;gap:6px">'
       +'<button onclick="rptSlShowTrungMa('+q+String(r.key).replace(/'/g,'')+q+')" class="btn-ghost" style="padding:3px 10px;font-size:11px">Xem chi tiết</button>'
-      +'<button onclick="rptSlMaOk('+q+r.leadId+q+','+q+String(r.name||'').replace(/'/g,'')+q+')" class="btn-ghost" style="padding:3px 10px;font-size:11px;color:var(--green);font-weight:800">✓ Cùng 1 người</button>'
       +'</span></div>'
       +'<table style="width:100%"><tbody>'
       +nguon.map(x=>'<tr>'
+        +'<td style="width:34px"><input type="checkbox" class="gopTick" data-nhom="m'+j+'" value="'+e((x.leadIds||[])[0]||'')+'" onchange="rptSlGopDem()" style="cursor:pointer;width:15px;height:15px"></td>'
         +'<td style="white-space:nowrap;width:90px">'+(dmy(x.ngay)||'—')+'</td>'
         +'<td style="font-size:11.5px;font-weight:700">'+e(x.kenh||'—')+'</td>'
         +'<td style="white-space:nowrap;font-size:11.5px">'+((x.sdt||[]).length?e(x.sdt.join(', ')):'<span style="color:var(--red);font-weight:700">không có SĐT</span>')+'</td>'
         +'<td style="font-size:11px;color:var(--muted);font-weight:700">'+e(x.leadIds.join(' · '))+'</td></tr>').join('')
-      +'<tr><td style="color:var(--muted);font-size:11px">bên Kiot</td><td colspan="3" style="font-size:11.5px">'
+      +'<tr><td></td><td style="color:var(--muted);font-size:11px">bên Kiot</td><td colspan="3" style="font-size:11.5px">'
         +rptSlKiotLink(r.kh,e(kc.name||r.kh)+' ↗')+(kc.phone?' · '+e(kc.phone):'')+'</td></tr>'
       +'</tbody></table>'
-      +'<div style="padding:6px 16px 10px;font-size:11px;color:var(--muted)">Không phải cùng 1 người → sửa lại Mã KH trong ghi chú Pancake của dòng không có SĐT.</div>'
+      +'<div style="padding:6px 16px 10px;font-size:11px;color:var(--muted)">Cùng 1 người → tích các dòng rồi bấm Xác nhận. Không phải → sửa lại Mã KH trong ghi chú Pancake của dòng không có SĐT.</div>'
       +'</div>';
   }).join('');
 }
@@ -6555,7 +6556,7 @@ function rptSlTrungHtml(nhomDs,them){
   const q=String.fromCharCode(39);
   const bar='<div id="gopBar" hidden style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;background:var(--accent-l);border-bottom:1.5px solid var(--accent)">'
     +'<span id="gopDem" style="font-size:12.5px;font-weight:800;color:var(--accent)">Đã chọn 0 khách</span>'
-    +'<span style="font-size:11.5px;font-weight:700;color:var(--muted)">Hồ sơ chính</span>'
+    +'<span id="gopChinhNhan" style="font-size:11.5px;font-weight:700;color:var(--muted)">Hồ sơ chính</span>'
     +'<select id="gopChinh" style="height:32px;min-width:220px;padding:3px 10px;border:1.5px solid var(--accent);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer"></select>'
     +'<button id="gopOk" onclick="rptSlHopNhat()" disabled style="margin:0;height:32px;padding:0 20px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:800;font-family:var(--font);opacity:.4;cursor:not-allowed">Hợp nhất dữ liệu</button>'
     +'<button onclick="rptSlGopBoChon()" class="btn-ghost" style="margin:0;height:32px;padding:0 14px;font-size:12px">Bỏ chọn</button>'
@@ -6584,7 +6585,7 @@ function rptSlTrungHtml(nhomDs,them){
     +daGop.map(([id,m])=>'<div style="display:flex;align-items:center;gap:10px;padding:4px 0;font-size:12px">'
       +'<b>'+e(id)+'</b><span style="color:var(--muted)">gộp vào</span><b>'+e(m.gop_vao)+'</b>'
       +'<button onclick="rptSlTachRa('+q+e(id)+q+')" class="btn-ghost" style="margin-left:auto;padding:2px 10px;font-size:11px">Tách ra</button></div>').join('')+'</div>':'';
-  if(!nhomDs.length)return (them||'<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không có nhóm nào nghi trùng</div>')+gopHtml;
+  if(!nhomDs.length&&!them)return ('<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không có nhóm nào nghi trùng</div>')+gopHtml;
   return bar+khoi+(them||'')+gopHtml;
 }
 function rptSlGopDem(){
@@ -6594,18 +6595,27 @@ function rptSlGopDem(){
   const nhom=[...new Set(tick.map(c=>c.getAttribute('data-nhom')))];
   const msg=document.getElementById('gopMsg');
   if(msg)msg.textContent=nhom.length>1?'Chỉ hợp nhất các khách trong CÙNG 1 nhóm':'';
+  const laMa=nhom.length===1&&String(nhom[0]).charAt(0)==='m';
+  ['gopChinh','gopChinhNhan'].forEach(id=>{const x=document.getElementById(id);if(x)x.hidden=laMa;});
+  const nut=document.getElementById('gopOk');if(nut)nut.textContent=laMa?'Xác nhận cùng 1 người':'Hợp nhất dữ liệu';
   const sel=document.getElementById('gopChinh');
-  if(sel){const cu=sel.value;const g=(window._rptSlNghiTrung||[])[Number(nhom[0])]||{rows:[]};
+  if(sel&&!laMa){const cu=sel.value;const g=(window._rptSlNghiTrung||[])[Number(nhom[0])]||{rows:[]};
     const ds=g.rows.filter(r=>tick.some(c=>c.value===r.leadId));
     sel.innerHTML=ds.map(r=>'<option value="'+r.leadId+'">'+String(r.name).replace(/</g,'&lt;')+' · '+r.leadId+' · '+(dmy(r.created)||'')+'</option>').join('');
     if(ds.some(r=>r.leadId===cu))sel.value=cu;}
   const ok=tick.length>=2&&nhom.length===1;
-  const b=document.getElementById('gopOk');if(b){b.disabled=!ok;b.style.opacity=ok?'1':'.4';b.style.cursor=ok?'pointer':'not-allowed';}
+  const b=nut;if(b){b.disabled=!ok;b.style.opacity=ok?'1':'.4';b.style.cursor=ok?'pointer':'not-allowed';}
 }
 function rptSlGopBoChon(){document.querySelectorAll('.gopTick').forEach(c=>{c.checked=false;});rptSlGopDem();}
 function rptSlLoiCot(e){return /gop_vao|khac_nguoi/.test(String(e&&e.message||e))
   ?'CSDL chưa có cột mới — chạy file supabase-schema-gop-khach.sql trong Supabase > SQL Editor rồi thử lại':String(e&&e.message||e);}
 async function rptSlHopNhat(){
+  const nhomTick=[...new Set([...document.querySelectorAll('.gopTick:checked')].map(c=>c.getAttribute('data-nhom')))];
+  if(nhomTick.length===1&&String(nhomTick[0]).charAt(0)==='m'){   // chung mã: đã là 1 khách, chỉ cần xác nhận
+    const r=(window._rptSlTrungMa||[])[Number(nhomTick[0].slice(1))];
+    if(r)await rptSlMaOk(r.leadId,r.name);
+    return;
+  }
   const tick=[...document.querySelectorAll('.gopTick:checked')].map(c=>c.value);
   const chinh=(document.getElementById('gopChinh')||{}).value;
   if(tick.length<2||!chinh)return;
