@@ -2969,6 +2969,17 @@ async function dhNhanSuThem(){
 }
 // SỬA TÊN nhân sự Sale (anh Hải 25/9/2026, thay cho nút "Đổi sang Lẻ/Sỉ"). Đổi tên thì chuyển luôn các khách
 // đang gán tay cho tên cũ (si_sale) sang tên mới, để không khách nào rơi về "chưa gán".
+async function dhNhanSuDoiTen(id,moi){
+  const x=saleNhanSuDS().find(y=>y.id===id)||{};const cu=String(x.ten||'');
+  const H={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  const r=await fetch(SUPABASE_URL+'/rest/v1/sale_nhan_su?id=eq.'+id,{method:'PATCH',headers:H,body:JSON.stringify({ten:moi})});
+  if(!r.ok)throw new Error('lỗi '+r.status);
+  const r2=await fetch(SUPABASE_URL+'/rest/v1/saleretail_manual?si_sale=eq.'+encodeURIComponent(cu),{method:'PATCH',headers:H,body:JSON.stringify({si_sale:moi})});
+  if(!r2.ok)throw new Error('chuyển khách sang tên mới lỗi '+r2.status);
+  Object.values(rptSlManual||{}).forEach(m=>{if(m&&m.si_sale===cu)m.si_sale=moi;});
+  logAct('U','sale_nhan_su',String(id),cu,'Tên Sale',cu,moi);
+  await saleNhanSuLoad(true);window._kiotOrdByCode=null;rptSlXoaCache();
+}
 async function dhNhanSuSua(id){
   if(!dashToanQuyen())return;
   const x=saleNhanSuDS().find(y=>y.id===id)||{};
@@ -4172,6 +4183,8 @@ const DM_LOAI={
   si_tai_chinh:{ten:'Khả năng tài chính',ds:()=>RPT_SI_CHON.si_tai_chinh,cot:[['saleretail_manual','si_tai_chinh']]},
   si_nhom_kh:{ten:'Nhóm khách hàng',ds:()=>RPT_SI_CHON.si_nhom_kh,cot:[['saleretail_manual','si_nhom_kh']]},
   kenh_nhap_tay:{ten:'Kênh',ds:()=>DH_MANUAL_KENH,cot:[['datahub_manual','kenh']]},
+  // danh sách Sale = bảng Nhân sự Sale: thêm / đổi tên (chuyển luôn khách đang gán) / "xoá" = cho nghỉ
+  sale_le:{ten:'Sale Lẻ',nhanSu:'Lẻ'},sale_si:{ten:'Sale Sỉ',nhanSu:'Sỉ'},
 };
 const DM_MAU=['#4361ee','#0ea5e9','#16a34a','#f59e0b','#f97316','#e11d48','#8b5cf6','#7209b7','#8d99ae','#111827'];
 let _dm=[],_dmLuc=0;
@@ -4179,9 +4192,14 @@ async function dmLoad(force){
   if(!force&&_dm.length&&Date.now()-_dmLuc<60000)return _dm;
   try{_dm=await sbFetchAll('danh_muc','select=*&order=loai,thu_tu,id');_dmLuc=Date.now();}catch(e){return _dm;}
   // đổ vào đúng mảng app đang dùng (sửa TẠI CHỖ để mọi chỗ trỏ tới mảng đó thấy ngay)
-  Object.keys(DM_LOAI).forEach(l=>{const rows=_dm.filter(x=>x.loai===l);if(!rows.length)return;
+  Object.keys(DM_LOAI).forEach(l=>{if(!DM_LOAI[l].ds)return;const rows=_dm.filter(x=>x.loai===l);if(!rows.length)return;
     const a=DM_LOAI[l].ds();a.length=0;rows.forEach(x=>a.push(x.gia_tri));});
   return _dm;
+}
+function dmDs(loai){
+  const ns=DM_LOAI[loai]&&DM_LOAI[loai].nhanSu;
+  if(ns)return saleNhanSuDS().filter(x=>x.doi===ns&&x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>({id:x.id,gia_tri:x.ten,mau:'#4361ee',he_thong:false,ns:true}));
+  return _dm.filter(x=>x.loai===loai);
 }
 function dmMau(loai,v){const x=_dm.find(y=>y.loai===loai&&y.gia_tri===v);return (x&&x.mau)||'';}
 // bút ✏ cạnh dropdown -- chỉ tài khoản toàn quyền
@@ -4229,10 +4247,10 @@ function dmVe(){
       +'<input id="dmTen" value="'+e(x.gia_tri)+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();dmDoiTen('+x.id+',this.value);}else if(event.key===\'Escape\'){window._dmSua=null;dmVe();}"'
       +' style="flex:1;min-width:0;height:28px;padding:2px 8px;border:1.5px solid var(--accent);border-radius:7px;background:var(--surface);color:var(--text);font-size:12px;font-family:var(--font);outline:none"></div>';
     const menu=window._dmMenu===x.id?'<div style="padding:6px 6px 8px 10px;display:flex;flex-direction:column;gap:6px">'
-      +'<div style="display:flex;gap:5px;flex-wrap:wrap">'+DM_MAU.map(c=>'<span onclick="dmDoiMau('+x.id+',\''+c+'\')" title="Đổi màu" style="width:16px;height:16px;border-radius:50%;cursor:pointer;background:'+c+';'+(c===x.mau?'outline:2px solid var(--text);outline-offset:1px':'')+'"></span>').join('')+'</div>'
+      +(x.ns?'':'<div style="display:flex;gap:5px;flex-wrap:wrap">'+DM_MAU.map(c=>'<span onclick="dmDoiMau('+x.id+',\''+c+'\')" title="Đổi màu" style="width:16px;height:16px;border-radius:50%;cursor:pointer;background:'+c+';'+(c===x.mau?'outline:2px solid var(--text);outline-offset:1px':'')+'"></span>').join('')+'</div>')
       +(x.he_thong?'<div style="font-size:10.5px;color:var(--muted);font-weight:600">Giá trị hệ thống — chỉ đổi màu được</div>'
         :'<div style="display:flex;gap:6px"><button onclick="window._dmSua='+x.id+';dmVe();setTimeout(()=>{const i=document.getElementById(\'dmTen\');if(i){i.focus();i.select();}},0)" class="btn-ghost" style="margin:0;height:26px;padding:0 10px;font-size:11px">Đổi tên</button>'
-        +'<button onclick="dmXoa('+x.id+')" class="btn-ghost" style="margin:0;height:26px;padding:0 10px;font-size:11px;color:var(--red)">Xoá</button></div>')
+        +'<button onclick="dmXoa('+x.id+')" class="btn-ghost" style="margin:0;height:26px;padding:0 10px;font-size:11px;color:var(--red)">'+(x.ns?'Cho nghỉ':'Xoá')+'</button></div>')
       +'</div>':'';
     return '<div style="display:flex;align-items:center;gap:6px;padding:4px 4px;border-radius:7px;background:'+(window._dmMenu===x.id?'var(--bg2)':'transparent')+'">'
       +pill(x)+'<button onclick="window._dmMenu=(window._dmMenu==='+x.id+'?null:'+x.id+');dmVe()" title="Đổi tên / màu / xoá" style="margin-left:auto;border:none;background:var(--bg2);border-radius:6px;cursor:pointer;font-weight:800;color:var(--muted);height:22px;padding:0 7px">···</button></div>'+menu;
@@ -4241,7 +4259,7 @@ function dmVe(){
     +'<input id="dmThem" placeholder="Chọn hoặc thêm mới" onkeydown="if(event.key===\'Enter\'){event.preventDefault();dmThem(this.value);}else if(event.key===\'Escape\')dmDong();"'
     +' style="width:100%;box-sizing:border-box;height:32px;padding:4px 9px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px;font-family:var(--font);outline:none;margin-bottom:6px">'
     +'<div id="dmMsg" style="font-size:11px;font-weight:700;color:var(--red);margin:0 4px 4px"></div>'
-    +_dm.filter(x=>x.loai===loai).map(dong).join('');
+    +dmDs(loai).map(dong).join('');
 }
 function dmBao(t){const m=document.getElementById('dmMsg');if(m)m.textContent=t||'';}
 async function dmGhi(url,method,body){
@@ -4250,8 +4268,14 @@ async function dmGhi(url,method,body){
 }
 async function dmThem(v){
   const loai=window._dmLoai;v=String(v||'').replace(/\s+/g,' ').trim();if(!v)return;
-  const ds=_dm.filter(x=>x.loai===loai);
+  const ds=dmDs(loai);
   if(ds.some(x=>x.gia_tri.toLowerCase()===v.toLowerCase()))return dmBao('Đã có "'+v+'"');
+  if(DM_LOAI[loai].nhanSu){
+    try{await sbInsert('sale_nhan_su',{ten:v,doi:DM_LOAI[loai].nhanSu,created_by:logWho()});logAct('C','sale_nhan_su',null,v,'Nhân sự Sale','',DM_LOAI[loai].nhanSu);
+      await saleNhanSuLoad(true);window._dmDoi=true;dmVe();const o=document.getElementById('dmThem');if(o)o.focus();}
+    catch(e){dmBao('Chưa thêm được: '+e.message);}
+    return;
+  }
   try{
     await dmGhi('danh_muc','POST',{loai,gia_tri:v,mau:DM_MAU[ds.length%DM_MAU.length],thu_tu:ds.reduce((m,x)=>Math.max(m,x.thu_tu||0),0)+1});
     logAct('C','danh_muc',loai,DM_LOAI[loai].ten,'Thêm lựa chọn','',v);
@@ -4263,7 +4287,14 @@ async function dmDoiMau(id,mau){
   catch(e){dmBao('Chưa đổi được màu: '+e.message);}
 }
 async function dmDoiTen(id,v){
-  const x=_dm.find(y=>y.id===id);if(!x)return;
+  const x=dmDs(window._dmLoai).find(y=>y.id===id);if(!x)return;
+  if(x.ns){
+    v=String(v||'').replace(/\s+/g,' ').trim();
+    if(!v||v===x.gia_tri){window._dmSua=null;return dmVe();}
+    if(dmDs(window._dmLoai).some(y=>y.id!==id&&y.gia_tri.toLowerCase()===v.toLowerCase()))return dmBao('Đã có "'+v+'"');
+    try{await dhNhanSuDoiTen(id,v);window._dmSua=null;window._dmMenu=null;window._dmDoi=true;dmVe();}catch(e){dmBao('Chưa đổi được tên: '+e.message);}
+    return;
+  }
   v=String(v||'').replace(/\s+/g,' ').trim();
   if(!v||v===x.gia_tri){window._dmSua=null;return dmVe();}
   if(x.he_thong)return dmBao('Giá trị hệ thống, không đổi tên được');
@@ -4281,7 +4312,13 @@ async function dmDoiTen(id,v){
   }catch(e){dmBao('Chưa đổi được tên: '+e.message);}
 }
 async function dmXoa(id){
-  const x=_dm.find(y=>y.id===id);if(!x)return;
+  const x=dmDs(window._dmLoai).find(y=>y.id===id);if(!x)return;
+  if(x.ns){
+    if(!confirm('Cho "'+x.gia_tri+'" nghỉ?\n\nNgười này biến khỏi mọi ô chọn Sale. Khách họ đang giữ KHÔNG mất, cho làm lại được ở Nhân sự Sale.'))return;
+    try{await dmGhi('sale_nhan_su?id=eq.'+id,'PATCH',{dang_lam:false});logAct('U','sale_nhan_su',String(id),x.gia_tri,'Trạng thái','đang làm','nghỉ');
+      await saleNhanSuLoad(true);window._dmMenu=null;window._dmDoi=true;dmVe();}catch(e){dmBao('Chưa cho nghỉ được: '+e.message);}
+    return;
+  }
   if(x.he_thong)return dmBao('Giá trị hệ thống, không xoá được');
   try{
     // còn khách dùng thì không cho xoá, báo số khách để chuyển trước
@@ -4421,7 +4458,7 @@ function rptSiThemKhachForm(){
    +'<div>'+lb('Nguồn khách',1)+'<select id="siT_nguon" style="'+ip+';cursor:pointer"><option value="">— chọn —</option><option>Offline</option><option>Online</option></select></div>'
    +'<div>'+lb('Kênh'+dmBut('kenh_nhap_tay'),1)+'<input id="siT_kenh" list="siT_kenhDS" placeholder="VD: Sales trực tiếp" style="'+ip+'">'
    +'<datalist id="siT_kenhDS">'+(typeof DH_MANUAL_KENH!=='undefined'?DH_MANUAL_KENH:[]).map(x=>'<option value="'+e(x)+'">').join('')+'</datalist></div>'
-   +'<div>'+lb('Sale phụ trách',1)+'<select id="siT_sale" style="'+ip+';cursor:pointer"><option value="">— chọn Sale —</option>'
+   +'<div>'+lb('Sale phụ trách'+dmBut('sale_si'),1)+'<select id="siT_sale" style="'+ip+';cursor:pointer"><option value="">— chọn Sale —</option>'
      +sale.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select></div>'
    +'<div>'+lb('Phân loại KH'+dmBut('si_phan_loai'),1)+'<select id="siT_phanloai" style="'+ip+';cursor:pointer"><option value="">— chọn —</option>'
      +RPT_SI_PHANLOAI_DS.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select></div>'
@@ -4796,7 +4833,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 17:53';
+const APP_VERSION='25/09 17:59';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5745,7 +5782,12 @@ function rptSlBuildMasterRaw(){
         r.siHinhThuc=m.hinh_thuc||'';
         if(!r.siPhanLoai&&m.phan_loai)r.siPhanLoai=m.phan_loai;
         r.siHoTro=ds.map(x=>x.tinh_trang).filter(Boolean)[0]||'';
-        r.siNgayHen=ds.map(x=>x.ngay_hen).filter(Boolean)[0]||'';
+        // HẸN CHĂM SÓC TIẾP THEO (anh Hải 25/9/2026): lấy lượt gần nhất có ngày hẹn. ĐẾN HẸN = ngày hẹn <= hôm nay
+        // mà sau đó CHƯA có lượt chăm sóc nào (có lượt mới từ ngày hẹn trở đi là coi như đã làm) -> chuông sáng.
+        const henDong=ds.find(x=>x.ngay_hen);
+        r.siNgayHen=henDong?String(henDong.ngay_hen).slice(0,10):'';
+        r.siViecTiep=henDong?(henDong.viec_tiep||''):'';
+        r.siHenDen=!!(r.siNgayHen&&r.siNgayHen<=todayISO()&&!ds.some(x=>x!==henDong&&String(x.ngay_cham||'').slice(0,10)>=r.siNgayHen));
         const dk=ds.map(x=>Number(x.gia_tri_du_kien||0)).filter(v=>v>0)[0];
         if(dk&&!r.potential)r.potential=dk;
         r.siNgayNghi=Math.floor((new Date()-new Date(r.siCSCuoi))/86400000);
@@ -5965,9 +6007,40 @@ function rptSlMasterRowSi(r){
     +'<td class="num"><span style="font-weight:700;color:'+mauNghi+'">'+(nghi2==null?'—':num(nghi2))+'</span></td>'
     +'<td class="num" style="font-weight:800;color:'+(congDon>0?'var(--green)':'inherit')+'">'+(congDon>0?vnd(congDon):'—')+'</td>'
     +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
+      +rptSiChuongDong(r)
       +(dashToanQuyen()&&r.staff
         ?'<button onclick="rptSiThuHoi('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+','+String.fromCharCode(39)+String(r.name||'').replace(/'/g,String.fromCharCode(92,39)).replace(/"/g,'&quot;')+String.fromCharCode(39)+')" class="btn-ghost" style="padding:3px 10px;font-size:11px;color:var(--red);font-weight:700">Thu hồi data</button>'
         :'')+'</td></tr>';
+}
+// ── CHUÔNG HẸN CHĂM SÓC (Sỉ, anh Hải 25/9/2026) ──
+const RPT_CHUONG_SVG='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 0 0-4-5.7V5a2 2 0 1 0-4 0v.3A6 6 0 0 0 6 11v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>';
+// chuông cuối dòng khách: sáng khi đến hẹn, bấm mở thẳng tab Lịch sử chăm sóc
+function rptSiChuongDong(r){
+  if(!r.siHenDen)return '';
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const q=String.fromCharCode(39);
+  return '<button onclick="rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+');rptSlCusTab('+q+'cs'+q+')" title="Đến hẹn '+e(dmy(r.siNgayHen))+(r.siViecTiep?': '+e(r.siViecTiep):'')+'"'
+    +' style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:26px;margin-right:4px;border:none;border-radius:7px;cursor:pointer;vertical-align:middle;'
+    +'background:#fef3c7;color:#d97706;box-shadow:0 0 0 2px rgba(245,158,11,.35),0 0 10px rgba(245,158,11,.55)">'+RPT_CHUONG_SVG+'</button>';
+}
+// chuông cạnh bộ lọc Master Sỉ: số hẹn đã đến lịch, bấm ra danh sách
+function rptSiChuongLoc(){
+  if(rptSlType()!=='Sỉ')return '';
+  const n=rptSlBuildMaster().filter(r=>r.siHenDen).length;
+  return '<button onclick="rptSiDsHen()" title="Hẹn chăm sóc đã đến lịch" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:30px;border-radius:8px;cursor:pointer;'
+    +(n?'border:1.5px solid #f59e0b;background:#fef3c7;color:#d97706;box-shadow:0 0 10px rgba(245,158,11,.45)':'border:1.5px solid var(--border);background:var(--surface);color:var(--muted)')+'">'+RPT_CHUONG_SVG
+    +(n?'<span style="position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:var(--red);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center">'+n+'</span>':'')+'</button>';
+}
+function rptSiDsHen(){
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const t=todayISO();
+  const ds=rptSlBuildMaster().filter(r=>r.siHenDen).sort((a,b)=>String(a.siNgayHen).localeCompare(String(b.siNgayHen)));
+  dataModal({title:'Hẹn chăm sóc đã đến lịch',cols:['Ngày hẹn','Việc cần làm','Tên khách','Sales phụ trách','SĐT'],
+    rows:ds.map(r=>[(r.siNgayHen<t?'<span style="color:var(--red);font-weight:800">'+e(dmy(r.siNgayHen))+' · trễ '+num(Math.round((new Date(t)-new Date(r.siNgayHen))/86400000))+' ngày</span>'
+        :'<span style="color:#d97706;font-weight:800">'+e(dmy(r.siNgayHen))+' · hôm nay</span>'),
+      e(r.siViecTiep||'—'),e(r.name)+' <span style="color:var(--muted);font-weight:600">· '+e(r.kh||r.leadId||'')+'</span>',
+      rptSlSaleHien(r.staff),e(((r.phones||[])[0]||{}).so||r.phone||'—')]),
+    keys:ds.map(r=>r.key)});
 }
 function rptSlSetMasterPage(p){window._rptSlMasterPage=p;rptSlRender();}
 function rptSlMasterSearch(){return(document.getElementById('rptSlMasterSearch')||{}).value||'';}
@@ -5986,7 +6059,8 @@ const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Sales phụ
   +'<th>Tên cửa hàng</th><th>SĐT</th><th>Phân loại KH</th>'
   +'<th>Ngày CS cuối</th><th>Ngày chưa liên hệ</th>'
   +'<th>Giá trị cộng dồn</th><th></th>';
-Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>rptSlType()==='Sỉ'?RPT_SL_MASTER_HEAD_SI.replace('<th>Phân loại KH</th>','<th>Phân loại KH'+dmBut('si_phan_loai')+'</th>'):RPT_SL_MASTER_HEAD_LE});
+Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>(rptSlType()==='Sỉ'?RPT_SL_MASTER_HEAD_SI.replace('<th>Phân loại KH</th>','<th>Phân loại KH'+dmBut('si_phan_loai')+'</th>'):RPT_SL_MASTER_HEAD_LE)
+  .replace('<th>Sales phụ trách</th>','<th>Sales phụ trách'+dmBut(rptSlType()==='Sỉ'?'sale_si':'sale_le')+'</th>')});
 function rptSlMasterRow(r){
   if(rptSlType()==='Sỉ')return rptSlMasterRowSi(r);
   return `<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
@@ -6110,7 +6184,7 @@ function rptSlMasterHtmlRaw(){
         ${mkKpi(ic('cash'),'Bình quân / khách chốt',vnd(tb),'tổng tiền chia số khách đã chốt','g-purple')}
       </div>`;})()}
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-end">
-      ${rptSlFilterBar('master')}
+      ${rptSlFilterBar('master')}${rptSiChuongLoc()}
       ${rptSlType()==='Sỉ'?'<button onclick="rptSiThemKhachForm()" class="refresh-btn" style="padding:7px 18px;font-size:12.5px;font-weight:800;letter-spacing:.01em;box-shadow:0 2px 10px rgba(67,97,238,.35)">+ THÊM KHÁCH MỚI</button>':''}
       <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(rptSlRender,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
       ${rptSlCoLoc()?'<button onclick="rptSlThaoLoc()" class="btn-ghost" title="Tháo hết bộ lọc: ngày, Sale, trạng thái, brand" style="margin:0;height:30px;padding:0 14px;font-size:11.5px;font-weight:800">Tất cả</button>':''}
@@ -6248,6 +6322,10 @@ function rptSlCsFormHtml(r){
       +'<textarea id="csNoiDung" rows="3" style="'+ip+';resize:vertical">'+e(cu.noi_dung||'')+'</textarea></div>'
     +'<div style="margin-top:12px">'+lb('Khách phản hồi cần lưu ý')
       +'<textarea id="csPhanHoi" rows="2" placeholder="để trống nếu không có" style="'+ip+';resize:vertical">'+e(cu.phan_hoi||'')+'</textarea></div>'
+    // hẹn lần chăm sóc tiếp: chọn ngày + việc cần làm chung 1 ô -- đến ngày thì chuông sáng (anh Hải 25/9/2026)
+    +'<div style="margin-top:12px">'+lb('Hẹn chăm sóc tiếp theo')
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="csHen" type="date" value="'+e(String(cu.ngay_hen||'').slice(0,10))+'" style="'+ip+';width:170px;flex:0 0 auto">'
+      +'<input id="csViec" value="'+e(cu.viec_tiep||'')+'" placeholder="Việc cần làm (vd gọi lại báo giá, gửi mẫu...)" style="'+ip+';flex:1;min-width:200px"></div></div>'
     +'<div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">'
       +(id?'<button onclick="rptSlCsXoa('+id+')" class="btn-ghost" style="padding:7px 16px;font-size:12px;font-weight:700;color:var(--red);border:1.5px solid var(--red)">Xoá lượt này</button>':'')
       +'<div id="csMsg" style="font-size:12px;font-weight:700"></div>'
@@ -6268,7 +6346,7 @@ function rptSlCsTabHtml(r){
     return '<tr style="border-bottom:1px solid var(--border)">'
       +'<td style="padding:9px 12px;font-size:12px;white-space:nowrap;vertical-align:top">'+(dmy(x.ngay_cham)||'—')
         +(x.sales?'<div style="font-size:10.5px;color:var(--muted);font-weight:600;margin-top:2px">'+e(x.sales)+'</div>':'')+'</td>'
-      +'<td style="padding:9px 12px;font-size:12px;vertical-align:top;white-space:pre-wrap;line-height:1.5">'+(x.noi_dung?e(x.noi_dung):'<span style="color:var(--muted)">—</span>')+'</td>'
+      +'<td style="padding:9px 12px;font-size:12px;vertical-align:top;white-space:pre-wrap;line-height:1.5">'+(x.noi_dung?e(x.noi_dung):'<span style="color:var(--muted)">—</span>')+(x.ngay_hen?'<div style="margin-top:5px;font-size:11px;font-weight:700;color:#d97706;white-space:normal">Hẹn '+dmy(String(x.ngay_hen).slice(0,10))+(x.viec_tiep?': '+e(x.viec_tiep):'')+'</div>':'')+'</td>'
       +'<td style="padding:9px 12px;font-size:12px;vertical-align:top;white-space:pre-wrap;line-height:1.5;color:var(--text2)">'+(x.phan_hoi?e(x.phan_hoi):'<span style="color:var(--muted)">—</span>')+'</td>'
       +'<td style="padding:9px 12px;vertical-align:top;white-space:nowrap">'+pill
         +(x.ma_don?'<div style="font-size:10.5px;font-weight:700;color:var(--muted);margin-top:3px">'+e(x.ma_don)+'</div>':'')
@@ -6296,6 +6374,7 @@ async function rptSlCsLuu(){
   const bao=t=>{if(msg)msg.innerHTML='<span style="color:var(--red)">'+t+'</span>';};
   const ngay=g('csNgay');if(!ngay)return bao('Chưa chọn ngày chăm sóc');
   const nd=g('csNoiDung');if(!nd)return bao('Chưa ghi nội dung chăm sóc');
+  if(g('csViec')&&!g('csHen'))return bao('Có việc cần làm thì chọn luôn ngày hẹn');
   const tt=g('csTrangThai')||RPT_CS_TRANG_THAI[0];
   let maDon='',don=null;
   if(rptSlCsLaChot(tt)){
@@ -6313,6 +6392,7 @@ async function rptSlCsLuu(){
     ngay_cham:ngay,nguon:r.nguon||cu.nguon||null,kenh:r.kenh||cu.kenh||null,
     sales:r.staff||cu.sales||null,hinh_thuc:cu.hinh_thuc||null,
     noi_dung:nd,phan_hoi:g('csPhanHoi')||null,trang_thai:tt,ma_don:maDon||null,
+    ngay_hen:g('csHen')||null,viec_tiep:g('csViec')||null,
     ngay_chot:don?String(don.purchase_date||ngay).slice(0,10):(cu.ngay_chot||null),
     gia_tri_chot:don?Number(don.total||0):(cu.gia_tri_chot==null?null:cu.gia_tri_chot),
     phan_loai:rptSlCsLaChot(tt)?'Đã ra đơn':(cu.phan_loai||null),
@@ -6378,7 +6458,7 @@ function rptSlShowCustomer(key,sua){
   const fld=(label,val,color,k)=>suaSi&&!(k&&dsSua[k])?''
     :suaSi
     ?`<div style="min-width:0;${dsSua[k].kieu==='dai'?'grid-column:1/-1':''}">
-    <div style="font-size:10.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">${label}${dmBut({si_phan_loai:'si_phan_loai',si_mo_hinh:'si_mo_hinh',si_tai_chinh:'si_tai_chinh',si_nhom_kh:'si_nhom_kh',kenh:'kenh_nhap_tay'}[k]||'')}</div>${rptSiONhap(k,dsSua[k])}</div>`
+    <div style="font-size:10.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">${label}${dmBut({si_phan_loai:'si_phan_loai',si_mo_hinh:'si_mo_hinh',si_tai_chinh:'si_tai_chinh',si_nhom_kh:'si_nhom_kh',kenh:'kenh_nhap_tay',sale:'sale_si'}[k]||'')}</div>${rptSiONhap(k,dsSua[k])}</div>`
     :`<div style="min-width:0">
     <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${label}</div>
     <div style="font-size:12.5px;font-weight:700;margin-top:3px;color:${color||'var(--text)'};word-break:break-word">${val||'<span style="color:var(--muted);font-weight:600">—</span>'}</div></div>`;
