@@ -4587,7 +4587,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/09 09:44';
+const APP_VERSION='25/09 15:18';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5827,13 +5827,13 @@ function rptSlMasterHtmlRaw(){
   const all=rptSlSortNew(rptSlApplyF('master',allRaw),rptSlNgayTao);
   const q=(window._rptSlMasterQ||'').trim().toLowerCase();
   let list=all;
-  // Ô TÌM KIẾM tìm trên TOÀN BỘ khách, bỏ qua bộ lọc ngày (anh Hải 25/9/2026: lọc tháng này thì gõ "hoàng lan"
-  // không ra khách tạo từ tháng 7). Gõ có dấu hay không dấu đều ra. Bỏ qua cả bộ lọc Sale, trạng thái, brand -- gõ là tìm tất cả.
+  // Ô TÌM KIẾM chỉ tìm TRONG bộ lọc đang đặt (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026 chốt: muốn tìm
+  // rộng hơn thì tự tháo bộ lọc. Gõ có dấu hay không dấu đều ra; gõ toàn số thì so SĐT.
   if(q){
     const qb=rptSlBoDau(q).replace(/\s+/g,' ').trim(),qs=/^[\d\s.+-]+$/.test(q)?q.replace(/\D/g,''):'';   // chỉ so SĐT khi gõ toàn số
     const khop=r=>[r.name,r.kiotName,r.kh,r.leadId].some(x=>rptSlBoDau(x).includes(qb))
       ||(qs.length>=3&&((r.phones||[]).some(p=>String(p.so||'').replace(/\D/g,'').includes(qs))||String(r.phone||'').replace(/\D/g,'').includes(qs)));
-    list=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao).filter(khop);
+    list=all.filter(khop);
   }
   const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   if((window._rptSlMasterPage||1)>totalPages)window._rptSlMasterPage=1;
