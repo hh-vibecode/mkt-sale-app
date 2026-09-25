@@ -1832,7 +1832,7 @@ function qcCloseModal(){const m=document.getElementById('qcModal');if(m)m.innerH
 function dataModal(d){
   if(!d)return;
   const head=d.cols.map(c=>`<th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);position:sticky;top:0;background:var(--bg2);white-space:nowrap">${c}</th>`).join('');
-  const body=d.rows.length?d.rows.map(row=>`<tr style="border-bottom:1px solid var(--border)">${row.map((v,i)=>`<td style="padding:8px 12px;font-size:12px;${i===2?'font-weight:700;color:var(--text)':'color:var(--text2)'};white-space:nowrap">${(v==null||v==='')?'—':v}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${d.cols.length}" style="padding:24px;text-align:center;color:var(--muted)">Không có dữ liệu</td></tr>`;
+  const body=d.rows.length?d.rows.map((row,ri)=>`<tr style="border-bottom:1px solid var(--border)${d.keys&&d.keys[ri]?';cursor:pointer':''}"${d.keys&&d.keys[ri]?' onclick="rptSlShowCustomer(\''+String(d.keys[ri]).replace(/[\'"\\]/g,'')+'\')" title="Bấm để xem thông tin khách"':''}>${row.map((v,i)=>`<td style="padding:8px 12px;font-size:12px;${i===2?'font-weight:700;color:var(--text)':'color:var(--text2)'};white-space:nowrap">${(v==null||v==='')?'—':v}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${d.cols.length}" style="padding:24px;text-align:center;color:var(--muted)">Không có dữ liệu</td></tr>`;
   let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
   m.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)qcCloseModal()">
     <div style="background:var(--surface);border-radius:16px;max-width:1100px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">
@@ -4088,6 +4088,11 @@ async function rptSlSaveManual(leadId,patch){
 }
 // Ô nhập trong bảng: chặn click nổi lên <tr> (nếu không sẽ mở modal chi tiết khi đang chọn dropdown).
 function rptSlStop(e){e.stopPropagation();}
+// Dòng khách trong Nhập Liệu / popup dashboard: bấm là mở HỒ SƠ KHÁCH y như bấm dòng ở Master (anh Hải 25/9/2026).
+// Ô có nút / ô nhập / ô tích tự chặn (rptSlStop) nên bấm vào đó không bật hồ sơ.
+function rptSlTrMo(r){
+  return '<tr onclick="rptSlShowCustomer(\''+String(r&&r.key||'').replace(/[\'"\\]/g,'')+'\')" style="cursor:pointer" title="Bấm để xem thông tin khách">';
+}
 // Giá trị tiềm năng: Sale gõ số tự do ("15.000.000", "15tr", "15000000") -> chuẩn hoá về số nguyên VND.
 // Nội dung trao đổi thường dài hơn bề ngang 1 ô -> mở bảng riêng để đọc/ghi cho thoải mái,
 // kèm luôn thông tin khách để Sale biết đang ghi cho ai. Ctrl+Enter để lưu nhanh.
@@ -4587,7 +4592,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 15:27';
+const APP_VERSION='25/09 15:31';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5832,7 +5837,7 @@ function rptSiDashNguonDs(nguon){
   dataModal({title:'Khách '+nguon,
     cols:['Ngày tạo','Sales phụ trách','Tên khách','Kênh','Phân loại KH','Doanh số'],
     rows:ds.map(r=>[dmy(rptSlNgayTao(r))||'—',rptSlSaleHien(r.staff),e(r.name)+' <span style="color:var(--muted);font-weight:600">· '+e(r.kh||r.leadId||'')+'</span>',
-      e(r.kenh||'—'),e(r.siPhanLoai||'—'),tien(r)?vnd(tien(r)):'—'])});
+      e(r.kenh||'—'),e(r.siPhanLoai||'—'),tien(r)?vnd(tien(r)):'—']),keys:ds.map(r=>r.key)});
 }
 function rptSlMasterHtmlRaw(){
   const allRaw=rptSlPeriod();
@@ -6556,8 +6561,8 @@ function rptSlTrungMaHtml(ds){
       +'<button onclick="rptSlShowTrungMa('+q+String(r.key).replace(/'/g,'')+q+')" class="btn-ghost" style="padding:3px 10px;font-size:11px">Xem chi tiết</button>'
       +'</span></div>'
       +'<table style="width:100%"><tbody>'
-      +nguon.map(x=>'<tr>'
-        +'<td style="width:34px"><input type="checkbox" class="gopTick" data-nhom="m'+j+'" value="'+e((x.leadIds||[])[0]||'')+'" onchange="rptSlGopDem()" style="cursor:pointer;width:15px;height:15px"></td>'
+      +nguon.map(x=>rptSlTrMo(r)
+        +'<td style="width:34px" onclick="rptSlStop(event)"><input type="checkbox" class="gopTick" data-nhom="m'+j+'" value="'+e((x.leadIds||[])[0]||'')+'" onchange="rptSlGopDem()" style="cursor:pointer;width:15px;height:15px"></td>'
         +'<td style="white-space:nowrap;width:90px">'+(dmy(x.ngay)||'—')+'</td>'
         +'<td style="font-size:11.5px;font-weight:700">'+e(x.kenh||'—')+'</td>'
         +'<td style="white-space:nowrap;font-size:11.5px">'+((x.sdt||[]).length?e(x.sdt.join(', ')):'<span style="color:var(--red);font-weight:700">không có SĐT</span>')+'</td>'
@@ -6586,8 +6591,8 @@ function rptSlTrungHtml(nhomDs,them){
     +'<span style="font-size:12px;font-weight:800">Nhóm '+(i+1)+' · '+g.rows.length+' khách</span>'
     +g.ly.map(l=>'<span style="font-size:10.5px;font-weight:800;padding:1px 8px;border-radius:10px;background:var(--yellow);color:#fff">'+e(l)+'</span>').join('')
     +'<button onclick="rptSlKhacNguoi('+i+')" class="btn-ghost" style="margin-left:auto;padding:3px 10px;font-size:11px">Không phải cùng 1 người</button></div>'
-    +'<table style="width:100%"><tbody>'+g.rows.map(r=>'<tr>'
-      +'<td style="width:34px"><input type="checkbox" class="gopTick" data-nhom="'+i+'" value="'+e(r.leadId)+'" onchange="rptSlGopDem()" style="cursor:pointer;width:15px;height:15px"></td>'
+    +'<table style="width:100%"><tbody>'+g.rows.map(r=>rptSlTrMo(r)
+      +'<td style="width:34px" onclick="rptSlStop(event)"><input type="checkbox" class="gopTick" data-nhom="'+i+'" value="'+e(r.leadId)+'" onchange="rptSlGopDem()" style="cursor:pointer;width:15px;height:15px"></td>'
       +'<td style="white-space:nowrap">'+(dmy(r.created)||'—')+'</td>'
       +'<td>'+rptSlSrcBadge(r)+'</td>'
       +'<td class="name">'+e(r.name)+rptSlMaDuoiTen(r)+'</td>'
@@ -6817,17 +6822,18 @@ function rptSlNlDashDs(k){
     const viec=[['thieuMa','Chốt đơn chưa có Mã KH','var(--red)'],['maNgo','Mã KH nghi gán nhầm','var(--red)'],
       ['loiHT','Lỗi hệ thống','var(--red)'],['maSai','Mã KH không có bên Kiot','var(--yellow)'],['chuaTT','Chưa cập nhật trạng thái','var(--accent)']];
     return dataModal({title:'Tổng việc cần làm',cols:COT.concat(['Việc cần làm','Doanh số']),
-      rows:viec.flatMap(([kk,nhan,c])=>(b[kk]||[]).map(r=>co(r).concat([mau(nhan,c),tien(r)?vnd(tien(r)):'—'])))});
+      rows:viec.flatMap(([kk,nhan,c])=>(b[kk]||[]).map(r=>co(r).concat([mau(nhan,c),tien(r)?vnd(tien(r)):'—']))),
+      keys:viec.flatMap(([kk])=>(b[kk]||[]).map(r=>r.key))});
   }
   if(k==='thieuMa')return dataModal({title:'Đơn chốt chưa có Mã KH',cols:COT.concat(['Thẻ Pancake','Gợi ý theo SĐT']),
-    rows:b.thieuMa.map(r=>co(r).concat([e(r.tagStatus||'—'),(r.suggest||[]).map(c=>e(c.code)).join(', ')||'—']))});
+    rows:b.thieuMa.map(r=>co(r).concat([e(r.tagStatus||'—'),(r.suggest||[]).map(c=>e(c.code)).join(', ')||'—'])),keys:b.thieuMa.map(r=>r.key)});
   if(k==='daNoi'){
     const chot=b.all.filter(r=>r.isChot).sort((x,y)=>(x.kh?1:0)-(y.kh?1:0));   // chưa nối lên đầu
     return dataModal({title:'Đơn chốt đã nối '+num(chot.filter(r=>r.kh).length)+'/'+num(chot.length),cols:COT.concat(['Nối Mã KH','Doanh số']),
-      rows:chot.map(r=>co(r).concat([r.kh?mau('Đã nối '+e(r.kh),'var(--green)'):mau('Chưa nối','var(--red)'),tien(r)?vnd(tien(r)):'—']))});
+      rows:chot.map(r=>co(r).concat([r.kh?mau('Đã nối '+e(r.kh),'var(--green)'):mau('Chưa nối','var(--red)'),tien(r)?vnd(tien(r)):'—'])),keys:chot.map(r=>r.key)});
   }
   if(k==='chuaTT')return dataModal({title:'Chưa cập nhật trạng thái',cols:COT.concat(['Thẻ Pancake','Doanh số']),
-    rows:b.chuaTT.map(r=>co(r).concat([e(r.tagStatus||'—'),tien(r)?vnd(tien(r)):'—']))});
+    rows:b.chuaTT.map(r=>co(r).concat([e(r.tagStatus||'—'),tien(r)?vnd(tien(r)):'—'])),keys:b.chuaTT.map(r=>r.key)});
 }
 function rptSlInputHtml(){
   const b=rptSlTodoBuckets();
@@ -6855,12 +6861,12 @@ function rptSlInputHtml(){
     <button onclick="rptSlSaveKH('${r.leadId}',this.previousElementSibling.value,this.previousElementSibling)"
       style="margin-left:5px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:700">Lưu</button></td>`;
   const s1=tbl(HEAD+'<th style="'+RPT_SL_TH_EDIT+'">Điền Mã KH Kiot</th><th>Gợi ý theo SĐT (tra bên Kiot)</th><th>Doanh thu</th>',
-    b.thieuMa.map(r=>`<tr>${info(r)}${maO(r)}${goiY(r)}<td class="num"><span style="color:var(--muted)">—</span></td></tr>`).join(''));
+    b.thieuMa.map(r=>`${rptSlTrMo(r)}${info(r)}${maO(r)}${goiY(r)}<td class="num"><span style="color:var(--muted)">—</span></td></tr>`).join(''));
   const s2=tbl(HEAD+'<th>Mã đang điền</th><th>Vấn đề</th><th style="'+RPT_SL_TH_EDIT+'">Dán lại mã đúng</th>',
-    b.maSai.map(r=>`<tr>${info(r)}${maInput(r)}<td style="font-size:11px;color:var(--red);font-weight:700">Mã <code>${r.manualKH}</code> không có bên Kiot</td>${maO(r)}</tr>`).join(''));
+    b.maSai.map(r=>`${rptSlTrMo(r)}${info(r)}${maInput(r)}<td style="font-size:11px;color:var(--red);font-weight:700">Mã <code>${r.manualKH}</code> không có bên Kiot</td>${maO(r)}</tr>`).join(''));
   const s2b=tbl(HEAD+'<th>Mã đang dùng</th><th>Khách bên Kiot</th><th>Vì sao nghi</th><th>Doanh thu đang tính</th><th style="'+RPT_SL_TH_EDIT+'">Dán lại mã đúng</th>',
     b.maNgo.map(r=>{const kc=r.kiotCusts[0]||{};
-      return `<tr>${info(r)}<td style="font-size:11px">${rptSlKiotLink(r.kh,'<code>'+r.kh+'</code>')}</td>
+      return `${rptSlTrMo(r)}${info(r)}<td style="font-size:11px">${rptSlKiotLink(r.kh,'<code>'+r.kh+'</code>')}</td>
       <td style="font-size:11px">${(kc.name||'—').replace(/</g,'&lt;')}${kc.phone?' · '+kc.phone:''}</td>
       <td style="font-size:11px;color:var(--red);font-weight:700" onclick="rptSlStop(event)">${r.ngoVi||''}
         <button onclick="rptSlShowTrungMa('${r.key.replace(/'/g,"\\'")}')" title="Xem thông tin từng khách đang dùng mã này"
@@ -6883,9 +6889,9 @@ function rptSlInputHtml(){
     return '<td onclick="rptSlStop(event)"><select onchange="'+goi+'" style="height:26px;padding:2px 6px;border:1.5px solid var(--yellow);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">'+opt+'</select></td>';
   };
   const s3=tbl(HEAD+'<th>Thẻ Pancake</th><th style="'+RPT_SL_TH_EDIT+'">Trạng thái</th>',
-    b.chuaTT.map(r=>`<tr>${info(r)}<td style="font-size:11px;color:var(--muted)">${r.tagStatus||'—'}</td>${ttSel(r)}</tr>`).join(''));
+    b.chuaTT.map(r=>`${rptSlTrMo(r)}${info(r)}<td style="font-size:11px;color:var(--muted)">${r.tagStatus||'—'}</td>${ttSel(r)}</tr>`).join(''));
   const s5=tbl(HEAD+'<th>Thẻ Pancake</th><th>Trạng thái</th><th style="'+RPT_SL_TH_EDIT+'">Giá trị tiềm năng</th>',
-    b.thieuGT.map(r=>`<tr>${info(r)}<td style="font-size:11px;color:var(--muted)">${r.tagStatus||'—'}</td>
+    b.thieuGT.map(r=>`${rptSlTrMo(r)}${info(r)}<td style="font-size:11px;color:var(--muted)">${r.tagStatus||'—'}</td>
       <td style="font-size:11px">${r.manualStatus||'<span style="color:var(--muted)">—</span>'}</td>
       <td class="num" onclick="rptSlStop(event)"><input inputmode="numeric" placeholder="vd 15tr, 500k"
         onkeydown="if(event.key==='Enter')this.blur()" onblur="if(this.value.trim())rptSlSetPotential('${r.leadId}',this.value,this)"
@@ -6894,20 +6900,20 @@ function rptSlInputHtml(){
   const laSi=rptSlType()==='Sỉ';
   const s8=laSi
     ?tbl(HEAD+'<th>Phân loại KH</th><th>Lượt chăm gần nhất</th><th style="'+RPT_SL_TH_EDIT+'">Lịch sử chăm sóc</th>',
-      b.thieuND.map(r=>`<tr>${info(r)}
+      b.thieuND.map(r=>`${rptSlTrMo(r)}${info(r)}
       <td>${r.siPhanLoai?String(r.siPhanLoai).replace(/</g,'&lt;'):'<span style="color:var(--muted)">—</span>'}</td>
       <td><span style="color:var(--red);font-weight:700;font-size:11px">chưa có lượt nào</span></td>
       <td onclick="rptSlStop(event)"><button onclick="rptSlShowCustomer('${String(r.key).replace(/'/g,'')}');rptSlCsMoForm()"
         style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">+ Tạo lượt chăm sóc</button></td></tr>`).join(''))
     :tbl(HEAD+'<th>Trạng thái</th><th>Ngày chăm sóc</th><th style="'+RPT_SL_TH_EDIT+'">Nội dung trao đổi</th>',
-    b.thieuND.map(r=>`<tr>${info(r)}
+    b.thieuND.map(r=>`${rptSlTrMo(r)}${info(r)}
       <td>${r.isChot?rptSlStatusPill('Chốt đơn'):(r.manualStatus?rptSlStatusPill(r.manualStatus):'<span style="color:var(--muted)">—</span>')}</td>
       <td>${dmy(r.careDate)||'—'}</td>
       <td onclick="rptSlStop(event)"><button onclick="rptSlEditRow('${r.leadId}')"
         style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">✏️ Ghi nội dung</button></td></tr>`).join(''));
   const sLoi=tbl('<th>Ngày tạo</th><th>Khách</th><th>Mã KH</th><th>Lỗi hệ thống</th><th>Lúc</th><th></th>',
     b.loiHT.map(r=>{const mn=rptSlManual[r.leadId]||{};
-      return '<tr><td>'+(dmy(r.created)||'—')+'</td>'
+      return rptSlTrMo(r)+'<td>'+(dmy(r.created)||'—')+'</td>'
         +'<td class="name">'+String(r.name||'').replace(/</g,'&lt;')+rptSlMaDuoiTen(r)+'</td>'
         +'<td style="font-size:11px">'+((r.kh||mn.kiot_code)?rptSlKiotLink(r.kh||mn.kiot_code,'<code>'+(r.kh||mn.kiot_code)+'</code>'):'—')+'</td>'
         +'<td style="font-size:11px;color:var(--red);font-weight:700;max-width:420px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'
