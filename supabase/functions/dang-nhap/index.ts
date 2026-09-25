@@ -6,7 +6,7 @@
 // Luồng:
 //   1) Kiểm tên + mật khẩu bằng hàm app_login() có sẵn (mật khẩu vẫn nằm ở sales_user_credentials, KHÔNG đổi).
 //   2) Mỗi tài khoản app có 1 tài khoản Supabase Auth "bóng" (email <user_id>@mkt-sale.app, không ai dùng tay).
-//      Mỗi lần đăng nhập đặt cho nó 1 mật khẩu ngẫu nhiên mới rồi đăng nhập ngay -> lấy thẻ phiên.
+//      Mật khẩu bóng CỐ ĐỊNH tính từ khoá bí mật máy chủ (xem matKhauCoDinh), đăng nhập bằng nó -> lấy thẻ phiên.
 //      Người dùng không bao giờ biết mật khẩu bóng này, nên không có đường nào vào thẳng Supabase Auth.
 //   3) Trả về thông tin tài khoản (như app_login cũ) + thẻ phiên. Vị trí / quyền được ghi vào app_metadata
 //      của thẻ để CSDL tự kiểm (vd chỉ Admin mới tạo được tài khoản) -- người dùng không sửa được app_metadata.
@@ -24,9 +24,14 @@ const CORS = {
 const json = (o: unknown, status = 200) =>
   new Response(JSON.stringify(o), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 const ngu = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const ngauNhien = () => {
-  const a = new Uint8Array(24); crypto.getRandomValues(a);
-  return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
+// MẬT KHẨU BÓNG CỐ ĐỊNH (25/9/2026): trước đây mỗi lần đăng nhập đặt mật khẩu ngẫu nhiên MỚI -> Supabase tự
+// đăng xuất MỌI phiên khác của tài khoản đó => ai đăng nhập cùng tài khoản ở máy/tab khác là phiên đang dùng
+// chết, app báo "lỗi 401". Giờ mật khẩu bóng = HMAC(khoá bí mật máy chủ, email): không ai đoán được, không
+// đổi qua các lần đăng nhập, nên nhiều máy dùng song song không đá nhau.
+const matKhauCoDinh = async (email: string) => {
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(SRV), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode('mkt-sale-bong:' + email)));
+  return Array.from(sig, (b) => b.toString(16).padStart(2, '0')).join('');
 };
 
 Deno.serve(async (req) => {
@@ -47,7 +52,7 @@ Deno.serve(async (req) => {
 
   // 2) tài khoản bóng bên Supabase Auth
   const email = String(acc.user_id).toLowerCase().replace(/[^a-z0-9_.-]/g, '') + '@mkt-sale.app';
-  const matKhauBong = ngauNhien();
+  const matKhauBong = await matKhauCoDinh(email);
   const meta = {
     app_user_id: acc.user_id, username: acc.username, name: acc.name,
     position: acc.position_title || 'sales', permissions: acc.permissions || [],
@@ -66,12 +71,19 @@ Deno.serve(async (req) => {
     }
     await admin.from('sales_users').update({ auth_uid: authId }).eq('user_id', acc.user_id);
   }
-  const { error: e3 } = await admin.auth.admin.updateUserById(authId, { password: matKhauBong, app_metadata: meta });
+  // chỉ cập nhật vị trí/quyền (KHÔNG đụng mật khẩu -> không đá phiên khác)
+  const { error: e3 } = await admin.auth.admin.updateUserById(authId, { app_metadata: meta });
   if (e3) return json({ error: 'Không cập nhật được phiên: ' + e3.message }, 500);
 
-  // 3) đăng nhập tài khoản bóng -> thẻ phiên
+  // 3) đăng nhập tài khoản bóng -> thẻ phiên. Tài khoản còn mật khẩu ngẫu nhiên kiểu cũ thì đặt 1 LẦN
+  //    sang mật khẩu cố định rồi đăng nhập lại (lần chuyển đổi này là lần cuối còn đá phiên cũ).
   const pub = createClient(URL, ANON, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data: s, error: e4 } = await pub.auth.signInWithPassword({ email, password: matKhauBong });
+  let { data: s, error: e4 } = await pub.auth.signInWithPassword({ email, password: matKhauBong });
+  if (e4 || !s?.session) {
+    const { error: e5 } = await admin.auth.admin.updateUserById(authId, { password: matKhauBong });
+    if (e5) return json({ error: 'Không cập nhật được phiên: ' + e5.message }, 500);
+    ({ data: s, error: e4 } = await pub.auth.signInWithPassword({ email, password: matKhauBong }));
+  }
   if (e4 || !s?.session) return json({ error: 'Không cấp được thẻ phiên: ' + (e4?.message || '') }, 500);
 
   const { auth_uid: _bo, ...taiKhoan } = acc;
