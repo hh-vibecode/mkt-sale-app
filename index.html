@@ -5827,7 +5827,14 @@ function rptSlMasterHtmlRaw(){
   const all=rptSlSortNew(rptSlApplyF('master',allRaw),rptSlNgayTao);
   const q=(window._rptSlMasterQ||'').trim().toLowerCase();
   let list=all;
-  if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||((r.phones||[]).some(p=>p.so.includes(q))||(r.phone||'').includes(q))||(r.kh||'').toLowerCase().includes(q)||(r.kiotName||'').toLowerCase().includes(q)||(r.leadId||'').toLowerCase().includes(q));
+  // Ô TÌM KIẾM tìm trên TOÀN BỘ khách, bỏ qua bộ lọc ngày (anh Hải 25/9/2026: lọc tháng này thì gõ "hoàng lan"
+  // không ra khách tạo từ tháng 7). Gõ có dấu hay không dấu đều ra. Bỏ qua cả bộ lọc Sale, trạng thái, brand -- gõ là tìm tất cả.
+  if(q){
+    const qb=rptSlBoDau(q).replace(/\s+/g,' ').trim(),qs=/^[\d\s.+-]+$/.test(q)?q.replace(/\D/g,''):'';   // chỉ so SĐT khi gõ toàn số
+    const khop=r=>[r.name,r.kiotName,r.kh,r.leadId].some(x=>rptSlBoDau(x).includes(qb))
+      ||(qs.length>=3&&((r.phones||[]).some(p=>String(p.so||'').replace(/\D/g,'').includes(qs))||String(r.phone||'').replace(/\D/g,'').includes(qs)));
+    list=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao).filter(khop);
+  }
   const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   if((window._rptSlMasterPage||1)>totalPages)window._rptSlMasterPage=1;
   const page=window._rptSlMasterPage||1;
