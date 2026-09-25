@@ -4611,7 +4611,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 16:26';
+const APP_VERSION='25/09 16:31';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5541,7 +5541,9 @@ function rptSlBuildMasterRaw(){
       if(ds.length){
         const m=ds[0];
         r.siCSCuoi=String(m.ngay_cham||'').slice(0,10);
-        r.siNDCuoi=m.noi_dung||'';
+        // nội dung = lượt GẦN NHẤT CÓ GHI NỘI DUNG -- dòng Chốt đơn tự tạo từ đơn Kiot không có nội dung,
+        // không được đè mất nội dung chăm khách thật (scripts/tu-tao-chot-don-si.js, 25/9/2026)
+        r.siNDCuoi=ds.map(x=>x.noi_dung).find(v=>String(v||'').trim())||'';
         r.siHinhThuc=m.hinh_thuc||'';
         if(!r.siPhanLoai&&m.phan_loai)r.siPhanLoai=m.phan_loai;
         r.siHoTro=ds.map(x=>x.tinh_trang).filter(Boolean)[0]||'';

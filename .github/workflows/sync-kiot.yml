@@ -44,3 +44,11 @@ jobs:
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/tu-tao-nhap-tay.js
+
+      # Đơn đặt hàng Sỉ đủ điều kiện (có dấu vết tiền) -> tự có 1 dòng "Chốt đơn" trong Lịch sử chăm sóc,
+      # ngày = ngày tạo phiếu. Đồng thời gắn mã đơn cho dòng chốt cũ nhập từ sheet (anh Hải 25/9/2026).
+      - name: Tự tạo dòng Chốt đơn Sỉ trong lịch sử chăm sóc
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/tu-tao-chot-don-si.js
