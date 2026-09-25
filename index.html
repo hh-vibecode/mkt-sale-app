@@ -4587,7 +4587,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 15:24';
+const APP_VERSION='25/09 15:27';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6803,6 +6803,32 @@ async function siGanChay(){
   if(msg)msg.innerHTML='<span style="color:var(--green)">Đã gán '+ok+' khách cho '+ten+(loi?(' · lỗi '+loi):'')+'</span>';
   rptSlRender();
 }
+// Bấm từng ô dashboard ở tab Nhập Liệu -> popup danh sách khách chi tiết (anh Hải 25/9/2026).
+// "Tổng việc cần làm" kê mỗi VIỆC 1 dòng (1 khách vướng 2 việc thì 2 dòng) để cộng đúng bằng số trên ô.
+function rptSlNlDashDs(k){
+  const b=window._rptSlNlDash;if(!b)return;
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const tien=r=>Number(r.revenue||0)+Number(r.repeatRevenue||0);
+  const ten=r=>e(r.name)+' <span style="color:var(--muted);font-weight:600">· '+e(r.kh||r.leadId||'')+'</span>';
+  const co=r=>[dmy(rptSlNgayTao(r))||'—',rptSlSaleHien(r.staff),ten(r),e(r.kenh||'—')];
+  const COT=['Ngày tạo','Sales phụ trách','Tên khách','Kênh'];
+  const mau=(t,c)=>'<span style="font-weight:800;color:'+c+'">'+t+'</span>';
+  if(k==='tong'){
+    const viec=[['thieuMa','Chốt đơn chưa có Mã KH','var(--red)'],['maNgo','Mã KH nghi gán nhầm','var(--red)'],
+      ['loiHT','Lỗi hệ thống','var(--red)'],['maSai','Mã KH không có bên Kiot','var(--yellow)'],['chuaTT','Chưa cập nhật trạng thái','var(--accent)']];
+    return dataModal({title:'Tổng việc cần làm',cols:COT.concat(['Việc cần làm','Doanh số']),
+      rows:viec.flatMap(([kk,nhan,c])=>(b[kk]||[]).map(r=>co(r).concat([mau(nhan,c),tien(r)?vnd(tien(r)):'—'])))});
+  }
+  if(k==='thieuMa')return dataModal({title:'Đơn chốt chưa có Mã KH',cols:COT.concat(['Thẻ Pancake','Gợi ý theo SĐT']),
+    rows:b.thieuMa.map(r=>co(r).concat([e(r.tagStatus||'—'),(r.suggest||[]).map(c=>e(c.code)).join(', ')||'—']))});
+  if(k==='daNoi'){
+    const chot=b.all.filter(r=>r.isChot).sort((x,y)=>(x.kh?1:0)-(y.kh?1:0));   // chưa nối lên đầu
+    return dataModal({title:'Đơn chốt đã nối '+num(chot.filter(r=>r.kh).length)+'/'+num(chot.length),cols:COT.concat(['Nối Mã KH','Doanh số']),
+      rows:chot.map(r=>co(r).concat([r.kh?mau('Đã nối '+e(r.kh),'var(--green)'):mau('Chưa nối','var(--red)'),tien(r)?vnd(tien(r)):'—']))});
+  }
+  if(k==='chuaTT')return dataModal({title:'Chưa cập nhật trạng thái',cols:COT.concat(['Thẻ Pancake','Doanh số']),
+    rows:b.chuaTT.map(r=>co(r).concat([e(r.tagStatus||'—'),tien(r)?vnd(tien(r)):'—']))});
+}
 function rptSlInputHtml(){
   const b=rptSlTodoBuckets();
   const info=r=>`<td>${dmy(r.created)||'—'}</td>
@@ -6893,12 +6919,14 @@ function rptSlInputHtml(){
   window._rptSlTrungAll=b.all;
   const nghi=rptSlNghiTrung(b.all);   // việc KIỂM TRA, không cộng vào tổng việc cần làm
   const tong=b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length;   // 2 mục ghi thêm không tính
+  window._rptSlNlDash=b;
+  const bam=(k,tip,the)=>'<div onclick="rptSlNlDashDs(\''+k+'\')" style="cursor:pointer" title="'+tip+'">'+the+'</div>';
   return `
     <div class="kpi-grid" style="margin-bottom:14px">
-      ${mkKpi(ic('clipboard'),'Tổng việc cần làm',num(tong),'','g-purple')}
-      ${mkKpi(ic('cash'),'Đơn chốt chưa có Mã KH',num(b.thieuMa.length),'','g-red')}
-      ${mkKpi(ic('check'),'Đơn chốt đã nối',num(b.all.filter(r=>r.isChot&&r.kh).length)+'/'+num(b.all.filter(r=>r.isChot).length),'nối bằng Mã KH','g-green')}
-      ${mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow')}
+      ${bam('tong','Bấm để xem từng việc cần làm',mkKpi(ic('clipboard'),'Tổng việc cần làm',num(tong),'','g-purple'))}
+      ${bam('thieuMa','Bấm để xem các đơn chốt chưa có Mã KH',mkKpi(ic('cash'),'Đơn chốt chưa có Mã KH',num(b.thieuMa.length),'','g-red'))}
+      ${bam('daNoi','Bấm để xem đơn chốt đã nối / chưa nối',mkKpi(ic('check'),'Đơn chốt đã nối',num(b.all.filter(r=>r.isChot&&r.kh).length)+'/'+num(b.all.filter(r=>r.isChot).length),'nối bằng Mã KH','g-green'))}
+      ${bam('chuaTT','Bấm để xem khách chưa cập nhật trạng thái',mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow'))}
     </div>
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
     ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất — không tính vào tổng việc cần làm',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}
