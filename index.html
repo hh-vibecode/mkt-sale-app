@@ -237,7 +237,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
 <div id="loginGate" style="position:fixed;inset:0;z-index:6000;background:#f2f4f7;display:none;align-items:center;justify-content:center;font-family:'Montserrat','Inter',sans-serif">
   <div style="background:#fff;border:1.5px solid #e4e7ec;border-radius:16px;padding:32px 32px 28px;width:350px;box-shadow:0 12px 16px -4px rgba(16,24,40,.08),0 4px 6px -2px rgba(16,24,40,.03)">
     <div style="text-align:center;margin-bottom:20px">
-      <img src="logo.png" style="width:56px;height:56px;object-fit:contain" onerror="this.style.display='none'">
+      <img src="logo.png" style="width:56px;height:56px;object-fit:contain" onerror="var n=+(this.dataset.thu||0);if(n<3){this.dataset.thu=n+1;var im=this;setTimeout(function(){im.src='logo.png?r='+Date.now();},2000);}else{this.style.visibility='hidden';}">
       <div style="font-size:19px;font-weight:800;color:#101828;margin-top:6px">Dashboard MKT</div>
       <div style="font-size:12px;color:#667085">Đăng nhập để tiếp tục</div>
     </div>
@@ -255,7 +255,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
 <div class="topbar">
   <button class="sb-toggle" onclick="toggleSidebar()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg></button>
   <div class="top-logo">
-    <img src="logo.png" style="width:60px;height:60px;object-fit:contain" id="logoImg">
+    <img src="logo.png" style="width:60px;height:60px;object-fit:contain" id="logoImg" onerror="var n=+(this.dataset.thu||0);if(n<3){this.dataset.thu=n+1;var im=this;setTimeout(function(){im.src='logo.png?r='+Date.now();},2000);}else{this.style.visibility='hidden';}">
     <span class="top-logo-text">APP <span>MKT/SALE</span></span>
   </div>
   <div class="topbar-right">
@@ -4587,7 +4587,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 15:19';
+const APP_VERSION='25/09 15:24';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
