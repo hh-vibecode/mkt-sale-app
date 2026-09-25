@@ -4603,7 +4603,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 16:12';
+const APP_VERSION='25/09 16:20';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5584,6 +5584,11 @@ function rptSlBuildMasterRaw(){
       const dung=all.filter(o=>!treo2.includes(o));
       r.kords=dung;r.staleOrds=treo2;r.repeatOrds=[];r.repeatRevenue=0;
       r.revenue=dung.reduce((x,o)=>x+Number(o.total||0),0);
+      // khách TÍNH HẾT (Sỉ Offline...): doanh thu = mọi đơn. Vẫn tính riêng số THÁNG ĐẦU để hồ sơ ghi đúng nhãn
+      // (anh Hải 25/9/2026: KH004099 hiện 3,47 tỷ dưới nhãn "tháng đầu" -- thật ra là 79 đơn từ 2024).
+      r.tinhHet=true;
+      if(dung.length){const h=new Date(String(dung[0].purchase_date).slice(0,10));h.setMonth(h.getMonth()+1);
+        r.revenueThangDau=dung.filter(o=>new Date(String(o.purchase_date).slice(0,10))<h).reduce((x,o)=>x+Number(o.total||0),0);}
       if(dung.length)r.lastKiotDate=String(dung[dung.length-1].purchase_date).slice(0,10);
       return;
     }
@@ -6184,13 +6189,23 @@ function rptSlShowCustomer(key,sua){
       fld('Ngày tạo',esc(dmy(rptSlNgayTao(r))),'','ngay_tao'),
       fld('Sales phụ trách',rptSlSaleHien(r.staff)+(rptSlType()==='Sỉ'&&r.staff&&!rptSlSaleCuaDoi('Sỉ').includes(r.staff)?' <span style="color:var(--muted);font-weight:600;font-size:11px">('+esc(r.staff)+')</span>':''),'','sale'),
     ]:[]),
-    fld('Nối bằng',linkTxt),
+    ...(laSi?[]:[fld('Nối bằng',linkTxt)]),   // Sỉ bỏ Nối bằng · Số đơn Pancake · Hội thoại (anh Hải 25/9/2026)
     fld('Trạng thái',esc(r.status),RPT_SL_STATUS_COLOR[r.status]),
     fld('Brand',esc(DH_BRAND_LABEL[r.brand]||r.brand)),
-    fld('Số đơn Pancake',num(r.orders.length)),
+    ...(laSi?[]:[fld('Số đơn Pancake',num(r.orders.length))]),
     fld('Số đơn đặt hàng Kiot',num(r.kords.length)),
-    fld('Doanh thu chốt (tháng đầu)',r.revenue>0?vnd(r.revenue):'—',r.revenue>0?'var(--green)':''),
-    fld('Mua lại (quá 1 tháng)',r.repeatRevenue>0?vnd(r.repeatRevenue)+' · '+num(r.repeatOrds.length)+' đơn':''),
+    // DOANH THU TRONG HỒ SƠ (anh Hải 25/9/2026): khách OFFLINE chỉ hiện TỔNG; khách ONLINE hiện tháng đầu + mua lại.
+    ...(/offline/i.test(r.nguon||'')
+      ?[fld('Tổng doanh thu',r.revenue>0?vnd(r.revenue)+' · '+num((r.kords||[]).length)+' đơn':'—',r.revenue>0?'var(--green)':'')]
+      :r.tinhHet
+      // online nhưng tính hết mọi đơn (Lẻ Online, Sỉ Online không có đơn Pancake): tách hiển thị theo mốc 1 tháng
+      ?(()=>{const dau=r.revenueThangDau||0,sau=r.revenue-dau,h=(()=>{const k=r.kords||[];if(!k.length)return null;
+          const d=new Date(String(k[0].purchase_date).slice(0,10));d.setMonth(d.getMonth()+1);return d;})();
+        const nSau=h?(r.kords||[]).filter(o=>new Date(String(o.purchase_date).slice(0,10))>=h).length:0;
+        return [fld('Doanh thu chốt (tháng đầu)',dau>0?vnd(dau):'—',dau>0?'var(--green)':''),
+          fld('Mua lại (quá 1 tháng)',sau>0?vnd(sau)+' · '+num(nSau)+' đơn':'')];})()
+      :[fld('Doanh thu chốt (tháng đầu)',r.revenue>0?vnd(r.revenue):'—',r.revenue>0?'var(--green)':''),
+        fld('Mua lại (quá 1 tháng)',r.repeatRevenue>0?vnd(r.repeatRevenue)+' · '+num(r.repeatOrds.length)+' đơn':'')]),
     fld('Tên bên Kiot',esc(r.kiotName)),
     fld('Ngày đặt hàng gần nhất',esc(dmy(r.lastKiotDate))),
     ...(rptSlType()==='Sỉ'?[
@@ -6207,10 +6222,9 @@ function rptSlShowCustomer(key,sua){
       fld('Fanpage / website',r.siFanpage?'<a href="'+esc(r.siFanpage)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở trang ↗</a>':'','','si_fanpage'),
       // Đơn đầu tiên: đã gỡ khỏi bảng Master, xem ở đây.
       fld('Ngày chốt đầu',esc(dmy(r.kords&&r.kords.length?String(r.kords[0].purchase_date).slice(0,10):((r.sh||{}).ngay_chot_dau||'')))),
-      fld('Giá trị đơn đầu',(()=>{const v=r.kords&&r.kords.length?Number(r.kords[0].total||0):Number((r.sh||{}).gia_tri_don_dau||0);return v>0?vnd(v):'';})()),
       fld('Số lượt chăm sóc',r.siLuot?num(r.siLuot)+' lượt':''),
     ]:[]),
-    fld('Hội thoại',rptSlChatUrl(r)?'<a href="'+rptSlChatUrl(r)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat Pancake</a>':''),
+    ...(laSi?[]:[fld('Hội thoại',rptSlChatUrl(r)?'<a href="'+rptSlChatUrl(r)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat Pancake</a>':'')]),
     fld('Nguồn gốc (Pancake)',esc(r.source)),
     fld('Ad ID',(()=>{const id=r.adId||(r.sh||{}).ad_id;if(!id)return'';
       return adIdNote(id)+(r.adSuyRa?' <span style="font-size:10.5px;color:var(--yellow);font-weight:700" title="Không có Ad ID sẵn — app suy ra bằng cách so SĐT '+esc(r.adSuyRaSdt||'')+' với đơn Pancake có gắn ads">· suy từ SĐT</span>':'');})()),
