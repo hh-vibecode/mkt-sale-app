@@ -4587,7 +4587,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 15:18';
+const APP_VERSION='25/09 15:19';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5018,6 +5018,18 @@ const RPT_SL_STATUS_COLOR={'Chốt đơn':'var(--green)','Bàn giao':'var(--teal
 // ── BỘ LỌC CHUNG cho Master + CRM ──
 // Chỉ có 4 brand (CT / HT / Shidai / TTV); shop TikTok Hoàng Dương đã gom về CT lúc nạp dữ liệu.
 function rptSlF(tab,k){return (window['_rptSlF_'+rptSlType()+tab]||{})[k]||'';}
+// Nút "Tất cả" cạnh ô tìm kiếm Master: ô tìm chỉ tìm trong bộ lọc, muốn tìm rộng thì bấm 1 phát tháo hết
+// bộ lọc (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026. Không có bộ lọc nào thì nút ẩn.
+function rptSlCoLoc(){
+  const rg=modRange(rptSlMod());
+  return !!(rg.from||rg.to||rptSlF('master','sale')||rptSlF('master','status')||rptSlF('master','brand'));
+}
+function rptSlThaoLoc(){
+  modRanges[rptSlMod()]={from:'',to:''};
+  window['_rptSlF_'+rptSlType()+'master']={};
+  window._rptSlMasterPage=1;
+  rptSlXoaCache();rptSlRender();
+}
 function rptSlSetF(tab,k,v){
   window['_rptSlF_'+rptSlType()+tab]=Object.assign({},window['_rptSlF_'+rptSlType()+tab],{[k]:v});
   window[tab==='master'?'_rptSlMasterPage':'_rptSlCrmPage']=1;
@@ -5859,6 +5871,7 @@ function rptSlMasterHtmlRaw(){
       ${rptSlFilterBar('master')}
       ${rptSlType()==='Sỉ'?'<button onclick="rptSiThemKhachForm()" class="refresh-btn" style="padding:7px 18px;font-size:12.5px;font-weight:800;letter-spacing:.01em;box-shadow:0 2px 10px rgba(67,97,238,.35)">+ THÊM KHÁCH MỚI</button>':''}
       <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(rptSlRender,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
+      ${rptSlCoLoc()?'<button onclick="rptSlThaoLoc()" class="btn-ghost" title="Tháo hết bộ lọc: ngày, Sale, trạng thái, brand" style="margin:0;height:30px;padding:0 14px;font-size:11.5px;font-weight:800">Tất cả</button>':''}
     </div>
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">Master Data — hồ sơ khách</div><div class="tbl-count">${num(list.length)}</div>
