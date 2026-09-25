@@ -4494,6 +4494,7 @@ function rptSiOSua(r){
   }else{
     // Khách từ Pancake: tên/nguồn/kênh do job đồng bộ ghi đè nên không cho sửa. SĐT ghi thêm vào hồ sơ;
     // Mã KH chỉ điền khi CHƯA có (dán vào ghi chú đơn Pancake, giống tab Nhập Liệu).
+    o.ten={kieu:'text',gt:r.name||'',noi:'mn',cot:'ten_sua'};   // để trống = quay về tên bên Pancake
     o.sdt={kieu:'text',gt:mn.si_sdt||'',noi:'mn',cot:'si_sdt'};
     if(!r.kh)o.ma_kh={kieu:'text',gt:'',noi:'kh'};
   }
@@ -4791,7 +4792,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/09 17:42';
+const APP_VERSION='25/09 17:47';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5665,6 +5666,8 @@ function rptSlBuildMasterRaw(){
   // MASTER SỈ = TỔNG HỢP XUYÊN SUỐT: hồ sơ khách (mô hình, showroom, tài chính, phân loại...) + rút gọn
   // toàn bộ nhật ký chăm sóc bên CRM (lượt gần nhất, số lượt, bao lâu chưa liên hệ). Sale Sỉ chủ yếu gọi
   // điện / Zalo chứ không chat Pancake, nên diễn biến nằm hết ở nhật ký tự nhập.
+  // TÊN KHÁCH Sale sửa trong app (saleretail_manual.ten_sua) ghi đè tên Pancake khi hiển thị (anh Hải 25/9/2026)
+  rows.forEach(r=>{const tn=String((rptSlManual[r.leadId]||{}).ten_sua||'').trim();if(tn)r.name=tn;});
   if(rptSlType()!=='Sỉ'){
     // LẺ: Sale gán ở tab Gán data (hoặc thu hồi về trống) ưu tiên hơn người phụ trách bên Pancake
     rows.forEach(r=>{const gan=rptSlSaleGanTayDong(r);if(gan!==null)r.staff=gan;});
@@ -6374,7 +6377,6 @@ function rptSlShowCustomer(key,sua){
     :'';
   const laSi=rptSlType()==='Sỉ';
   const info=[
-    ...(dsSua.ten?[fld('Tên khách / cửa hàng',esc(r.name),'','ten')]:[]),
     fld('Lead ID','<code>'+esc(r.leadId)+'</code>'),
     fld('SĐT',rptSlSdtHtml(r,''),'','sdt'),
     fld('Nguồn khách',esc(r.nguon||(r.sh||{}).nguon),'','nguon'),
@@ -6481,7 +6483,7 @@ function rptSlShowCustomer(key,sua){
       <div style="display:flex;align-items:center;gap:13px;padding:16px 20px;border-bottom:1px solid var(--border)">
         <span style="width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:21px;color:var(--muted);flex:0 0 auto"></span>
         <div style="min-width:0">
-          <div style="font-size:16px;font-weight:800;color:var(--text)">${esc(r.name)} <span style="font-size:12.5px;font-weight:700;color:var(--muted)">· ${esc(r.kh||r.leadId||'')}</span></div>
+          <div style="font-size:16px;font-weight:800;color:var(--text)">${suaSi&&dsSua.ten?'<input id="siO_ten" value="'+esc(r.name).replace(/"/g,'&quot;')+'" onkeydown="if(event.key===\'Escape\')rptSiHuyO();else if(event.key===\'Enter\'){event.preventDefault();rptSiLuuTatCa();}" style="font-size:16px;font-weight:800;height:34px;min-width:280px;padding:2px 10px;border:1.5px solid var(--accent);border-radius:8px;background:var(--accent-l);color:var(--text);font-family:var(--font);outline:none">':esc(r.name)} <span style="font-size:12.5px;font-weight:700;color:var(--muted)">· ${esc(r.kh||r.leadId||'')}</span></div>
           <div style="font-size:12px;color:var(--muted);font-weight:600">${[...(r.phones||[]).map(p=>p.so),r.kenh,r.staff].filter(Boolean).map(esc).join(' · ')}</div>
         </div>
         <span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex:0 0 auto">${nutDau}</span>
