@@ -2393,11 +2393,31 @@ const DH_ISSUE_DOISOAT=new Set([
 const DH_SEV={err:{label:'Lỗi',color:'var(--red)'},warn:{label:'Cảnh báo',color:'var(--yellow)'},info:{label:'Cần bổ sung',color:'var(--muted)'}};
 // Lẻ hay Sỉ lấy theo THẺ khách trên Pancake (KH LẺ / KH SỈ) chứ không theo brand -- Shidai có cả 2 loại
 // (523 đơn Lẻ / 202 đơn Sỉ). Bên Kiot thì theo chi nhánh: "Tổng kho sỉ Shidai" là Sỉ, còn lại là Lẻ.
+// ĐƠN KHÔNG CÓ THẺ KH LẺ / KH SỈ (anh Hải 27/9/2026):
+//   1) cùng khách (trùng 9 số cuối SĐT) có đơn khác đã gắn thẻ -> theo thẻ đó, để 1 khách không bị xé
+//      làm đôi nửa Sỉ nửa Lẻ;
+//   2) không có thì đơn đến từ page SHIDAI -> Sỉ, còn lại -> Lẻ.
+let _dhTheoSdt=null;
+function dhLoaiTheoSdt(){
+  if(_dhTheoSdt&&_dhTheoSdt.ds===dhOrders)return _dhTheoSdt.m;
+  const m={};
+  dhOrders.forEach(o=>{
+    const t=(o.customer_tags||'').toUpperCase();
+    const loai=t.includes('KH SỈ')?'Sỉ':t.includes('KH LẺ')?'Lẻ':'';
+    const k=rptSlLast9(o.phone||'');
+    if(loai&&k.length===9&&!m[k])m[k]=loai;
+  });
+  _dhTheoSdt={ds:dhOrders,m};
+  return m;
+}
 function dhSaleTypeOrder(o){
   const t=(o.customer_tags||'').toUpperCase();
   if(t.includes('KH SỈ'))return'Sỉ';
   if(t.includes('KH LẺ'))return'Lẻ';
-  return'Chưa phân loại';
+  const k=rptSlLast9(o.phone||'');
+  const theoKhach=k.length===9?dhLoaiTheoSdt()[k]:'';
+  if(theoKhach)return theoKhach;
+  return o.brand==='Shidai'?'Sỉ':'Lẻ';
 }
 function dhSaleTypeInvoice(i){return /sỉ|si\b/i.test(i.branch_name||'')?'Sỉ':'Lẻ';}
 function dhDataIssues(){
@@ -3790,7 +3810,7 @@ const RPT_SL_CFG={
 };
 function rptSlType(){return window._rptSlType==='Sỉ'?'Sỉ':'Lẻ';}
 function rptSlCfg(){return RPT_SL_CFG[rptSlType()];}
-// Đơn "Chưa phân loại" (không có thẻ KH LẺ/KH SỈ) vẫn tính vào Lẻ như trước, không rơi vào Sỉ.
+// Đơn không có thẻ KH LẺ/KH SỈ: dhSaleTypeOrder đã tự xếp (Shidai -> Sỉ, còn lại -> Lẻ).
 function rptSlInType(t){return rptSlType()==='Sỉ'?t==='Sỉ':t!=='Sỉ';}
 // Ô tìm kiếm nằm TRONG phần trang bị vẽ lại -> gõ 1 ký tự, 350ms sau trang vẽ lại, ô cũ bị thay bằng ô mới
 // nên mất con trỏ, không gõ tiếp được (anh Hải báo 25/9/2026). Nhớ ô đang gõ + vị trí con trỏ, vẽ xong trả lại.
@@ -5516,7 +5536,9 @@ function rptSlBuildMasterRaw(){
   const theSi=o=>{const t=String(o.customer_tags||'').toUpperCase();
     return t.indexOf('TIỀM NĂNG')>=0||t.indexOf('CHỐT ĐƠN')>=0;};
   const duSi=o=>theSi(o)||(!dhHuy(o)&&coSdt(o));
-  const duDK=rptSlType()==='Sỉ'?duSi:dhIsQualified;
+  // 27/9/2026 anh Hải mở rộng: khách Pancake CÓ SĐT (đơn chưa huỷ) là vào báo cáo luôn, cả Sỉ lẫn Lẻ,
+  // KHÔNG cần thẻ gì. Đơn chưa có SĐT thì vẫn phải có thẻ như cũ (Lẻ: CHỐT ĐƠN / BÀN GIAO / TIỀM NĂNG).
+  const duDK=rptSlType()==='Sỉ'?duSi:(o=>dhIsQualified(o)||(!dhHuy(o)&&coSdt(o)));
   Object.keys(byKey).forEach(k=>{if(!byKey[k].some(duDK))delete byKey[k];});
   let rows=Object.entries(byKey).map(([key,orders])=>{
     orders.sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
