@@ -3,7 +3,7 @@
 > Sổ này thay cho việc đọc lại hội thoại cũ. **Claude phải mở file này đầu mỗi phiên làm việc.**
 > Xong việc nào thì xoá khỏi mục ĐANG NỢ và ghi 1 dòng vào NHẬT KÝ (gộp lại khi quá dài).
 > **Anh đã quyết rồi thì LÀM, đừng xếp lại vào mục "chờ anh quyết" để hỏi lại** (mắc lỗi này 23/9 với việc tự tạo data nhập tay).
-> Cập nhật lần cuối: 25/09/2026 (sáng).
+> Cập nhật lần cuối: 27/09/2026.
 
 ---
 
@@ -12,7 +12,6 @@
 | # | Việc | Cần anh nói gì |
 |---|---|---|
 | 1 | **Kéo full hoá đơn Kiot về hub** — 23/09 anh bảo **TẠM ĐỂ ĐÓ**, khi nào cần thì làm. Xem mục 6 bên dưới trước khi bắt tay | khi nào cần thì anh gọi |
-| 3 | **Tăng tỉ lệ có SĐT của Pancake** để nối Ad ID theo SĐT ăn thua hơn (hiện chỉ 19% đơn có SĐT nên chỉ vá được 2 lead). Cách: kéo SĐT từ API hội thoại Pancake | cho thử vài trăm hội thoại đo tỉ lệ không |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
 | 15 | 3 khách Lẻ chưa có Sale phụ trách: M-0018 Nguyễn Thị Hồng Vân · L-TTV-0371 Trần Hải Long · L-CT-0308 Hoàng Lan | gán Sale |
 | 12 | M-0197 (Sỉ "Ngoquoc Duy") và M-0021 (Lẻ "KL ANH DUY") chung SĐT …349764439 — KHÔNG gộp vì khác Lẻ/Sỉ | chỉ để anh biết |
@@ -22,6 +21,7 @@
 | # | Việc | Ghi chú |
 |---|---|---|
 
+| 18 | **KHÁCH ĐỂ SĐT TRONG HỘI THOẠI PANCAKE MÀ CHƯA CÓ ĐƠN → KHÔNG VÀO APP** (anh chốt 27/9: "Pancake có SĐT thì tự động đẩy vào báo cáo"). Ca thật: Sale Sỉ báo khách **0935323289** hỏi hàng, tìm trên Pancake thấy SĐT nhưng tìm mọi báo cáo trong app không ra. Nguyên nhân khả năng cao: `sync-datahub-pancake.js` chỉ kéo **ĐƠN POS** (`/shops/{id}/orders`), còn khách mới nhắn tin để lại số mà Sale chưa tạo đơn thì không có trong `datahub_orders`. (Không phải do đồng bộ bỏ sót: mỗi lượt kéo 500 đơn mới nhất mỗi shop, 00:05 UTC quét lại toàn bộ.) Phần báo cáo đã sửa ở máy phụ 27/9 (`d602e1c`): đơn có SĐT là vào báo cáo, không cần thẻ | Máy gốc làm: **(a)** tra DB xem 0935323289 có trong `datahub_orders` không (cột `phone`, cả `internal_note`). Có thì mở app xem giờ đã hiện chưa. **(b)** Không có → viết job kéo **hội thoại Pancake có SĐT** (API pages.fm, cần page access token của từng page; SĐT khách để lại nằm ở `recent_phone_numbers` / customer của hội thoại), đẩy vào hub thành dòng "lead chưa có đơn" (khoá: page + psid, thẻ hội thoại, ngày nhắn đầu, ad_id nếu có). Chia Sỉ/Lẻ theo đúng luật mục 3 (thẻ → page Shidai → Lẻ). Master nhận thêm nguồn này, gộp với đơn POS theo SĐT. Việc này thay cho mục "Tăng tỉ lệ có SĐT của Pancake" trước để chờ anh quyết: nó cũng giúp nối Ad ID theo SĐT (hiện chỉ 19% đơn có SĐT). **(c)** Sau khi đổi luật 27/9, chạy `kiem-so-lieu.js` và đếm số khách Master Sỉ / Lẻ trước-sau để báo anh: bao nhiêu khách mới vào, và bao nhiêu khách Shidai chuyển từ Lẻ sang Sỉ |
 | 17 | **Nguyễn Thuỳ Trâm** (L-HT-0296) mã KH002561 không có đơn; đơn thật nghi là DH002098 dưới mã KH007352 "KL Anh Tân" (M-0019) | Sale xác nhận rồi sửa ghi chú Pancake |
 | 3 | **Mật khẩu DB bị lộ trong hội thoại 25/9.** Lúc soát file `supabase-keys.local.txt`, lệnh che giá trị bị sót dòng `DB_PASSWORD` nên mật khẩu hiện nguyên văn trong kết quả lệnh của phiên Claude. Không ra khỏi máy, không nằm trong commit nào | Anh quyết: có đổi mật khẩu DB không (Supabase → Project Settings → Database → Reset password), đổi thì nhớ cập nhật lại `supabase-keys.local.txt` và mọi chỗ đang dùng mật khẩu này. Khoá quản trị (service role) và khoá công khai KHÔNG bị hiện |
 
@@ -64,7 +64,8 @@
 - **Sỉ lấy full lịch sử** (không giới hạn T6). Riêng TAB Data nhập tay chỉ HIỆN từ 1/6/2026 cho đỡ dài, dòng cũ vẫn vào báo cáo.
 - **MKT chỉ lấy Sỉ Online**, Sỉ Offline chỉ vào báo cáo Sale Sỉ.
 - **Cột trạng thái của Sỉ**: Master = Phân loại KH. Tab CRM Sỉ ĐÃ GỠ (24/9) — lịch sử chăm sóc nằm trong popup hồ sơ khách (3 tab: Thông tin · Ghi chú riêng · Lịch sử chăm sóc), vẫn lưu ở bảng `salesi_crm`.
-- **Data Online vào Master Sỉ** khi: có thẻ LEAD TIỀM NĂNG / CHỐT ĐƠN, HOẶC có thẻ KH SỈ + khách đã gửi SĐT.
+- **Data Pancake vào báo cáo Sale** (anh chốt 27/9, thay luật 24/9): đơn **CÓ SĐT** (chưa huỷ) là vào luôn, cả Sỉ lẫn Lẻ, **không cần thẻ**. Đơn chưa có SĐT thì vẫn phải có thẻ: Sỉ cần TIỀM NĂNG / CHỐT ĐƠN · Lẻ cần CHỐT ĐƠN / BÀN GIAO / TIỀM NĂNG.
+- **Chia Sỉ / Lẻ cho đơn Pancake** (`dhSaleTypeOrder`): có thẻ KH SỈ / KH LẺ thì theo thẻ. Không thẻ thì theo thẻ ở đơn khác của cùng khách (trùng 9 số cuối SĐT). Vẫn không có thì đơn từ page **Shidai → Sỉ**, còn lại → Lẻ. Trước 27/9 đơn không thẻ luôn tính vào Lẻ.
 - **Lượt chăm sóc "Chốt đơn"** bắt buộc điền mã đơn đặt hàng CÓ THẬT bên Kiot.
 - **Nút Xoá** luôn nằm TRONG form Sửa, bấm phải hỏi xác nhận. **Khách chưa có Sale = để TRỐNG** (bỏ hẳn "botsale sỉ", 24/9). **Thu hồi data** (chỉ Admin) = về trống (lưu si_sale '', khác null = chưa từng gán) → rơi vào tab Gán data. Tab Gán data có ở CẢ Lẻ lẫn Sỉ.
 - **Master Sỉ** mặc định lọc 3 ngày gần nhất, tính theo NGÀY TẠO khách (anh chốt 24/9, không đổi sang ngày chăm sóc). Thẻ dash: icon + tên (chữ thường, đậm) cùng hàng, không dòng phụ.
@@ -96,6 +97,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **27/09 (máy phụ)** — Đổi luật đơn Pancake vào báo cáo Sale (`d602e1c`): đơn có SĐT là vào luôn cả Sỉ lẫn Lẻ, không cần thẻ. Đơn không thẻ KH LẺ/KH SỈ: lấy thẻ ở đơn khác cùng SĐT; không có thì Shidai → Sỉ, còn lại → Lẻ. Máy phụ không đọc được DB nên chưa đo được số khách thay đổi (việc #18c). Trước đó: popup Sửa Sỉ ẩn ô không sửa được; Ngày chăm sóc / Nội dung trao đổi của Sỉ lấy từ lượt chăm sóc gần nhất; Nhóm KH thành ô chọn 3 giá trị.
 
 - **25/09 chiều (máy gốc)** — (1) Job Kiot đỏ 11:21 (mail báo lỗi): "ON CONFLICT DO UPDATE ... row a second time" — kéo theo trang, đơn mới sinh ra làm 1 đơn nằm 2 trang → lô ghi có 2 dòng trùng. Sửa: `scripts/lib/khu-trung.js` gọi trước mọi upsert ở cả 4 script đồng bộ. (2) Kiểm hậu quả sự cố 64 file: khung 08:30–10:20 Pancake 9/9, Kiot 6/6 lượt xanh, 5 workflow active, số liệu không hụt; máy gốc git sạch. Commit sự cố `3e1e471` để lại ĐÚNG 1 file index.html → dấu hiệu bảng theo dõi file của git trên máy kia bị làm trống (`git rm -r --cached .` hoặc chép repo thiếu .git) rồi chỉ add index.html; máy kia chạy `git reflog` sẽ rõ. (3) Code xong "Nghi trùng khách" ở tab Nhập Liệu (Lẻ 2 nhóm, Sỉ 1 nhóm) + bước 4 gộp tay trong Master (giả lập hợp nhất: doanh thu không đổi). (4) Đổi thẻ Pancake KH LẺ→KH SỈ cho 2 khách buôn (KH007485, KH007517), gộp đúng vào hồ sơ Sỉ sẵn có.
 - **25/09 ~10:00 — SỰ CỐ + KHÔI PHỤC**: commit `3e1e471` làm GitHub mất 64 file (xem mục 2 việc #2). Đã khôi phục ở `6d2838c`, nội dung giống hệt bản trước sự cố. Cũng phiên này: Claude thử kết nối thẳng vào DB để thêm cột thì bị hệ thống chặn; lệnh che giá trị khi soát file key bị sót, làm lộ mật khẩu DB trong hội thoại (việc #3). Việc Gộp khách trùng chưa code dòng nào, chờ anh chạy SQL (việc #1).
