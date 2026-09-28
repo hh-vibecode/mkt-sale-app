@@ -4852,7 +4852,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 08:59';
+const APP_VERSION='28/09 09:18';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5662,7 +5662,8 @@ function rptSlBuildMasterRaw(){
       kiotName:kc?kc.name:'',saleType:r.sale_type||'Lẻ',nguoiTao:r.created_by||'',taoLuc:r.created_at||'',tuKiotTao:/^Tự tạo từ đơn Kiot/i.test(r.note||''),
       // cách vào app (anh Hải 25/9/2026): Kiot = job tự kéo từ đơn Kiot · Nhập tay = data kéo từ Google Sheet
       // hoặc tài khoản trong app tự thêm
-      cachVao:/^Tự tạo từ đơn Kiot/i.test(r.note||'')?'Kiot':'Nhập tay',
+      // 'Nguồn Pancake' = khách Sale ghi Offline nhưng SĐT có trong hội thoại Pancake -> đã chuyển Online (28/9/2026)
+      cachVao:/Nguồn Pancake/i.test(r.note||'')?'Pancake':/^Tự tạo từ đơn Kiot/i.test(r.note||'')?'Kiot':'Nhập tay',
       status:kords.length?'Chốt đơn':(mn.status||r.status||''),tagStatus:'Nhập tay',
       isChot:kords.length>0,closeDate:kords.length?(kords[0].purchase_date||'').slice(0,10):'',
       lastKiotDate:kords.length?(kords[kords.length-1].purchase_date||'').slice(0,10):'',
@@ -6020,7 +6021,7 @@ function rptSiNguonChip(r){
   const coPc=(r.orders||[]).length>0,tay=r.isManual&&!coPc;
   const cach=coPc?'Pancake':(r.cachVao||'Nhập tay');
   if(n==='Offline')return chip(r.isManual||coPc?'Offline · '+cach:'Offline','rgba(245,158,11,.15)','#b45309');
-  if(n==='Online')return tay?chip('Online · '+cach,'rgba(249,115,22,.14)','#c2410c'):chip('Online · Pancake','var(--accent-l)','var(--accent)');
+  if(n==='Online')return tay&&cach!=='Pancake'?chip('Online · '+cach,'rgba(249,115,22,.14)','#c2410c'):chip('Online · Pancake','var(--accent-l)','var(--accent)');
   return r.isManual?chip(cach,'var(--bg2)','var(--text2)'):'<span style="color:var(--muted)">—</span>';
 }
 function rptSlMasterRowSi(r){
