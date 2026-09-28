@@ -23,6 +23,15 @@ jobs:
       # Chặn lỗi đọc thiếu dữ liệu: PostgREST trả tối đa 1000 dòng/lần, quên phân trang là âm thầm sai số.
       - name: Kiểm tra phân trang khi đọc Supabase
         run: node scripts/check-pagination.js
+      # Khách để lại SĐT trong hội thoại FB (Sỉ + Lẻ) từ 28/9/2026: khách mới -> tự tạo đơn trắng + gắn thẻ,
+      # khách cũ -> chỉ gắn thẻ bù (anh Hải bật 28/9). Chạy TRƯỚC bước sync để đơn vừa tạo về app ngay lượt này.
+      # Lỗi ở đây không chặn bước sync.
+      - name: Tự tạo đơn + gắn thẻ cho khách để SĐT trong hội thoại
+        continue-on-error: true
+        env:
+          PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/tu-tao-don-hoi-thoai.js
       - name: Sync đơn hàng Pancake -> Supabase
         env:
           PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
