@@ -55,6 +55,7 @@
 - **1 khách nhắn nhiều nguồn** (nhiều page / nhiều SĐT) thì kê đủ: nhãn "N nguồn · M SĐT" dưới tên + bảng Nguồn liên hệ trong hồ sơ. Lead Pancake + dòng sheet cùng ngày cùng SĐT = 1 nguồn. Đinh Thị Hường (Shidai 0359752313 + Tự Tại Viên 0378682341) là 1 người — anh xác nhận 24/9.
 - Mọi thứ Claude tạo ký tên **Monsieur Claude**.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
+- **Phạm vi xem theo Sale ĐÃ CHỐT** (gán tay > người tạo đơn Kiot > Pancake, sau luật chuyển đội), lọc SAU khi xác định Sale. Chỗ nào lọc theo tên thô (staff_name Pancake / tên gõ nhập tay) là SAI — dùng `rptSlSaleCuaDon` / `rptSlSaleCuaNhapTay`. Sửa phân quyền xong phải giả lập view từng tài khoản (khách phải thấy vs thực thấy).
 - **Commit (từ 25/9):** sửa xong thì tự pull → commit → push, không hỏi. Nhưng TRƯỚC MỖI COMMIT phải chạy `git diff --cached --stat`, chỉ có đúng file mình sửa mới commit (bài học sự cố 25/9).
 - **Đổi cấu trúc DB** (thêm cột/bảng, sửa luật): Claude **TỰ CHẠY** rồi báo lại, KHÔNG giao việc cho anh (anh chốt 25/9: "mắc gì tự làm được mà giao việc cho t"). Máy gốc chạy qua Management API (thẻ sbp_ trong supabase-keys.local.txt). Máy nào bị chặn thì mới nhờ anh, và phải nói rõ vì sao. Luôn lưu kèm file supabase-schema-*.sql để còn tra lại.
 
@@ -78,6 +79,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **28/09 15:10** — **LỖI PHÂN QUYỀN NGHIÊM TRỌNG (đã sửa):** app lọc phạm vi xem theo Sale TRƯỚC khi áp Sale gán tay / người tạo đơn Kiot → khách Pancake không có người phụ trách nhưng đã gán tay (vd L-CT2-0085 "Cáo" → Chánh Tâm Ngọc Diệp) biến mất khỏi view của chính Sale đó. Giả lập view từng tài khoản: bản cũ sót Vân Ngọc 193/447, Sale Chánh Tâm 190/375, Chị Oanh Lẻ 206/477, Sỉ 864/949 khách; bản mới sót 0 (Master + Nhập Liệu). Sửa: lọc phạm vi ở CUỐI `rptSlBuildMasterRaw`; bảng tra `rptSlSaleTheoMa` (Sale đã chốt theo mã) cho Data Hub, Data nhập tay, phễu Lẻ; đổi tên Sale giờ sửa luôn phạm vi tài khoản + tên trên dòng nhập tay (hàm CSDL `doi_ten_sale`). CHỜ ANH: tài khoản "Chị Oanh" không có "Đặng Thị Minh Oanh" trong phạm vi → không thấy 311 khách Sỉ của Minh Oanh.
 
 - **28/09 14:40** — (1) Workflow Pancake đỏ 14h10–14h30: bước kiểm phân trang chặn vì đọc `job_moc` thiếu `limit=1` → sync bị bỏ qua 3 lượt; đã sửa + chạy bù, xanh. (2) Tổng Quan Sỉ: GIỮ thẻ "Doanh thu đã chốt", bấm vào ra popup 2 thẻ **Online / Offline** (anh sửa lại: không tách thẻ trên trang), bấm tiếp ra bảng khách đã chốt riêng + nút Xem tất cả (T9: 141,0tr / 7 khách + 214,5tr / 16 khách = 355,5tr). Lẻ giữ 1 thẻ.
 

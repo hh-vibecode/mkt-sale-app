@@ -2206,7 +2206,7 @@ function dhFilteredOrders(){
   const to=document.getElementById('dhDateTo')?.value||'';
   const q=(document.getElementById('dhSearch')?.value||'').trim().toLowerCase();
   return dhOrders.filter(o=>{
-    if(!dashSeeSale(rptSlSaleName(o.staff_name))||!dashSeeType(dhSaleTypeOrder(o)))return false;
+    if(!dashSeeSale(rptSlSaleCuaDon(o))||!dashSeeType(dhSaleTypeOrder(o)))return false;   // Sale đã tính gán tay (28/9)
     if(brand!=='all'&&o.brand!==brand)return false;
     if(from&&o.order_date<from)return false;
     if(to&&o.order_date>to)return false;
@@ -2860,7 +2860,7 @@ function dhManualHtml(){
   const mine=tatCa.filter(r=>String(r.created_date||'')>=DH_MANUAL_MOC);
   const an=tatCa.length-mine.length;
   const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none';
-  const rows=mine.filter(r=>dashSeeSale(rptSlSaleName(r.staff_name))&&dashSeeType(r.sale_type||'Lẻ')).slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
+  const rows=mine.filter(r=>dashSeeSale(rptSlSaleCuaNhapTay(r))&&dashSeeType(r.sale_type||'Lẻ')).slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
     const v=((inv[r.sale_type==='Sỉ'?'Sỉ':'Lẻ']||{})[r.kiot_code])||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
     return `<tr>
       <td>${dmy(r.created_date)||'—'}</td>
@@ -2996,6 +2996,13 @@ async function dhNhanSuThem(){
 }
 // SỬA TÊN nhân sự Sale (anh Hải 25/9/2026, thay cho nút "Đổi sang Lẻ/Sỉ"). Đổi tên thì chuyển luôn các khách
 // đang gán tay cho tên cũ (si_sale) sang tên mới, để không khách nào rơi về "chưa gán".
+// Đổi tên Sale phải sửa cả PHẠM VI XEM của mọi tài khoản (sales_users.data_sales) + tên Sale trên dòng nhập tay,
+// không thì Sale đổi tên xong không thấy khách nào (lỗi phát hiện 28/9/2026). Hàm doi_ten_sale chạy trong CSDL.
+async function dhNhanSuDoiPhamVi(H,cu,moi){
+  const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/doi_ten_sale',{method:'POST',headers:H,body:JSON.stringify({p_cu:cu,p_moi:moi})});
+  if(!r.ok)throw new Error('sửa phạm vi tài khoản theo tên mới lỗi '+r.status);
+  (typeof dhManual!=='undefined'?dhManual:[]).forEach(m=>{if(m&&m.staff_name===cu)m.staff_name=moi;});
+}
 async function dhNhanSuDoiTen(id,moi){
   const x=saleNhanSuDS().find(y=>y.id===id)||{};const cu=String(x.ten||'');
   const H={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
@@ -3003,6 +3010,7 @@ async function dhNhanSuDoiTen(id,moi){
   if(!r.ok)throw new Error('lỗi '+r.status);
   const r2=await fetch(SUPABASE_URL+'/rest/v1/saleretail_manual?si_sale=eq.'+encodeURIComponent(cu),{method:'PATCH',headers:H,body:JSON.stringify({si_sale:moi})});
   if(!r2.ok)throw new Error('chuyển khách sang tên mới lỗi '+r2.status);
+  await dhNhanSuDoiPhamVi(H,cu,moi);
   Object.values(rptSlManual||{}).forEach(m=>{if(m&&m.si_sale===cu)m.si_sale=moi;});
   logAct('U','sale_nhan_su',String(id),cu,'Tên Sale',cu,moi);
   await saleNhanSuLoad(true);window._kiotOrdByCode=null;rptSlXoaCache();
@@ -3020,6 +3028,7 @@ async function dhNhanSuSua(id){
     if(!r.ok)throw new Error('lỗi '+r.status);
     const r2=await fetch(SUPABASE_URL+'/rest/v1/saleretail_manual?si_sale=eq.'+encodeURIComponent(cu),{method:'PATCH',headers:H,body:JSON.stringify({si_sale:moi})});
     if(!r2.ok)throw new Error('chuyển khách sang tên mới lỗi '+r2.status);
+    await dhNhanSuDoiPhamVi(H,cu,moi);
     Object.values(rptSlManual||{}).forEach(m=>{if(m&&m.si_sale===cu)m.si_sale=moi;});
     logAct('U','sale_nhan_su',String(id),cu,'Tên Sale',cu,moi);
     await saleNhanSuLoad(true);window._kiotOrdByCode=null;rptSlXoaCache();dhNhanSuVeLai();
@@ -4876,7 +4885,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 14:44';
+const APP_VERSION='28/09 15:15';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5022,7 +5031,7 @@ function rptSlOverviewHtml(){
   // Áp bộ lọc ngày RIÊNG của báo cáo: khách lọc theo NGÀY TẠO, đơn thô lọc theo NGÀY ĐƠN.
   const mod0=rptSlMod();
   const master=rptSlPeriod().filter(r=>rptHopBrand(mod0,r));
-  const le=dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))&&dashSeeSale(rptSlSaleName(o.staff_name))&&modInRange(mod0,o.order_date)
+  const le=dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))&&dashSeeSale(rptSlSaleCuaDon(o))&&modInRange(mod0,o.order_date)
     &&(!rptBrand(mod0)||o.brand===rptBrand(mod0)));
   const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
   const dat=le.filter(o=>tag(o,'LEAD ĐẠT')||dhIsQualified(o));
@@ -5511,7 +5520,31 @@ function rptSlFilterBar(tab){
 // Dựng Master khá nặng (gộp đơn Pancake + Kiot + nhập tay). Một lần render gọi lại 3-8 lần với CÙNG
 // tham số -> nhớ kết quả theo (loại khách + kỳ lọc + phạm vi dữ liệu), xoá khi dữ liệu đổi.
 let _rptSlCache={};
-function rptSlXoaCache(){_rptSlCache={};}
+function rptSlXoaCache(){_rptSlCache={};window._rptSlVer=(window._rptSlVer||0)+1;}
+// BẢNG TRA "MÃ KHÁCH -> SALE PHỤ TRÁCH ĐÃ CHỐT" cho các chỗ lọc phạm vi xem ngoài Master (Data Hub, Data nhập tay,
+// phễu Lẻ). Trước 28/9/2026 các chỗ đó lọc theo người phụ trách bên Pancake / tên gõ trên dòng nhập tay -> khách
+// Sale được GÁN TAY không hiện với chính Sale đó. Dựng từ Master cả Lẻ lẫn Sỉ (trước khi lọc phạm vi), nhớ theo dữ liệu.
+let _rptSlSaleMa={khoa:'',map:{}};
+function rptSlSaleTheoMa(){
+  if(typeof rptSlManualLoaded==='undefined'||!rptSlManualLoaded)return {};
+  const khoa=[window._rptSlVer||0,dhOrders.length,(typeof dhManual!=='undefined'?dhManual.length:0),kiotOrders.length,
+    Object.keys(rptSlManual).length,saleNhanSuDS().map(x=>x.ten+'/'+x.doi).join(',')].join('|');
+  if(_rptSlSaleMa.khoa===khoa)return _rptSlSaleMa.map;
+  const cu=window._rptSlType,cuK=window._kiotOrdByCode;window._rptSlSaleMaTam={};
+  try{['Lẻ','Sỉ'].forEach(t=>{window._rptSlType=t;window._kiotOrdByCode=null;rptSlBuildMasterRaw();});}
+  catch(e){console.warn('rptSlSaleTheoMa',e);}
+  window._rptSlType=cu;window._kiotOrdByCode=cuK;
+  _rptSlSaleMa={khoa,map:window._rptSlSaleMaTam};
+  return _rptSlSaleMa.map;
+}
+function rptSlSaleCuaDon(o){
+  const m=rptSlSaleTheoMa(),id='L-'+rptSlShopCode(o)+'-'+String(o.system_id).padStart(4,'0');
+  return Object.prototype.hasOwnProperty.call(m,id)?m[id]:rptSlSaleName(o.staff_name);
+}
+function rptSlSaleCuaNhapTay(r){
+  const m=rptSlSaleTheoMa(),id=dhManualLeadId(r);
+  return Object.prototype.hasOwnProperty.call(m,id)?m[id]:rptSlSaleName(r.staff_name);
+}
 function rptSlBuildMaster(){
   const khoa=[rptSlType(),rptSlMod(),JSON.stringify(modRange(rptSlMod())),
     (window._dangLuuMoc||0),dashSales().join(','),dashTypes().join(','),
@@ -5842,7 +5875,7 @@ function rptSlBuildMasterRaw(){
   // "Đã gỡ khỏi báo cáo" cuối tab Nhập Liệu để khôi phục.
   rows=rows.filter(r=>!(rptSlManual[r.leadId]||{}).excluded);
   // PHẠM VI DỮ LIỆU: tài khoản chỉ được xem khách của những Sale được gán (và đúng loại Sỉ/Lẻ).
-  rows=rows.filter(r=>dashSeeSale(r.staff)&&dashSeeType(r.saleType||'Lẻ'));
+  // (BỘ LỌC PHẠM VI DỮ LIỆU đã chuyển xuống CUỐI hàm -- xem ghi chú ở đó.)
   // MASTER SỈ = TỔNG HỢP XUYÊN SUỐT: hồ sơ khách (mô hình, showroom, tài chính, phân loại...) + rút gọn
   // toàn bộ nhật ký chăm sóc bên CRM (lượt gần nhất, số lượt, bao lâu chưa liên hệ). Sale Sỉ chủ yếu gọi
   // điện / Zalo chứ không chat Pancake, nên diễn biến nằm hết ở nhật ký tự nhập.
@@ -6005,6 +6038,13 @@ function rptSlBuildMasterRaw(){
     // Sau khi chặn đơn không có dấu vết tiền, một khách có thể còn 0 đơn tính -> phải chống lỗi ở đây.
     r.lastKiotDate=r.kords.length?String(r.kords[r.kords.length-1].purchase_date).slice(0,10):'';
   });
+  // PHẠM VI DỮ LIỆU: tài khoản chỉ xem khách của những Sale được gán (và đúng loại Sỉ/Lẻ).
+  // PHẢI LỌC Ở ĐÂY, SAU KHI đã xác định xong Sale phụ trách (gán tay ở Gán data, người tạo đơn Kiot, luật chuyển đội).
+  // Lỗi 28/9/2026 (nghiêm trọng): trước đây lọc ở đầu, lúc r.staff mới là người phụ trách bên Pancake -> khách Pancake
+  // KHÔNG có người phụ trách nhưng đã GÁN TAY cho Sale (vd L-CT2-0085 "Cáo" gán Chánh Tâm Ngọc Diệp) bị loại khỏi view
+  // của chính Sale đó -> Sale không thấy khách để chăm.
+  if(window._rptSlSaleMaTam)rows.forEach(r=>rptSlIdsCua(r).forEach(id=>{window._rptSlSaleMaTam[id]=r.staff||'';}));
+  rows=rows.filter(r=>dashSeeSale(r.staff)&&dashSeeType(r.saleType||'Lẻ'));
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
 }
 // 1 dòng Master SỈ -- khung hồ sơ đại lý, khác hẳn Lẻ.
