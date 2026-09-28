@@ -4852,7 +4852,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 11:15';
+const APP_VERSION='28/09 11:18';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6936,16 +6936,12 @@ function rptSlNghiTrung(all){
   const daXacNhanKhac=(a,b)=>rptSlIdsCua(b).some(id=>khacNguoi.get(a).has(id))||rptSlIdsCua(a).some(id=>khacNguoi.get(b).has(id));
   const noi=(a,b,ly)=>{if(a===b||daXacNhanKhac(a,b))return;cha.set(goc(a),goc(b));
     [a,b].forEach(x=>{const l=lyDo.get(x)||new Set();l.add(ly);lyDo.set(x,l);});};
-  const khacMa=(a,b)=>a.kh&&b.kh&&a.kh!==b.kh;
   // 1) chung BẤT KỲ số điện thoại nào (kể cả số lấy từ Kiot) -- khác Mã KH vẫn đưa vào
   const theoSdt={};
   ds.forEach(r=>(r.phones||[]).concat(r.phone?[{so:r.phone}]:[]).forEach(p=>{const k=rptSlLast9(p.so);if(k&&k.length===9)(theoSdt[k]=theoSdt[k]||new Set()).add(r);}));
   Object.entries(theoSdt).forEach(([so,set])=>{const a=[...set];for(let i=1;i<a.length;i++)noi(a[0],a[i],'trùng SĐT …'+so.slice(-6));});
-  // 2) trùng tên (bỏ dấu, bỏ danh xưng) -- khác Mã KH thì bỏ qua
-  const theoTen={};
-  // so GIỮ DẤU (28/9/2026): "Nguyễn Phượng" vs "Nguyen Phuong" khác SĐT là 2 người -- anh Hải báo nhóm ảo
-  ds.forEach(r=>{const c=rptSlChuTen(r.name);const k=c.join(' ');if(c.length>=2&&k.replace(/\s/g,'').length>=4)(theoTen[k]=theoTen[k]||[]).push(r);});   // trùng tên phải từ 2 chữ
-  Object.values(theoTen).forEach(a=>{for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++)if(!khacMa(a[i],a[j]))noi(a[i],a[j],'trùng tên');});
+  // (BỎ 28/9/2026 theo anh Hải: "chỉ nghi trùng khách khi trùng SĐT, tên không tính" -- bỏ cả luật trùng tên
+  //  lẫn tên gần giống, ra toàn nhóm ảo kiểu "Nguyễn Phượng" / "Anh Nguyen Phuong" khác SĐT.)
   // (BỎ 28/9/2026 theo anh Hải: luật "tên gần giống" -- tên ngắn nằm trọn trong tên dài -- ra quá nhiều nhóm
   //  không phải cùng người. Chỉ còn nghi khi trùng SĐT hoặc trùng hẳn tên.)
   const nhom={};
