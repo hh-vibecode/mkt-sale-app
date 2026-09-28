@@ -4852,7 +4852,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 11:12';
+const APP_VERSION='28/09 11:15';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5709,6 +5709,10 @@ function rptSlBuildMasterRaw(){
     keep.phone=keep.phone||rest.map(r=>r.phone).filter(Boolean)[0]||'';
     {const co={};keep.phones=g.flatMap(r=>r.phones||[]).filter(p=>{const k=rptSlLast9(p.so);return co[k]?false:(co[k]=true);});}
     keep.isChot=g.some(r=>r.isChot);
+    // MÃ KH đi theo cả nhóm: dòng giữ lại chưa có mã mà dòng khác trong nhóm có -> lấy mã đó (ca Bao An 28/9/2026:
+    // dòng giữ L-SD-0055 chưa mã, dòng L-SD-1509 / M-0097 có KH006214 -> app báo "chưa có Mã KH" mãi, bấm Lưu vô ích)
+    if(!keep.kh){const co=rest.find(r=>r.kh);if(co){keep.kh=co.kh;keep.kiotCusts=co.kiotCusts||[];
+      ['kiotName','linkBy','noteKH','manualKH'].forEach(f=>{if(!keep[f])keep[f]=co[f];});}}
     keep.mergedFrom=rest.map(r=>r.leadId);
     keep.mergedRows=rest.map(r=>({leadId:r.leadId,name:r.name,phone:r.phone,phones:r.phones,
       created:r.created,kenh:r.kenh,staff:r.staff,convId:r.convId,pageId:r.pageId,
@@ -6939,7 +6943,8 @@ function rptSlNghiTrung(all){
   Object.entries(theoSdt).forEach(([so,set])=>{const a=[...set];for(let i=1;i<a.length;i++)noi(a[0],a[i],'trùng SĐT …'+so.slice(-6));});
   // 2) trùng tên (bỏ dấu, bỏ danh xưng) -- khác Mã KH thì bỏ qua
   const theoTen={};
-  ds.forEach(r=>{const c=rptSlChuTen(r.name);const k=c.map(rptSlBoDau).join(' ');if(c.length>=2&&k.replace(/\s/g,'').length>=4)(theoTen[k]=theoTen[k]||[]).push(r);});   // trùng tên phải từ 2 chữ
+  // so GIỮ DẤU (28/9/2026): "Nguyễn Phượng" vs "Nguyen Phuong" khác SĐT là 2 người -- anh Hải báo nhóm ảo
+  ds.forEach(r=>{const c=rptSlChuTen(r.name);const k=c.join(' ');if(c.length>=2&&k.replace(/\s/g,'').length>=4)(theoTen[k]=theoTen[k]||[]).push(r);});   // trùng tên phải từ 2 chữ
   Object.values(theoTen).forEach(a=>{for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++)if(!khacMa(a[i],a[j]))noi(a[i],a[j],'trùng tên');});
   // (BỎ 28/9/2026 theo anh Hải: luật "tên gần giống" -- tên ngắn nằm trọn trong tên dài -- ra quá nhiều nhóm
   //  không phải cùng người. Chỉ còn nghi khi trùng SĐT hoặc trùng hẳn tên.)
