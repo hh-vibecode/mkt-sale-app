@@ -52,3 +52,12 @@ jobs:
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/tu-tao-chot-don-si.js
+
+      # Sản phẩm quan tâm của khách Sỉ (Đồ thờ / Nến / Hỗn hợp): đã mua -> xem phiếu, chưa mua -> quảng cáo /
+      # page / hội thoại Pancake. Sale chọn tay thì không ghi đè (anh Hải 28/9/2026).
+      - name: Phân loại sản phẩm quan tâm khách Sỉ
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
+        run: node scripts/phan-loai-sp-quan-tam.js

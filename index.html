@@ -4202,6 +4202,7 @@ const DM_LOAI={
   si_tai_chinh:{ten:'Khả năng tài chính',ds:()=>RPT_SI_CHON.si_tai_chinh,cot:[['saleretail_manual','si_tai_chinh']]},
   si_nhom_kh:{ten:'Nhóm khách hàng',ds:()=>RPT_SI_CHON.si_nhom_kh,cot:[['saleretail_manual','si_nhom_kh']]},
   kenh_nhap_tay:{ten:'Kênh',ds:()=>DH_MANUAL_KENH,cot:[['datahub_manual','kenh']]},
+  si_sp_quan_tam:{ten:'Sản phẩm quan tâm',ds:()=>RPT_SI_SPQT_DS,cot:[['saleretail_manual','si_sp_quan_tam']]},
   // danh sách Sale = bảng Nhân sự Sale: thêm / đổi tên (chuyển luôn khách đang gán) / "xoá" = cho nghỉ
   sale_le:{ten:'Sale Lẻ',nhanSu:'Lẻ'},sale_si:{ten:'Sale Sỉ',nhanSu:'Sỉ'},
 };
@@ -4430,6 +4431,8 @@ function rptSlParseMoney(raw){
 // Nhóm khách hàng: 3 giá trị dropdown bên sheet Sale Sỉ (anh Hải 25/9/2026).
 const RPT_SI_CHON={si_mo_hinh:['Hộ Kinh Doanh','Công Ty'],si_tai_chinh:['Thanh toán đúng hạn','Công nợ xấu'],
   si_nhom_kh:['Khách buôn','Đại Lí','Đại Lí Chiến Lược']};
+// SẢN PHẨM QUAN TÂM (anh Hải 28/9/2026) -- job scripts/phan-loai-sp-quan-tam.js tự điền, Sale sửa tay được.
+const RPT_SI_SPQT_DS=['Đồ thờ','Nến','Hỗn hợp'];
 RPT_SI_CHON.mohinh=RPT_SI_CHON.si_mo_hinh;RPT_SI_CHON.taichinh=RPT_SI_CHON.si_tai_chinh;RPT_SI_CHON.nhom=RPT_SI_CHON.si_nhom_kh;
 // Vẽ 1 ô nhập: có trong RPT_SI_CHON thì là ô chọn (giữ cả giá trị cũ lạ nếu có), còn lại là ô gõ.
 function rptSiO(id,khoa,gt,ip){
@@ -4569,6 +4572,7 @@ function rptSiOSua(r){
   o.si_dien_tich={kieu:'text',gt:r.siDienTich||'',noi:'mn',cot:'si_dien_tich'};
   o.si_tai_chinh={kieu:'chon',ds:RPT_SI_CHON.si_tai_chinh,gt:r.siTaiChinh||'',noi:'mn',cot:'si_tai_chinh'};
   o.si_nhom_kh={kieu:'chon',ds:RPT_SI_CHON.si_nhom_kh,gt:r.siNhomKH||'',noi:'mn',cot:'si_nhom_kh'};
+  o.si_sp_quan_tam={kieu:'chon',ds:RPT_SI_SPQT_DS,gt:r.siSpQT||'',noi:'mn',cot:'si_sp_quan_tam',rong:'— (để app tự phân loại)'};
   o.si_giay_phep={kieu:'text',gt:r.siGiayPhep||'',noi:'mn',cot:'si_giay_phep'};
   o.si_fanpage={kieu:'text',gt:r.siFanpage||'',noi:'mn',cot:'si_fanpage'};
   if(!r.isChot)o.tiem_nang={kieu:'tien',gt:r.potential?num(r.potential):'',noi:'mn',cot:'potential_value'};
@@ -4620,6 +4624,7 @@ async function rptSiLuuTatCa(){
     if(o.kieu==='tien'){const n=rptSlParseMoney(v);if(isNaN(n))return bao('Không hiểu số tiền (vd 15tr, 500k, 15.000.000)');gt=n||null;}
     if(o.cot==='si_sale')gt=v;   // '' = để trống / thu hồi (null thì app lại tự suy người tạo đơn Kiot)
     mn[o.cot]=gt;
+    if(o.cot==='si_sp_quan_tam'){mn.si_sp_qt_nguon=gt?'Tay':null;mn.si_sp_qt_ly=gt?'Sale chọn tay':null;}
   }
   // 2) ghi
   if(msg)msg.innerHTML='<span style="color:var(--muted)">Đang lưu…</span>';if(nut)nut.disabled=true;
@@ -4852,7 +4857,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 12:00';
+const APP_VERSION='28/09 12:24';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5317,7 +5322,7 @@ function rptSlF(tab,k){return (window['_rptSlF_'+rptSlType()+tab]||{})[k]||'';}
 // bộ lọc (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026. Không có bộ lọc nào thì nút ẩn.
 function rptSlCoLoc(){
   const rg=modRange(rptSlMod());
-  return !!(rg.from||rg.to||rptSlF('master','sale')||rptSlF('master','status')||rptSlF('master','brand'));
+  return !!(rg.from||rg.to||rptSlF('master','sale')||rptSlF('master','status')||rptSlF('master','sp')||rptSlF('master','brand'));
 }
 function rptSlThaoLoc(){
   modRanges[rptSlMod()]={from:'',to:''};
@@ -5429,12 +5434,13 @@ function rptSlLocTT(r){
   return String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim()||'(chưa cập nhật)';
 }
 function rptSlApplyF(tab,list){
-  const sale=rptSlF(tab,'sale'),br=rptSlF(tab,'brand');
+  const sale=rptSlF(tab,'sale'),br=rptSlF(tab,'brand'),sp=rptSlType()==='Sỉ'?rptSlF(tab,'sp'):'';
   let st=rptSlF(tab,'status');
   if(st&&!rptSlLocTTDs().includes(st))st='';   // giá trị lọc cũ không còn trong danh sách -> bỏ, đừng lọc ngầm ra 0
   return list.filter(r=>
     (!sale||(r.staff||'(chưa gán)')===sale)&&
     (!st||rptSlLocTT(r)===st)&&
+    (!sp||(r.siSpQT||'(chưa rõ)')===sp)&&
     (!br||(DH_BRAND_LABEL[r.brand]||r.brand||'—')===br));
 }
 function rptSlFilterBar(tab){
@@ -5450,7 +5456,8 @@ function rptSlFilterBar(tab){
     <option value="">${label}: tất cả</option>
     ${opts.map(o=>`<option value="${String(o).replace(/"/g,'&quot;')}"${rptSlF(tab,k)===o?' selected':''}>${o}</option>`).join('')}
   </select>`;
-  return one('sale','Sales',sales)+one('status','Trạng thái',stats)+one('brand','Brand',brands);
+  return one('sale','Sales',sales)+one('status','Trạng thái',stats)
+    +(rptSlType()==='Sỉ'?one('sp','Sản phẩm',[...new Set(RPT_SI_SPQT_DS),'(chưa rõ)']):'')+one('brand','Brand',brands);
 }
 // Dựng Master khá nặng (gộp đơn Pancake + Kiot + nhập tay). Một lần render gọi lại 3-8 lần với CÙNG
 // tham số -> nhớ kết quả theo (loại khách + kỳ lọc + phạm vi dữ liệu), xoá khi dữ liệu đổi.
@@ -5757,10 +5764,13 @@ function rptSlBuildMasterRaw(){
     const nhom=new Map();song.forEach(r=>{const g=goc(r);if(!nhom.has(g))nhom.set(g,[]);nhom.get(g).push(r);});
     nhom.forEach(g=>{if(g.length>1)gopNhom(g);});
   }
-  // 3) Tên đã bỏ dấu -- chỉ gộp khi KHÔNG có mã nào khác nhau, tránh gộp nhầm 2 người trùng tên
+  // 3) Tên đã bỏ dấu -- chỉ gộp khi KHÔNG có mã nào khác nhau, tránh gộp nhầm 2 người trùng tên.
+  //    Và chỉ khi trong nhóm có TỐI ĐA 1 khách có SĐT (anh Hải 28/9/2026: trùng SĐT mới là 1 người, tên không
+  //    tính). 2 khách cùng tên mà mỗi người 1 số khác nhau (vd "Phương Thảo" L-SD-1904 / L-SD-1729) = 2 người.
+  //    Vẫn gộp dòng KHÔNG có số vào dòng cùng tên có số (ca Mỹ Hằng L-HT-0394 -> L-CT-0892, anh xác nhận 28/9).
   nhomTheo(r=>boDau(r.name)).filter(g=>{
     const ma=[...new Set(g.map(r=>r.kh).filter(Boolean))];
-    return ma.length<=1;
+    return ma.length<=1&&g.filter(r=>(r.phones||[]).length||r.phone).length<=1;
   }).forEach(gopNhom);
   // 4) GỘP TAY (25/9/2026): Sale bấm Hợp nhất ở Nhập Liệu > Nghi trùng khách -> dòng phụ có gop_vao = Lead ID
   //    dòng chính. Lead ID của 1 dòng lấy từ nguonLienHe (đủ qua mọi bước gộp), không từ mergedFrom.
@@ -5817,6 +5827,7 @@ function rptSlBuildMasterRaw(){
       r.siDiaChi=mn.si_dia_chi||'';r.siGiayPhep=mn.si_giay_phep||'';r.siFanpage=mn.si_fanpage||'';
       r.siMoHinh=mn.si_mo_hinh||'';r.siDienTich=mn.si_dien_tich||'';r.siTaiChinh=mn.si_tai_chinh||'';
       r.siPhanLoai=mn.si_phan_loai||'';r.siNhomKH=mn.si_nhom_kh||'';
+      r.siSpQT=mn.si_sp_quan_tam||'';r.siSpQTNguon=mn.si_sp_qt_nguon||'';r.siSpQTLy=mn.si_sp_qt_ly||'';
       // Bộ trường RIÊNG CỦA SỈ lấy nguyên từ sheet Master Sỉ (khác hẳn Lẻ): Lead ID, Ad ID, người đại diện,
       // tên cửa hàng, tỉnh/quận, link hồ sơ, ghi chú KH, ngày chốt đầu, giá trị đơn đầu / cộng dồn...
       const sh=mn.si_sheet||{};
@@ -6531,7 +6542,7 @@ function rptSlShowCustomer(key,sua){
   const fld=(label,val,color,k)=>suaSi&&!(k&&dsSua[k])?''
     :suaSi
     ?`<div style="min-width:0;${dsSua[k].kieu==='dai'?'grid-column:1/-1':''}">
-    <div style="font-size:10.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">${label}${dmBut({si_phan_loai:'si_phan_loai',si_mo_hinh:'si_mo_hinh',si_tai_chinh:'si_tai_chinh',si_nhom_kh:'si_nhom_kh',kenh:'kenh_nhap_tay',sale:'sale_si'}[k]||'')}</div>${rptSiONhap(k,dsSua[k])}</div>`
+    <div style="font-size:10.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">${label}${dmBut({si_phan_loai:'si_phan_loai',si_mo_hinh:'si_mo_hinh',si_tai_chinh:'si_tai_chinh',si_nhom_kh:'si_nhom_kh',si_sp_quan_tam:'si_sp_quan_tam',kenh:'kenh_nhap_tay',sale:'sale_si'}[k]||'')}</div>${rptSiONhap(k,dsSua[k])}</div>`
     :`<div style="min-width:0">
     <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${label}</div>
     <div style="font-size:12.5px;font-weight:700;margin-top:3px;color:${color||'var(--text)'};word-break:break-word">${val||'<span style="color:var(--muted);font-weight:600">—</span>'}</div></div>`;
@@ -6577,6 +6588,7 @@ function rptSlShowCustomer(key,sua){
       fld('Diện tích showroom',esc(r.siDienTich),'','si_dien_tich'),
       fld('Khả năng tài chính',esc(r.siTaiChinh),/xấu/i.test(r.siTaiChinh||'')?'var(--red)':'var(--green)','si_tai_chinh'),
       fld('Nhóm khách hàng',esc(r.siNhomKH),'','si_nhom_kh'),
+      fld('Sản phẩm quan tâm',r.siSpQT?esc(r.siSpQT)+(r.siSpQTNguon?' <span title="'+esc(r.siSpQTLy||'')+'" style="font-size:10.5px;color:var(--muted);font-weight:700;cursor:help">· '+esc(r.siSpQTNguon==='Tay'?'Sale chọn':'theo '+r.siSpQTNguon.toLowerCase())+'</span>':''):'',dmMau('si_sp_quan_tam',r.siSpQT),'si_sp_quan_tam'),
       fld('Phân loại KH',esc(r.siPhanLoai),rptSiPhanLoaiMau(r.siPhanLoai),'si_phan_loai'),
       fld('Giấy phép kinh doanh',esc(r.siGiayPhep),'','si_giay_phep'),
       fld('Fanpage / website',r.siFanpage?'<a href="'+esc(r.siFanpage)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở trang ↗</a>':'','','si_fanpage'),
