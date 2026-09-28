@@ -4876,7 +4876,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 14:07';
+const APP_VERSION='28/09 14:38';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5061,6 +5061,13 @@ function rptSlOverviewHtml(){
     byBrand[b]=(byBrand[b]||0)+r.revenue;(khBrand[b]=khBrand[b]||[]).push(r);}});
   const coRev=master.filter(r=>r.revenue>0).sort((a,b)=>b.revenue-a.revenue);
   L('ovRev',{title:'Khách đã có doanh thu · '+vnd(rev),cols:custCols,rows:custRows(coRev)});
+  // SỈ tách doanh thu ONLINE / OFFLINE thành 2 thẻ, mỗi thẻ bấm ra bảng khách đã chốt riêng (anh Hải 28/9/2026)
+  const laOff=r=>/offline/i.test(r.nguon||'');
+  const onl=master.filter(r=>!laOff(r)),off=master.filter(laOff);
+  const revOn=onl.reduce((x,r)=>x+r.revenue,0),revOff=off.reduce((x,r)=>x+r.revenue,0);
+  const ordOn=onl.reduce((x,r)=>x+r.kords.length,0),ordOff=off.reduce((x,r)=>x+r.kords.length,0);
+  L('ovRevOn',{title:'Khách Online đã chốt · '+vnd(revOn),cols:custCols,rows:custRows(coRev.filter(r=>!laOff(r)))});
+  L('ovRevOff',{title:'Khách Offline đã chốt · '+vnd(revOff),cols:custCols,rows:custRows(coRev.filter(laOff))});
   Object.keys(khBrand).forEach(b=>L('ovBrand-'+b,{title:'Doanh thu '+b+' · '+vnd(byBrand[b]),
     cols:custCols,rows:custRows(khBrand[b].slice().sort((x,y)=>y.revenue-x.revenue))}));
 
@@ -5116,9 +5123,13 @@ function rptSlOverviewHtml(){
       // Hàng 1: TIỀN (2 ô). Hàng 2: SỐ LƯỢNG (4 ô) -- chia đều đúng bề ngang của hàng trên.
       const g4='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px';
       const g2='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px';
+      const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px';
       return `
-    <div style="${g2}">
-      <div onclick="rptSlShow('ovRev')" style="cursor:pointer" title="Bấm để xem danh sách khách">${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(ordCount)+' đơn đặt hàng Kiot · bấm để xem','g-green')}</div>
+    <div style="${laSi?g3:g2}">
+      ${laSi
+        ?`<div onclick="rptSlShow('ovRevOn')" style="cursor:pointer" title="Bấm để xem khách Online đã chốt">${mkKpi(ic('cash'),'Doanh thu Online',vnd(revOn),num(ordOn)+' đơn đặt hàng Kiot · '+pct(rev?revOn/rev*100:0),'g-green')}</div>
+      <div onclick="rptSlShow('ovRevOff')" style="cursor:pointer" title="Bấm để xem khách Offline đã chốt">${mkKpi(ic('cash'),'Doanh thu Offline',vnd(revOff),num(ordOff)+' đơn đặt hàng Kiot · '+pct(rev?revOff/rev*100:0),'g-teal')}</div>`
+        :`<div onclick="rptSlShow('ovRev')" style="cursor:pointer" title="Bấm để xem danh sách khách">${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(ordCount)+' đơn đặt hàng Kiot · bấm để xem','g-green')}</div>`}
       ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(pv),nPv?num(nPv)+'/'+num(open.length)+' khách chưa chốt đã ước lượng':'chưa khách nào được ước lượng','g-orange')}
     </div>
     <div style="${g4};margin-bottom:14px">

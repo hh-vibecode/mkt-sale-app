@@ -79,6 +79,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **28/09 14:40** — (1) Workflow Pancake đỏ 14h10–14h30: bước kiểm phân trang chặn vì đọc `job_moc` thiếu `limit=1` → sync bị bỏ qua 3 lượt; đã sửa + chạy bù, xanh. (2) Tổng Quan Sỉ: thẻ doanh thu tách **Doanh thu Online / Doanh thu Offline**, mỗi thẻ bấm ra bảng khách đã chốt riêng (T9: 141,0tr / 7 khách + 214,5tr / 16 khách = 355,5tr). Lẻ giữ 1 thẻ.
+
 - **28/09 14:30** — Luồng **QC CSKH** tách sang app riêng: thư mục `C:UsersHPDesktopqc-cskh` (sổ việc riêng `qc-cskh/VIEC.md` có đủ bối cảnh + kiến thức; 16 mục bộ nhớ chép sang bộ nhớ thư mục đó). Job chấm `sync-sale-review.yml` VẪN chạy ở repo này cho tới khi app QC chạy song song ổn và anh bảo tắt.
 
 - **28/09 14:20** — **Báo cáo MKT chỉ tính từ 1/6/2026** (anh chốt: ngân sách chỉ có từ T6 nên doanh thu và mọi số khác cũng vậy). `modRange('mkt')` kẹp mốc sớm nhất `RPT_MKT_TU`. "Tất cả": doanh số 2,041 tỷ → 1,783 tỷ (bỏ 257,8tr của 7 đơn trước T6), chi phí không đổi 283,0tr; tháng 9 không đổi.
