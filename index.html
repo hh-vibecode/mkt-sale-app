@@ -3856,6 +3856,18 @@ const RPT_SL_BOT_SI='botsale sỉ';   // tên CŨ của 'chưa có Sale' -- từ
 // Chữ GIỮ CHỖ trong sheet Master Sỉ cũ -- không phải dữ liệu thật, hiện ra chỉ làm chật bảng (anh Hải 25/9/2026).
 // Chỉ khớp NGUYÊN Ô, nên các giá trị thật có chữ "chưa" như "Chưa liên hệ được" không bị đụng tới.
 const RPT_SI_GIU_CHO=/^(chưa khai thác|chua khai thac|chưa có( thông tin)?|chưa rõ|không rõ|chưa cập nhật|chưa xác định|n\/a|#n\/a|-+|\.+|x)$/i;
+// KHÁCH CHUYỂN ĐỘI (đổi thẻ KH SỈ <-> KH LẺ) mà đang gán cho Sale của ĐỘI KIA (anh Hải 28/9/2026):
+//   khách tạo từ 1/9/2026 -> để TRỐNG (rơi vào Gán data của đội mới);
+//   khách tạo trước 1/9    -> tự gán: sang Sỉ = Nguyễn Hữu Toàn, sang Lẻ = Nguyễn Thảo Ngọc.
+// Không ghi DB: dữ liệu gán cũ vẫn giữ, khách đổi thẻ lại thì về đúng Sale cũ. r.staffDoiKhac = tên Sale đội kia.
+const RPT_SL_MAC_DINH_CHUYEN={'Sỉ':'Nguyễn Hữu Toàn','Lẻ':'Nguyễn Thảo Ngọc'};
+function rptSlChuyenDoi(r){
+  if(!r.staff)return;
+  const loai=rptSlType(),ns=saleNhanSuDS().find(x=>x.ten===r.staff);
+  if(!ns||!ns.doi||ns.doi===loai)return;
+  r.staffDoiKhac=r.staff;
+  r.staff=String(r.created||'').slice(0,10)>='2026-09-01'?'':(RPT_SL_MAC_DINH_CHUYEN[loai]||'');
+}
 function rptSlSaleGanTayDong(r){
   const ids=rptSlIdsCua(r);
   for(const id of [r.leadId].concat(ids)){const v=rptSlSaleGanTay(id);if(v!==null)return v;}
@@ -4857,7 +4869,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 13:25';
+const APP_VERSION='28/09 13:43';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5344,6 +5356,7 @@ const RPT_SL_PILL={
   'Chưa liên hệ được':['rgba(249,115,22,.14)','#c2410c'],
   'Chăm sóc dài hạn':['var(--accent-l)','var(--accent)'],   // giá trị cũ, còn 1 dòng đang dùng -- giữ màu để không vỡ
   'Mất lead':['rgba(239,68,68,.13)','var(--red)'],
+  'Lead cũ':['var(--bg2)','var(--muted)'],
 };
 // Nguồn của 1 dòng: đơn Pancake (tự động) hay Sale nhập tay ở Data Hub.
 // Khách job tự kéo từ đơn Kiot ghi 'Kiot', không ghi 'Nhập tay' (anh Hải 25/9/2026)
@@ -5372,7 +5385,7 @@ function rptSlRowDate(r){
 //     lấy ngày riêng (Master/Nhập Liệu: Ngày tạo · CRM: Ngày chăm sóc).
 //  2. Cùng ngày: khách TIỀM NĂNG (còn phải chăm) lên trước, khách ĐÃ CHỐT ĐƠN xuống dưới.
 //  3. Cùng nữa: lần chạm gần nhất mới hơn lên trước.
-const RPT_SL_STATUS_RANK={'(chưa cập nhật)':0,'Đang chăm sóc':1,'Chưa liên hệ được':2,'Chăm sóc dài hạn':2,'Chốt đơn':3,'Mất lead':4};
+const RPT_SL_STATUS_RANK={'(chưa cập nhật)':0,'Đang chăm sóc':1,'Chưa liên hệ được':2,'Chăm sóc dài hạn':2,'Chốt đơn':3,'Mất lead':4,'Lead cũ':5};
 function rptSlStatusRank(r){const v=RPT_SL_STATUS_RANK[rptSlRowStatus(r)];return v===undefined?0:v;}
 function rptSlSortNew(list,ngay){
   const d=ngay||rptSlRowDate;
@@ -5801,7 +5814,7 @@ function rptSlBuildMasterRaw(){
   rows.forEach(r=>{const tn=String((rptSlManual[r.leadId]||{}).ten_sua||'').trim();if(tn)r.name=tn;});
   if(rptSlType()!=='Sỉ'){
     // LẺ: Sale gán ở tab Gán data (hoặc thu hồi về trống) ưu tiên hơn người phụ trách bên Pancake
-    rows.forEach(r=>{const gan=rptSlSaleGanTayDong(r);if(gan!==null)r.staff=gan;});
+    rows.forEach(r=>{const gan=rptSlSaleGanTayDong(r);if(gan!==null)r.staff=gan;rptSlChuyenDoi(r);});
   }
   if(rptSlType()==='Sỉ'){
     // SALE PHỤ TRÁCH BÊN SỈ (anh Hải chốt 23/9/2026): KHÔNG lấy người phụ trách bên Pancake nữa.
@@ -5817,6 +5830,7 @@ function rptSlBuildMasterRaw(){
       // Ưu tiên người được GÁN TAY ở tab 'Gán data'; chưa gán thì lấy người tạo đơn Kiot; không có nữa thì bot.
       const gan=rptSlSaleGanTayDong(r);
       r.staff=gan!==null?(gan&&rptSlSaleName(gan)):(ten||'');   // chưa có ai phụ trách thì để TRỐNG (anh Hải 24/9/2026)
+      rptSlChuyenDoi(r);
     });
     const ky={};
     (typeof siCrmRows!=='undefined'?siCrmRows:[]).forEach(c=>{
@@ -6892,13 +6906,16 @@ function rptSlMatLeadSi(r){
   return /mất kết nối|mat ket noi|không liên hệ|huỷ|hủy/i.test(t);
 }
 // Sỉ phân loại "Lead cũ" (khách kéo từ đơn cũ Shidai) -> không nhắc lịch sử chăm / giá trị dự kiến (anh Hải 28/9/2026).
+// Lẻ: trạng thái "Lead cũ" (thêm 28/9/2026 cho khách Sỉ nói mua dùng gia đình chuyển sang Lẻ).
+// Anh Hải 28/9: MỌI khách Lead cũ (Lẻ lẫn Sỉ) không tính vào Nhập Liệu, trừ khi đổi sang trạng thái khác.
 function rptSlLeadCu(r){
-  if(rptSlType()!=='Sỉ')return false;
+  if(rptSlType()!=='Sỉ')return !r.isChot&&/^lead cũ$/i.test(String(r.manualStatus||'').trim());
   return /^lead cũ$/i.test(String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim());
 }
 function rptSlTodoBuckets(){
   const all=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao)
-    .filter(r=>!RPT_SL_DANG_LUU.has(r.leadId));   // dòng vừa điền mã: giấu đi trong lúc chạy ngầm
+    .filter(r=>!RPT_SL_DANG_LUU.has(r.leadId))   // dòng vừa điền mã: giấu đi trong lúc chạy ngầm
+    .filter(r=>!rptSlLeadCu(r));                  // khách Lead cũ không vào Nhập Liệu (anh Hải 28/9/2026)
   return{
     all,
     // 1. Đã chốt nhưng chưa có Mã KH -> mất doanh thu. Kể cả ca app khớp được SĐT vẫn phải điền.
