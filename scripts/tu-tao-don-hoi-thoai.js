@@ -93,7 +93,7 @@ function mocGanNhat(now) {                                   // mốc 6h/18h VN 
 (async () => {
   const moc = mocGanNhat(Date.now());
   if (process.env.CHAY_NGAY !== '1') {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/job_moc?ten=eq.${TEN_JOB}&select=luc`, { headers: H });
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/job_moc?ten=eq.${TEN_JOB}&select=luc&limit=1`, { headers: H });
     const luc = r.ok ? Date.parse(((await r.json())[0] || {}).luc || 0) : NaN;
     if (!r.ok) { console.error('Không đọc được job_moc', r.status); process.exit(1); }
     if (luc >= moc) { console.log(`Chưa tới giờ (chạy 6h và 18h VN) — lần gần nhất ${new Date(luc + 7 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')} giờ VN.`); return; }
