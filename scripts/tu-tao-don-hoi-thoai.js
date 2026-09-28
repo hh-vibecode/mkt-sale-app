@@ -56,6 +56,21 @@ async function ghiNhatKy(dong) {
   if (!r.ok) console.error('  ghi nhật ký lỗi', r.status, (await r.text()).slice(0, 150));
 }
 const tenThe = t => typeof t === 'string' ? t : (t && (t.name || t.text)) || '';
+// KHÔNG PHẢI HỎI HÀNG -> bỏ, không tạo đơn (anh Hải 28/9: "nội dung k phải hỏi hàng clear hết"). Thử trên 265 hội thoại
+// lô 28/9: bắt đúng 6 ca rác (xin việc, xin làm CTV, rao dịch vụ video, người rao bán tượng/nến, tin rác vay tiền), 0 khách thật.
+const RAC = /(tuyển (nhân viên|dụng|người|ctv|cộng tác)|còn tuyển|ứng tuyển|xin việc|việc làm|(làm|tuyển) cộng tác viên|cho vay|vay (vốn|tiền|nhanh|tín chấp)|giải ngân|cần là có|đến là duyệt|bên (em|mình|tôi) (có )?(sản xuất|nhận làm|chuyên cung cấp|có nhiều)|em nhận làm|nhận làm (video|web|quảng cáo|thiết kế)|shop ib (với|cho) mình|gieo duyên|lãi suất|chạy (ads|quảng cáo)|thiết kế web|dạy kèm|khóa học|mong hợp tác)/i;
+const nhieuSo = t => (t.match(/(?:\+?84|0)[35789](?:[\s.]?\d){8}/g) || []).length >= 3;   // 1 tin chứa từ 3 số = tin rác rao
+async function laRac(h) {
+  let cid = null;
+  const c = await lay(`https://pancake.vn/api/v1/pages/${h.page}/conversations/${h.conv}?access_token=${TOKEN}`);
+  cid = c && (((c.conversation || c).customers || c.customers || [])[0] || {}).id;
+  if (!cid) return '';
+  const m = await lay(`https://pancake.vn/api/v1/pages/${h.page}/conversations/${h.conv}/messages?customer_id=${cid}&access_token=${TOKEN}`);
+  const kh = ((m && m.messages) || []).filter(x => String(x.from && x.from.id) !== String(h.page))
+    .map(x => String(x.original_message || x.message || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const t = kh.find(x => RAC.test(x) || nhieuSo(x));
+  return t ? t.slice(0, 80) : '';
+}
 
 (async () => {
   const tu = Math.max(MOC_BAT_DAU, Date.now() - CUA_SO);
@@ -126,11 +141,21 @@ const tenThe = t => typeof t === 'string' ? t : (t && (t.name || t.text)) || '';
       await sleep(120);
     }
   }
+  // khách "mới": đọc tin khách nhắn, tin rác / xin việc / người rao bán -> bỏ, ghi nhật ký để khỏi xét lại
+  const rac = [];
+  for (const h of moi.slice()) {
+    const ly = await laRac(h);
+    if (ly) { rac.push(h); moi.splice(moi.indexOf(h), 1); h.lyRac = ly; }
+    await sleep(120);
+  }
   const theCua = h => h.the.some(t => /KH SỈ/i.test(t)) ? 'KH SỈ' : h.the.some(t => /KH LẺ/i.test(t)) ? 'KH LẺ' : h.shop === SHIDAI ? 'KH SỈ' : 'KH LẺ';
   console.log(`Hội thoại FB có SĐT cập nhật từ ${new Date(tu).toISOString().slice(0, 16)}: ${hoiThoai.length} · số hotline bỏ: ${soRac.size}`
-    + ` · khách cũ: ${cu.length} · KHÁCH MỚI tạo đơn: ${moi.length}`);
+    + ` · khách cũ: ${cu.length} · bỏ vì không phải hỏi hàng: ${rac.length} · KHÁCH MỚI tạo đơn: ${moi.length}`);
+  rac.forEach(h => console.log('  bỏ', h.page, h.ten, '"' + h.lyRac + '"'));
   moi.forEach(h => console.log('  mới', h.page, h.ten, '…' + h.so[0].slice(-4), theCua(h)));
   if (XEM) { console.log('(KHO=1: không tạo / không ghi)'); return; }
+  for (const h of rac) await ghiNhatKy({ so: l9(h.so[0]), page_id: h.page, conversation_id: h.conv, ten: h.ten, nhan_dau: h.dau,
+    loi: 'bỏ: không phải hỏi hàng - "' + h.lyRac + '"' });
 
   // 4) khách cũ: chỉ gắn thẻ bù nếu khách POS thiếu thẻ KH SỈ / KH LẺ, ghi nhật ký để khỏi xét lại
   let theBu = 0;

@@ -4857,7 +4857,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 12:45';
+const APP_VERSION='28/09 13:08';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6627,7 +6627,8 @@ function rptSlShowCustomer(key,sua){
       <button id="siO_luu" onclick="rptSiLuuTatCa()" class="refresh-btn" style="margin:0;height:28px;padding:0 18px;font-size:11.5px;font-weight:800">Lưu</button>
     </span></div>`:'';
   const tl=[
-    ...r.orders.map(o=>({d:o.order_date,t:'Đơn Pancake #'+esc(o.system_id),c:esc(o.internal_note||o.source||''),s:esc(o.customer_tags||''),v:''})),
+    // đơn Pancake ĐÃ HUỶ không hiện (vd 7 đơn thừa app tạo nhầm 28/9 rồi huỷ) -- vẫn giữ trong r.orders vì Lead ID lấy theo đơn đầu
+    ...r.orders.filter(o=>!dhHuy(o)).map(o=>({d:o.order_date,t:'Đơn Pancake #'+esc(o.system_id),c:esc(o.internal_note||o.source||''),s:esc(o.customer_tags||''),v:''})),
     ...[...r.kords,...(r.repeatOrds||[]).map(o=>Object.assign({},o,{repeat:true})),...(r.staleOrds||[]).map(o=>Object.assign({},o,{stale:true}))].map(i=>({d:(i.purchase_date||'').slice(0,10),t:(i.repeat?'<span style="color:var(--muted)">[Mua lại]</span> ':i.stale?'<span style="color:var(--red)">['+(i.khongTinh&&!rptSlPhieuTreo(i)?'Chưa có dấu vết tiền':'Phiếu báo giá')+' - không tính]</span> ':'')+(i.direct?'Hoá đơn ':'Đặt hàng ')+esc(i.code)+' <span style="font-weight:600;color:var(--muted)">('+esc(i.status_value||'')+')</span>',c:(()=>{const it=i.items||[];if(!it.length)return '';const dau=String(it[0].name||'');return esc(dau.length>38?dau.slice(0,38)+'…':dau)+' x'+esc(it[0].qty)+(it.length>1?' <span style="color:var(--muted);font-weight:700">+'+(it.length-1)+' món</span>':'');})(),ct:(i.items||[]).map(x=>x.name+' x'+x.qty).join('\n'),s:esc((i.sold_by_name||'')+' · '+(i.branch_name||'')),v:vnd(i.total)})),
   ].sort((a,b)=>String(b.d).localeCompare(String(a.d)));
   // LỊCH SỬ PHÁT SINH gọn (anh Hải 25/9/2026): chỉ ngày · mã phiếu · người tạo · tiền; hiện 3 phiếu gần nhất,
