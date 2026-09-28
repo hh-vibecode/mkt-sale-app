@@ -4876,7 +4876,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 14:38';
+const APP_VERSION='28/09 14:44';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5068,6 +5068,11 @@ function rptSlOverviewHtml(){
   const ordOn=onl.reduce((x,r)=>x+r.kords.length,0),ordOff=off.reduce((x,r)=>x+r.kords.length,0);
   L('ovRevOn',{title:'Khách Online đã chốt · '+vnd(revOn),cols:custCols,rows:custRows(coRev.filter(r=>!laOff(r)))});
   L('ovRevOff',{title:'Khách Offline đã chốt · '+vnd(revOff),cols:custCols,rows:custRows(coRev.filter(laOff))});
+  if(rptSlType()==='Sỉ'){
+    L('ovRevTatCa',window._rptSlLists.ovRev);
+    window._rptSlRevOnOff={rev,revOn,revOff,ordOn,ordOff,nOn:coRev.filter(r=>!laOff(r)).length,nOff:coRev.filter(laOff).length};
+    L('ovRev',{lam:rptSlRevOnOff});
+  }
   Object.keys(khBrand).forEach(b=>L('ovBrand-'+b,{title:'Doanh thu '+b+' · '+vnd(byBrand[b]),
     cols:custCols,rows:custRows(khBrand[b].slice().sort((x,y)=>y.revenue-x.revenue))}));
 
@@ -5123,13 +5128,9 @@ function rptSlOverviewHtml(){
       // Hàng 1: TIỀN (2 ô). Hàng 2: SỐ LƯỢNG (4 ô) -- chia đều đúng bề ngang của hàng trên.
       const g4='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px';
       const g2='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px';
-      const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px';
       return `
-    <div style="${laSi?g3:g2}">
-      ${laSi
-        ?`<div onclick="rptSlShow('ovRevOn')" style="cursor:pointer" title="Bấm để xem khách Online đã chốt">${mkKpi(ic('cash'),'Doanh thu Online',vnd(revOn),num(ordOn)+' đơn đặt hàng Kiot · '+pct(rev?revOn/rev*100:0),'g-green')}</div>
-      <div onclick="rptSlShow('ovRevOff')" style="cursor:pointer" title="Bấm để xem khách Offline đã chốt">${mkKpi(ic('cash'),'Doanh thu Offline',vnd(revOff),num(ordOff)+' đơn đặt hàng Kiot · '+pct(rev?revOff/rev*100:0),'g-teal')}</div>`
-        :`<div onclick="rptSlShow('ovRev')" style="cursor:pointer" title="Bấm để xem danh sách khách">${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(ordCount)+' đơn đặt hàng Kiot · bấm để xem','g-green')}</div>`}
+    <div style="${g2}">
+      <div onclick="rptSlShow('ovRev')" style="cursor:pointer" title="Bấm để xem danh sách khách">${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(ordCount)+' đơn đặt hàng Kiot · bấm để xem','g-green')}</div>
       ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(pv),nPv?num(nPv)+'/'+num(open.length)+' khách chưa chốt đã ước lượng':'chưa khách nào được ước lượng','g-orange')}
     </div>
     <div style="${g4};margin-bottom:14px">
@@ -5218,6 +5219,23 @@ function rptSlOverviewHtml(){
         </tr>`).join('')}</tbody></table></div>`
         :'<div style="padding:22px;text-align:center;color:var(--muted);font-size:12.5px;font-weight:600">Chưa có khách nào ra doanh số trong kỳ</div>'}
     </div>`;})()}`;
+}
+// Popup chọn Online / Offline khi bấm thẻ "Doanh thu đã chốt" bên Sỉ (anh Hải 28/9/2026: giữ thẻ cũ, bấm vào ra 2 thẻ)
+function rptSlRevOnOff(){
+  const x=window._rptSlRevOnOff;if(!x)return;
+  const the=(k,ten,v,n,d,g)=>`<div onclick="rptSlShow('${k}')" style="cursor:pointer" title="Bấm để xem khách đã chốt">${mkKpi(ic('cash'),ten,vnd(v),num(n)+' khách · '+num(d)+' đơn đặt hàng Kiot · '+pct(x.rev?v/x.rev*100:0),g)}</div>`;
+  let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
+  m.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)qcCloseModal()">
+    <div style="background:var(--surface);border-radius:16px;max-width:760px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:18px 20px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="font-size:15px;font-weight:800">Doanh thu đã chốt · ${vnd(x.rev)}</div>
+        <span onclick="rptSlShow('ovRevTatCa')" style="margin-left:auto;cursor:pointer;font-size:12px;font-weight:700;color:var(--accent)">Xem tất cả</span>
+        <button onclick="qcCloseModal()" style="border:none;background:var(--bg2);border-radius:8px;width:30px;height:30px;cursor:pointer;color:var(--text)">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+        ${the('ovRevOn','Online',x.revOn,x.nOn,x.ordOn,'g-green')}${the('ovRevOff','Offline',x.revOff,x.nOff,x.ordOff,'g-teal')}
+      </div>
+    </div></div>`;
 }
 function rptSlShow(key){const d=(window._rptSlLists||{})[key];if(!d)return;if(typeof d.lam==='function')return d.lam();dataModal(d);}
 // Popup "Khách từ quảng cáo" ở báo cáo MKT: kèm PHIẾU MUA (đơn đặt hàng Kiot) + mặt hàng từng phiếu để xem

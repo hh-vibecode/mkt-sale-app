@@ -79,7 +79,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
-- **28/09 14:40** — (1) Workflow Pancake đỏ 14h10–14h30: bước kiểm phân trang chặn vì đọc `job_moc` thiếu `limit=1` → sync bị bỏ qua 3 lượt; đã sửa + chạy bù, xanh. (2) Tổng Quan Sỉ: thẻ doanh thu tách **Doanh thu Online / Doanh thu Offline**, mỗi thẻ bấm ra bảng khách đã chốt riêng (T9: 141,0tr / 7 khách + 214,5tr / 16 khách = 355,5tr). Lẻ giữ 1 thẻ.
+- **28/09 14:40** — (1) Workflow Pancake đỏ 14h10–14h30: bước kiểm phân trang chặn vì đọc `job_moc` thiếu `limit=1` → sync bị bỏ qua 3 lượt; đã sửa + chạy bù, xanh. (2) Tổng Quan Sỉ: GIỮ thẻ "Doanh thu đã chốt", bấm vào ra popup 2 thẻ **Online / Offline** (anh sửa lại: không tách thẻ trên trang), bấm tiếp ra bảng khách đã chốt riêng + nút Xem tất cả (T9: 141,0tr / 7 khách + 214,5tr / 16 khách = 355,5tr). Lẻ giữ 1 thẻ.
 
 - **28/09 14:30** — Luồng **QC CSKH** tách sang app riêng: thư mục `C:UsersHPDesktopqc-cskh` (sổ việc riêng `qc-cskh/VIEC.md` có đủ bối cảnh + kiến thức; 16 mục bộ nhớ chép sang bộ nhớ thư mục đó). Job chấm `sync-sale-review.yml` VẪN chạy ở repo này cho tới khi app QC chạy song song ổn và anh bảo tắt.
 
