@@ -98,6 +98,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **28/09 — GẮN THẺ KH SỈ CHO SHOP SHIDAI (anh chốt):** kéo toàn bộ đơn shop Shidai `1943052948` trên Pancake (1.654 đơn từ 18/04/2025, 1.636 khách). Trước: 241 KH SỈ · 532 KH LẺ · 863 chưa thẻ. Gắn **KH SỈ cho cả 863 khách chưa thẻ** (PUT `/shops/{id}/customers/{cid}`, logAct từng khách, không khách nào vướng KH LẺ ở shop khác cùng SĐT). Sau: 1.104 KH SỈ · 532 KH LẺ · 0 chưa thẻ. **532 khách Shidai đang KH LẺ: anh bảo GIỮ NGUYÊN.** Thử TẠO ĐƠN Pancake (cho khách chỉ có hội thoại) bị chế độ an toàn của Claude Code chặn — cần anh cho phép rồi mới thử.
+
 - **28/09 — ĐỔI NGUỒN OFFLINE → ONLINE (anh chốt):** trước T6 chưa có đơn Pancake nên xét theo SĐT: khách Sale ghi Offline mà SĐT có trong hội thoại Pancake (Facebook/TikTok, nhắn TRƯỚC hoặc cùng lúc Sale ghi nhận) = MKT kéo về → Online. Tra 145 data Offline trên 14 kênh (API `pages/{id}/conversations/search?q=SĐT`): 17 khớp, đổi **14** (11 Thời Đại, 1 Hiền Thủy FB, 1 Nến Bơ, …), kênh = page khách nhắn, brand theo kênh, `si_sheet.nguon` đổi theo, ghi note "Nguồn Pancake" + logAct từng khách → nhãn "Online · Pancake". KHÔNG đổi: khách chỉ khớp Zalo cá nhân (công Sale, vd NPP CHÍN LÊ, KB Chị Hương Lào Cai) và ĐỨC TÂM AN (nhắn Pancake sau ~2 năm). kiem-so-lieu: tổng doanh thu, MKT tháng 9 không đổi. Bộ lọc "có SĐT" của Pancake web chưa dò ra tham số API.
 
 - **28/09 (máy gốc, tiếp)** — Nhập Liệu: bấm ô Mã KH hiện sẵn mã gợi ý theo SĐT để chọn. MKT: popup "Khách từ quảng cáo" kèm phiếu mua + mặt hàng. Nhãn nguồn: khách có đơn Pancake luôn ra "Pancake" (dù dòng giữ là nhập tay). Khảo sát #18 lưu ở dòng 18-KS. Soát lệch MKT vs Ads Manager: xem việc #19.
