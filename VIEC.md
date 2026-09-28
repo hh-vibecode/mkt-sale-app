@@ -3,7 +3,7 @@
 > Sổ này thay cho việc đọc lại hội thoại cũ. **Claude phải mở file này đầu mỗi phiên làm việc.**
 > Xong việc nào thì xoá khỏi mục ĐANG NỢ và ghi 1 dòng vào NHẬT KÝ (gộp lại khi quá dài).
 > **Anh đã quyết rồi thì LÀM, đừng xếp lại vào mục "chờ anh quyết" để hỏi lại** (mắc lỗi này 23/9 với việc tự tạo data nhập tay).
-> Cập nhật lần cuối: 28/09/2026 chiều. Việc #18 / 18-KS (khách để SĐT trong hội thoại) ĐÃ XONG 28/9 — xem nhật ký 28/9.
+> Cập nhật lần cuối: 28/09/2026 chiều. Luồng Sale/MKT anh đánh giá xong ~90%; anh chuyển sang xây luồng QC CSKH (chat mới). Việc #18 / 18-KS (khách để SĐT trong hội thoại) ĐÃ XONG 28/9 — xem nhật ký 28/9.
 
 ---
 
@@ -21,6 +21,8 @@
 
 | # | Việc | Ghi chú |
 |---|---|---|
+| 23 | **Kiểm lượt chạy thật đầu tiên của job tạo đơn từ hội thoại (18h 28/9)** — xem log workflow "Sync Data Hub từ Pancake" lượt đầu sau 18h VN (bước "Tự tạo đơn + gắn thẻ…"), bảng `pancake_tu_tao_don` (tao_luc từ 28/9 11:00 UTC) và `job_moc`. Soát: đơn tạo có trùng đơn Sale không, ca bị bỏ có phải rác thật không. Báo anh số tạo / gắn thẻ bù / bỏ rác | lấy log qua GitHub API (token ghp_ trong supabase-keys.local.txt) |
+| 24 | **Chờ anh chọn**: mục trong Nhập Liệu liệt kê khách job vừa tạo đơn / job bỏ qua (7 ngày) kèm câu khách nhắn, để Sale soát (em đề xuất làm trước trong #22) | hỏi lại anh khi quay lại luồng Sale |
 | 22 | **Điểm dễ vỡ còn lại (rà 28/9)**: (a) ĐÃ ĐO 28/9: bước phân loại SP chỉ 8–12 giây, lượt Kiot vẫn ~2,5 phút — ổn; (b) tên mặc định khi chuyển đội (Toàn / Thảo Ngọc) ghi cứng trong `RPT_SL_MAC_DINH_CHUYEN` — đổi tên Sale ở Phân quyền không tự đổi theo; (c) đổi thẻ KH SỈ/LẺ trên đơn cũ chỉ về app ở lượt quét toàn bộ (7h05 · 12h30 · 18h00); (d) bộ lọc rác dựa từ khoá, chưa có mục trong app để Sale soát ca job bỏ / job tạo; (e) PANCAKE_SESSION_TOKEN hết hạn là mọi job Pancake dừng (có mail đỏ) | làm dần / chờ anh chọn |
 
 | 17 | **Nguyễn Thuỳ Trâm** (L-HT-0296) mã KH002561 không có đơn; đơn thật nghi là DH002098 dưới mã KH007352 "KL Anh Tân" (M-0019) | Sale xác nhận rồi sửa ghi chú Pancake |
