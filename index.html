@@ -4885,7 +4885,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 15:15';
+const APP_VERSION='28/09 15:22';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7890,6 +7890,7 @@ function crmAcctApplyDefaults(){
   // Vị trí Sale Lẻ / Sale Sỉ thì tick luôn loại khách tương ứng, khỏi phải nhớ tick tay.
   const t=pos==='sale-le'?'Lẻ':pos==='sale-si'?'Sỉ':null;
   document.querySelectorAll('input[name="dtype"]').forEach(cb=>{cb.checked=t?cb.value===t:false;});
+  crmScopeTheoViTri(document.getElementById('crmAcctPosition'));
 }
 async function submitCrmAddAccount(){
   const f=document.getElementById('crmAddAcctForm');
@@ -7942,15 +7943,27 @@ function crmLocSale(v){
   document.querySelectorAll('#crmScopeSale label').forEach(el=>{
     el.style.display=(!q||el.textContent.toLowerCase().includes(q))?'':'none';});
 }
-function crmScopeFields(sales,types){
+// Vị trí ADMIN / SUPREME xem HẾT dữ liệu (dashScope bỏ qua phạm vi) -> chọn vị trí đó là tự bỏ tick + khoá ô phạm vi,
+// khỏi phải bấm (anh Hải 28/9/2026: "quyền admin thì xem gì chả được, trừ các chức năng t khoá riêng").
+function crmScopeTheoViTri(sel){
+  const f=sel&&sel.form;if(!f)return;
+  const xemHet=dashViTriXemHet(sel.value);
+  f.querySelectorAll('input[name="dsale"],input[name="dtype"]').forEach(cb=>{if(xemHet)cb.checked=false;cb.disabled=xemHet;});
+  const box=f.querySelector('.crmScopeBox');if(box)box.style.opacity=xemHet?'.45':'';
+  const nhan=f.querySelector('.crmScopeHet');if(nhan)nhan.style.display=xemHet?'':'none';
+}
+function crmScopeFields(sales,types,viTri){
+  const xemHet=dashViTriXemHet(viTri||'');
+  if(xemHet){sales=[];types=[];}
   const cb=(nm,v,on)=>`<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;padding:2px 0;min-width:0">
-    <input type="checkbox" name="${nm}" value="${String(v).replace(/"/g,'&quot;')}"${on?' checked':''} style="flex:0 0 auto">
+    <input type="checkbox" name="${nm}" value="${String(v).replace(/"/g,'&quot;')}"${on?' checked':''}${xemHet?' disabled':''} style="flex:0 0 auto">
     <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v}</span></label>`;
   const ds=[...new Set([...rptSlSalesList(),...(sales||[])])].sort((a,b)=>a.localeCompare(b,'vi'));
   // TÁCH 2 ĐỘI cho dễ tick: Sale Lẻ và Sale Sỉ, mỗi đội 1 khung + nút Tích hết riêng.
   const nhom=[['Sale Lẻ',ds.filter(x=>rptSlDoiCuaSale(x)==='Lẻ'),'crmScopeLe'],
               ['Sale Sỉ',ds.filter(x=>rptSlDoiCuaSale(x)==='Sỉ'),'crmScopeSi']];
-  return saonlField('Phạm vi dữ liệu',`
+  return saonlField(`Phạm vi dữ liệu <span class="crmScopeHet" style="${xemHet?'':'display:none;'}margin-left:6px;font-size:10.5px;font-weight:800;padding:1px 8px;border-radius:10px;background:var(--green-l);color:var(--green);text-transform:none">Admin xem tất cả</span>`,`
+    <div class="crmScopeBox" style="${xemHet?'opacity:.45':''}">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap">
       <div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Xem data của Sale</div>
       <span style="font-size:10.5px;color:var(--muted)">${ds.length} người</span>
@@ -7969,7 +7982,8 @@ function crmScopeFields(sales,types){
     </div>
     <div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:8px 0 3px">Loại khách</div>
     <div style="display:flex;gap:16px">${RPT_SL_TYPES.map(x=>cb('dtype',x,(types||[]).includes(x))).join('')}</div>
-    <div style="font-size:10.5px;color:var(--muted);margin-top:5px">Không tick gì = xem tất cả</div>`);
+    <div style="font-size:10.5px;color:var(--muted);margin-top:5px">Không tick gì = xem tất cả</div>
+    </div>`);
 }
 function openCrmEditAccount(userId){
   const a=(window._crmAccounts||[]).find(x=>x.user_id===userId);
@@ -7979,9 +7993,9 @@ function openCrmEditAccount(userId){
   const body=`<form id="crmEditAcctForm" onsubmit="event.preventDefault();submitCrmEditAccount('${userId}')">
       ${saonlField('Họ tên *',`<input required name="name" value="${esc(a.name)}" style="${saonlInputStyle}">`)}
       ${saonlField('Username',`<input value="${esc(a.username)}" disabled style="${saonlInputStyle};background:var(--bg2);color:var(--muted)">`)}
-      ${saonlField('Vị trí *',`<select name="position" id="crmEditPosition" style="${saonlInputStyle}">${Object.keys(CRM_POSITION_LABEL).map(p=>`<option value="${p}"${a.position_title===p?' selected':''}>${CRM_POSITION_LABEL[p]}</option>`).join('')}</select>`)}
+      ${saonlField('Vị trí *',`<select name="position" id="crmEditPosition" onchange="crmScopeTheoViTri(this)" style="${saonlInputStyle}">${Object.keys(CRM_POSITION_LABEL).map(p=>`<option value="${p}"${a.position_title===p?' selected':''}>${CRM_POSITION_LABEL[p]}</option>`).join('')}</select>`)}
       ${saonlField('Bộ phận',`<input name="department" value="${esc(a.department)}" style="${saonlInputStyle}">`)}
-      ${crmScopeFields(a.data_sales||[],a.data_types||[])}
+      ${crmScopeFields(a.data_sales||[],a.data_types||[],a.position_title)}
       ${saonlField('Quyền truy cập',`${crmNutTickHet('crmEditPerms')}<div id="crmEditPerms">${CRM_PERMISSION_GROUPS.map(([grp,items])=>`
         <div style="margin-bottom:6px"><div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px">${grp}</div>
         ${items.map(([id,label])=>`<label style="display:inline-flex;align-items:center;gap:5px;margin:0 12px 4px 0;font-size:12px;font-weight:600;cursor:pointer">
