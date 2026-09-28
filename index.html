@@ -4852,7 +4852,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 11:45';
+const APP_VERSION='28/09 11:50';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5418,11 +5418,23 @@ function rptSlStatusPill(st){
   if(!c)return'<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:var(--bg2);color:var(--muted);font-size:11px;font-weight:700">—</span>';
   return'<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:'+c[0]+';color:'+c[1]+';font-size:11px;font-weight:800;white-space:nowrap">'+st+'</span>';
 }
+// Bộ lọc trạng thái: Sỉ lọc theo PHÂN LOẠI KH (cột trạng thái của Master Sỉ), Lẻ theo trạng thái Lẻ.
+// Danh sách lấy từ danh mục (dmLoad đổ tại chỗ) -> thêm giá trị mới ở bút ✏ là bộ lọc có ngay.
+function rptSlLocTTDs(){
+  const ds=rptSlType()==='Sỉ'?RPT_SI_PHANLOAI_DS:['Chốt đơn',...RPT_SL_STATUS_OPTS];
+  return [...new Set(ds),'(chưa cập nhật)'];
+}
+function rptSlLocTT(r){
+  if(rptSlType()!=='Sỉ')return rptSlRowStatus(r);
+  return String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim()||'(chưa cập nhật)';
+}
 function rptSlApplyF(tab,list){
-  const sale=rptSlF(tab,'sale'),st=rptSlF(tab,'status'),br=rptSlF(tab,'brand');
+  const sale=rptSlF(tab,'sale'),br=rptSlF(tab,'brand');
+  let st=rptSlF(tab,'status');
+  if(st&&!rptSlLocTTDs().includes(st))st='';   // giá trị lọc cũ không còn trong danh sách -> bỏ, đừng lọc ngầm ra 0
   return list.filter(r=>
     (!sale||(r.staff||'(chưa gán)')===sale)&&
-    (!st||rptSlRowStatus(r)===st)&&
+    (!st||rptSlLocTT(r)===st)&&
     (!br||(DH_BRAND_LABEL[r.brand]||r.brand||'—')===br));
 }
 function rptSlFilterBar(tab){
@@ -5431,7 +5443,7 @@ function rptSlFilterBar(tab){
   const full=rptSlBuildMaster();
   const sales=[...rptSlSaleCuaDoi(rptSlType()),'(chưa gán)'];
   // Trạng thái lấy danh sách CỐ ĐỊNH, không lấy theo giá trị đang có trong data.
-  const stats=['Chốt đơn',...RPT_SL_STATUS_OPTS,'(chưa cập nhật)'];
+  const stats=rptSlLocTTDs();
   const brands=[...new Set(full.map(r=>DH_BRAND_LABEL[r.brand]||r.brand||'—'))].sort();
   const ip='height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer';
   const one=(k,label,opts)=>`<select onchange="rptSlSetF('${tab}','${k}',this.value)" style="${ip}">
