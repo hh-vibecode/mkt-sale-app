@@ -233,7 +233,8 @@ function b3Target(tags) {
 async function capNhatChat() {
   if (process.env.AUTO_CHAT === '0') return 'Bỏ qua ngày nhắn cuối (AUTO_CHAT=0).';
   const rows = await doc('datahub_orders',
-    `select=id,page_id,conversation_id,last_chat_at&conversation_id=not.is.null&order_date=gte.${MIN_ORDER_DATE}`);
+    // cả đơn CŨ của Shidai (lấy đủ lịch sử từ 28/9/2026): thiếu ngày nhắn cuối thì khách còn nhắn cũng bị cắt oan
+    `select=id,page_id,conversation_id,last_chat_at&conversation_id=not.is.null&or=(order_date.gte.${MIN_ORDER_DATE},and(shop_id.eq.${SHOP_SHIDAI},order_date.gte.${MIN_SHIDAI}))`);
   const can = rows
     .filter((r) => r.page_id && r.conversation_id)
     .sort((a, b) => (a.last_chat_at ? 1 : 0) - (b.last_chat_at ? 1 : 0)
