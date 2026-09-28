@@ -58,7 +58,7 @@ async function ghiNhatKy(dong) {
 const tenThe = t => typeof t === 'string' ? t : (t && (t.name || t.text)) || '';
 // KHÔNG PHẢI HỎI HÀNG -> bỏ, không tạo đơn (anh Hải 28/9: "nội dung k phải hỏi hàng clear hết"). Thử trên 265 hội thoại
 // lô 28/9: bắt đúng 6 ca rác (xin việc, xin làm CTV, rao dịch vụ video, người rao bán tượng/nến, tin rác vay tiền), 0 khách thật.
-const RAC = /(tuyển (nhân viên|dụng|người|ctv|cộng tác)|còn tuyển|ứng tuyển|xin việc|việc làm|(làm|tuyển) cộng tác viên|cho vay|vay (vốn|tiền|nhanh|tín chấp)|giải ngân|cần là có|đến là duyệt|bên (em|mình|tôi) (có )?(sản xuất|nhận làm|chuyên cung cấp|có nhiều)|em nhận làm|nhận làm (video|web|quảng cáo|thiết kế)|shop ib (với|cho) mình|gieo duyên|lãi suất|chạy (ads|quảng cáo)|thiết kế web|dạy kèm|khóa học|mong hợp tác)/i;
+const RAC = /(tuyển (nhân viên|dụng|người|ctv|cộng tác)|còn tuyển|ứng tuyển|xin việc|việc làm|(làm|tuyển) cộng tác viên|cho vay|vay (vốn|tiền|nhanh|tín chấp)|giải ngân|cần là có|đến là duyệt|bên (em|mình|tôi) (có )?(sản xuất|nhận làm|chuyên cung cấp|có nhiều)|em nhận làm|nhận làm (video|web|quảng cáo|thiết kế)|shop ib (với|cho) mình|gieo duyên|lãi suất|nhận chạy (ads|quảng cáo)|thiết kế web|dạy kèm|khóa học|mong hợp tác)/i;
 const nhieuSo = t => (t.match(/(?:\+?84|0)[35789](?:[\s.]?\d){8}/g) || []).length >= 3;   // 1 tin chứa từ 3 số = tin rác rao
 async function laRac(h) {
   let cid = null;

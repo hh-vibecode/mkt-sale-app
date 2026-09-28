@@ -2177,7 +2177,7 @@ function dhIsOrder(o){return!dhHuy(o)&&(o.customer_tags||'').toUpperCase().inclu
 // Data Hub, không đẩy sang Master Data -- tránh loãng (2.119 -> 159 khách).
 // Đơn Pancake ĐÃ HUỶ (order_status 6) thì bỏ, dù còn thẻ CHỐT ĐƠN -- huỷ rồi thì không phải doanh số.
 // Mã trạng thái POS: 0 Mới · 1 Đã xác nhận · 2 Đã gửi hàng · 3 Đã nhận · 6 Đã huỷ.
-function dhHuy(o){return String(o&&o.order_status)==='6';}
+function dhHuy(o){const s=String(o&&o.order_status);return s==='6'||s==='7';}   // 6 = Đã huỷ, 7 = Đã xoá
 function dhIsQualified(o){
   if(dhHuy(o))return false;
   const t=(o.customer_tags||'').toUpperCase();
@@ -4857,7 +4857,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 13:08';
+const APP_VERSION='28/09 13:25';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6690,7 +6690,7 @@ function rptSlShowCustomer(key,sua){
 //   3. Nếu khách vẫn còn thẻ TIỀM NĂNG thì đổi thẻ sang CHỐT ĐƠN
 //   4. Nạp lại dữ liệu để báo cáo trong app cập nhật ngay (doanh thu, ngày chốt, trạng thái)
 // Pancake vẫn là nguồn sự thật -- app chỉ là chỗ nhập cho nhanh.
-const DH_ORDER_STATUS={'0':'Mới','1':'Đã xác nhận','2':'Đã gửi hàng','3':'Đã nhận','6':'Đã huỷ'};
+const DH_ORDER_STATUS={'0':'Mới','1':'Đã xác nhận','2':'Đã gửi hàng','3':'Đã nhận','6':'Đã huỷ','7':'Đã xoá'};
 function dhOrderStatusLabel(v){return DH_ORDER_STATUS[String(v)]||('mã '+v);}
 // ĐIỀN MÃ KH -> DÒNG BIẾN MẤT NGAY, việc còn lại chạy ngầm.
 // Trước đây phải chờ Edge Function đi 4-5 lượt sang Pancake (ghi ghi chú, đọc lại, đổi trạng thái, đổi thẻ)

@@ -176,7 +176,7 @@ async function autoChot() {
   const coDon = new Set(ko.filter(o => o.customer_code && o.status !== 4).map(o => o.customer_code));
   const can = dh.filter(o => {
     const t = (o.customer_tags || '').toUpperCase();
-    if (String(o.order_status) === '6' || t.includes('CHỐT ĐƠN')) return false;
+    if (['6', '7'].includes(String(o.order_status)) || t.includes('CHỐT ĐƠN')) return false;   // 6 huỷ, 7 đã xoá
     const m = maKH(o.internal_note);
     return m && coDon.has(m);
   });
