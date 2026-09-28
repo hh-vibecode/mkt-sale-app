@@ -4852,7 +4852,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 11:08';
+const APP_VERSION='28/09 11:10';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6941,13 +6941,8 @@ function rptSlNghiTrung(all){
   const theoTen={};
   ds.forEach(r=>{const c=rptSlChuTen(r.name);const k=c.map(rptSlBoDau).join(' ');if(c.length>=2&&k.replace(/\s/g,'').length>=4)(theoTen[k]=theoTen[k]||[]).push(r);});   // trùng tên phải từ 2 chữ
   Object.values(theoTen).forEach(a=>{for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++)if(!khacMa(a[i],a[j]))noi(a[i],a[j],'trùng tên');});
-  // 3) tên ngắn (từ 2 chữ) nằm TRỌN trong tên dài, cùng tên gọi ở cuối -- so GIỮ DẤU ("Văn" khác "Vân")
-  const theoTenGoi={};
-  ds.forEach(r=>{const c=rptSlChuTen(r.name);if(c.length)(theoTenGoi[c[c.length-1]]=theoTenGoi[c[c.length-1]]||[]).push([r,c]);});
-  const chua=(dai,ngan)=>{for(let i=0;i+ngan.length<=dai.length;i++){if(ngan.every((t,j)=>dai[i+j]===t))return true;}return false;};
-  Object.values(theoTenGoi).forEach(a=>{if(a.length>40)return;
-    for(let i=0;i<a.length;i++)for(let j=0;j<a.length;j++){if(i===j)continue;const [r1,c1]=a[i],[r2,c2]=a[j];
-      if(c2.length>=2&&c1.length>c2.length&&chua(c1,c2)&&!khacMa(r1,r2))noi(r1,r2,'tên gần giống');}});
+  // (BỎ 28/9/2026 theo anh Hải: luật "tên gần giống" -- tên ngắn nằm trọn trong tên dài -- ra quá nhiều nhóm
+  //  không phải cùng người. Chỉ còn nghi khi trùng SĐT hoặc trùng hẳn tên.)
   const nhom={};
   ds.forEach(r=>{if(!lyDo.has(r))return;const g=goc(r);(nhom[ds.indexOf(g)]=nhom[ds.indexOf(g)]||[]).push(r);});
   return Object.values(nhom).filter(g=>g.length>1).map(g=>({
