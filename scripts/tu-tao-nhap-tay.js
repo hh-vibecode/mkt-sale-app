@@ -12,6 +12,10 @@
 // 23/9/2026 mở rộng: trước chỉ lấy khách LẺ, giờ lấy CẢ KHÁCH SỈ nguồn online (gồm kênh Facebook Shidai)
 // -- vì bóc lệch tháng 9 thấy khách sỉ online như ANH DŨNG-HY (39,2tr, có hoá đơn) bị rơi khỏi báo cáo.
 // Chạy tay: node scripts/tu-tao-nhap-tay.js        (KHO=1 để chỉ xem trước, không ghi)
+// Đọc dữ liệu (GET) tự THỬ LẠI khi mạng chập / Supabase 5xx (28/9/2026: 'Gateway Timeout' làm đỏ cả lượt Kiot).
+// Ghi (POST/PATCH) KHÔNG thử lại: máy chủ có thể đã ghi rồi mới báo lỗi, thử lại dễ sinh dòng trùng.
+const { fetchLai } = require('./lib/fetch-lai.js');
+const fetch = (u, o) => (!o || !o.method || o.method === 'GET') ? fetchLai(u, o, { ten: 'tu-tao-nhap-tay' }) : globalThis.fetch(u, o);
 const SUPABASE_URL = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const MOC = '2026-06-01';

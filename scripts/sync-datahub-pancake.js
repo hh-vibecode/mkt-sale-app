@@ -11,6 +11,10 @@
 // Chạy 1 lần đầu với BACKFILL=1 để quét TOÀN BỘ lịch sử (paginate hết, dừng khi hết dữ liệu hoặc gặp
 // đơn cũ hơn MIN_ORDER_DATE).
 
+// Đọc dữ liệu (GET) tự THỬ LẠI khi mạng chập / Supabase 5xx (28/9/2026: 'Gateway Timeout' làm đỏ cả lượt Kiot).
+// Ghi (POST/PATCH) KHÔNG thử lại: máy chủ có thể đã ghi rồi mới báo lỗi, thử lại dễ sinh dòng trùng.
+const { fetchLai } = require('./lib/fetch-lai.js');
+const fetch = (u, o) => (!o || !o.method || o.method === 'GET') ? fetchLai(u, o, { ten: 'sync-datahub-pancake' }) : globalThis.fetch(u, o);
 const SUPABASE_URL = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const SESSION_TOKEN = process.env.PANCAKE_SESSION_TOKEN;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;

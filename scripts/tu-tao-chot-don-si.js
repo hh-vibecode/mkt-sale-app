@@ -12,6 +12,10 @@
 //
 // KHÔNG lấy: đơn huỷ · phiếu tạm chưa có dấu vết tiền (phiếu báo giá) · từ 1/6/2026 đơn không có dấu vết tiền.
 // Chạy tay: node scripts/tu-tao-chot-don-si.js      (KHO=1 để chỉ xem trước, không ghi)
+// Đọc dữ liệu (GET) tự THỬ LẠI khi mạng chập / Supabase 5xx (28/9/2026: 'Gateway Timeout' làm đỏ cả lượt Kiot).
+// Ghi (POST/PATCH) KHÔNG thử lại: máy chủ có thể đã ghi rồi mới báo lỗi, thử lại dễ sinh dòng trùng.
+const { fetchLai } = require('./lib/fetch-lai.js');
+const fetch = (u, o) => (!o || !o.method || o.method === 'GET') ? fetchLai(u, o, { ten: 'tu-tao-chot-don-si' }) : globalThis.fetch(u, o);
 const SUPABASE_URL = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const MOC = '2026-06-01';
