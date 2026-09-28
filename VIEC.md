@@ -3,7 +3,7 @@
 > Sổ này thay cho việc đọc lại hội thoại cũ. **Claude phải mở file này đầu mỗi phiên làm việc.**
 > Xong việc nào thì xoá khỏi mục ĐANG NỢ và ghi 1 dòng vào NHẬT KÝ (gộp lại khi quá dài).
 > **Anh đã quyết rồi thì LÀM, đừng xếp lại vào mục "chờ anh quyết" để hỏi lại** (mắc lỗi này 23/9 với việc tự tạo data nhập tay).
-> Cập nhật lần cuối: 27/09/2026.
+> Cập nhật lần cuối: 28/09/2026.
 
 ---
 
@@ -14,6 +14,8 @@
 | 1 | **Kéo full hoá đơn Kiot về hub** — 23/09 anh bảo **TẠM ĐỂ ĐÓ**, khi nào cần thì làm. Xem mục 6 bên dưới trước khi bắt tay | khi nào cần thì anh gọi |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
 | 15 | 3 khách Lẻ chưa có Sale phụ trách: M-0018 Nguyễn Thị Hồng Vân · L-TTV-0371 Trần Hải Long · L-CT-0308 Hoàng Lan | gán Sale |
+| 19 | **Cột Mess ở báo cáo MKT** lệch Ads Manager: app lấy "Lượt bắt đầu cuộc trò chuyện" (Mass tệp T9 = 76), Ads Manager anh xem "Tổng số người liên hệ nhắn tin" (86) / "Người liên hệ nhắn tin mới" (67). "Lượt mua" Meta (3) = sự kiện tạo/gửi đơn trong Messenger, 10 đơn Pancake của 2 QC đó đều Mới 0đ → app tính 0 | giữ 76 hay đổi 86/67? có thêm cột "Lượt mua (Meta)" để đối chiếu không |
+| 20 | **17 hẹn chăm sóc cũ** (nhập từ sheet) đang quá hạn → chuông Master Sỉ sáng ngay | giữ hay dọn |
 | 12 | M-0197 (Sỉ "Ngoquoc Duy") và M-0021 (Lẻ "KL ANH DUY") chung SĐT …349764439 — KHÔNG gộp vì khác Lẻ/Sỉ | chỉ để anh biết |
 
 ## 2. CLAUDE ĐANG NỢ (tự làm, không cần hỏi)
@@ -21,7 +23,7 @@
 | # | Việc | Ghi chú |
 |---|---|---|
 
-| 18 | **KHÁCH ĐỂ SĐT TRONG HỘI THOẠI PANCAKE MÀ CHƯA CÓ ĐƠN → KHÔNG VÀO APP** (anh chốt 27/9: "Pancake có SĐT thì tự động đẩy vào báo cáo"). Ca thật: Sale Sỉ báo khách **0935323289** hỏi hàng, tìm trên Pancake thấy SĐT nhưng tìm mọi báo cáo trong app không ra. Nguyên nhân khả năng cao: `sync-datahub-pancake.js` chỉ kéo **ĐƠN POS** (`/shops/{id}/orders`), còn khách mới nhắn tin để lại số mà Sale chưa tạo đơn thì không có trong `datahub_orders`. (Không phải do đồng bộ bỏ sót: mỗi lượt kéo 500 đơn mới nhất mỗi shop, 00:05 UTC quét lại toàn bộ.) Phần báo cáo đã sửa ở máy phụ 27/9 (`d602e1c`): đơn có SĐT là vào báo cáo, không cần thẻ | Máy gốc làm: **(a)** tra DB xem 0935323289 có trong `datahub_orders` không (cột `phone`, cả `internal_note`). Có thì mở app xem giờ đã hiện chưa. **(b)** Không có → viết job kéo **hội thoại Pancake có SĐT** (API pages.fm, cần page access token của từng page; SĐT khách để lại nằm ở `recent_phone_numbers` / customer của hội thoại). Lưu vào hub (khoá: page + psid, tên, SĐT, thẻ hội thoại, ngày nhắn đầu / cuối, ad_id nếu có, link mở hội thoại). **Anh chốt 27/9: KHÔNG đưa thẳng vào Master.** Đưa vào **tab Nhập Liệu, mục CẢNH BÁO ĐỎ** (`rptSlInputSec` màu `var(--red)`, luôn mở, giống mục "Đã chốt đơn nhưng CHƯA có Mã KH"), tiêu đề **"Có SĐT nhưng chưa gắn thẻ và tạo đơn hàng trên Pancake"**. Mỗi dòng: ngày nhắn · page/kênh · tên khách (bấm mở thẳng hội thoại Pancake) · SĐT · Sale phụ trách hội thoại (nếu có). Việc của Sale là vào Pancake gắn thẻ KH SỈ / KH LẺ và tạo đơn → lượt đồng bộ sau đơn POS về hub, khách tự vào Master theo luật mục 3, dòng tự biến khỏi mục cảnh báo. Để biết hội thoại nào "đã có đơn" thì so SĐT (9 số cuối) và psid/conversation_id với `datahub_orders`. Mục này **CÓ tính vào "Tổng việc cần làm"** và số đỏ trên nút Nhập Liệu. Chia theo Sỉ/Lẻ đúng luật mục 3: thẻ hội thoại có KH SỈ / KH LẺ thì theo thẻ, không có thì page Shidai → mục Nhập Liệu bên Sỉ, còn lại → bên Lẻ. Việc này thay cho mục "Tăng tỉ lệ có SĐT của Pancake" trước để chờ anh quyết, và cũng giúp nối Ad ID theo SĐT (hiện chỉ 19% đơn có SĐT).
+| 18 | **[28/9 ĐÃ XONG: (a) 0935323289 = "Hà Ngân" đơn #1658 Shidai 27/9, đã hiện ở Master Sỉ L-SD-1658, nằm Gán data · (c) số trước-sau đã đo, xem nhật ký 28/9 · nhãn nguồn khách gộp nhập tay + đơn Pancake ra "Pancake". CÒN: (b) kéo hội thoại có SĐT — xem dòng 18-KS, chờ anh chọn phạm vi. Đổi nguồn Offline→Online (luật: khách Sale ghi Offline trong sheet mà SĐT CÓ trong hội thoại Pancake = khách đến từ Pancake): 16 dòng nhập tay Sỉ đang ghi Offline trùng SĐT hội thoại Sỉ (12 có Mã KH, tổng đơn Kiot ~452tr trước khi áp luật cắt) → báo anh trước khi đổi]** KHÁCH ĐỂ SĐT TRONG HỘI THOẠI PANCAKE MÀ CHƯA CÓ ĐƠN → KHÔNG VÀO APP (anh chốt 27/9: "Pancake có SĐT thì tự động đẩy vào báo cáo"). Ca thật: Sale Sỉ báo khách **0935323289** hỏi hàng, tìm trên Pancake thấy SĐT nhưng tìm mọi báo cáo trong app không ra. Nguyên nhân khả năng cao: `sync-datahub-pancake.js` chỉ kéo **ĐƠN POS** (`/shops/{id}/orders`), còn khách mới nhắn tin để lại số mà Sale chưa tạo đơn thì không có trong `datahub_orders`. (Không phải do đồng bộ bỏ sót: mỗi lượt kéo 500 đơn mới nhất mỗi shop, 00:05 UTC quét lại toàn bộ.) Phần báo cáo đã sửa ở máy phụ 27/9 (`d602e1c`): đơn có SĐT là vào báo cáo, không cần thẻ | Máy gốc làm: **(a)** tra DB xem 0935323289 có trong `datahub_orders` không (cột `phone`, cả `internal_note`). Có thì mở app xem giờ đã hiện chưa. **(b)** Không có → viết job kéo **hội thoại Pancake có SĐT** (API pages.fm, cần page access token của từng page; SĐT khách để lại nằm ở `recent_phone_numbers` / customer của hội thoại). Lưu vào hub (khoá: page + psid, tên, SĐT, thẻ hội thoại, ngày nhắn đầu / cuối, ad_id nếu có, link mở hội thoại). **Anh chốt 27/9: KHÔNG đưa thẳng vào Master.** Đưa vào **tab Nhập Liệu, mục CẢNH BÁO ĐỎ** (`rptSlInputSec` màu `var(--red)`, luôn mở, giống mục "Đã chốt đơn nhưng CHƯA có Mã KH"), tiêu đề **"Có SĐT nhưng chưa gắn thẻ và tạo đơn hàng trên Pancake"**. Mỗi dòng: ngày nhắn · page/kênh · tên khách (bấm mở thẳng hội thoại Pancake) · SĐT · Sale phụ trách hội thoại (nếu có). Việc của Sale là vào Pancake gắn thẻ KH SỈ / KH LẺ và tạo đơn → lượt đồng bộ sau đơn POS về hub, khách tự vào Master theo luật mục 3, dòng tự biến khỏi mục cảnh báo. Để biết hội thoại nào "đã có đơn" thì so SĐT (9 số cuối) và psid/conversation_id với `datahub_orders`. Mục này **CÓ tính vào "Tổng việc cần làm"** và số đỏ trên nút Nhập Liệu. Chia theo Sỉ/Lẻ đúng luật mục 3: thẻ hội thoại có KH SỈ / KH LẺ thì theo thẻ, không có thì page Shidai → mục Nhập Liệu bên Sỉ, còn lại → bên Lẻ. Việc này thay cho mục "Tăng tỉ lệ có SĐT của Pancake" trước để chờ anh quyết, và cũng giúp nối Ad ID theo SĐT (hiện chỉ 19% đơn có SĐT).
 **Bổ sung 27/9 — KÉO TỪ TRƯỚC TỚI GIỜ, KHÔNG CẮT 1/6:** khách 0935323289 nhắn page Shidai từ **tháng 3/2026**, mà Pancake mới bắt đầu gắn thẻ từ **tháng 6**. Nên với **page Shidai** phải kéo **TOÀN BỘ lịch sử** (bỏ mốc `MIN_ORDER_DATE = '2026-06-01'`, khớp luật "Sỉ lấy full lịch sử" ở mục 3), cả **hội thoại có SĐT** lẫn **đơn POS** của shop Shidai `1943052948`. Các page Lẻ giữ mốc 1/6 như cũ, trừ khi anh nói khác. **Luật: cứ có SĐT là đẩy vào mục cảnh báo đỏ ở Nhập Liệu**, không cần thẻ, để Sale gắn thẻ bù sau. Mục cảnh báo gồm 2 loại: (1) hội thoại có SĐT nhưng chưa có đơn POS; (2) đơn POS có SĐT nhưng chưa có thẻ KH SỈ / KH LẺ. Loại (2) vẫn vào Master theo luật 27/9, mục cảnh báo chỉ để nhắc gắn thẻ. Gắn thẻ xong thì dòng tự biến khỏi mục. Lần đầu kéo full lịch sử Shidai: đếm số hội thoại / đơn mới vào rồi báo anh, vì mục Nhập Liệu có thể tăng vọt.
 **Bổ sung 27/9 — CLAUDE TỰ XỬ LÝ HẾT, KHÔNG ĐỂ SALE LÀM TAY:** mọi ca có SĐT mà chưa gắn thẻ / chưa có đơn thì **job tự làm trên Pancake**:
 - (1) Hội thoại có SĐT mà chưa có đơn POS → **tự tạo đơn POS** trên đúng shop của page đó (`POST /shops/{id}/orders`): tên, SĐT, page/hội thoại khách nhắn, ad_id nếu có, ghi chú nội bộ "Tạo tự động từ hội thoại có SĐT — app MKT/Sale". Đơn để trạng thái Mới, không có sản phẩm / tiền.
@@ -46,30 +48,7 @@
 | 17 | **Nguyễn Thuỳ Trâm** (L-HT-0296) mã KH002561 không có đơn; đơn thật nghi là DH002098 dưới mã KH007352 "KL Anh Tân" (M-0019) | Sale xác nhận rồi sửa ghi chú Pancake |
 | 3 | **Mật khẩu DB bị lộ trong hội thoại 25/9.** Lúc soát file `supabase-keys.local.txt`, lệnh che giá trị bị sót dòng `DB_PASSWORD` nên mật khẩu hiện nguyên văn trong kết quả lệnh của phiên Claude. Không ra khỏi máy, không nằm trong commit nào | Anh quyết: có đổi mật khẩu DB không (Supabase → Project Settings → Database → Reset password), đổi thì nhớ cập nhật lại `supabase-keys.local.txt` và mọi chỗ đang dùng mật khẩu này. Khoá quản trị (service role) và khoá công khai KHÔNG bị hiện |
 
-### 2b. Kế hoạch "Nghi trùng khách" (25/9, chưa code dòng nào)
-
-**Tìm nhóm nghi trùng** (chạy trên danh sách Master SAU các bước gộp tự động Mã KH → SĐT → tên, chỉ trong loại đang xem Sỉ hoặc Lẻ):
-- Trùng **SĐT phụ**: gộp tự động chỉ xét SĐT đầu tiên của khách, nên 2 khách có chung 1 số bất kỳ (kể cả số bên Kiot) vẫn lọt → nghi.
-- Trùng **tên** sau khi bỏ dấu và bỏ danh xưng (anh/chị/cô/chú/shop…) mà gộp tự động bỏ qua vì khác Mã KH → nghi.
-- **Tên này chứa trọn tên kia**: tên ngắn có từ 2 chữ trở lên, cùng tên gọi ở cuối, so từng chữ GIỮ DẤU (bỏ dấu thì "Văn" trùng "Vân"). Dùng lại cách so của `rptSlKhopNhanSu`.
-- Nếu 2 khách chỉ giống tên mà **khác Mã KH** → bỏ qua (dễ là 2 người khác nhau). Khác Mã KH mà **chung SĐT** thì vẫn đưa vào.
-- Nối các cặp thành nhóm. Bỏ các cặp đã được xác nhận "không phải 1 người" (cột `khac_nguoi`).
-- Chỉ so trong cùng tên gọi / cùng SĐT, không so từng cặp với nhau, vì Lẻ có vài nghìn khách.
-
-**Giao diện** (`rptSlInputHtml`, thêm 1 mục `rptSlInputSec` tên "Nghi trùng khách"):
-- Mỗi nhóm 1 khối, ghi rõ **vì sao nghi** ("trùng SĐT 0912…", "tên gần giống"). Mỗi dòng: ô tích · ngày tạo · nguồn · tên + mã (`rptSlMaDuoiTen`) · SĐT · kênh · Sale · phân loại/trạng thái · doanh thu.
-- Tích ≥ 2 dòng trong CÙNG 1 nhóm → hiện thanh dính trên đầu (giống `siGanBar`): "Đã chọn N khách" · ô chọn **hồ sơ chính** (mặc định dòng tạo sớm nhất) · nút **Hợp nhất dữ liệu** (hỏi xác nhận, kể tên từng khách) · Bỏ chọn.
-- Nút **"Không phải cùng 1 người"** cho từng nhóm → ghi Lead ID các dòng vào `khac_nguoi` của nhau, không nhắc lại nhóm đó.
-- Mục này **KHÔNG cộng vào "Tổng việc cần làm"** và không tính vào số trên nút Nhập Liệu, vì đây là việc kiểm tra.
-- Cuối mục có danh sách **"Đã hợp nhất tay"** kèm nút **Tách ra** (đặt `gop_vao` = null). Dữ liệu gốc không mất.
-
-**Lưu và gộp:**
-- Hợp nhất = mỗi dòng phụ ghi `saleretail_manual.gop_vao` = Lead ID dòng chính (qua `rptSlSaveManual`). Ghi nhật ký `logAct`.
-- Trong `rptSlBuildMasterRaw`, sau 3 bước gộp tự động, thêm **bước 4: gộp tay**. Nối các Lead ID theo cặp `gop_vao`. Lead ID của 1 dòng lấy từ `nguonLienHe`, KHÔNG lấy từ `mergedFrom`, vì `mergedFrom` bị ghi đè sau mỗi bước gộp. Sửa `gopNhom(g, chinh)` để giữ đúng dòng chính thay vì luôn lấy dòng tạo sớm nhất.
-- **Sỉ:** khối dựng hồ sơ Sỉ đang chỉ đọc `rptSlManual[r.leadId]` → sửa cho ô nào trống thì lấy từ các Lead ID đã gộp. Lịch sử chăm sóc `salesi_crm` (`ky[...]`) cũng phải gom theo MỌI Lead ID của khách, không thì mất lượt chăm sóc của dòng phụ.
-- Chạy `scripts/kiem-so-lieu.js` trước và sau khi sửa: gộp tay KHÔNG được làm đổi tổng doanh thu (đơn lọc trùng theo mã đơn, như gộp tự động).
-
-**Lưu ý phiên 25/9:** Claude đã thử kết nối thẳng vào DB bằng `supabase-keys.local.txt` để tự thêm cột và bị hệ thống chặn → **thay đổi cấu trúc DB để anh tự chạy SQL**, đừng thử lại cách đó.
+### 2b. Ghi chú
 
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
@@ -101,7 +80,7 @@
 ## 3b. BẢO MẬT (khoá 24/9/2026)
 
 - CSDL CHỈ mở cho người đã đăng nhập app (thẻ phiên JWT, role authenticated). Khoá công khai trong index.html một mình không đọc/ghi được gì (trừ 3 bảng cho dashboard cũ: product_faq, dash_presence, social_page_stats).
-- Đăng nhập qua Edge Function `dang-nhap` → tài khoản bóng `<user_id>@mkt-sale.app` trong Supabase Auth (mật khẩu bóng ngẫu nhiên mỗi lần). Mật khẩu thật vẫn ở sales_user_credentials.
+- Đăng nhập qua Edge Function `dang-nhap` → tài khoản bóng `<user_id>@mkt-sale.app` trong Supabase Auth (mật khẩu bóng CỐ ĐỊNH = HMAC khoá máy chủ + email, từ 25/9 — trước đó đổi ngẫu nhiên mỗi lần làm đá văng phiên máy khác). Mật khẩu thật vẫn ở sales_user_credentials.
 - Hàm quản lý tài khoản kiểm quyền TRONG CSDL (`la_quan_tri()`: Supreme hoặc có quyền settings / *). Tự đăng ký Supabase đã TẮT.
 - Edge `pancake-note`, `sync-now` kiểm thẻ (secret BAT_BUOC_PHIEN=1); lịch hẹn giờ gọi sync-now bằng mã `x-cron-key` (secret CRON_KEY, trong hàm goi_sync).
 - Job đồng bộ + kiem-so-lieu dùng khoá quản trị → không bị khoá ảnh hưởng.
@@ -118,6 +97,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **28/09 (máy gốc, tiếp)** — Nhập Liệu: bấm ô Mã KH hiện sẵn mã gợi ý theo SĐT để chọn. MKT: popup "Khách từ quảng cáo" kèm phiếu mua + mặt hàng. Nhãn nguồn: khách có đơn Pancake luôn ra "Pancake" (dù dòng giữ là nhập tay). Khảo sát #18 lưu ở dòng 18-KS. Soát lệch MKT vs Ads Manager: xem việc #19.
 
 - **28/09 (máy gốc)** — Sửa workflow đỏ: (1) Kiot đỏ 07:35 do bước "Tự tạo Chốt đơn Sỉ" gặp Supabase "Gateway Timeout" khi đọc `salesi_crm`; Pancake đỏ 27/9 do "fetch failed" shop HT. Thêm THỬ LẠI cho mọi lượt ĐỌC (GET) trong `sync-datahub-pancake.js`, `tu-tao-chot-don-si.js`, `tu-tao-nhap-tay.js` (dùng `lib/fetch-lai.js`); lượt ghi không thử lại để khỏi sinh dòng trùng. (2) "Chốt mốc số liệu" đỏ 3/3 lượt từ 27/9: mốc kẹt ở 25/9 20:16, lệch vì luật 27/9 (đơn Pancake có SĐT vào báo cáo) + đơn mới cuối tuần → chốt mốc mới. Số #18c: Lẻ tất cả khách 199 → 300 (+101, doanh thu Lẻ không đổi 1.123 tỷ, số khách chốt không đổi 158); Lẻ tháng này 48 → 63 khách; Sỉ tất cả 412 → 415 khách, doanh thu +51tr (đơn mới 26–27/9); MKT Sỉ 121 → 162tr.
 
