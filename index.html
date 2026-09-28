@@ -4869,7 +4869,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 13:55';
+const APP_VERSION='28/09 13:59';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6926,7 +6926,7 @@ function rptSlMatLeadSi(r){
 // Anh Hải 28/9: MỌI khách Lead cũ (Lẻ lẫn Sỉ) không tính vào Nhập Liệu, trừ khi đổi sang trạng thái khác.
 function rptSlLeadCu(r){
   if(rptSlType()!=='Sỉ')return !r.isChot&&/^lead cũ$/i.test(String(r.manualStatus||'').trim());
-  return /^lead cũ$/i.test(String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim());
+  return !r.isChot&&/^lead cũ$/i.test(String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim());   // đã chốt thì phải hiện lại (còn Mã KH…)
 }
 function rptSlTodoBuckets(){
   const all=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao)
@@ -7001,7 +7001,10 @@ function rptSlChuTen(ten){
   return c;
 }
 // mọi Lead ID của 1 khách (khách đã gộp mang nhiều Lead ID trong nguonLienHe)
-function rptSlIdsCua(r){return [...new Set((r.nguonLienHe||[]).map(x=>x.leadId).concat([r.leadId]).filter(Boolean))];}
+// + mã của MỌI ĐƠN Pancake của khách (28/9/2026): Lead ID của dòng lấy theo đơn đầu, nên hồ sơ Sale ghi ở mã 1 đơn
+// khác (vd L-TTV-0362 nằm chung khách L-SD-0117, hay đơn thừa đã xoá như ca Thiên Lâm) trước đây bị ẩn -- 36 khách.
+function rptSlIdsCua(r){return [...new Set((r.nguonLienHe||[]).map(x=>x.leadId).concat([r.leadId])
+  .concat((r.orders||[]).filter(o=>o&&o.system_id).map(o=>'L-'+rptSlShopCode(o)+'-'+String(o.system_id).padStart(4,'0'))).filter(Boolean))];}
 function rptSlKhacNguoiCua(r){
   const s=new Set();
   rptSlIdsCua(r).forEach(id=>String((rptSlManual[id]||{}).khac_nguoi||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(x=>s.add(x)));

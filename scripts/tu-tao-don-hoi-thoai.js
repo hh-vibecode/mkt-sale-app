@@ -68,6 +68,8 @@ async function laRac(h) {
   const m = await lay(`https://pancake.vn/api/v1/pages/${h.page}/conversations/${h.conv}/messages?customer_id=${cid}&access_token=${TOKEN}`);
   const kh = ((m && m.messages) || []).filter(x => String(x.from && x.from.id) !== String(h.page))
     .map(x => String(x.original_message || x.message || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  // Sale VỪA tạo đơn cho hội thoại này (hub chưa kịp đồng bộ, trễ tới 10 phút) -> không tạo trùng
+  if (((m && m.recent_orders) || []).length) h.coDonMoi = true;
   const t = kh.find(x => RAC.test(x) || nhieuSo(x));
   // khách gửi nhiều số -> CHỈ lấy số gửi SAU CÙNG (anh Hải 28/9: số trước thường là số nhầm / số cũ)
   const so = [];
@@ -150,6 +152,7 @@ async function laRac(h) {
   for (const h of moi.slice()) {
     const ly = await laRac(h);
     if (ly) { rac.push(h); moi.splice(moi.indexOf(h), 1); h.lyRac = ly; }
+    else if (h.coDonMoi) { moi.splice(moi.indexOf(h), 1); cu.push(h); }
     await sleep(120);
   }
   const theCua = h => h.the.some(t => /KH SỈ/i.test(t)) ? 'KH SỈ' : h.the.some(t => /KH LẺ/i.test(t)) ? 'KH LẺ' : h.shop === SHIDAI ? 'KH SỈ' : 'KH LẺ';
