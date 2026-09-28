@@ -79,6 +79,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **28/09 14:30** — Luồng **QC CSKH** tách sang app riêng: thư mục `C:UsersHPDesktopqc-cskh` (sổ việc riêng `qc-cskh/VIEC.md` có đủ bối cảnh + kiến thức; 16 mục bộ nhớ chép sang bộ nhớ thư mục đó). Job chấm `sync-sale-review.yml` VẪN chạy ở repo này cho tới khi app QC chạy song song ổn và anh bảo tắt.
+
 - **28/09 14:20** — **Báo cáo MKT chỉ tính từ 1/6/2026** (anh chốt: ngân sách chỉ có từ T6 nên doanh thu và mọi số khác cũng vậy). `modRange('mkt')` kẹp mốc sớm nhất `RPT_MKT_TU`. "Tất cả": doanh số 2,041 tỷ → 1,783 tỷ (bỏ 257,8tr của 7 đơn trước T6), chi phí không đổi 283,0tr; tháng 9 không đổi.
 
 - **28/09 14:10** — Job tự tạo đơn từ hội thoại: **chỉ chạy 2 lần/ngày 6h và 18h giờ VN** (anh chốt, để Sale tự tạo đơn trước, tránh trùng). Workflow vẫn gọi mỗi 10 phút, script đọc bảng `job_moc` (mới) — lượt đầu tiên sau mỗi mốc mới chạy. Mốc khởi tạo 28/9 chiều → lượt thật đầu tiên 18h 28/9. `CHAY_NGAY=1` để chạy tay.
