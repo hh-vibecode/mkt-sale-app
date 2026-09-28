@@ -4852,7 +4852,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 11:18';
+const APP_VERSION='28/09 11:45';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6849,6 +6849,11 @@ function rptSlMatLeadSi(r){
   const t=String(r.siPhanLoai||(r.sh||{}).phan_loai||'');
   return /mất kết nối|mat ket noi|không liên hệ|huỷ|hủy/i.test(t);
 }
+// Sỉ phân loại "Lead cũ" (khách kéo từ đơn cũ Shidai) -> không nhắc lịch sử chăm / giá trị dự kiến (anh Hải 28/9/2026).
+function rptSlLeadCu(r){
+  if(rptSlType()!=='Sỉ')return false;
+  return /^lead cũ$/i.test(String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim());
+}
 function rptSlTodoBuckets(){
   const all=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao)
     .filter(r=>!RPT_SL_DANG_LUU.has(r.leadId));   // dòng vừa điền mã: giấu đi trong lúc chạy ngầm
@@ -6872,7 +6877,7 @@ function rptSlTodoBuckets(){
     chuaTT:all.filter(r=>!r.isChot&&!rptSlCoTrangThai(r)),
     // 4. Đã chọn Mất lead nhưng chưa ghi nhóm nguyên nhân.
     // 5. Khách tiềm năng (chưa chốt, chưa mất) nhưng chưa có giá trị dự kiến.
-    thieuGT:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!r.potential&&!rptSlMatLeadSi(r)),
+    thieuGT:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!r.potential&&!rptSlMatLeadSi(r)&&!rptSlLeadCu(r)),
     // 6. Bước B3 quy trình Sale: đơn trên POS Cake chưa đổi trạng thái cho khớp thẻ khách.
     // 7. Chưa ghi nội dung trao đổi -- thứ DUY NHẤT không hệ thống nào suy ra được, phải Sale ghi.
     //    Khách đã chốt thì hồ sơ đã khoá, không sửa được nữa -> không nhắc.
@@ -6880,7 +6885,7 @@ function rptSlTodoBuckets(){
     // Sỉ (anh Hải 25/9/2026): nội dung chăm khách = nội dung lượt GẦN NHẤT trong Lịch sử chăm sóc, nên chỉ báo
     // khách CHƯA CÓ lượt chăm nào. Lẻ giữ như cũ: chưa ghi ô nội dung trao đổi.
     thieuND:rptSlType()==='Sỉ'
-      ?all.filter(r=>!rptSlMatLeadSi(r)&&!(r.siLuot>0))
+      ?all.filter(r=>!rptSlMatLeadSi(r)&&!rptSlLeadCu(r)&&!(r.siLuot>0))
       :all.filter(r=>!r.isChot&&r.status!=='Mất lead'
         &&!String(r.content||'').trim()&&!String(r.siNDCuoi||'').trim()&&!String((r.sh||{}).nd_cham_cuoi||'').trim()),
   };
