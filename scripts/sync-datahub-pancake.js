@@ -23,6 +23,11 @@ const PAGE_SIZE = 100;
 const INCREMENTAL_MAX_PAGES = 5;
 // User yêu cầu 11/9/2026: tạm thời chỉ lấy dữ liệu từ tháng 6/2026 trở đi.
 const MIN_ORDER_DATE = '2026-06-01';
+// SHOP SHIDAI (Sỉ) lấy ĐỦ LỊCH SỬ (anh Hải 28/9/2026, luật "Sỉ lấy full lịch sử"): đơn trước 1/6 vẫn vào hub,
+// NHƯNG chỉ đơn của khách mang thẻ KH SỈ ("bỏ Lẻ đi, tập trung Sỉ" -- khách Shidai gắn KH LẺ cũ thì bỏ).
+const SHOP_SHIDAI = 1943052948;
+const MIN_SHIDAI = '2024-01-01';
+const mocCua = shopId => shopId === SHOP_SHIDAI ? MIN_SHIDAI : MIN_ORDER_DATE;
 
 // Map cứng shop -> brand (dò tay 11/9/2026 qua GET /shops). KHÔNG suy qua regex tên shop vì "Thời Đại"
 // (tên shop Shidai) không chứa chữ "shidai" -- xem chi tiết trong supabase-schema-datahub.sql.
@@ -51,7 +56,7 @@ async function fetchShopOrders(shopId) {
     if (!BACKFILL && page >= INCREMENTAL_MAX_PAGES) break;
     // Pancake trả đơn mới nhất trước -- nếu trang này đã lùi quá MIN_ORDER_DATE thì dừng sớm, khỏi quét hết lịch sử.
     const oldestInPage = (json.data || []).length ? (json.data[json.data.length - 1].inserted_at || '').slice(0, 10) : null;
-    if (oldestInPage && oldestInPage < MIN_ORDER_DATE) break;
+    if (oldestInPage && oldestInPage < mocCua(shopId)) break;
     page++;
     await new Promise(r => setTimeout(r, 200)); // tránh dồn dập bị Pancake rate-limit
   }
@@ -298,7 +303,8 @@ async function autoB3() {
     try {
       const orders = await fetchShopOrders(shop.id);
       const rows = orders.filter(o => o.display_id).map(o => mapOrder(o, shop))
-        .filter(r => r.order_date && r.order_date >= MIN_ORDER_DATE);
+        .filter(r => r.order_date && (r.order_date >= MIN_ORDER_DATE
+          || (shop.id === SHOP_SHIDAI && r.order_date >= MIN_SHIDAI && /KH SỈ/i.test(r.customer_tags || ''))));
       for (let i = 0; i < rows.length; i += CHUNK) {
         await upsertOrders(rows.slice(i, i + CHUNK));
       }
