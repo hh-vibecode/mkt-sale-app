@@ -97,6 +97,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **28/09** — 795 khách Sỉ vừa kéo từ đơn cũ Shidai (đều tạo trước 1/9/2026): phân loại **"Lead cũ"** (thêm giá trị mới vào danh mục Phân loại KH, xếp sau "Lead mới") + Sale phụ trách **Nguyễn Hữu Toàn** (anh chốt). Master Sỉ: Toàn 840 · Minh Oanh 313 · Huế 40 · Sale Kiot 1 · trống 17 (8 khách trống tạo trước T9 thuộc nhóm cũ, chưa gán).
+
 - **28/09** — Gán Sale cho 26 khách Lẻ chưa có Sale theo brand (anh chốt): Tự Tại Viên + Hiền Thủy → Vân Ngọc (14) · Chánh Tâm → Chánh Tâm Ngọc Diệp (12). Lẻ hết khách chưa gán (xoá việc #15).
 
 - **28/09 trưa** — (1) Kéo đơn cũ shop Shidai vào hub (chỉ khách thẻ KH SỈ, từ 4/2025): Master Sỉ 415 → 1.211 khách, tổng doanh thu không đổi; MKT Sỉ T9 162,2 → 141,0tr vì Mai Quy (nhắn FB cuối 15/09/2025, mua lại 08/09/2026 21,1tr) nay thấy đơn Pancake cũ → xếp mua lại, đúng luật. Job cập nhật ngày nhắn cuối cho cả đơn cũ Shidai. **Chưa chốt mốc số liệu — chờ job cập nhật xong ngày nhắn cuối.** (2) Đã tạo thử đơn Pancake thật #1660 (Tạ Văn Chinh) nối hội thoại + gắn KH SỈ, không nhắn khách. Lô 270 khách chỉ có hội thoại FB chờ anh chạy script (auto mode chặn tạo đơn hàng loạt). (3) Gộp khách: Mã KH đi theo cả nhóm (ca Bao An). Nghi trùng: CHỈ theo SĐT. (4) 87 khách Lẻ chưa điền trạng thái, tạo trước 1/9/2026 → **Mất lead** (anh chốt); còn 16 khách từ T9 chưa trạng thái.
