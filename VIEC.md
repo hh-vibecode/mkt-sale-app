@@ -13,7 +13,6 @@
 |---|---|---|
 | 1 | **Kéo full hoá đơn Kiot về hub** — 23/09 anh bảo **TẠM ĐỂ ĐÓ**, khi nào cần thì làm. Xem mục 6 bên dưới trước khi bắt tay | khi nào cần thì anh gọi |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
-| 15 | 3 khách Lẻ chưa có Sale phụ trách: M-0018 Nguyễn Thị Hồng Vân · L-TTV-0371 Trần Hải Long · L-CT-0308 Hoàng Lan | gán Sale |
 | 19 | **Cột Mess ở báo cáo MKT** lệch Ads Manager: app lấy "Lượt bắt đầu cuộc trò chuyện" (Mass tệp T9 = 76), Ads Manager anh xem "Tổng số người liên hệ nhắn tin" (86) / "Người liên hệ nhắn tin mới" (67). "Lượt mua" Meta (3) = sự kiện tạo/gửi đơn trong Messenger, 10 đơn Pancake của 2 QC đó đều Mới 0đ → app tính 0 | giữ 76 hay đổi 86/67? có thêm cột "Lượt mua (Meta)" để đối chiếu không |
 | 20 | **17 hẹn chăm sóc cũ** (nhập từ sheet) đang quá hạn → chuông Master Sỉ sáng ngay | giữ hay dọn |
 | 12 | M-0197 (Sỉ "Ngoquoc Duy") và M-0021 (Lẻ "KL ANH DUY") chung SĐT …349764439 — KHÔNG gộp vì khác Lẻ/Sỉ | chỉ để anh biết |
@@ -97,6 +96,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **28/09** — Gán Sale cho 26 khách Lẻ chưa có Sale theo brand (anh chốt): Tự Tại Viên + Hiền Thủy → Vân Ngọc (14) · Chánh Tâm → Chánh Tâm Ngọc Diệp (12). Lẻ hết khách chưa gán (xoá việc #15).
 
 - **28/09 trưa** — (1) Kéo đơn cũ shop Shidai vào hub (chỉ khách thẻ KH SỈ, từ 4/2025): Master Sỉ 415 → 1.211 khách, tổng doanh thu không đổi; MKT Sỉ T9 162,2 → 141,0tr vì Mai Quy (nhắn FB cuối 15/09/2025, mua lại 08/09/2026 21,1tr) nay thấy đơn Pancake cũ → xếp mua lại, đúng luật. Job cập nhật ngày nhắn cuối cho cả đơn cũ Shidai. **Chưa chốt mốc số liệu — chờ job cập nhật xong ngày nhắn cuối.** (2) Đã tạo thử đơn Pancake thật #1660 (Tạ Văn Chinh) nối hội thoại + gắn KH SỈ, không nhắn khách. Lô 270 khách chỉ có hội thoại FB chờ anh chạy script (auto mode chặn tạo đơn hàng loạt). (3) Gộp khách: Mã KH đi theo cả nhóm (ca Bao An). Nghi trùng: CHỈ theo SĐT. (4) 87 khách Lẻ chưa điền trạng thái, tạo trước 1/9/2026 → **Mất lead** (anh chốt); còn 16 khách từ T9 chưa trạng thái.
 
