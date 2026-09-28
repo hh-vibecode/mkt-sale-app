@@ -69,6 +69,10 @@ async function laRac(h) {
   const kh = ((m && m.messages) || []).filter(x => String(x.from && x.from.id) !== String(h.page))
     .map(x => String(x.original_message || x.message || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
   const t = kh.find(x => RAC.test(x) || nhieuSo(x));
+  // khách gửi nhiều số -> CHỈ lấy số gửi SAU CÙNG (anh Hải 28/9: số trước thường là số nhầm / số cũ)
+  const so = [];
+  kh.forEach(x => (x.match(/(?:\+?84|0)[35789](?:[\s.]?\d){8}/g) || []).forEach(s => { const c = chuanSo(s); if (c) so.push(c); }));
+  if (so.length) h.soCuoi = so[so.length - 1];
   return t ? t.slice(0, 80) : '';
 }
 
@@ -175,10 +179,10 @@ async function laRac(h) {
   // 5) khách mới: tạo đơn + gắn thẻ (+ "Lead mới" nếu là Sỉ)
   let ok = 0; const loi = [];
   for (const h of moi) {
-    const so = h.so[0], the = theCua(h);
+    const so = h.soCuoi || h.so[0], the = theCua(h);
     const than = { bill_full_name: h.ten || so, bill_phone_number: so, page_id: h.page, conversation_id: h.conv,
       note: 'Tạo tự động từ hội thoại có SĐT — app MKT/Sale', items: [] };
-    if (h.psid && /^\d+$/.test(h.psid)) than.customer = { name: h.ten || so, phone_numbers: h.so, fb_id: h.page + '_' + h.psid };
+    if (h.psid && /^\d+$/.test(h.psid)) than.customer = { name: h.ten || so, phone_numbers: [so], fb_id: h.page + '_' + h.psid };
     try {
       const r = await fetch(pos(`shops/${h.shop}/orders`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(than) });
       const j = await r.json().catch(() => ({})); const d = j.data || {};
