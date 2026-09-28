@@ -3518,7 +3518,8 @@ function rptMktData(){
       // ra ai), nhưng KHÔNG cộng vào lượt mua / doanh thu của quảng cáo.
       const tinh=rptMktDuocTinh(r);   // MKT CHỈ lấy nguồn Online -- cả Lẻ lẫn Sỉ (chốt 23/9/2026)
       theoAd[id].khach.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',staff:r.staff||'',
-        kh:r.kh||'',ngay:r.isChot?r.closeDate:r.created,rev:r.isChot?r.revenue:0,chot:!!r.isChot});
+        kh:r.kh||'',ngay:r.isChot?r.closeDate:r.created,rev:r.isChot?r.revenue:0,chot:!!r.isChot,
+        don:r.isChot?(r.kords||[]).map(o=>o.code):[]});   // phiếu mua (đơn đặt hàng Kiot) để xem khách mua gì
       if(r.isChot&&tinh){theoAd[id].don++;theoAd[id].rev+=r.revenue;}
     });
   });
@@ -3651,9 +3652,7 @@ function rptMktHtml(){
   // bảng chi tiết theo từng quảng cáo
   const dsAd=Object.values(d.theoAd||{}).sort((a,b)=>b.spend-a.spend);
   const colKh=['Loại','Ngày','Khách','SĐT','Kênh','Sales','Mã KH','Trạng thái','Doanh thu'];
-  dsAd.forEach((a,i)=>L('mktAd-'+i,{title:'Khách từ quảng cáo: '+(a.ten||a.camp)+' · '+a.id,
-    cols:colKh,rows:a.khach.slice().sort((x,y)=>y.rev-x.rev).map(k=>[k.loai,dmy(k.ngay),k.name,k.phone||'',k.kenh,k.staff,k.kh,
-      k.chot?'<span style="color:var(--green);font-weight:700">Chốt đơn</span>':'chưa chốt',k.rev?vnd(k.rev):''])}));
+  dsAd.forEach((a,i)=>L('mktAd-'+i,{lam:()=>rptMktKhachAd(a)}));
   // ── CÂY 3 TẦNG: Chiến dịch -> Nhóm quảng cáo -> Quảng cáo ──────────────────────────────────
   // Mặc định GẬP hết; bấm chiến dịch mới mở nhóm, bấm nhóm mới mở từng quảng cáo -- màn hình chỉ
   // còn vài dòng chiến dịch thay vì đổ hàng trăm quảng cáo ra ngay (yêu cầu 23/9/2026).
@@ -4853,7 +4852,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 08:33';
+const APP_VERSION='28/09 08:54';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5185,7 +5184,26 @@ function rptSlOverviewHtml(){
         :'<div style="padding:22px;text-align:center;color:var(--muted);font-size:12.5px;font-weight:600">Chưa có khách nào ra doanh số trong kỳ</div>'}
     </div>`;})()}`;
 }
-function rptSlShow(key){const d=(window._rptSlLists||{})[key];if(d)dataModal(d);}
+function rptSlShow(key){const d=(window._rptSlLists||{})[key];if(!d)return;if(typeof d.lam==='function')return d.lam();dataModal(d);}
+// Popup "Khách từ quảng cáo" ở báo cáo MKT: kèm PHIẾU MUA (đơn đặt hàng Kiot) + mặt hàng từng phiếu để xem
+// khách mua gì (anh Hải 28/9/2026). Mặt hàng tải riêng theo khách -> chưa có thì tải xong vẽ lại.
+function rptMktKhachAd(a){
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const title='Khách từ quảng cáo: '+(a.ten||a.camp)+' · '+a.id;
+  const theoMa={};(kiotOrders||[]).forEach(o=>{theoMa[String(o.code).toUpperCase()]=o;});
+  const phieu=k=>(k.don||[]).map(c=>{const o=theoMa[String(c).toUpperCase()]||{code:c};
+    const it=(o.items||[]).map(x=>e(x.name)+' <b>x'+e(x.qty)+'</b>').join('<br>');
+    return '<div style="white-space:normal;min-width:260px;max-width:440px;margin:2px 0 6px"><b>'+e(o.code)+'</b>'
+      +(o.purchase_date?' · '+dmy(String(o.purchase_date).slice(0,10)):'')+(o.total!=null?' · <span style="color:var(--green);font-weight:800">'+vnd(o.total)+'</span>':'')
+      +(it?'<div style="font-size:11px;color:var(--text2);margin-top:2px;line-height:1.45">'+it+'</div>'
+          :(k.kh&&!_kiotItemsDaTai[k.kh]?'<div style="font-size:11px;color:var(--muted)">đang tải mặt hàng…</div>':''))+'</div>';}).join('')||'—';
+  dataModal({title,cols:['Loại','Ngày','Khách','SĐT','Kênh','Sales','Mã KH','Trạng thái','Doanh thu','Phiếu mua'],
+    rows:a.khach.slice().sort((x,y)=>y.rev-x.rev).map(k=>[k.loai,dmy(k.ngay),k.name,k.phone||'',k.kenh,k.staff,k.kh,
+      k.chot?'<span style="color:var(--green);font-weight:700">Chốt đơn</span>':'chưa chốt',k.rev?vnd(k.rev):'',phieu(k)])});
+  const can=[...new Set(a.khach.filter(k=>k.don&&k.don.length&&k.kh&&!_kiotItemsDaTai[k.kh]).map(k=>k.kh))];
+  if(can.length)Promise.all(can.map(kiotLoadItems)).then(()=>{
+    const m=document.getElementById('qcModal');if(m&&m.innerHTML.indexOf(e(title))>=0)rptMktKhachAd(a);});
+}
 // ── Master Data & CRM: dựng theo đúng khung Data Hub -> Master Data -> CRM của sheet cũ, nhưng nguồn là
 // Pancake (datahub_orders) + KiotViet (kiot_invoices), KHÔNG dùng bảng nào migrate từ Google Sheet.
 //   Data Hub  = từng đơn thô Pancake (tab Data Hub)
