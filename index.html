@@ -4857,7 +4857,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 12:24';
+const APP_VERSION='28/09 12:45';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5688,6 +5688,9 @@ function rptSlBuildMasterRaw(){
       lastKiotDate:kords.length?(kords[kords.length-1].purchase_date||'').slice(0,10):'',
       lastTouch,daysIdle:lastTouch?Math.floor((new Date()-new Date(lastTouch))/86400000):null});
   });
+  // NGÀY TẠO SỬA (anh Hải 28/9/2026): 265 khách Sỉ có đơn Pancake do app tạo 28/9 từ hội thoại cũ -> ngày tạo
+  // = ngày khách nhắn đầu tiên, không phải ngày tạo đơn (không thì cả loạt nhảy vào "khách tháng 9").
+  rows.forEach(r=>{const n=String((rptSlManual[r.leadId]||{}).ngay_tao_sua||'').slice(0,10);if(n)r.created=n;});
   // GỘP các dòng cùng MÃ KH. Một người có thể dùng 2 SĐT (nhắn từ 2 số, hoặc số người nhà), mà khoá gom
   // khách của app là SĐT -> cùng 1 người bị tách thành 2 dòng và đơn Kiot của họ bị cộng CẢ HAI LẦN.
   // Mã KH là khoá do người xác nhận nên đáng tin hơn SĐT: trùng mã thì gộp.
