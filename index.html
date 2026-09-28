@@ -4869,7 +4869,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 13:43';
+const APP_VERSION='28/09 13:55';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5832,6 +5832,9 @@ function rptSlBuildMasterRaw(){
       r.staff=gan!==null?(gan&&rptSlSaleName(gan)):(ten||'');   // chưa có ai phụ trách thì để TRỐNG (anh Hải 24/9/2026)
       rptSlChuyenDoi(r);
     });
+    // chủ của từng lượt chăm sóc (Lead ID / Mã KH có trong Master Sỉ) -> rptSlCsRows không ghép tên lan sang khách khác
+    {const ids=new Set(),kh=new Set(),so=new Set();rows.forEach(r=>{rptSlIdsCua(r).forEach(i=>ids.add(i));if(r.kh)kh.add(String(r.kh).toUpperCase());rptSlSoCua(r).forEach(k=>so.add(k));});
+      (window._rptSlCsChu=window._rptSlCsChu||{})['Sỉ']={ids,kh,so};}
     const ky={};
     (typeof siCrmRows!=='undefined'?siCrmRows:[]).forEach(c=>{
       const k=c.lead_id||('MA:'+(c.kiot_code||''))||('SDT:'+rptSlLast9(c.phone||''));
@@ -6390,13 +6393,26 @@ async function rptSiThuHoi(leadId,ten){
 // Mỗi lượt vẫn ghi vào salesi_crm như cũ -> tab CRM và Master dùng chung một nguồn, sửa đâu cũng thấy.
 const RPT_CS_TRANG_THAI=['Chăm sóc định kỳ','Chốt đơn'];
 function rptSlCsLaChot(v){return /chốt/i.test(String(v||''));}
+// Ghép lượt chăm sóc theo TÊN chỉ khi lượt đó CHƯA có chủ trong báo cáo (Lead ID / Mã KH không khớp khách nào).
+// Trước 28/9/2026 ghép tên vô điều kiện -> lịch sử của khách cũ (vd M-0128 "ĐỒ THỜ PHÚ QUÝ" 31 lượt, Đã ra đơn)
+// hiện luôn ở khách trùng tên mới kéo về (L-SD-0070), 3 khách "Thanh Nguyen" chung 1 lịch sử, và app đọc sai
+// phân loại của họ. window._rptSlCsChu[loại] = {ids, kh} dựng lúc dựng Master (rptSlBuildMasterRaw).
+// Thứ tự ghép: Lead ID -> Mã KH -> SĐT (9 số cuối; trùng SĐT là 1 người) -> tên (chỉ khi 3 khoá trên không khớp ai).
+function rptSlCsCoChu(x){
+  const c=(window._rptSlCsChu||{})[rptSlType()];if(!c)return false;
+  const so=rptSlLast9(x.phone||'');
+  return (x.lead_id&&c.ids.has(x.lead_id))||(x.kiot_code&&c.kh.has(String(x.kiot_code).toUpperCase()))||(so.length===9&&c.so.has(so));
+}
+function rptSlSoCua(r){return new Set((r.phones||[]).map(p=>rptSlLast9(p.so)).concat(r.phone?[rptSlLast9(r.phone)]:[]).filter(k=>k&&k.length===9));}
 function rptSlCsRows(r){
   const ma=String(r.kh||'').toUpperCase();
   const ten=String(r.name||'').trim().toLowerCase();
+  const so=rptSlSoCua(r),ids=rptSlIdsCua(r);
   return (typeof siCrmRows!=='undefined'?siCrmRows:[]).filter(x=>
-      (x.lead_id&&rptSlIdsCua(r).includes(x.lead_id))
+      (x.lead_id&&ids.includes(x.lead_id))
     ||(ma&&String(x.kiot_code||'').toUpperCase()===ma)
-    ||(ten&&String(x.customer_name||'').trim().toLowerCase()===ten))
+    ||(x.phone&&so.has(rptSlLast9(x.phone))&&!(x.lead_id&&(window._rptSlCsChu||{})[rptSlType()]&&window._rptSlCsChu[rptSlType()].ids.has(x.lead_id)))
+    ||(ten&&String(x.customer_name||'').trim().toLowerCase()===ten&&!rptSlCsCoChu(x)))
    .sort((a,b)=>String(b.ngay_cham||'').localeCompare(String(a.ngay_cham||''))||(b.id-a.id));
 }
 function rptSlCusTab(t){window._rptSlCusTab=t;window._rptSlCsForm=undefined;rptSlShowCustomer(window._rptSlCusKey);}
