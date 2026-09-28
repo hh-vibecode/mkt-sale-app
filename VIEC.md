@@ -98,6 +98,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **28/09 14:10** — Job tự tạo đơn từ hội thoại: **chỉ chạy 2 lần/ngày 6h và 18h giờ VN** (anh chốt, để Sale tự tạo đơn trước, tránh trùng). Workflow vẫn gọi mỗi 10 phút, script đọc bảng `job_moc` (mới) — lượt đầu tiên sau mỗi mốc mới chạy. Mốc khởi tạo 28/9 chiều → lượt thật đầu tiên 18h 28/9. `CHAY_NGAY=1` để chạy tay.
+
 - **28/09 15:20** — Rà điểm dễ vỡ. SỬA: (1) hồ sơ app đọc theo mã của MỌI đơn Pancake của khách (`rptSlIdsCua`), trước chỉ theo mã đơn đầu -> 36 khách bị ẩn phân loại/Sale/trạng thái (vd L-SD-0117 có hồ sơ ở L-TTV-0362); (2) Lead cũ Sỉ đã chốt thì hiện lại ở Nhập Liệu; (3) job tạo đơn kiểm `recent_orders` trực tiếp trên Pancake, tránh tạo trùng khi Sale vừa tạo đơn trong 10 phút hub chưa đồng bộ. Số liệu không đổi.
 
 - **28/09 15:00** — **Lịch sử chăm sóc Sỉ ghép sai theo TÊN**: lượt CS của khách cũ hiện luôn ở khách trùng tên mới kéo về (L-SD-0070 "Đồ Thờ Phú Quý" mượn 31 lượt + "Đã ra đơn" của M-0128; 3 khách "Thanh Nguyen" chung 3 lượt thật ra của Thành Nguyễn L-SD-1579 SĐT 0369646066). Sửa `rptSlCsRows`: ghép Lead ID → Mã KH → **SĐT** → tên (tên chỉ khi 3 khoá trên không khớp khách nào). Kết quả 2.087 lượt CS: 0 mồ côi, 0 lượt gắn 2 khách. 11 khách hết mượn lịch sử → Lead cũ (đã gán Toàn). 33 khách chùa/đền/miếu: anh chốt giữ theo thẻ gốc (Sỉ). 12 khách Sỉ chưa gán + 15 Lead mới T9: anh tự chia. Số liệu không đổi.

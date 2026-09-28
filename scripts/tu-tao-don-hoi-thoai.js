@@ -78,7 +78,26 @@ async function laRac(h) {
   return t ? t.slice(0, 80) : '';
 }
 
+// CHỈ CHẠY 2 LẦN/NGÀY: 6h và 18h giờ VN (anh Hải 28/9/2026 -- để Sale tự tạo đơn trước, job chỉ vét khách bị sót,
+// tránh trùng với đơn Sale). Workflow gọi mỗi 10 phút; lượt ĐẦU TIÊN sau mỗi mốc mới chạy thật, ghi mốc vào bảng job_moc.
+// CHAY_NGAY=1 để chạy ngay (không xét giờ).
+const KHUNG_GIO_VN = [6, 18];
+const TEN_JOB = 'tu-tao-don-hoi-thoai';
+function mocGanNhat(now) {                                   // mốc 6h/18h VN gần nhất đã qua, trả về ms UTC
+  const vn = new Date(now + 7 * 3600e3);
+  const ngay = Date.UTC(vn.getUTCFullYear(), vn.getUTCMonth(), vn.getUTCDate()) - 7 * 3600e3;   // 0h VN hôm nay
+  const cac = [...KHUNG_GIO_VN.map(h => ngay + h * 3600e3), ...KHUNG_GIO_VN.map(h => ngay - 864e5 + h * 3600e3)];
+  return Math.max(...cac.filter(t => t <= now));
+}
+
 (async () => {
+  const moc = mocGanNhat(Date.now());
+  if (process.env.CHAY_NGAY !== '1') {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/job_moc?ten=eq.${TEN_JOB}&select=luc`, { headers: H });
+    const luc = r.ok ? Date.parse(((await r.json())[0] || {}).luc || 0) : NaN;
+    if (!r.ok) { console.error('Không đọc được job_moc', r.status); process.exit(1); }
+    if (luc >= moc) { console.log(`Chưa tới giờ (chạy 6h và 18h VN) — lần gần nhất ${new Date(luc + 7 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')} giờ VN.`); return; }
+  }
   const tu = Math.max(MOC_BAT_DAU, Date.now() - CUA_SO);
   // 1) SĐT đã có ở mọi nguồn khách
   const coRoi = new Set();
@@ -210,6 +229,9 @@ async function laRac(h) {
     } catch (e) { loi.push(so + ' ' + e.message); }
     await sleep(250);
   }
+  await fetch(`${SUPABASE_URL}/rest/v1/job_moc?on_conflict=ten`, { method: 'POST',
+    headers: Object.assign({ Prefer: 'resolution=merge-duplicates,return=minimal' }, H),
+    body: JSON.stringify([{ ten: TEN_JOB, luc: new Date().toISOString(), ghi_chu: `${ok} đơn mới · ${theBu} gắn thẻ bù · ${rac.length} bỏ rác` }]) });
   console.log(`XONG: tạo đơn + gắn thẻ ${ok}/${moi.length} khách mới · gắn thẻ bù ${theBu} khách cũ` + (loi.length ? ' · LỖI ' + loi.length + ': ' + loi.slice(0, 5).join(' | ') : ''));
   if (loi.length) process.exitCode = 1;
 })().catch(e => { console.error('LỖI:', e.message); process.exit(1); });
