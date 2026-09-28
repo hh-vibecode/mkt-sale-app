@@ -4852,7 +4852,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 11:10';
+const APP_VERSION='28/09 11:12';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7308,7 +7308,7 @@ function rptSlInputHtml(){
 
   // Ô nhập Mã KH + nút Lưu -> ghi thẳng sang ghi chú nội bộ đơn Pancake.
   const maO=(r,id)=>`<td onclick="rptSlStop(event)" style="white-space:nowrap">${id&&id!==r.leadId?'<div style="font-size:10.5px;color:var(--muted);font-weight:700;margin-bottom:3px">sửa cho '+id+'</div>':''}
-    <input placeholder="KH007620"${(r.suggest||[]).length?` list="goiYMa_${String(id||r.leadId).replace(/[^A-Za-z0-9_-]/g,'')}" onclick="try{this.showPicker&&this.showPicker()}catch(e){}"`:''} onkeydown="if(event.key==='Enter')rptSlSaveKH('${id||r.leadId}',this.value,this)"
+    <input${(r.suggest||[]).length?` list="goiYMa_${String(id||r.leadId).replace(/[^A-Za-z0-9_-]/g,'')}" onclick="try{this.showPicker&&this.showPicker()}catch(e){}"`:''} onkeydown="if(event.key==='Enter')rptSlSaveKH('${id||r.leadId}',this.value,this)"
       style="height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--accent);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;width:104px">${(r.suggest||[]).length?`<datalist id="goiYMa_${String(id||r.leadId).replace(/[^A-Za-z0-9_-]/g,'')}">${r.suggest.map(c=>`<option value="${c.code}">${String(c.name||'').replace(/"/g,'&quot;').replace(/</g,'&lt;')}</option>`).join('')}</datalist>`:''}
     <button onclick="rptSlSaveKH('${id||r.leadId}',this.parentNode.querySelector('input').value,this.parentNode.querySelector('input'))"
       style="margin-left:5px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:700">Lưu</button></td>`;
