@@ -97,6 +97,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **28/09 12:10** — (1) Bộ lọc trạng thái Master Sỉ lọc theo Phân loại KH (có Lead cũ), bỏ "Chốt đơn" lặp. (2) **Trùng SĐT tự gộp hết** (anh chốt): Master gộp theo MỌI SĐT của khách, không chỉ số đầu; Nghi trùng hiện 0 nhóm, số liệu không đổi. (3) Khách hội thoại Sỉ trùng khách cũ: KHÔNG tạo mới, KHÔNG dán Mã KH (64 ca chỉ trùng Kiot để nguyên); rà 1.123 SĐT trùng khách có đơn Pancake → chỉ 1 thiếu thẻ, đã gắn KH LẺ (Namtrantran Namtran, shop Nến Bơ). (4) Lô tạo đơn: **271 đơn, toàn page FB Thời Đại** (bỏ 4 số chỉ có Zalo; 1 số dính 3 tài khoản FB gộp 1 đơn) — vẫn chờ anh chạy trong terminal.
+
 - **28/09 11:45** — Nhập Liệu Sỉ: khách phân loại **"Lead cũ"** (795) không tính vào "Chưa cập nhật lịch sử chăm sóc" và "Khách tiềm năng chưa có giá trị dự kiến" (anh chốt). Đã chốt mốc số liệu mới sau đợt kéo đơn cũ Shidai (885/885 đơn cũ đã có ngày nhắn cuối): Sỉ 1.211 khách, MKT Sỉ T9 141,0tr, tổng doanh thu không đổi. Tra cùng người qua FB giữa các page: anh bảo thôi, không cần làm.
 
 - **28/09** — 795 khách Sỉ vừa kéo từ đơn cũ Shidai (đều tạo trước 1/9/2026): phân loại **"Lead cũ"** (thêm giá trị mới vào danh mục Phân loại KH, xếp sau "Lead mới") + Sale phụ trách **Nguyễn Hữu Toàn** (anh chốt). Master Sỉ: Toàn 840 · Minh Oanh 313 · Huế 40 · Sale Kiot 1 · trống 17 (8 khách trống tạo trước T9 thuộc nhóm cũ, chưa gán).

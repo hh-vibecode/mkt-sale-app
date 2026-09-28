@@ -4852,7 +4852,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 11:50';
+const APP_VERSION='28/09 12:00';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5741,8 +5741,22 @@ function rptSlBuildMasterRaw(){
   };
   // 1) Mã KH -- khoá chắc nhất, do người xác nhận
   nhomTheo(r=>r.kh||'').forEach(gopNhom);
-  // 2) SĐT 9 số cuối -- gộp lead Pancake với dòng nhập tay cùng số
-  nhomTheo(r=>{const p=(r.phones||[])[0];return p?rptSlLast9(p.so):'';}).forEach(gopNhom);
+  // 2) SĐT 9 số cuối -- TRÙNG BẤT KỲ SỐ NÀO LÀ GỘP (anh Hải 28/9/2026: "cứ trùng sđt gộp hết, k cần nghi trùng").
+  //    Trước đây chỉ so số ĐẦU TIÊN của mỗi dòng -> khách 2 số / số nằm ở vị trí 2 rơi xuống mục Nghi trùng.
+  //    Chỉ chừa cặp Sale đã bấm "Khác người" (khac_nguoi).
+  {
+    const song=rows.filter(r=>!r._merged);
+    const cha=new Map();song.forEach(r=>cha.set(r,r));
+    const goc=x=>{while(cha.get(x)!==x){cha.set(x,cha.get(cha.get(x)));x=cha.get(x);}return x;};
+    const kn=new Map(song.map(r=>[r,rptSlKhacNguoiCua(r)]));
+    const khac=(a,b)=>rptSlIdsCua(b).some(id=>kn.get(a).has(id))||rptSlIdsCua(a).some(id=>kn.get(b).has(id));
+    const theoSo={};
+    song.forEach(r=>(r.phones||[]).map(p=>p.so).concat(r.phone?[r.phone]:[]).forEach(s=>{
+      const k=rptSlLast9(s);if(k&&k.length===9)(theoSo[k]=theoSo[k]||[]).push(r);}));
+    Object.values(theoSo).forEach(a=>{for(let i=1;i<a.length;i++)if(a[i]!==a[0]&&!khac(a[0],a[i]))cha.set(goc(a[i]),goc(a[0]));});
+    const nhom=new Map();song.forEach(r=>{const g=goc(r);if(!nhom.has(g))nhom.set(g,[]);nhom.get(g).push(r);});
+    nhom.forEach(g=>{if(g.length>1)gopNhom(g);});
+  }
   // 3) Tên đã bỏ dấu -- chỉ gộp khi KHÔNG có mã nào khác nhau, tránh gộp nhầm 2 người trùng tên
   nhomTheo(r=>boDau(r.name)).filter(g=>{
     const ma=[...new Set(g.map(r=>r.kh).filter(Boolean))];
