@@ -661,7 +661,14 @@ function modDefaultFor(mod){
   if(mod==='tonghop'||mod==='salesi'||mod==='saleretail'||mod==='mkt'){const t=todayISO();return{from:t.slice(0,8)+'01',to:t};}
   return modDateDefault();
 }
-function modRange(mod){return modRanges[mod]||modDefaultFor(mod);}
+// BÁO CÁO MKT CHỈ TỪ 1/6/2026 (anh Hải 28/9/2026): chi phí quảng cáo chỉ có từ T6, nên doanh thu / đơn / mọi số khác
+// của MKT cũng cắt từ đó -- không thì chọn "Tất cả" sẽ lẫn đơn Shidai cũ (kéo về từ 4/2025) không có chi phí đi kèm.
+const RPT_MKT_TU='2026-06-01';
+function modRange(mod){
+  const r=modRanges[mod]||modDefaultFor(mod);
+  if(mod==='mkt'&&(!r.from||r.from<RPT_MKT_TU))return {from:RPT_MKT_TU,to:(r.to&&r.to<RPT_MKT_TU)?'2026-05-31':(r.to||'')}   // kỳ nằm hẳn trước T6 -> rỗng;
+  return r;
+}
 function modSetRange(mod,from,to,cb){
   modRanges[mod]={from:from||'',to:to||''};
   if(typeof window[cb]==='function')window[cb]();
@@ -4869,7 +4876,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 13:59';
+const APP_VERSION='28/09 14:07';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;

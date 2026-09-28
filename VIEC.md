@@ -63,6 +63,7 @@
 - **Hub = nguồn**, giữ hết và vẫn update bình thường; từ nguồn ra báo cáo phải qua bộ lọc. Bộ lọc hiện tại: **chỉ khách Lẻ nguồn Online**.
 - **Sỉ lấy full lịch sử** (không giới hạn T6). Riêng TAB Data nhập tay chỉ HIỆN từ 1/6/2026 cho đỡ dài, dòng cũ vẫn vào báo cáo.
 - **MKT chỉ lấy Sỉ Online**, Sỉ Offline chỉ vào báo cáo Sale Sỉ.
+- **Báo cáo MKT chỉ từ 1/6/2026** (chi phí ads chỉ có từ T6) — doanh thu, đơn, mọi chỉ số MKT đều cắt từ mốc này.
 - **Cột trạng thái của Sỉ**: Master = Phân loại KH. Tab CRM Sỉ ĐÃ GỠ (24/9) — lịch sử chăm sóc nằm trong popup hồ sơ khách (3 tab: Thông tin · Ghi chú riêng · Lịch sử chăm sóc), vẫn lưu ở bảng `salesi_crm`.
 - **Data Pancake vào báo cáo Sale** (anh chốt 27/9, thay luật 24/9): đơn **CÓ SĐT** (chưa huỷ) là vào luôn, cả Sỉ lẫn Lẻ, **không cần thẻ**. Đơn chưa có SĐT thì vẫn phải có thẻ: Sỉ cần TIỀM NĂNG / CHỐT ĐƠN · Lẻ cần CHỐT ĐƠN / BÀN GIAO / TIỀM NĂNG.
 - **Chia Sỉ / Lẻ cho đơn Pancake** (`dhSaleTypeOrder`): có thẻ KH SỈ / KH LẺ thì theo thẻ. Không thẻ thì theo thẻ ở đơn khác của cùng khách (trùng 9 số cuối SĐT). Vẫn không có thì đơn từ page **Shidai → Sỉ**, còn lại → Lẻ. Trước 27/9 đơn không thẻ luôn tính vào Lẻ.
@@ -97,6 +98,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **28/09 14:20** — **Báo cáo MKT chỉ tính từ 1/6/2026** (anh chốt: ngân sách chỉ có từ T6 nên doanh thu và mọi số khác cũng vậy). `modRange('mkt')` kẹp mốc sớm nhất `RPT_MKT_TU`. "Tất cả": doanh số 2,041 tỷ → 1,783 tỷ (bỏ 257,8tr của 7 đơn trước T6), chi phí không đổi 283,0tr; tháng 9 không đổi.
 
 - **28/09 14:10** — Job tự tạo đơn từ hội thoại: **chỉ chạy 2 lần/ngày 6h và 18h giờ VN** (anh chốt, để Sale tự tạo đơn trước, tránh trùng). Workflow vẫn gọi mỗi 10 phút, script đọc bảng `job_moc` (mới) — lượt đầu tiên sau mỗi mốc mới chạy. Mốc khởi tạo 28/9 chiều → lượt thật đầu tiên 18h 28/9. `CHAY_NGAY=1` để chạy tay.
 
