@@ -330,9 +330,16 @@ async function autoB3() {
   }
   // 3 BƯỚC PHỤ chỉ chạy 1 GIỜ/LẦN (29/9/2026): mỗi bước đọc lại cả bảng đơn + capNhatChat ghi tới 250 dòng/lượt;
   // chạy theo nhịp 10 phút làm vượt quota tải ra (egress) và log của Supabase. Đồng bộ đơn vẫn 10 phút/lần.
-  const phu = await require('./lib/gianh-moc').gianhMoc(SUPABASE_URL, SERVICE_ROLE_KEY, 'sync-pancake-buoc-phu', 55).catch(() => false);
-  const chot = phu ? await autoChot() : 'Bước phụ (thẻ CHỐT ĐƠN / B3 / ngày nhắn cuối): chưa đủ 1 giờ, bỏ qua lượt này.';   // gắn thẻ trước...
-  const b3 = phu ? await autoB3() : '';                // ...rồi mới đẩy trạng thái theo thẻ mới
+  // Thẻ CHỐT ĐƠN + B3: CHỈ KHI DỮ LIỆU ĐỔI (dấu vân tay job_dau_van, 29/9/2026) -> vẫn theo nhịp 10 phút mà gần như không tốn.
+  // Ngày nhắn cuối: phụ thuộc tin nhắn bên Pancake (CSDL không biết) -> giữ 1 giờ/lần.
+  const gm = require('./lib/gianh-moc');
+  const tb = await gm.gianhKhiDoi(SUPABASE_URL, SERVICE_ROLE_KEY, 'sync-pancake-the-b3').catch(() => ({ chay: false }));
+  let chot = 'Thẻ CHỐT ĐƠN / B3: dữ liệu không đổi, bỏ qua.', b3 = '';
+  if (tb.chay) {
+    try { chot = await autoChot(); b3 = await autoB3(); await tb.xong().catch(() => {}); }   // gắn thẻ trước rồi mới đẩy trạng thái
+    catch (e) { await tb.loi().catch(() => {}); throw e; }
+  }
+  const phu = await gm.gianhMoc(SUPABASE_URL, SERVICE_ROLE_KEY, 'sync-pancake-buoc-phu', 55).catch(() => false);
   const chat = phu ? await capNhatChat() : '';          // ngày khách nhắn cuối -> quyết định đơn lặp có tính không
   console.log(`XONG. Tổng ${grandTotal} đơn đã đồng bộ.` + (chot ? ' ' + chot : '') + (b3 ? ' ' + b3 : '') + (chat ? ' ' + chat : ''));
   await logSyncEnd(logId, {

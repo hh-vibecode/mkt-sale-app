@@ -51,11 +51,12 @@ async function ghiLog(body, id) {
 }
 
 (async () => {
-  // MỖI GIỜ 1 LẦN (29/9/2026): workflow Kiot chạy 15 phút/lần, mỗi lượt script này đọc 3–4 MB -> vượt quota tải ra
-  // Supabase. Lượt nào chưa đủ 55 phút kể từ lần trước thì thoát trước khi đọc. CHAY_NGAY=1 để chạy tay.
-  if (SERVICE_ROLE_KEY && !(await require('./lib/gianh-moc').gianhMoc(SUPABASE_URL, SERVICE_ROLE_KEY, 'tu-tao-chot-don-si', 55))) {
-    console.log('Chưa đủ 1 giờ từ lần chạy trước — bỏ qua lượt này.'); return; }
+  // CHỈ CHẠY KHI DỮ LIỆU ĐỔI (29/9/2026): hỏi "dấu vân tay" các cột script sẽ đọc (1 chuỗi 32 ký tự) -- trùng lần trước
+  // thì thoát, khỏi đọc 3–4 MB mỗi 15 phút (vượt quota tải ra Supabase). Vẫn chạy chắc 6 giờ/lần. CHAY_NGAY=1 để chạy tay.
   if (!SERVICE_ROLE_KEY) { console.error('Thiếu SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); }
+  const luot = CHI_XEM ? { chay: true, xong: async () => {}, loi: async () => {} }   // xem trước: không giành lượt
+    : await require('./lib/gianh-moc').gianhKhiDoi(SUPABASE_URL, SERVICE_ROLE_KEY, 'tu-tao-chot-don-si');
+  if (!luot.chay) { console.log('Dữ liệu không đổi từ lần chạy trước — bỏ qua lượt này.'); return; }
   const logId = CHI_XEM ? null : await ghiLog({ status: 'running' }).catch(() => null);
   try {
     const [don, kh, hd, dm, dh, cs, giu] = await Promise.all([
@@ -168,9 +169,11 @@ async function ghiLog(body, id) {
     }
     console.log(`Đã ghi: sửa ${okSua} · tạo ${okMoi}`);
     await ghiLog({ finished_at: new Date().toISOString(), status: 'success', records_created: okMoi, records_updated: okSua }, logId);
+    if (!CHI_XEM) await luot.xong().catch(() => {});
   } catch (e) {
     console.error(e);
     await ghiLog({ finished_at: new Date().toISOString(), status: 'failed', error_message: String(e.message).slice(0, 500) }, logId);
+    await luot.loi().catch(() => {});
     process.exit(1);
   }
 })();

@@ -66,14 +66,14 @@ async function docHoiThoai(page, conv, cid) {
 }
 
 (async () => {
-  // CHỈ CHẠY 1 LẦN/NGÀY, KHUNG 18h–19h VN (anh Hải 29/9/2026) -- mỗi lượt nạp ~18 MB, chạy 15 phút/lần làm vượt
-  // quota tải ra (egress) Supabase. Ngoài khung giờ / đã chạy hôm nay thì thoát TRƯỚC khi đọc gì. CHAY_NGAY=1 để chạy tay.
+  // CHỈ CHẠY 2 LẦN/NGÀY, KHUNG 7h–8h và 18h–19h VN (anh Hải 29/9/2026) -- mỗi lượt nạp ~18 MB, chạy 15 phút/lần làm vượt
+  // quota tải ra (egress) Supabase. Ngoài khung giờ / khung đó đã chạy thì thoát TRƯỚC khi đọc gì. CHAY_NGAY=1 để chạy tay.
   if (process.env.CHAY_NGAY !== '1') {
     const gioVN = new Date(Date.now() + 7 * 3600e3).getUTCHours();
-    if (gioVN !== 18) { console.log('Chưa tới giờ (phân loại SP chạy 1 lần/ngày, 18h–19h VN).'); return; }
+    if (gioVN !== 7 && gioVN !== 18) { console.log('Chưa tới giờ (phân loại SP chạy 7h–8h và 18h–19h VN).'); return; }
     const { gianhMoc } = require('./lib/gianh-moc');
-    if (!(await gianhMoc(SUPABASE_URL.replace('/rest/v1', ''), H.apikey, 'phan-loai-sp-quan-tam', 20 * 60))) {
-      console.log('Hôm nay đã chạy (hoặc lượt khác đang chạy).'); return; }
+    if (!(await gianhMoc(SUPABASE_URL.replace('/rest/v1', ''), H.apikey, 'phan-loai-sp-quan-tam', 5 * 60))) {
+      console.log('Khung giờ này đã chạy (hoặc lượt khác đang chạy).'); return; }
   }
   const ctx = await napApp();
   let rows = masterCua(ctx, 'Sỉ');
