@@ -3,7 +3,11 @@
 > Sổ này thay cho việc đọc lại hội thoại cũ. **Claude phải mở file này đầu mỗi phiên làm việc.**
 > Xong việc nào thì xoá khỏi mục ĐANG NỢ và ghi 1 dòng vào NHẬT KÝ (gộp lại khi quá dài).
 > **Anh đã quyết rồi thì LÀM, đừng xếp lại vào mục "chờ anh quyết" để hỏi lại** (mắc lỗi này 23/9 với việc tự tạo data nhập tay).
-> Cập nhật lần cuối: 28/09/2026 chiều. Luồng Sale/MKT anh đánh giá xong ~90%; anh chuyển sang xây luồng QC CSKH (chat mới). Việc #18 / 18-KS (khách để SĐT trong hội thoại) ĐÃ XONG 28/9 — xem nhật ký 28/9.
+> **GHI SỔ TRƯỚC KHI KẾT THÚC PHIÊN (bắt buộc, cả phiên trên máy lẫn phiên cloud):** phiên cloud (claude.ai/code, môi trường
+> "MKT Dev") và phiên trên máy KHÔNG đọc được hội thoại của nhau — sổ này + `CLAUDE.md` + lịch sử commit là thứ DUY NHẤT nối các phiên.
+> Việc gì làm xong / anh chốt gì / đang dở gì / chờ anh gì: ghi vào sổ, commit + push NGAY TRONG PHIÊN, đừng để cuối.
+> Đầu phiên: `git pull` rồi mới đọc sổ (phiên kia có thể vừa đẩy bản mới).
+> Cập nhật lần cuối: 29/09/2026. Luồng Sale/MKT anh đánh giá xong ~90%; anh chuyển sang xây luồng QC CSKH (chat mới). Việc #18 / 18-KS (khách để SĐT trong hội thoại) ĐÃ XONG 28/9 — xem nhật ký 28/9.
 
 ---
 
@@ -54,6 +58,7 @@
 - **Tên khách Ở ĐÂU cũng kèm mã** ngay dưới (hoặc cạnh, trong tiêu đề popup): có Mã KH Kiot thì hiện Mã KH, chưa có thì Lead ID. Dùng chung hàm `rptSlMaDuoiTen` — thêm bảng mới phải gọi hàm này.
 - **1 khách nhắn nhiều nguồn** (nhiều page / nhiều SĐT) thì kê đủ: nhãn "N nguồn · M SĐT" dưới tên + bảng Nguồn liên hệ trong hồ sơ. Lead Pancake + dòng sheet cùng ngày cùng SĐT = 1 nguồn. Đinh Thị Hường (Shidai 0359752313 + Tự Tại Viên 0378682341) là 1 người — anh xác nhận 24/9.
 - Mọi thứ Claude tạo ký tên **Monsieur Claude**.
+- **Làm trên cloud** (không cần bật máy, chốt 29/9/2026): claude.ai/code → môi trường **MKT Dev** + repo **hh-vibecode/mkt-sale-app**. Chạy script bằng `node`, SQL bằng `node scripts/sql.js`. Khoá nằm ở biến môi trường của MKT Dev (không có file khoá). Mọi phiên (máy + cloud) **ghi sổ + push trước khi kết thúc** — xem đầu sổ.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
 - **Admin / supreme xem HẾT dữ liệu**, chỉ bị chặn ở quyền vào trang / chức năng anh khoá riêng. Phạm vi Sale chỉ áp cho vị trí Sale / Manager.
 - **Phạm vi xem theo Sale ĐÃ CHỐT** (gán tay > người tạo đơn Kiot > Pancake, sau luật chuyển đội), lọc SAU khi xác định Sale. Chỗ nào lọc theo tên thô (staff_name Pancake / tên gõ nhập tay) là SAI — dùng `rptSlSaleCuaDon` / `rptSlSaleCuaNhapTay`. Sửa phân quyền xong phải giả lập view từng tài khoản (khách phải thấy vs thực thấy).
