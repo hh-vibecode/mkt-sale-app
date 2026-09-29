@@ -2,7 +2,9 @@
 // Chạy sau mỗi lượt kéo đơn Kiot. Bộ lọc do anh Hải chốt 23/9/2026:
 //   khách LẺ: chỉ kênh ONLINE
 //   khách SỈ : MỌI kênh -- online thì nguồn "Online", "Bán trực tiếp" thì nguồn "Offline"
-//   (chung: đơn từ 1/6/2026 · chưa có mặt trong app · có dấu vết tiền thật)
+//   (chung: chưa có mặt trong app · có dấu vết tiền thật -- dấu vết tiền chỉ đòi với đơn từ 1/6/2026)
+//   LẺ: chỉ đơn từ 1/6/2026. SỈ: FULL LỊCH SỬ (anh Hải 29/9/2026, luật "Sỉ lấy full lịch sử") -- trước đây Sỉ cũng cắt
+//   1/6 nên 41 khách chỉ mua trước mốc (NPP, khách buôn, đại lý…) không có hồ sơ, rơi ~2 tỷ khỏi báo cáo Sale Sỉ.
 // Sỉ Offline vẫn vào BÁO CÁO SALE SỈ nhưng KHÔNG vào báo cáo MKT -- app tự lọc theo cột nguồn.
 // -> mỗi khách 1 dòng datahub_manual, để doanh thu về đúng báo cáo Sale/MKT mà Sale không phải gõ tay.
 //
@@ -88,9 +90,9 @@ async function ghiLog(body, id) {
     don.forEach(o => {
       const ngay = String(o.purchase_date || '').slice(0, 10);
       if (o.status === 4 || phieuBaoGia(o)) return;
-      if (ngay < MOC) return;
       if (!o.customer_code || daCo.has(o.customer_code)) return;
       const c = byCode[o.customer_code];
+      if (ngay < MOC && loai(c) !== 'Sỉ') return;          // Lẻ: chỉ từ 1/6/2026; Sỉ: full lịch sử
       const online = ONLINE.test(o.sale_channel || '') || /shidai/i.test(o.sale_channel || '');
       // Lẻ chỉ nhận kênh online; Sỉ nhận cả bán trực tiếp (= nguồn Offline).
       if (loai(c) !== 'Sỉ' && !online) return;
@@ -99,6 +101,7 @@ async function ghiLog(body, id) {
         ngay, kenh: o.sale_channel, sale: o.sold_by_name || null, don: 0, tien: 0 };
       if (ngay < g.ngay) { g.ngay = ngay; g.kenh = o.sale_channel; g.sale = o.sold_by_name || null; g.nguon = online ? 'Online' : 'Offline'; }
       g.don++; g.tien += Number(o.total || 0);
+      if (ngay < MOC) g.truocMoc = true;
     });
     // ── CHỐT CHẶN CUỐI: KHÁCH PHẢI CÓ DẤU VẾT TIỀN THẬT ───────────────────────────────────────
     // Đơn "Hoàn thành" hay "Phiếu tạm" chỉ là trạng thái Sale đặt tay, chưa chắc là mua thật.
@@ -118,7 +121,8 @@ async function ghiLog(body, id) {
       return l.join(' · ');
     };
     const loaiRa = [];
-    Object.keys(gom).forEach(m => { if (!bangChung(m)) { loaiRa.push(gom[m]); delete gom[m]; } });
+    // dấu vết tiền chỉ áp từ 1/6/2026 -> khách Sỉ có đơn trước mốc thì không đòi
+    Object.keys(gom).forEach(m => { if (!bangChung(m) && !gom[m].truocMoc) { loaiRa.push(gom[m]); delete gom[m]; } });
     if (loaiRa.length) {
       console.log(`Loại ${loaiRa.length} khách chưa có dấu vết tiền (chưa trả, chưa có hoá đơn, chưa cọc):`);
       loaiRa.forEach(x => console.log(`   - ${x.ma} ${x.ten} · ${vn(x.tien)} đ`));
