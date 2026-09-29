@@ -116,7 +116,7 @@ async function upsertOrders(rows) {
       apikey: SERVICE_ROLE_KEY,
       Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
       'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates',
+      Prefer: 'resolution=merge-duplicates,return=minimal',   // không cần gửi trả dòng (giảm egress)
     },
     body: JSON.stringify(rows),
   });
@@ -328,9 +328,12 @@ async function autoB3() {
     await logSyncEnd(logId, { status: 'failed', recordsCreated: grandTotal, errorMessage: errors.join(' | ').slice(0, 500) });
     process.exit(1);
   }
-  const chot = await autoChot();            // gắn thẻ trước...
-  const b3 = await autoB3();                // ...rồi mới đẩy trạng thái theo thẻ mới
-  const chat = await capNhatChat();          // ngày khách nhắn cuối -> quyết định đơn lặp có tính không
+  // 3 BƯỚC PHỤ chỉ chạy 1 GIỜ/LẦN (29/9/2026): mỗi bước đọc lại cả bảng đơn + capNhatChat ghi tới 250 dòng/lượt;
+  // chạy theo nhịp 10 phút làm vượt quota tải ra (egress) và log của Supabase. Đồng bộ đơn vẫn 10 phút/lần.
+  const phu = await require('./lib/gianh-moc').gianhMoc(SUPABASE_URL, SERVICE_ROLE_KEY, 'sync-pancake-buoc-phu', 55).catch(() => false);
+  const chot = phu ? await autoChot() : 'Bước phụ (thẻ CHỐT ĐƠN / B3 / ngày nhắn cuối): chưa đủ 1 giờ, bỏ qua lượt này.';   // gắn thẻ trước...
+  const b3 = phu ? await autoB3() : '';                // ...rồi mới đẩy trạng thái theo thẻ mới
+  const chat = phu ? await capNhatChat() : '';          // ngày khách nhắn cuối -> quyết định đơn lặp có tính không
   console.log(`XONG. Tổng ${grandTotal} đơn đã đồng bộ.` + (chot ? ' ' + chot : '') + (b3 ? ' ' + b3 : '') + (chat ? ' ' + chat : ''));
   await logSyncEnd(logId, {
     status: errors.length ? 'failed' : 'success',

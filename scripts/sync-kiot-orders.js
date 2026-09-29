@@ -142,7 +142,7 @@ async function upsert(rows) {
   for (let i = 0; i < rows.length; i += 500) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/kiot_orders?on_conflict=id`, {
       method: 'POST',
-      headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+      headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify(rows.slice(i, i + 500)),
     });
     if (!res.ok) throw new Error(`Supabase upsert kiot_orders lỗi ${res.status}: ${(await res.text()).slice(0, 400)}`);

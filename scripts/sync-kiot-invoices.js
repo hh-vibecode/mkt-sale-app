@@ -95,7 +95,7 @@ async function upsertRows(table, rows, conflict) {
   for (let i = 0; i < rows.length; i += CHUNK) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${conflict}`, {
       method: 'POST',
-      headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+      headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify(rows.slice(i, i + CHUNK)),
     });
     if (!res.ok) throw new Error(`Supabase upsert ${table} lỗi ${res.status}: ${(await res.text()).slice(0, 400)}`);

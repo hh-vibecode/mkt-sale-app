@@ -85,7 +85,7 @@ async function upsertMktSpend(rows) {
       apikey: SERVICE_ROLE_KEY,
       Authorization: 'Bearer ' + SERVICE_ROLE_KEY,
       'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates',
+      Prefer: 'resolution=merge-duplicates,return=minimal',   // không cần gửi trả dòng (giảm egress)
     },
     body: JSON.stringify(rows),
   });
