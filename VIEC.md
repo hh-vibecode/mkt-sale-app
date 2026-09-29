@@ -86,6 +86,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **29/09** — Soạn `QUY-UOC-DUNG-CHUNG-SUPABASE.md`: quy ước cho MỌI app dùng chung project Supabase (sổ đăng ký tiền tố, bảng nào của ai, chỉ THÊM trên bảng dùng chung, khoá riêng mỗi app, tài nguyên chung, lịch chạy, checklist mở app mới). Anh dùng cho các luồng mới + gửi phiên QC.
+
 - **29/09 17:50** — Máy chủ CSDL **Nano → Micro** (2 nhân, 1 GB RAM; chi phí vẫn 25 USD/tháng vì Pro có 10 USD tín dụng compute). Khởi động lại ~15 giây, không workflow nào lỗi. Tải 8 bảng lúc mở app: ~6,5 s → ~1,7 s (bảng lịch sử chăm sóc 6,5 s → 1,0 s).
 
 - **29/09** — Tốc độ app: dựng Master Sỉ 1,8 s → 0,17 s (ghép lịch sử chăm sóc qua bảng tra `rptSlCsIdx` thay vì quét 2.100 lượt cho mỗi khách; so bản cũ 1.778 khách lệch 0). Org đã lên **Pro** nhưng project vẫn máy chủ **Nano** (chưa bật add-on compute) → anh đã bật **Micro** (29/9 ~17:45, cùng giá Nano, tín dụng Pro trả).

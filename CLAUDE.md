@@ -11,6 +11,8 @@ Phiên chạy trên cloud và phiên trên máy KHÔNG đọc được hội tho
 - Supabase `bcrpxfvvjsjpvbksqzls` dùng CHUNG với app QC: KHÔNG đổi / tắt khoá cũ (legacy anon, service_role), JWT secret,
   Edge Function `dang-nhap`, hàm `la_quan_tri()`; đổi cấu trúc bảng dùng chung thì nghĩ tới app QC.
 
+- **Dùng chung Supabase với các app khác**: theo `QUY-UOC-DUNG-CHUNG-SUPABASE.md` (sổ đăng ký tiền tố, ai sở hữu bảng nào, chỉ THÊM trên bảng dùng chung).
+
 ## Cách làm việc
 - **Tự làm, không giao việc cho anh**: SQL, deploy, cấu hình làm được thì tự làm rồi báo. Lưu kèm `supabase-schema-*.sql`.
 - **Commit**: tự pull → commit → push, không hỏi. TRƯỚC mỗi commit chạy `git diff --cached --stat`, chỉ commit đúng file mình sửa.
