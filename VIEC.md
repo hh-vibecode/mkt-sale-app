@@ -21,7 +21,6 @@
 
 | # | Việc | Ghi chú |
 |---|---|---|
-| 23 | **Kiểm lượt chạy thật đầu tiên của job tạo đơn từ hội thoại (18h 28/9)** — xem log workflow "Sync Data Hub từ Pancake" lượt đầu sau 18h VN (bước "Tự tạo đơn + gắn thẻ…"), bảng `pancake_tu_tao_don` (tao_luc từ 28/9 11:00 UTC) và `job_moc`. Soát: đơn tạo có trùng đơn Sale không, ca bị bỏ có phải rác thật không. Báo anh số tạo / gắn thẻ bù / bỏ rác | lấy log qua GitHub API (token ghp_ trong supabase-keys.local.txt) |
 | 24 | **Chờ anh chọn**: mục trong Nhập Liệu liệt kê khách job vừa tạo đơn / job bỏ qua (7 ngày) kèm câu khách nhắn, để Sale soát (em đề xuất làm trước trong #22) | hỏi lại anh khi quay lại luồng Sale |
 | 22 | **Điểm dễ vỡ còn lại (rà 28/9)**: (a) ĐÃ ĐO 28/9: bước phân loại SP chỉ 8–12 giây, lượt Kiot vẫn ~2,5 phút — ổn; (b) tên mặc định khi chuyển đội (Toàn / Thảo Ngọc) ghi cứng trong `RPT_SL_MAC_DINH_CHUYEN` — đổi tên Sale ở Phân quyền không tự đổi theo; (c) đổi thẻ KH SỈ/LẺ trên đơn cũ chỉ về app ở lượt quét toàn bộ (7h05 · 12h30 · 18h00); (d) bộ lọc rác dựa từ khoá, chưa có mục trong app để Sale soát ca job bỏ / job tạo; (e) PANCAKE_SESSION_TOKEN hết hạn là mọi job Pancake dừng (có mail đỏ) | làm dần / chờ anh chọn |
 
@@ -80,6 +79,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **29/09 sáng** — Soát từ 16h 28/9: 0 workflow đỏ (Kiot 89, Pancake 135, chốt mốc 2, crawl chấm 3, Meta 2 lượt). Job tạo đơn chạy đúng 18h 28/9 và 6h 29/9: mỗi lượt 3–4 hội thoại có SĐT, đều đã có đơn Sale → 0 đơn mới. PHÁT HIỆN lượt 18h chạy ĐÔI (2 lượt workflow chồng nhau cùng đọc "chưa chạy") → sửa: giành mốc bằng PATCH có điều kiện `luc < mốc` trên `job_moc`, lượt thua thoát (thử 2 lượt đồng thời: đúng 1 lượt giành được). Việc #23 xong.
 
 - **28/09 15:25** — Form tài khoản (thêm / sửa): chọn vị trí **admin / supreme** là tự bỏ tick + khoá ô Phạm vi dữ liệu, hiện nhãn "Admin xem tất cả" (anh chốt: admin xem hết, chỉ bị chặn ở chức năng anh khoá riêng). Dọn phạm vi cũ của tài khoản Chị Oanh (9 tên, vốn đã bị bỏ qua).
 

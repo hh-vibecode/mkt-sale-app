@@ -97,6 +97,14 @@ function mocGanNhat(now) {                                   // mốc 6h/18h VN 
     const luc = r.ok ? Date.parse(((await r.json())[0] || {}).luc || 0) : NaN;
     if (!r.ok) { console.error('Không đọc được job_moc', r.status); process.exit(1); }
     if (luc >= moc) { console.log(`Chưa tới giờ (chạy 6h và 18h VN) — lần gần nhất ${new Date(luc + 7 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')} giờ VN.`); return; }
+    // GIÀNH MỐC trước khi chạy (29/9/2026): lúc 18h có 2 lượt workflow chạy chồng (lượt 10 phút + lượt quét toàn bộ),
+    // cả 2 cùng đọc "chưa chạy" -> chạy đôi, có khách mới là tạo TRÙNG đơn. Chỉ lượt cập nhật được dòng mốc
+    // (điều kiện luc < mốc, CSDL tự khoá dòng) mới chạy tiếp; lượt kia nhận 0 dòng -> thoát.
+    const g = await fetch(`${SUPABASE_URL}/rest/v1/job_moc?ten=eq.${TEN_JOB}&luc=lt.${new Date(moc).toISOString()}`, {
+      method: 'PATCH', headers: Object.assign({ Prefer: 'return=representation' }, H),
+      body: JSON.stringify({ luc: new Date().toISOString(), ghi_chu: 'đang chạy' }) });
+    if (!g.ok) { console.error('Không giành được mốc job_moc', g.status); process.exit(1); }
+    if (!(await g.json()).length) { console.log('Lượt khác đã nhận mốc này — thoát để khỏi chạy đôi.'); return; }
   }
   const tu = Math.max(MOC_BAT_DAU, Date.now() - CUA_SO);
   // 1) SĐT đã có ở mọi nguồn khách
