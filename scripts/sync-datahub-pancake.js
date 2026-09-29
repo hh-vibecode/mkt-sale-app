@@ -241,24 +241,30 @@ async function capNhatChat() {
       || String(a.last_chat_at || '').localeCompare(String(b.last_chat_at || '')))
     .slice(0, 250);
   if (!can.length) return '';
-  let ok = 0;
+  // Gom thay đổi rồi ghi 1 LẦN qua hàm cap_nhat_last_chat (29/9/2026) -- trước đây 1 lệnh PATCH / đơn, tới 250 lệnh
+  // mỗi lượt = 250 dòng log Supabase, làm Log Ingestion gần chạm quota.
+  const doi = [];
   for (const r of can) {
     try {
       const j = await fetch(`https://pancake.vn/api/v1/pages/${r.page_id}/conversations/${r.conversation_id}?access_token=${SESSION_TOKEN}`)
         .then((x) => x.json());
       const c = j.conversation || j;
       const t = c.last_customer_interactive_at || c.updated_at || null;
-      if (!t || t === r.last_chat_at) continue;
-      const put = await fetch(`${SUPABASE_URL}/rest/v1/datahub_orders?id=eq.${r.id}`, {
-        method: 'PATCH',
-        headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ last_chat_at: t }),
-      });
-      if (put.ok) ok++;
+      if (t && t !== r.last_chat_at) doi.push({ id: r.id, t: /[zZ]|[+-]\d\d:?\d\d$/.test(t) ? t : t + 'Z' });
     } catch (e) { /* hội thoại lỗi thì bỏ qua, lượt sau lấy lại */ }
     await new Promise((x) => setTimeout(x, 120));
   }
-  return `Ngày nhắn cuối: cập nhật ${ok}/${can.length} hội thoại.`;
+  let ok = 0;
+  if (doi.length) {
+    const put = await fetch(`${SUPABASE_URL}/rest/v1/rpc/cap_nhat_last_chat`, {
+      method: 'POST',
+      headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p: doi }),
+    });
+    if (put.ok) ok = Number(await put.json()) || 0;
+    else console.error('Ghi ngày nhắn cuối lỗi', put.status, (await put.text()).slice(0, 200));
+  }
+  return `Ngày nhắn cuối: cập nhật ${ok}/${can.length} hội thoại (1 lệnh ghi).`;
 }
 async function autoB3() {
   if (process.env.AUTO_B3 === '0') return 'Bỏ qua bước B3 (AUTO_B3=0).';
