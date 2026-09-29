@@ -43,7 +43,7 @@ async function fetchOrders(token) {
   const headers = { Retailer: KIOT_RETAILER, Authorization: 'Bearer ' + token };
   let offset = 0, all = [];
   while (true) {
-    const qs = new URLSearchParams({ pageSize: PAGE_SIZE, currentItem: offset, orderBy: 'purchaseDate', orderDirection: 'Desc' });
+    const qs = new URLSearchParams({ pageSize: PAGE_SIZE, currentItem: offset, orderBy: 'purchaseDate', orderDirection: 'Desc', includeOrderDelivery: 'true' });
     const res = await fetch(`https://public.kiotapi.com/orders?${qs}`, { headers });
     if (!res.ok) throw new Error(`KiotViet orders lỗi ${res.status}: ${(await res.text()).slice(0, 200)}`);
     const data = (await res.json()).data || [];
@@ -129,6 +129,9 @@ function mapOrder(o) {
     total_payment: o.totalPayment ?? null,
     status: o.status ?? null,
     status_value: o.statusValue || null,
+    // địa chỉ giao hàng (29/9/2026) -> suy Tỉnh/TP của khách đã chốt
+    giao_dia_chi: (o.orderDelivery && o.orderDelivery.address) || null,
+    giao_khu_vuc: (o.orderDelivery && o.orderDelivery.locationName) || null,
     items: (o.orderDetails || []).map(d => ({ code: d.productCode, name: d.productName, qty: d.quantity, price: d.price })),
     modified_date: vnTime(o.modifiedDate),
     created_date: vnTime(o.createdDate),

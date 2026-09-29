@@ -2260,8 +2260,8 @@ async function kiotLoadInvoices(force){
     // Bỏ cột items khỏi hoá đơn: nặng gấp 3,7 lần phần còn lại mà chỉ dùng lúc xem chi tiết 1 hoá đơn.
     sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,order_code,total,status'),
     // items (danh sách mặt hàng) chiếm 3/4 dung lượng mà chỉ cần lúc mở chi tiết 1 khách -> tải riêng
-    sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,total_payment,status,status_value,sale_channel'),
-    sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name,debt'),
+    sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,total_payment,status,status_value,sale_channel,giao_dia_chi,giao_khu_vuc'),
+    sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name,address,debt'),
   ]);
   // đơn từng được tính nhờ khách có cọc -> giữ tính dù công nợ đổi về sau (bảng kiot_don_giu_tinh, 25/9/2026)
   try{kiotGiuTinh=new Set((await sbFetchAll('kiot_don_giu_tinh','select=code')).map(x=>String(x.code).toUpperCase()));}catch(e){}
@@ -4596,6 +4596,8 @@ function rptSiOSua(r){
   o.si_phan_loai={kieu:'chon',ds:RPT_SI_PHANLOAI_DS,gt:r.siPhanLoai||'',noi:'pl'};
   o.si_nguoi_dai_dien={kieu:'text',gt:r.siNguoiDaiDien||'',noi:'mn',cot:'si_nguoi_dai_dien'};
   o.si_dia_chi={kieu:'text',gt:r.siDiaChi||r.diaChi||'',noi:'mn',cot:'si_dia_chi'};
+  // Tỉnh/TP: để trống = app tự suy (địa chỉ giao hàng Kiot, địa chỉ khách…); chọn tay thì ưu tiên nhất (29/9/2026)
+  o.si_tinh={kieu:'chon',ds:RPT_TINH_34,gt:mn.si_tinh||'',noi:'mn',cot:'si_tinh',rong:'— (để app tự suy)'};
   o.si_mo_hinh={kieu:'chon',ds:RPT_SI_CHON.si_mo_hinh,gt:r.siMoHinh||'',noi:'mn',cot:'si_mo_hinh'};
   o.si_dien_tich={kieu:'text',gt:r.siDienTich||'',noi:'mn',cot:'si_dien_tich'};
   o.si_tai_chinh={kieu:'chon',ds:RPT_SI_CHON.si_tai_chinh,gt:r.siTaiChinh||'',noi:'mn',cot:'si_tai_chinh'};
@@ -4885,7 +4887,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='29/09 14:30';
+const APP_VERSION='29/09 16:21';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5247,6 +5249,82 @@ function rptSlRevOnOff(){
         ${the('ovRevOn','Online',x.revOn,x.nOn,x.ordOn,'g-green')}${the('ovRevOff','Offline',x.revOff,x.nOff,x.ordOff,'g-teal')}
       </div>
     </div></div>`;
+}
+// ── TỈNH / THÀNH PHỐ CỦA KHÁCH (anh Hải 29/9/2026: thêm trường thành phố cho mọi data Sỉ/Lẻ, chủ yếu khách đã chốt) ──
+// Nhận diện 63 tỉnh cũ từ chữ tự do (có dấu / không dấu / viết tắt HN, HCM, SG… / quận-huyện 4 thành phố lớn), lấy tên
+// xuất hiện CUỐI chuỗi (địa chỉ viết từ nhỏ tới lớn), rồi quy về 34 đơn vị mới (sáp nhập 1/7/2025).
+const rptTinhBo = s => ' ' + String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase()
+  .replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+// tên cũ -> [bí danh không dấu]
+const RPT_TINH = {
+  'Hà Nội': ['ha noi', 'hn', 'tp hn', 'hanoi'], 'TP.HCM': ['ho chi minh', 'hcm', 'tp hcm', 'sai gon', 'saigon', 'sg', 'tphcm', 'hochiminh'],
+  'Hải Phòng': ['hai phong', 'hp'], 'Đà Nẵng': ['da nang'], 'Cần Thơ': ['can tho'], 'Huế': ['thua thien hue', 'hue'],
+  'An Giang': ['an giang'], 'Bà Rịa - Vũng Tàu': ['ba ria vung tau', 'vung tau', 'ba ria', 'brvt'], 'Bắc Giang': ['bac giang'], 'Bắc Kạn': ['bac kan', 'bac can'],
+  'Bạc Liêu': ['bac lieu'], 'Bắc Ninh': ['bac ninh'], 'Bến Tre': ['ben tre'], 'Bình Định': ['binh dinh', 'quy nhon'], 'Bình Dương': ['binh duong', 'thu dau mot'],
+  'Bình Phước': ['binh phuoc'], 'Bình Thuận': ['binh thuan', 'phan thiet'], 'Cà Mau': ['ca mau'], 'Cao Bằng': ['cao bang'], 'Đắk Lắk': ['dak lak', 'daklak', 'dac lac', 'buon ma thuot', 'bmt'],
+  'Đắk Nông': ['dak nong', 'daknong'], 'Điện Biên': ['dien bien'], 'Đồng Nai': ['dong nai', 'bien hoa'], 'Đồng Tháp': ['dong thap'], 'Gia Lai': ['gia lai', 'pleiku'],
+  'Hà Giang': ['ha giang'], 'Hà Nam': ['ha nam', 'phu ly'], 'Hà Tĩnh': ['ha tinh'], 'Hải Dương': ['hai duong'], 'Hậu Giang': ['hau giang'], 'Hòa Bình': ['hoa binh'],
+  'Hưng Yên': ['hung yen'], 'Khánh Hòa': ['khanh hoa', 'nha trang', 'cam ranh'], 'Kiên Giang': ['kien giang', 'rach gia', 'phu quoc'], 'Kon Tum': ['kon tum', 'kontum'],
+  'Lai Châu': ['lai chau'], 'Lâm Đồng': ['lam dong', 'da lat', 'dalat', 'bao loc'], 'Lạng Sơn': ['lang son'], 'Lào Cai': ['lao cai', 'sa pa', 'sapa'], 'Long An': ['long an', 'tan an'],
+  'Nam Định': ['nam dinh'], 'Nghệ An': ['nghe an', 'vinh nghe an'], 'Ninh Bình': ['ninh binh'], 'Ninh Thuận': ['ninh thuan', 'phan rang'], 'Phú Thọ': ['phu tho', 'viet tri'],
+  'Phú Yên': ['phu yen', 'tuy hoa'], 'Quảng Bình': ['quang binh', 'dong hoi'], 'Quảng Nam': ['quang nam', 'hoi an', 'tam ky'], 'Quảng Ngãi': ['quang ngai'], 'Quảng Ninh': ['quang ninh', 'ha long', 'mong cai', 'cam pha', 'uong bi'],
+  'Quảng Trị': ['quang tri', 'dong ha'], 'Sóc Trăng': ['soc trang'], 'Sơn La': ['son la'], 'Tây Ninh': ['tay ninh'], 'Thái Bình': ['thai binh'], 'Thái Nguyên': ['thai nguyen', 'song cong'],
+  'Thanh Hóa': ['thanh hoa', 'thanh hoa'], 'Tiền Giang': ['tien giang', 'my tho'], 'Trà Vinh': ['tra vinh'], 'Tuyên Quang': ['tuyen quang'], 'Vĩnh Long': ['vinh long'],
+  'Vĩnh Phúc': ['vinh phuc', 'vinh yen', 'phuc yen'], 'Yên Bái': ['yen bai'],
+};
+// quận / huyện đặc trưng của 4 thành phố lớn (chỉ dùng khi không thấy tên tỉnh)
+const RPT_TINH_QUAN = {
+  'Hà Nội': ['ba dinh', 'hoan kiem', 'tay ho', 'long bien', 'cau giay', 'dong da', 'hai ba trung', 'hoang mai', 'thanh xuan', 'nam tu liem', 'bac tu liem', 'tu liem', 'ha dong', 'son tay', 'ba vi', 'chuong my', 'dan phuong', 'dong anh', 'gia lam', 'hoai duc', 'me linh', 'my duc', 'phu xuyen', 'phuc tho', 'quoc oai', 'soc son', 'thach that', 'thanh oai', 'thanh tri', 'thuong tin', 'ung hoa'],
+  'TP.HCM': ['thu duc', 'binh thanh', 'go vap', 'phu nhuan', 'tan binh', 'tan phu', 'binh tan', 'cu chi', 'hoc mon', 'binh chanh', 'nha be', 'can gio'],
+  'Hải Phòng': ['hong bang', 'ngo quyen', 'le chan', 'hai an', 'kien an', 'do son', 'duong kinh', 'thuy nguyen', 'an duong', 'an lao', 'kien thuy', 'tien lang', 'vinh bao', 'cat hai'],
+  'Đà Nẵng': ['hai chau', 'thanh khe', 'son tra', 'ngu hanh son', 'lien chieu', 'cam le', 'hoa vang'],
+};
+// 34 đơn vị mới (1/7/2025): tỉnh cũ -> tỉnh mới
+const RPT_TINH_MOI = { 'Hà Giang': 'Tuyên Quang', 'Yên Bái': 'Lào Cai', 'Bắc Kạn': 'Thái Nguyên', 'Vĩnh Phúc': 'Phú Thọ', 'Hòa Bình': 'Phú Thọ', 'Bắc Giang': 'Bắc Ninh',
+  'Thái Bình': 'Hưng Yên', 'Hải Dương': 'Hải Phòng', 'Hà Nam': 'Ninh Bình', 'Nam Định': 'Ninh Bình', 'Quảng Bình': 'Quảng Trị', 'Quảng Nam': 'Đà Nẵng', 'Kon Tum': 'Quảng Ngãi',
+  'Bình Định': 'Gia Lai', 'Ninh Thuận': 'Khánh Hòa', 'Đắk Nông': 'Lâm Đồng', 'Bình Thuận': 'Lâm Đồng', 'Phú Yên': 'Đắk Lắk', 'Bình Dương': 'TP.HCM', 'Bà Rịa - Vũng Tàu': 'TP.HCM',
+  'Bình Phước': 'Đồng Nai', 'Long An': 'Tây Ninh', 'Sóc Trăng': 'Cần Thơ', 'Hậu Giang': 'Cần Thơ', 'Bến Tre': 'Vĩnh Long', 'Trà Vinh': 'Vĩnh Long', 'Tiền Giang': 'Đồng Tháp',
+  'Bạc Liêu': 'Cà Mau', 'Kiên Giang': 'An Giang' };
+const RPT_TINH_DS = []; Object.entries(RPT_TINH).forEach(([t, a]) => a.forEach(x => RPT_TINH_DS.push([t, ' ' + x + ' ', x.length])));
+RPT_TINH_DS.sort((a, b) => b[2] - a[2]);
+// trả tỉnh cũ, ưu tiên tên xuất hiện CUỐI chuỗi (địa chỉ viết từ nhỏ tới lớn)
+function rptTimTinh(chu, choQuan = true) {
+  const s = rptTinhBo(chu); if (s.trim().length < 2) return '';
+  let best = null;
+  for (const [t, k] of RPT_TINH_DS) { const i = s.lastIndexOf(k); if (i >= 0 && (!best || i > best.i || (i === best.i && k.length > best.l))) best = { t, i, l: k.length }; }
+  if (best) return best.t;
+  if (!choQuan) return '';
+  for (const [t, ds] of Object.entries(RPT_TINH_QUAN)) for (const q of ds) if (s.includes(' ' + q + ' ')) return t;
+  if (/ (quan|q) (1[0-2]|[1-9]) /.test(s)) return 'TP.HCM';
+  return '';
+}
+const rptTinhMoi = t => t ? (RPT_TINH_MOI[t] || t) : '';
+
+// 3 chi nhánh Kiot đều ở Hải Phòng (API branches 29/9/2026) -> khách mua tại cửa hàng mà không để địa chỉ = Hải Phòng
+const RPT_TINH_34=['Hà Nội','TP.HCM','Hải Phòng','Đà Nẵng','Cần Thơ','Huế','An Giang','Bắc Ninh','Cà Mau','Cao Bằng','Đắk Lắk','Điện Biên','Đồng Nai','Đồng Tháp','Gia Lai','Hà Tĩnh','Hưng Yên','Khánh Hòa','Lai Châu','Lâm Đồng','Lạng Sơn','Lào Cai','Nghệ An','Ninh Bình','Phú Thọ','Quảng Ngãi','Quảng Ninh','Quảng Trị','Sơn La','Tây Ninh','Thái Nguyên','Thanh Hóa','Tuyên Quang','Vĩnh Long'];   // 34 đơn vị từ 1/7/2025
+const RPT_CN_TINH=[[/chánh tâm|chanh tam|hiền thủy|hien thuy|shidai|tổng kho|tong kho/i,'Hải Phòng']];
+// Thứ tự tin: Sale ghi tay > địa chỉ giao hàng đơn Kiot (mới nhất) > khu vực / địa chỉ khách Kiot > hồ sơ app > tên khách > cửa hàng đã mua.
+function rptSlTinhCua(r,mn){
+  mn=mn||{};const sh=mn.si_sheet||r.sh||{};
+  const byCode=kiotCustByCode(),codes=[...new Set([r.kh].concat((r.kiotCusts||[]).map(c=>c&&c.code)).filter(Boolean))];
+  const don=[].concat(r.kords||[],r.repeatOrds||[],r.staleOrds||[]).slice().sort((a,b)=>String(b.purchase_date).localeCompare(String(a.purchase_date)));
+  const thu=(nguon,ds,choQuan)=>{for(const x of ds){const t=rptTimTinh(x,choQuan!==false);if(t)return {cu:t,nguon,ly:String(x).trim().slice(0,120)};}return null;};
+  const kq=thu('Sale ghi',[mn.si_tinh])||thu('sheet Sỉ cũ',[sh.tinh])
+    ||thu('địa chỉ giao hàng đơn Kiot',don.map(o=>[o.giao_khu_vuc,o.giao_dia_chi].filter(Boolean).join(' · ')))
+    ||thu('khu vực khách Kiot',codes.map(c=>(byCode[c]||{}).location_name))||thu('địa chỉ khách Kiot',codes.map(c=>(byCode[c]||{}).address))
+    ||thu('địa chỉ trong hồ sơ',[mn.si_dia_chi,sh.dia_chi,[sh.quan,sh.tinh].filter(Boolean).join(' '),r.diaChi])
+    ||thu('tên khách',[r.name].concat(codes.map(c=>(byCode[c]||{}).name)),false);
+  if(kq)return Object.assign(kq,{moi:rptTinhMoi(kq.cu)});
+  if(/shopee/i.test(r.name||''))return {cu:'',moi:'Nhiều nơi',nguon:'mã gom đơn Shopee',ly:'mã khách gom nhiều đơn Shopee'};
+  const cn=don.map(o=>o.branch_name).find(b=>RPT_CN_TINH.some(([re])=>re.test(b||'')));
+  if(cn){const t=RPT_CN_TINH.find(([re])=>re.test(cn))[1];return {cu:t,moi:t,nguon:'theo cửa hàng đã mua',ly:'không có địa chỉ, mua tại '+cn};}
+  return null;
+}
+function rptSlTinhHtml(r){
+  const x=r.tinh;if(!x||!x.moi)return '';
+  const e=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const cu=x.cu&&x.cu!==x.moi?' <span style="color:var(--muted);font-weight:600">('+e(x.cu)+' cũ)</span>':'';
+  return e(x.moi)+cu+' <span title="'+e(x.nguon+': '+x.ly)+'" style="font-size:10.5px;color:var(--muted);font-weight:700;cursor:help">· '+e(x.nguon)+'</span>';
 }
 function rptSlShow(key){const d=(window._rptSlLists||{})[key];if(!d)return;if(typeof d.lam==='function')return d.lam();dataModal(d);}
 // Popup "Khách từ quảng cáo" ở báo cáo MKT: kèm PHIẾU MUA (đơn đặt hàng Kiot) + mặt hàng từng phiếu để xem
@@ -6051,6 +6129,8 @@ function rptSlBuildMasterRaw(){
   // Lỗi 28/9/2026 (nghiêm trọng): trước đây lọc ở đầu, lúc r.staff mới là người phụ trách bên Pancake -> khách Pancake
   // KHÔNG có người phụ trách nhưng đã GÁN TAY cho Sale (vd L-CT2-0085 "Cáo" gán Chánh Tâm Ngọc Diệp) bị loại khỏi view
   // của chính Sale đó -> Sale không thấy khách để chăm.
+  rows.forEach(r=>{const mn=Object.assign({},...rptSlIdsCua(r).map(id=>rptSlManual[id]||{}).map(m=>Object.fromEntries(Object.entries(m).filter(([k,v])=>v!==null&&v!==''))),
+    Object.fromEntries(Object.entries(rptSlManual[r.leadId]||{}).filter(([k,v])=>v!==null&&v!=='')));r.tinh=rptSlTinhCua(r,mn);});
   if(window._rptSlSaleMaTam)rows.forEach(r=>rptSlIdsCua(r).forEach(id=>{window._rptSlSaleMaTam[id]=r.staff||'';}));
   rows=rows.filter(r=>dashSeeSale(r.staff)&&dashSeeType(r.saleType||'Lẻ'));
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
@@ -6670,6 +6750,7 @@ function rptSlShowCustomer(key,sua){
   const info=[
     fld('Lead ID','<code>'+esc(r.leadId)+'</code>'),
     fld('SĐT',rptSlSdtHtml(r,''),'','sdt'),
+    fld('Tỉnh / TP',rptSlTinhHtml(r),'','si_tinh'),
     fld('Nguồn khách',esc(r.nguon||(r.sh||{}).nguon),'','nguon'),
     fld('Kênh',esc(r.kenh||(r.sh||{}).kenh),'','kenh'),
     fld('Mã KH Kiot',r.kh?rptSlKiotLink(r.kh,'<code>'+esc(r.kh)+'</code> ↗'):'','','ma_kh'),

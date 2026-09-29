@@ -6,7 +6,7 @@
 > **GHI SỔ TRƯỚC KHI KẾT THÚC PHIÊN (bắt buộc, cả phiên trên máy lẫn phiên cloud):** phiên cloud (claude.ai/code, môi trường
 > "MKT Dev") và phiên trên máy KHÔNG đọc được hội thoại của nhau — sổ này + `CLAUDE.md` + lịch sử commit là thứ DUY NHẤT nối các phiên.
 > Việc gì làm xong / anh chốt gì / đang dở gì / chờ anh gì: ghi vào sổ, commit + push NGAY TRONG PHIÊN, đừng để cuối.
-> Đầu phiên: `git pull` rồi mới đọc sổ (phiên kia có thể vừa đẩy bản mới).
+> Đầu phiên: `git pull` rồi mới đọc sổ (phiên kia có thể vừa đẩy bản mới). Phiên cloud hay làm trên nhánh `claude/...` → xong phải gộp vào `main` (app chạy từ `main`).
 > Cập nhật lần cuối: 29/09/2026. Luồng Sale/MKT anh đánh giá xong ~90%; anh chuyển sang xây luồng QC CSKH (chat mới). Việc #18 / 18-KS (khách để SĐT trong hội thoại) ĐÃ XONG 28/9 — xem nhật ký 28/9.
 
 ---
@@ -85,6 +85,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **29/09** — **Trường Tỉnh / TP** trong hồ sơ khách (Sỉ + Lẻ, anh chốt: khách ĐÃ CHỐT phải có đủ). Nguồn thêm: sync Kiot kéo địa chỉ giao hàng của đơn (`kiot_orders.giao_dia_chi / giao_khu_vuc`, includeOrderDelivery) + địa chỉ khách (`kiot_customers.address`, 2.805/7.624 khách). App suy (`rptSlTinhCua`): Sale chọn tay (ô Tỉnh/TP trong Sửa hồ sơ Sỉ, 34 đơn vị) > sheet Sỉ cũ > giao hàng đơn Kiot > khu vực / địa chỉ khách Kiot > hồ sơ > tên khách > cửa hàng đã mua (3 chi nhánh đều ở Hải Phòng) ; mã gom Shopee = "Nhiều nơi". Hiện theo 34 tỉnh mới, kèm tên tỉnh cũ nếu khác. Khách đã chốt: Sỉ 150/150, Lẻ 157/158 (thiếu Nguyễn Thuỳ Trâm — việc #17).
 
 - **29/09** — Chuẩn bị chạy Claude trên cloud (claude.ai/code, môi trường "MKT Dev") để làm không cần bật máy: thêm `CLAUDE.md` (luật trong bộ nhớ máy chép vào repo — cloud không đọc được bộ nhớ máy), `scripts/sql.js` (chạy SQL qua Management API, token env `SUPABASE_MGMT_TOKEN`), `.gitignore` chặn `*.local.txt`. File biến môi trường soạn sẵn ở máy: `mkt-dev-env.local.txt` (anh dán vào cài đặt môi trường rồi xoá).
 

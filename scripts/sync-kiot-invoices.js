@@ -82,7 +82,7 @@ function mapCustomer(c) {
     // "Nợ cần thu từ khách" -- ÂM nghĩa là khách đã cọc trước; dùng để biết phiếu tạm nào là đơn thật
     debt: Number(c.debt || 0),
     customer_group: c.groups || null, branch_id: c.branchId || null,
-    location_name: c.locationName || null, ward_name: c.wardName || null,
+    location_name: c.locationName || null, ward_name: c.wardName || null, address: c.address || null,   // address: suy Tỉnh/TP (29/9/2026)
     total_revenue: c.totalRevenue ?? null, total_invoiced: c.totalInvoiced ?? null, debt: c.debt ?? null,
     kiot_created_date: vnTime(c.createdDate), kiot_modified_date: vnTime(c.modifiedDate),
   };
