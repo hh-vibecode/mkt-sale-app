@@ -86,7 +86,9 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
-- **29/09** — Tốc độ app: dựng Master Sỉ 1,8 s → 0,17 s (ghép lịch sử chăm sóc qua bảng tra `rptSlCsIdx` thay vì quét 2.100 lượt cho mỗi khách; so bản cũ 1.778 khách lệch 0). Org đã lên **Pro** nhưng project vẫn máy chủ **Nano** (chưa bật add-on compute) — CHỜ ANH: bật Micro (Dashboard → Project Settings → Compute and Disk; Pro có 10 USD tín dụng compute nên gần như không tốn thêm; project khởi động lại ~1–2 phút).
+- **29/09 17:50** — Máy chủ CSDL **Nano → Micro** (2 nhân, 1 GB RAM; chi phí vẫn 25 USD/tháng vì Pro có 10 USD tín dụng compute). Khởi động lại ~15 giây, không workflow nào lỗi. Tải 8 bảng lúc mở app: ~6,5 s → ~1,7 s (bảng lịch sử chăm sóc 6,5 s → 1,0 s).
+
+- **29/09** — Tốc độ app: dựng Master Sỉ 1,8 s → 0,17 s (ghép lịch sử chăm sóc qua bảng tra `rptSlCsIdx` thay vì quét 2.100 lượt cho mỗi khách; so bản cũ 1.778 khách lệch 0). Org đã lên **Pro** nhưng project vẫn máy chủ **Nano** (chưa bật add-on compute) → anh đã bật **Micro** (29/9 ~17:45, cùng giá Nano, tín dụng Pro trả).
 
 - **29/09** — **Trường Tỉnh / TP** trong hồ sơ khách (Sỉ + Lẻ, anh chốt: khách ĐÃ CHỐT phải có đủ). Nguồn thêm: sync Kiot kéo địa chỉ giao hàng của đơn (`kiot_orders.giao_dia_chi / giao_khu_vuc`, includeOrderDelivery) + địa chỉ khách (`kiot_customers.address`, 2.805/7.624 khách). App suy (`rptSlTinhCua`): Sale chọn tay (ô Tỉnh/TP trong Sửa hồ sơ Sỉ, 34 đơn vị) > sheet Sỉ cũ > giao hàng đơn Kiot > khu vực / địa chỉ khách Kiot > hồ sơ > tên khách > cửa hàng đã mua (3 chi nhánh đều ở Hải Phòng) ; mã gom Shopee = "Nhiều nơi". Hiện theo 34 tỉnh mới, kèm tên tỉnh cũ nếu khác. Khách đã chốt: Sỉ 150/150, Lẻ 157/158 (thiếu Nguyễn Thuỳ Trâm — việc #17).
 
