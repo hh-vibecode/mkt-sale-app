@@ -80,6 +80,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **29/09** — **Supabase báo vượt quota TẢI RA (egress) gói free ~5 GB/tháng** (không phải dung lượng lưu trữ; ân hạn tới 29/10/2026, sau đó có thể bị giới hạn). Thủ phạm chính: job phân loại SP quan tâm (em thêm 28/9) nạp ~18 MB mỗi 15 phút ≈ 1,7 GB/ngày; phụ: tự tạo Chốt đơn Sỉ + tự tạo Data nhập tay mỗi lượt ~3 MB, 15 phút/lần. Sửa: `scripts/lib/gianh-moc.js` (giành lượt theo bảng job_moc) — phân loại SP **1 lần/ngày khung 18h–19h VN** (anh chốt), 2 job kia **1 giờ/lần**. Ước còn ~0,5–0,9 GB/ngày (đồng bộ Pancake 10 phút + app trên trình duyệt) — vẫn trên mức free → chờ anh chọn: nâng Pro (25 USD/tháng, 250 GB) hay em tối ưu tiếp (đọc phần thay đổi thay vì cả bảng).
+
 - **29/09 sáng** — Soát từ 16h 28/9: 0 workflow đỏ (Kiot 89, Pancake 135, chốt mốc 2, crawl chấm 3, Meta 2 lượt). Job tạo đơn chạy đúng 18h 28/9 và 6h 29/9: mỗi lượt 3–4 hội thoại có SĐT, đều đã có đơn Sale → 0 đơn mới. PHÁT HIỆN lượt 18h chạy ĐÔI (2 lượt workflow chồng nhau cùng đọc "chưa chạy") → sửa: giành mốc bằng PATCH có điều kiện `luc < mốc` trên `job_moc`, lượt thua thoát (thử 2 lượt đồng thời: đúng 1 lượt giành được). Việc #23 xong.
 
 - **28/09 15:25** — Form tài khoản (thêm / sửa): chọn vị trí **admin / supreme** là tự bỏ tick + khoá ô Phạm vi dữ liệu, hiện nhãn "Admin xem tất cả" (anh chốt: admin xem hết, chỉ bị chặn ở chức năng anh khoá riêng). Dọn phạm vi cũ của tài khoản Chị Oanh (9 tên, vốn đã bị bỏ qua).

@@ -51,6 +51,10 @@ async function ghiLog(body, id) {
 }
 
 (async () => {
+  // MỖI GIỜ 1 LẦN (29/9/2026): workflow Kiot chạy 15 phút/lần, mỗi lượt script này đọc 3–4 MB -> vượt quota tải ra
+  // Supabase. Lượt nào chưa đủ 55 phút kể từ lần trước thì thoát trước khi đọc. CHAY_NGAY=1 để chạy tay.
+  if (SERVICE_ROLE_KEY && !(await require('./lib/gianh-moc').gianhMoc(SUPABASE_URL, SERVICE_ROLE_KEY, 'tu-tao-chot-don-si', 55))) {
+    console.log('Chưa đủ 1 giờ từ lần chạy trước — bỏ qua lượt này.'); return; }
   if (!SERVICE_ROLE_KEY) { console.error('Thiếu SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); }
   const logId = CHI_XEM ? null : await ghiLog({ status: 'running' }).catch(() => null);
   try {
