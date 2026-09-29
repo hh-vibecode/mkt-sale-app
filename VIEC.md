@@ -81,6 +81,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **29/09** — Chuẩn bị chạy Claude trên cloud (claude.ai/code, môi trường "MKT Dev") để làm không cần bật máy: thêm `CLAUDE.md` (luật trong bộ nhớ máy chép vào repo — cloud không đọc được bộ nhớ máy), `scripts/sql.js` (chạy SQL qua Management API, token env `SUPABASE_MGMT_TOKEN`), `.gitignore` chặn `*.local.txt`. File biến môi trường soạn sẵn ở máy: `mkt-dev-env.local.txt` (anh dán vào cài đặt môi trường rồi xoá).
+
 - **29/09** — **Rà Sale Sỉ: bù 40 khách / ~2,03 tỷ** bị rơi khỏi báo cáo: job Tự tạo Data nhập tay cắt mốc 1/6/2026 cho cả Sỉ → khách Sỉ chỉ mua trước mốc mà Sale chưa từng nhập (NPP, khách buôn, đại lý: NPP Thảo Nam Nam Định 297,6tr, KB a Đức Anh 253,9tr…) không có hồ sơ. Sửa: Sỉ FULL LỊCH SỬ (dấu vết tiền chỉ đòi với đơn từ 1/6), đã tạo 40 dòng. Sau sửa: 2026 thiếu 0 đơn; 181 đơn Sỉ bị loại từ T6 đều là phiếu tạm chưa trả đồng nào (0 đơn có trả tiền bị loại oan). Còn lại (không bù): 6 đơn 2025 không có mã khách (~232tr, lớn nhất DH000720 157,9tr) + 8 đơn khách nhóm "Khách lẻ" mua tại kho Sỉ trước T6.
 
 - **29/09** — **Báo cáo Sale tính cả ĐƠN MUA LẠI trong kỳ** (anh báo chị Mai Quy chốt DH002671 08/09/2026 21,1tr không có trong báo cáo Sale Sỉ T9 dù Master có): lọc kỳ + tính lại trong kỳ gồm repeatOrds; Tổng quan (doanh thu, Online/Offline, brand, Sale, kênh) = đơn tính + mua lại. MKT không đổi (chỉ r.revenue, mod mkt không xét mua lại). Sỉ T9 363,2 → 384,3tr; toàn thời gian không đổi. Chốt mốc. Anh đã mua **Supabase Pro** (29/9).

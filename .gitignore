@@ -11,3 +11,6 @@ t_*.mjs
 
 # cài đặt quyền Claude Code riêng máy này
 .claude/settings.local.json
+
+# mọi file khoá / biến môi trường cục bộ
+*.local.txt
