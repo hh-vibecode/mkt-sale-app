@@ -4887,7 +4887,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='29/09 16:21';
+const APP_VERSION='29/09 17:33';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6568,11 +6568,29 @@ function rptSlCsCoChu(x){
   return (x.lead_id&&c.ids.has(x.lead_id))||(x.kiot_code&&c.kh.has(String(x.kiot_code).toUpperCase()))||(so.length===9&&c.so.has(so));
 }
 function rptSlSoCua(r){return new Set((r.phones||[]).map(p=>rptSlLast9(p.so)).concat(r.phone?[rptSlLast9(r.phone)]:[]).filter(k=>k&&k.length===9));}
+// BẢNG TRA lượt chăm sóc theo Lead ID / Mã KH / SĐT / tên (29/9/2026): trước đây mỗi khách quét lại toàn bộ
+// ~2.100 lượt -> dựng Master Sỉ ~1,6 giây chỉ riêng bước này. Giờ lấy ứng viên qua bảng tra rồi áp ĐÚNG điều kiện cũ.
+function rptSlCsIdx(){
+  const src=typeof siCrmRows!=='undefined'?siCrmRows:[];
+  const c=window._rptSlCsIdx;
+  if(c&&c.src===src&&c.n===src.length&&c.ver===(window._rptSlVer||0))return c;
+  const idx={src,n:src.length,ver:window._rptSlVer||0,lead:{},ma:{},so:{},ten:{}};
+  const them=(m,k,x)=>{if(k)(m[k]=m[k]||[]).push(x);};
+  src.forEach(x=>{them(idx.lead,x.lead_id,x);them(idx.ma,String(x.kiot_code||'').toUpperCase(),x);
+    const k=rptSlLast9(x.phone||'');if(k&&k.length===9)them(idx.so,k,x);
+    them(idx.ten,String(x.customer_name||'').trim().toLowerCase(),x);});
+  return window._rptSlCsIdx=idx;
+}
 function rptSlCsRows(r){
   const ma=String(r.kh||'').toUpperCase();
   const ten=String(r.name||'').trim().toLowerCase();
   const so=rptSlSoCua(r),ids=rptSlIdsCua(r);
-  return (typeof siCrmRows!=='undefined'?siCrmRows:[]).filter(x=>
+  const I=rptSlCsIdx(),ung=new Set();
+  ids.forEach(i=>(I.lead[i]||[]).forEach(x=>ung.add(x)));
+  if(ma)(I.ma[ma]||[]).forEach(x=>ung.add(x));
+  so.forEach(k=>(I.so[k]||[]).forEach(x=>ung.add(x)));
+  if(ten)(I.ten[ten]||[]).forEach(x=>ung.add(x));
+  return [...ung].filter(x=>
       (x.lead_id&&ids.includes(x.lead_id))
     ||(ma&&String(x.kiot_code||'').toUpperCase()===ma)
     ||(x.phone&&so.has(rptSlLast9(x.phone))&&!(x.lead_id&&(window._rptSlCsChu||{})[rptSlType()]&&window._rptSlCsChu[rptSlType()].ids.has(x.lead_id)))
