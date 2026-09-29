@@ -36,6 +36,7 @@
 - **Doanh thu Sale = ĐƠN ĐẶT HÀNG Kiot**, không phải hoá đơn. Ngày chốt = ngày tạo đơn.
 - **DẤU VẾT TIỀN THẬT** (luật chung): mọi data liên quan doanh thu, kể cả data kéo từ Kiot, trước khi vào app phải có ít nhất 1 trong 3: đã trả tiền trên đơn · khách có hoá đơn hoàn thành · khách có đặt cọc. Trạng thái "Hoàn thành" do Sale đặt tay KHÔNG tính là bằng chứng. Chỉ áp từ 1/6/2026 (trước đó app không có dữ liệu hoá đơn).
 - **Phiếu tạm**: đã trả tiền trên phiếu → tính · khách có nợ âm (đã cọc) → tính · không dấu vết tiền → báo giá, không tính.
+- **Đơn mua lại** (quá 1 tháng, khách không còn nhắn Pancake): KHÔNG tính cho MKT nhưng VẪN là doanh thu Sale — báo cáo Sale lọc kỳ + cộng cả đơn mua lại.
 - **Cắt doanh thu**: Lẻ Online tính hết · Sỉ Offline tính hết · Sỉ Online chỉ tính trong 1 tháng từ đơn đầu, TRỪ KHI khách còn nhắn Pancake (last_chat + 30 ngày). Đơn trước 04/06/2026 không bao giờ cắt.
 - **Sỉ / Lẻ trong Kiot**: theo CHI NHÁNH — "Tổng kho sỉ Shidai" = Sỉ, "Đồ Thờ Chánh Tâm" + "Đồ thờ Hiền Thủy" = Lẻ. Nhóm khách chỉ dùng khi ghi rõ. Có ca lẫn nhưng hiếm.
 - **Brand khách Sỉ**: kênh ghi rõ brand khác thì theo kênh, còn lại (Sales trực tiếp / trống) = **Shidai**.
@@ -79,6 +80,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **29/09** — **Báo cáo Sale tính cả ĐƠN MUA LẠI trong kỳ** (anh báo chị Mai Quy chốt DH002671 08/09/2026 21,1tr không có trong báo cáo Sale Sỉ T9 dù Master có): lọc kỳ + tính lại trong kỳ gồm repeatOrds; Tổng quan (doanh thu, Online/Offline, brand, Sale, kênh) = đơn tính + mua lại. MKT không đổi (chỉ r.revenue, mod mkt không xét mua lại). Sỉ T9 363,2 → 384,3tr; toàn thời gian không đổi. Chốt mốc. Anh đã mua **Supabase Pro** (29/9).
 
 - **29/09 chiều** — Log Ingestion (0,94/1 GB): Postgres đã ở mức ghi log tiết kiệm nhất (log_min_duration_statement -1, log_min_messages warning, log_statement ddl) — KHÔNG đặt 200/500 ms (sẽ bật thêm log). App không gọi Supabase liên tục, không cần Realtime. Nguồn log lớn nhất: bước ngày nhắn cuối ghi tới 250 PATCH/lượt (mỗi lệnh 1 dòng log) → gộp thành 1 lệnh qua hàm `cap_nhat_last_chat(jsonb)`. Pro: log 20 GB, egress 250 GB, CSDL 8 GB / 25 USD tháng.
 

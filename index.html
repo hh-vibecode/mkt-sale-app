@@ -4885,7 +4885,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/09 16:20';
+const APP_VERSION='29/09 14:30';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5044,15 +5044,17 @@ function rptSlOverviewHtml(){
   // tử số trên toàn bộ master nhưng mẫu số là khách chốt, thành ra 130/134 trong khi tab Nhập Liệu
   // báo thiếu 6. Số đúng: 128/134.
   const chotKh=master.filter(r=>r.isChot), noiKh=chotKh.filter(r=>r.kh);
-  const rev=master.reduce((s,r)=>s+r.revenue,0);
-  const ordCount=master.reduce((s,r)=>s+r.kords.length,0);
+  // Doanh thu của SALE = đơn tính + đơn MUA LẠI trong kỳ (29/9/2026). Báo cáo MKT đọc riêng r.revenue, không đổi.
+  const tien=r=>r.revenue+(r.repeatRevenue||0),soDon=r=>r.kords.length+(r.repeatOrds||[]).length;
+  const rev=master.reduce((s,r)=>s+tien(r),0);
+  const ordCount=master.reduce((s,r)=>s+soDon(r),0);
   window._rptSlLists={};
   const L=(k,d)=>{window._rptSlLists[k]=d;return k;};
   // Danh sách khách trong báo cáo HIỆN + XẾP THEO NGÀY CHỐT (ngày tạo đơn đặt hàng Kiot trong kỳ), chốt gần nhất lên đầu
   // -- anh Hải 25/9/2026, cả Lẻ lẫn Sỉ. Khách chưa chốt xếp sau, theo ngày tạo.
   const custCols=['Ngày chốt','Ngày tạo','Lead ID','Họ tên','SĐT','Kênh','Sales','Trạng thái','Mã KH','Doanh thu'];
   const theoChot=list=>list.slice().sort((a,b)=>String(b.closeDate||'').localeCompare(String(a.closeDate||''))||String(b.created||'').localeCompare(String(a.created||'')));
-  const custRows=list=>theoChot(list).map(r=>[dmy(r.closeDate)||'—',dmy(r.created)||'—',r.leadId,r.name,r.phone||'',r.kenh,rptSlSaleHien(r.staff),r.isChot?'Chốt đơn':(r.manualStatus||r.tagStatus||''),r.kh||'',r.revenue>0?vnd(r.revenue):'']);
+  const custRows=list=>theoChot(list).map(r=>[dmy(r.closeDate)||'—',dmy(r.created)||'—',r.leadId,r.name,r.phone||'',r.kenh,rptSlSaleHien(r.staff),r.isChot?'Chốt đơn':(r.manualStatus||r.tagStatus||''),r.kh||'',tien(r)>0?vnd(tien(r)):'']);
   const ordCols=['Ngày','Đơn','Brand','Khách hàng','SĐT','Sales','Thẻ Pancake'];
   const ordRows=list=>list.map(o=>[dmy(o.order_date),'#'+o.system_id,DH_BRAND_LABEL[o.brand]||o.brand,o.customer_name||'',o.phone||'',o.staff_name||'',o.customer_tags||'']);
   L('ovData',{title:'Toàn bộ data Lẻ từ Pancake',cols:ordCols,rows:ordRows(le)});
@@ -5066,15 +5068,15 @@ function rptSlOverviewHtml(){
   // Doanh thu theo brand -- brand lấy thẳng từ shop Pancake, không phải suy đoán như bản cũ.
   // Bấm vào ô Doanh thu hoặc vào từng brand -> hiện đúng danh sách khách đứng sau con số đó.
   const byBrand={},khBrand={};
-  master.forEach(r=>{if(r.revenue>0){const b=DH_BRAND_LABEL[r.brand]||r.brand||'Khác';
-    byBrand[b]=(byBrand[b]||0)+r.revenue;(khBrand[b]=khBrand[b]||[]).push(r);}});
-  const coRev=master.filter(r=>r.revenue>0).sort((a,b)=>b.revenue-a.revenue);
+  master.forEach(r=>{if(tien(r)>0){const b=DH_BRAND_LABEL[r.brand]||r.brand||'Khác';
+    byBrand[b]=(byBrand[b]||0)+tien(r);(khBrand[b]=khBrand[b]||[]).push(r);}});
+  const coRev=master.filter(r=>tien(r)>0).sort((a,b)=>tien(b)-tien(a));
   L('ovRev',{title:'Khách đã có doanh thu · '+vnd(rev),cols:custCols,rows:custRows(coRev)});
   // SỈ tách doanh thu ONLINE / OFFLINE thành 2 thẻ, mỗi thẻ bấm ra bảng khách đã chốt riêng (anh Hải 28/9/2026)
   const laOff=r=>/offline/i.test(r.nguon||'');
   const onl=master.filter(r=>!laOff(r)),off=master.filter(laOff);
-  const revOn=onl.reduce((x,r)=>x+r.revenue,0),revOff=off.reduce((x,r)=>x+r.revenue,0);
-  const ordOn=onl.reduce((x,r)=>x+r.kords.length,0),ordOff=off.reduce((x,r)=>x+r.kords.length,0);
+  const revOn=onl.reduce((x,r)=>x+tien(r),0),revOff=off.reduce((x,r)=>x+tien(r),0);
+  const ordOn=onl.reduce((x,r)=>x+soDon(r),0),ordOff=off.reduce((x,r)=>x+soDon(r),0);
   L('ovRevOn',{title:'Khách Online đã chốt · '+vnd(revOn),cols:custCols,rows:custRows(coRev.filter(r=>!laOff(r)))});
   L('ovRevOff',{title:'Khách Offline đã chốt · '+vnd(revOff),cols:custCols,rows:custRows(coRev.filter(laOff))});
   if(rptSlType()==='Sỉ'){
@@ -5083,13 +5085,13 @@ function rptSlOverviewHtml(){
     L('ovRev',{lam:rptSlRevOnOff});
   }
   Object.keys(khBrand).forEach(b=>L('ovBrand-'+b,{title:'Doanh thu '+b+' · '+vnd(byBrand[b]),
-    cols:custCols,rows:custRows(khBrand[b].slice().sort((x,y)=>y.revenue-x.revenue))}));
+    cols:custCols,rows:custRows(khBrand[b].slice().sort((x,y)=>tien(y)-tien(x)))}));
 
   const bySale={};
-  master.forEach(r=>{const s=r.staff||'(chưa gán)';bySale[s]=bySale[s]||{data:0,chot:0,rev:0,noi:0};bySale[s].data++;if(r.isChot)bySale[s].chot++;if(r.kh)bySale[s].noi++;bySale[s].rev+=r.revenue;});
+  master.forEach(r=>{const s=r.staff||'(chưa gán)';bySale[s]=bySale[s]||{data:0,chot:0,rev:0,noi:0};bySale[s].data++;if(r.isChot)bySale[s].chot++;if(r.kh)bySale[s].noi++;bySale[s].rev+=tien(r);});
   const saleRows=Object.entries(bySale).filter(([s])=>rptSlSaleCuaDoi(rptSlType()).includes(s)||s==='(chưa gán)').sort((a,b)=>b[1].rev-a[1].rev||b[1].chot-a[1].chot);
 
-  const byKenh={};master.forEach(r=>{const k=r.kenh||'(không rõ)';byKenh[k]=byKenh[k]||{n:0,chot:0,rev:0};byKenh[k].n++;if(r.isChot)byKenh[k].chot++;byKenh[k].rev+=r.revenue;});
+  const byKenh={};master.forEach(r=>{const k=r.kenh||'(không rõ)';byKenh[k]=byKenh[k]||{n:0,chot:0,rev:0};byKenh[k].n++;if(r.isChot)byKenh[k].chot++;byKenh[k].rev+=tien(r);});
   const kenhRows=Object.entries(byKenh).sort((a,b)=>b[1].n-a[1].n);
 
 
@@ -5457,9 +5459,13 @@ function rptSlNhanCu(d,nhan){
     +'color:var(--muted);background:var(--bg2);border:1px solid var(--border)">'+(nhan||'khách cũ')+'</span>';
 }
 function rptSlNgayCham(r){return r.careDate||r.created||'';}
+// ĐƠN MUA LẠI (quá 1 tháng, khách không còn nhắn Pancake) KHÔNG tính cho MKT nhưng VẪN là doanh thu của SALE
+// (Sale chăm lại qua Zalo / điện thoại). Báo cáo Sale lọc kỳ theo cả đơn mua lại; báo cáo MKT (mod 'mkt') thì không.
+// Lỗi 29/9/2026: chị Mai Quy chốt DH002671 08/09/2026 21,1tr (đơn mua lại) không có trong báo cáo Sale Sỉ tháng 9.
 function rptSlInRange(r){
   const M=rptSlMod();
-  if(r.kords&&r.kords.length)return r.kords.some(i=>modInRange(M,String(i.purchase_date).slice(0,10)));
+  const don=(r.kords||[]).concat(M==='mkt'?[]:(r.repeatOrds||[]));
+  if(don.length)return don.some(i=>modInRange(M,String(i.purchase_date).slice(0,10)));
   return modInRange(M,r.isChot&&r.closeDate?r.closeDate:r.created);
 }
 // Trả về danh sách đã lọc kỳ, đồng thời TÍNH LẠI doanh thu chỉ từ đơn đặt hàng trong kỳ.
@@ -5467,13 +5473,15 @@ function rptSlPeriod(){
   const M=rptSlMod(),rg=modRange(M);
   const rows=rptSlBuildMaster().filter(rptSlInRange);
   if(!rg.from&&!rg.to)return rows;
+  const trong=i=>modInRange(M,String(i.purchase_date).slice(0,10));
+  const tong=a=>a.reduce((x,i)=>x+Number(i.total||0),0);
   return rows.map(r=>{
-    if(!r.kords||!r.kords.length)return r;
-    const kords=r.kords.filter(i=>modInRange(M,String(i.purchase_date).slice(0,10)));
-    if(kords.length===r.kords.length)return r;
-    return Object.assign({},r,{kords,revenue:kords.reduce((s,i)=>s+Number(i.total||0),0),
-      closeDate:kords.length?String(kords[0].purchase_date).slice(0,10):r.closeDate,
-      lastKiotDate:kords.length?String(kords[kords.length-1].purchase_date).slice(0,10):''});
+    const kords=(r.kords||[]).filter(trong),rep=(r.repeatOrds||[]).filter(trong);
+    if(kords.length===(r.kords||[]).length&&rep.length===(r.repeatOrds||[]).length)return r;
+    const ca=kords.concat(rep).sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
+    return Object.assign({},r,{kords,revenue:tong(kords),repeatOrds:rep,repeatRevenue:tong(rep),
+      closeDate:ca.length?String(ca[0].purchase_date).slice(0,10):r.closeDate,
+      lastKiotDate:ca.length?String(ca[ca.length-1].purchase_date).slice(0,10):''});
   });
 }
 function rptSlStatusPill(st){
