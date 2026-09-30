@@ -25,6 +25,7 @@
 
 | # | Việc | Ghi chú |
 |---|---|---|
+| 25 | **Rủi ro mở ngày 30/9 (chờ anh chọn cách xử)**: (a) Sale nào cũng sửa được **Nguồn khách / Kênh** trong hồ sơ — đổi Online↔Offline làm đổi luật cắt doanh thu và rút khách khỏi báo cáo MKT, nên có thể lệch số (vẫn có nhật ký ai sửa); đề xuất chỉ admin sửa Nguồn. (b) Lẻ đã chốt giờ sửa được gần hết ô (trước khoá "hồ sơ đóng"). (c) Lưu ở chế độ sửa Lẻ mới chạy thử phần hiển thị, CHƯA bấm Lưu thật trên web. (d) #335 Dao Thi Nhu nối KH005765 "KB Đồ thờ Huy Hoàng" chỉ vì trùng SĐT, tên khác hẳn. (e) Harri / Loan Nguyễn (L-CT2-0107) sang Lẻ → Sale trống (luật chuyển đội T9), đang nằm ở Gán data. (f) 2 khách Sỉ kênh "Khác" (Sếp Oanh Thịnh KH000330, Anh Đỗ Thịnh KH006048) chờ anh đổi hay giữ. (g) File `mkt-dev-env.local.txt` (chứa khoá) vẫn còn trên máy | anh chọn từng mục |
 | 24 | **Chờ anh chọn**: mục trong Nhập Liệu liệt kê khách job vừa tạo đơn / job bỏ qua (7 ngày) kèm câu khách nhắn, để Sale soát (em đề xuất làm trước trong #22) | hỏi lại anh khi quay lại luồng Sale |
 | 22 | **Điểm dễ vỡ còn lại (rà 28/9)**: (a) ĐÃ ĐO 28/9: bước phân loại SP chỉ 8–12 giây, lượt Kiot vẫn ~2,5 phút — ổn; (b) tên mặc định khi chuyển đội (Toàn / Thảo Ngọc) ghi cứng trong `RPT_SL_MAC_DINH_CHUYEN` — đổi tên Sale ở Phân quyền không tự đổi theo; (c) đổi thẻ KH SỈ/LẺ trên đơn cũ chỉ về app ở lượt quét toàn bộ (7h05 · 12h30 · 18h00); (d) bộ lọc rác dựa từ khoá, chưa có mục trong app để Sale soát ca job bỏ / job tạo; (e) PANCAKE_SESSION_TOKEN hết hạn là mọi job Pancake dừng (có mail đỏ) | làm dần / chờ anh chọn |
 
@@ -37,6 +38,9 @@
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
 
+- **MINH BẠCH, KHÔNG GIẤU (anh chốt 30/9/2026):** anh rất fair, không trách khi Claude làm sai hay gặp sự cố → KHÔNG giấu, KHÔNG nói giảm.
+  Mỗi lần báo cáo phải kể đủ: việc làm sai (kể cả đã tự sửa), phần CHƯA kiểm được, và các RỦI RO TIỀM TÀNG (dữ liệu, phân quyền,
+  bảo mật, job, số liệu có thể lệch). Không chắc thì nói không chắc. Mục tiêu là cùng nhau giải quyết, không phải báo "xong" cho đẹp.
 - **Doanh thu Sale = ĐƠN ĐẶT HÀNG Kiot**, không phải hoá đơn. Ngày chốt = ngày tạo đơn.
 - **DẤU VẾT TIỀN THẬT** (luật chung): mọi data liên quan doanh thu, kể cả data kéo từ Kiot, trước khi vào app phải có ít nhất 1 trong 3: đã trả tiền trên đơn · khách có hoá đơn hoàn thành · khách có đặt cọc. Trạng thái "Hoàn thành" do Sale đặt tay KHÔNG tính là bằng chứng. Chỉ áp từ 1/6/2026 (trước đó app không có dữ liệu hoá đơn).
 - **Phiếu tạm**: đã trả tiền trên phiếu → tính · khách có nợ âm (đã cọc) → tính · không dấu vết tiền → báo giá, không tính.

@@ -14,6 +14,8 @@ Phiên chạy trên cloud và phiên trên máy KHÔNG đọc được hội tho
 - **Dùng chung Supabase với các app khác**: theo `QUY-UOC-DUNG-CHUNG-SUPABASE.md` (sổ đăng ký tiền tố, ai sở hữu bảng nào, chỉ THÊM trên bảng dùng chung).
 
 ## Cách làm việc
+- **Minh bạch, không giấu** (anh chốt 30/9/2026): anh không trách khi làm sai hay gặp sự cố, nên mỗi lần báo cáo phải kể đủ
+  việc làm sai (kể cả đã tự sửa), phần CHƯA kiểm được và rủi ro tiềm tàng (dữ liệu, phân quyền, bảo mật, job, số liệu). Cùng nhau giải quyết.
 - **Tự làm, không giao việc cho anh**: SQL, deploy, cấu hình làm được thì tự làm rồi báo. Lưu kèm `supabase-schema-*.sql`.
 - **Commit**: tự pull → commit → push, không hỏi. TRƯỚC mỗi commit chạy `git diff --cached --stat`, chỉ commit đúng file mình sửa.
   Push bị từ chối (phiên khác vừa đẩy) → `git pull --rebase`; xung đột thì giải TỪNG CHỖ bằng tay (APP_VERSION lấy bản mới hơn, nhật ký VIEC giữ cả 2 dòng), kiểm `grep -n "^<<<<<<< |^>>>>>>> "` = 0 và cú pháp index.html OK rồi mới add / `rebase --continue` / push — mỗi bước 1 lệnh riêng, KHÔNG nối `&&` sau script kiểm (30/9/2026 lọt dấu xung đột lên web, app trắng 1–2 phút). Đẩy xong kiểm trang live và báo anh F5.
