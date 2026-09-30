@@ -5082,7 +5082,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='30/09 14:46';
+const APP_VERSION='30/09 17:40';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5288,8 +5288,10 @@ function rptSlOverviewHtml(){
   master.forEach(r=>{const s=r.staff||'(chưa gán)';bySale[s]=bySale[s]||{data:0,chot:0,rev:0,noi:0};bySale[s].data++;if(r.isChot)bySale[s].chot++;if(r.kh)bySale[s].noi++;bySale[s].rev+=tien(r);});
   const saleRows=Object.entries(bySale).filter(([s])=>rptSlSaleCuaDoi(rptSlType()).includes(s)||s==='(chưa gán)').sort((a,b)=>b[1].rev-a[1].rev||b[1].chot-a[1].chot);
 
-  const byKenh={};master.forEach(r=>{const k=rptKenhChuan(r.kenh,r.nguon);byKenh[k]=byKenh[k]||{n:0,chot:0,rev:0,goc:new Set()};byKenh[k].n++;if(r.isChot)byKenh[k].chot++;byKenh[k].rev+=tien(r);byKenh[k].goc.add(r.kenh||'(trống)');});
+  const byKenh={};master.forEach(r=>{const k=rptKenhChuan(r.kenh,r.nguon);byKenh[k]=byKenh[k]||{n:0,chot:0,rev:0,goc:new Set(),ds:[]};byKenh[k].n++;byKenh[k].ds.push(r);if(r.isChot)byKenh[k].chot++;byKenh[k].rev+=tien(r);byKenh[k].goc.add(r.kenh||'(trống)');});
   const kenhRows=Object.entries(byKenh).sort((a,b)=>b[1].n-a[1].n);
+  // bấm 1 dòng kênh -> danh sách khách của kênh đó (anh Hải 30/9/2026)
+  kenhRows.forEach(([k,v],i)=>L('ovKenh-'+i,{title:'Khách kênh '+k+' · '+num(v.n)+' khách',cols:custCols,rows:custRows(v.ds)}));
 
 
   const bar=(rows,total,fmt)=>rows.map(([k,v])=>{const n=typeof v==='object'?v.n:v;const p=total?n/total*100:0;
@@ -5397,7 +5399,7 @@ function rptSlOverviewHtml(){
       <div class="tbl-head"><div class="tbl-title">Hiệu quả theo kênh</div><div class="tbl-count">${num(kenhRows.length)}</div></div>
       <div class="tbl-scroll"><table>
         <thead><tr><th>Kênh</th><th>Khách</th><th>Đã chốt</th><th>Tỉ lệ chốt</th><th>Doanh thu</th></tr></thead>
-        <tbody>${kenhRows.map(([k,v])=>`<tr><td class="name" title="Gộp từ: ${[...v.goc].join(' · ').replace(/"/g,'&quot;')}">${k}</td><td class="num">${num(v.n)}</td><td class="num">${num(v.chot)}</td>
+        <tbody>${kenhRows.map(([k,v],i)=>`<tr onclick="rptSlShow('ovKenh-${i}')" style="cursor:pointer"><td class="name" title="Bấm để xem danh sách khách · gộp từ: ${[...v.goc].join(' · ').replace(/"/g,'&quot;')}">${k}</td><td class="num">${num(v.n)}</td><td class="num">${num(v.chot)}</td>
           <td class="num">${pct(v.n?v.chot/v.n*100:0)}</td>
           <td class="num" style="font-weight:800;color:${v.rev?'var(--green)':'inherit'}">${v.rev?vnd(v.rev):'—'}</td></tr>`).join('')}</tbody>
       </table></div>
