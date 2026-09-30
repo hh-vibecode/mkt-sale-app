@@ -63,6 +63,7 @@
 - **Admin / supreme xem HẾT dữ liệu**, chỉ bị chặn ở quyền vào trang / chức năng anh khoá riêng. Phạm vi Sale chỉ áp cho vị trí Sale / Manager.
 - **Phạm vi xem SỈ (anh chốt 30/9):** mọi tài khoản được xem Sỉ đều thấy HẾT data "Sale Kiot" (người tạo đơn Kiot không có trong Nhân sự Sale) + data chưa có Sale phụ trách; chỉ KHÔNG thấy data của Sale đội Sỉ trên app (hiện 3: Toàn, Huế, Minh Oanh) mà mình không được tick. Lẻ giữ luật cũ (khách trống chỉ hiện khi tick đủ Sale đội Lẻ). Hàm `dashSeeSale(tên, loại)`.
 - **Phạm vi xem theo Sale ĐÃ CHỐT** (gán tay > người tạo đơn Kiot > Pancake, sau luật chuyển đội), lọc SAU khi xác định Sale. Chỗ nào lọc theo tên thô (staff_name Pancake / tên gõ nhập tay) là SAI — dùng `rptSlSaleCuaDon` / `rptSlSaleCuaNhapTay`. Sửa phân quyền xong phải giả lập view từng tài khoản (khách phải thấy vs thực thấy).
+- **Đẩy bản mới xong phải báo anh F5** (anh chốt 30/9): đợi trang live hiện đúng `APP_VERSION` mới rồi mới báo, ghi rõ số bản.
 - **Commit (từ 25/9):** sửa xong thì tự pull → commit → push, không hỏi. Nhưng TRƯỚC MỖI COMMIT phải chạy `git diff --cached --stat`, chỉ có đúng file mình sửa mới commit (bài học sự cố 25/9).
 - **Đổi cấu trúc DB** (thêm cột/bảng, sửa luật): Claude **TỰ CHẠY** rồi báo lại, KHÔNG giao việc cho anh (anh chốt 25/9: "mắc gì tự làm được mà giao việc cho t"). Máy gốc chạy qua Management API (thẻ sbp_ trong supabase-keys.local.txt). Máy nào bị chặn thì mới nhờ anh, và phải nói rõ vì sao. Luôn lưu kèm file supabase-schema-*.sql để còn tra lại.
 

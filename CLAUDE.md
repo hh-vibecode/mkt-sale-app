@@ -17,6 +17,7 @@ Phiên chạy trên cloud và phiên trên máy KHÔNG đọc được hội tho
 - **Tự làm, không giao việc cho anh**: SQL, deploy, cấu hình làm được thì tự làm rồi báo. Lưu kèm `supabase-schema-*.sql`.
 - **Commit**: tự pull → commit → push, không hỏi. TRƯỚC mỗi commit chạy `git diff --cached --stat`, chỉ commit đúng file mình sửa.
   Sửa `index.html` thì đóng dấu phiên bản (`APP_VERSION`) trước khi commit.
+- **Đẩy bản mới lên `main` xong: đợi GitHub Pages deploy xong (trang live hiện đúng `APP_VERSION` mới) rồi BÁO ANH F5** (anh chốt 30/9).
 - Đổi logic báo cáo: chạy `node scripts/kiem-so-lieu.js` trước & sau; lệch > 5% mà đúng thì `--luu` chốt mốc mới + ghi lý do vào sổ.
 - Đọc bảng Supabase PHẢI phân trang (`limit/offset` hoặc `sbAll`) — `scripts/check-pagination.js` chạy trong CI sẽ chặn.
 - Job nặng: chỉ chạy khi dữ liệu đổi (`scripts/lib/gianh-moc.js` → `gianhKhiDoi`, hàm CSDL `job_dau_van`) hoặc theo khung giờ;
