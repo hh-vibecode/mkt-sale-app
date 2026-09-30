@@ -88,6 +88,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **30/09** — Báo cáo tổng hợp thêm tab **Tổng hợp** (đầu tiên): 3 thẻ tiền (tổng / Lẻ / Sỉ, bấm ra danh sách) + 3 thẻ số lượng (khách, đã chốt, tỉ lệ chốt chung) + bảng so sánh 2 đội (Online/Offline, mua lại, số đơn, TB/đơn, tiềm năng), theo Sale cả 2 đội, theo kênh chuẩn (cột Lẻ/Sỉ), khách chốt theo Tỉnh/TP. T9: Lẻ 211,43 + Sỉ 391,91 = 603,34tr (khớp 2 tab). Sự cố 30/9 ~13:57: gộp commit lọt dấu xung đột vào index.html, app trắng ~1–2 phút, đã sửa (bài học trong bộ nhớ máy + CLAUDE.md luật git).
+
 - **30/09** — Tài khoản **Sale Sỉ 1** (tick đủ 3 Sale Sỉ) KHÔNG thấy 45 khách Sỉ / ~3,6 tỷ do Sale Kiot giữ (Bùi Thị Kim Oanh 7, Sales Admin 11, Nguyễn Thị Chuyện 7, Phạm Kiều Minh 5…) + 10 khách trống. Nguyên nhân: `dashPhamViDayDu` đòi tick đủ Sale của CẢ 2 đội mới thấy khách không chủ, còn tên Sale Kiot thì không ai ngoài admin thấy. Sửa theo luật anh chốt (mục 3). Giả lập view: Sale Sỉ 1 thấy 1.305/1.305; tài khoản giả chỉ tick Toàn thấy 949 (của Toàn + 45 không chủ), chỉ tick Huế 87; Vân Ngọc / Chánh Tâm / Chị Oanh không đổi, sót 0 thừa 0. Số liệu admin không đổi.
 - **30/09** — **Kênh chuẩn** (`rptKenhChuan`) cho bảng "Hiệu quả theo kênh" (Sỉ + Lẻ): Online = nền tảng + page (Facebook Nến Bơ gộp vào Facebook Tự Tại Viên — cùng page; Hiền Thuỷ/Thủy gộp); Offline: Sales trực tiếp (gộp Bán trực tiếp / Gọi trực tiếp), Kênh thị trường (mọi kiểu "thị trường…"), Khách cũ giới thiệu, Khác; trống / "(nhập tay)" = Online/Offline chưa rõ kênh. Chỉ gom khi hiển thị, dữ liệu gốc giữ nguyên; rê chuột tên kênh thấy tên gốc đã gộp.
 

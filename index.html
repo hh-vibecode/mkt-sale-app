@@ -3372,7 +3372,73 @@ function rptSsHtml(){
     +ds.map(t=>'<th style="text-align:center;padding:12px 10px;font-size:11.5px;font-weight:800;letter-spacing:.03em;border-left:1px solid var(--border);min-width:150px">'+thangTen(t)+'</th>').join('')
     +'</tr></thead><tbody>'+nhom+'</tbody></table></div></div>';
 }
+// ── TAB "TỔNG HỢP" (anh Hải 30/9/2026): tổng quan CẢ 2 đội Sale Lẻ + Sỉ và các chỉ số chung của 2 bên ──
+// Dùng đúng dữ liệu của 2 tab Sale Lẻ / Sale Sỉ (rptSlPeriod theo bộ lọc 'tonghop'), doanh thu = đơn tính + đơn mua lại.
+function rptThTongHtml(){
+  const cu=window._rptSlType,cuK=window._kiotOrdByCode,d={};
+  try{['Lẻ','Sỉ'].forEach(t=>{window._rptSlType=t;window._kiotOrdByCode=null;d[t]=rptSlPeriod().filter(r=>rptHopBrand('tonghop',r));});}
+  finally{window._rptSlType=cu;window._kiotOrdByCode=cuK;}
+  const tien=r=>r.revenue+(r.repeatRevenue||0),soDon=r=>(r.kords||[]).length+(r.repeatOrds||[]).length;
+  const laOff=r=>/offline/i.test(r.nguon||'');
+  const tk=a=>{const chot=a.filter(r=>r.isChot),dt=a.reduce((x,r)=>x+tien(r),0),don=a.reduce((x,r)=>x+soDon(r),0),mo=a.filter(r=>!r.isChot);
+    return {khach:a.length,chot:chot.length,dt,don,on:a.filter(r=>!laOff(r)).reduce((x,r)=>x+tien(r),0),off:a.filter(laOff).reduce((x,r)=>x+tien(r),0),
+      muaLai:a.reduce((x,r)=>x+(r.repeatRevenue||0),0),tiemNang:mo.reduce((x,r)=>x+(r.potential||0),0),coDt:a.filter(r=>tien(r)>0)};};
+  const L_=tk(d['Lẻ']),S_=tk(d['Sỉ']),T_=tk(d['Lẻ'].concat(d['Sỉ']));
+  const tl=(c,k)=>k?pct(c/k*100):'—';
+  // danh sách bấm xem (khách có doanh thu), gắn đội
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const cols=['Đội','Ngày chốt','Mã','Họ tên','SĐT','Kênh','Sales','Tỉnh / TP','Doanh thu'];
+  const dong=(a,doi)=>a.slice().sort((x,y)=>tien(y)-tien(x)).map(r=>[doi,dmy(r.closeDate)||'—',e(r.kh||r.leadId),e(r.name),e(r.phone||''),e(rptKenhChuan(r.kenh,r.nguon)),rptSlSaleHien(r.staff),e(r.tinh&&r.tinh.moi||''),tien(r)?vnd(tien(r)):'—']);
+  window._rptSlLists=window._rptSlLists||{};
+  window._rptSlLists.thTong={title:'Khách có doanh thu (Lẻ + Sỉ) · '+vnd(T_.dt),cols,rows:dong(L_.coDt,'Lẻ').concat(dong(S_.coDt,'Sỉ'))};
+  window._rptSlLists.thLe={title:'Khách Lẻ có doanh thu · '+vnd(L_.dt),cols,rows:dong(L_.coDt,'Lẻ')};
+  window._rptSlLists.thSi={title:'Khách Sỉ có doanh thu · '+vnd(S_.dt),cols,rows:dong(S_.coDt,'Sỉ')};
+  const bam=(k,html)=>'<div onclick="rptSlShow(\''+k+'\')" style="cursor:pointer" title="Bấm để xem danh sách khách">'+html+'</div>';
+  const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px';
+  // bảng dùng chung
+  const bang=(tieuDe,dem,dau,hang)=>`<div class="tbl-card" style="margin-bottom:16px"><div class="tbl-head"><div class="tbl-title">${tieuDe}</div>${dem!==''?'<div class="tbl-count">'+dem+'</div>':''}</div>
+    <div class="tbl-scroll"><table><thead><tr>${dau.map((h,i)=>'<th'+(i?' class="num"':'')+'>'+h+'</th>').join('')}</tr></thead><tbody>${hang.join('')}</tbody></table></div></div>`;
+  const o=(v,b)=>'<td class="num"'+(b?' style="font-weight:800"':'')+'>'+v+'</td>';
+  // 1) so sánh 2 đội
+  const cs=[['Khách',x=>num(x.khach)],['Đã chốt',x=>num(x.chot)],['Tỉ lệ chốt',x=>tl(x.chot,x.khach)],['Doanh thu',x=>vnd(x.dt),1],
+    ['· Online',x=>vnd(x.on)],['· Offline',x=>vnd(x.off)],['· Trong đó mua lại',x=>vnd(x.muaLai)],['Số đơn đặt hàng',x=>num(x.don)],
+    ['Giá trị TB / đơn',x=>x.don?vnd(Math.round(x.dt/x.don)):'—'],['Giá trị TB / khách chốt',x=>x.chot?vnd(Math.round(x.dt/x.chot)):'—'],['Giá trị tiềm năng (chưa chốt)',x=>vnd(x.tiemNang)]];
+  const bSoSanh=bang('So sánh 2 đội','',['Chỉ số','Sale Lẻ','Sale Sỉ','Tổng'],cs.map(([t,f,b])=>'<tr><td class="name">'+t+'</td>'+o(f(L_),b)+o(f(S_),b)+o(f(T_),1)+'</tr>'));
+  // 2) theo Sale (cả 2 đội)
+  const bySale={};[['Lẻ',d['Lẻ']],['Sỉ',d['Sỉ']]].forEach(([doi,a])=>a.forEach(r=>{const k=(r.staff||'(chưa gán)')+'|'+doi;
+    const x=bySale[k]=bySale[k]||{ten:r.staff||'(chưa gán)',doi,n:0,chot:0,dt:0};x.n++;if(r.isChot)x.chot++;x.dt+=tien(r);}));
+  const sl=Object.values(bySale).sort((a,b)=>b.dt-a.dt||b.chot-a.chot);
+  const bSale=bang('Hiệu quả theo Sale (cả 2 đội)',num(sl.length),['Sales','Đội','Khách','Đã chốt','Tỉ lệ chốt','Doanh thu'],
+    sl.map(x=>'<tr><td class="name">'+rptSlSaleHien(x.ten==='(chưa gán)'?'':x.ten)+'</td><td class="num">'+x.doi+'</td>'+o(num(x.n))+o(num(x.chot))+o(tl(x.chot,x.n))+o(x.dt?vnd(x.dt):'—',1)+'</tr>'));
+  // 3) theo kênh chuẩn, tách cột Lẻ / Sỉ
+  const byK={};[['Lẻ',d['Lẻ']],['Sỉ',d['Sỉ']]].forEach(([doi,a])=>a.forEach(r=>{const k=rptKenhChuan(r.kenh,r.nguon);
+    const x=byK[k]=byK[k]||{n:0,chot:0,le:0,si:0};x.n++;if(r.isChot)x.chot++;x[doi==='Lẻ'?'le':'si']+=tien(r);}));
+  const kl=Object.entries(byK).sort((a,b)=>(b[1].le+b[1].si)-(a[1].le+a[1].si)||b[1].n-a[1].n);
+  const bKenh=bang('Hiệu quả theo kênh (cả 2 đội)',num(kl.length),['Kênh','Khách','Đã chốt','Tỉ lệ chốt','Doanh thu Lẻ','Doanh thu Sỉ','Tổng'],
+    kl.map(([k,x])=>'<tr><td class="name">'+e(k)+'</td>'+o(num(x.n))+o(num(x.chot))+o(tl(x.chot,x.n))+o(x.le?vnd(x.le):'—')+o(x.si?vnd(x.si):'—')+o(x.le+x.si?vnd(x.le+x.si):'—',1)+'</tr>'));
+  // 4) theo Tỉnh / TP (khách đã chốt)
+  const byT={};[['Lẻ',d['Lẻ']],['Sỉ',d['Sỉ']]].forEach(([doi,a])=>a.filter(r=>r.isChot).forEach(r=>{const k=(r.tinh&&r.tinh.moi)||'(chưa rõ)';
+    const x=byT[k]=byT[k]||{le:0,si:0,dt:0};x[doi==='Lẻ'?'le':'si']++;x.dt+=tien(r);}));
+  const tlst=Object.entries(byT).sort((a,b)=>b[1].dt-a[1].dt);
+  const bTinh=bang('Khách đã chốt theo Tỉnh / TP',num(tlst.length),['Tỉnh / TP','Khách Lẻ','Khách Sỉ','Doanh thu'],
+    tlst.map(([k,x])=>'<tr><td class="name">'+e(k)+'</td>'+o(num(x.le))+o(num(x.si))+o(x.dt?vnd(x.dt):'—',1)+'</tr>'));
+  return `
+    <div style="${g3}">
+      ${bam('thTong',mkKpi(ic('cash'),'Tổng doanh thu',vnd(T_.dt),num(T_.don)+' đơn đặt hàng Kiot · 2 đội','g-green'))}
+      ${bam('thLe',mkKpi(ic('cash'),'Doanh thu Sale Lẻ',vnd(L_.dt),tl(L_.dt,T_.dt)+' tổng · '+num(L_.don)+' đơn','g-teal'))}
+      ${bam('thSi',mkKpi(ic('cash'),'Doanh thu Sale Sỉ',vnd(S_.dt),tl(S_.dt,T_.dt)+' tổng · '+num(S_.don)+' đơn','g-blue'))}
+    </div>
+    <div style="${g3};margin-bottom:16px">
+      ${mkKpi(ic('users'),'Tổng khách',num(T_.khach),'Lẻ '+num(L_.khach)+' · Sỉ '+num(S_.khach),'g-purple')}
+      ${mkKpi(ic('check'),'Đã chốt',num(T_.chot),'Lẻ '+num(L_.chot)+' · Sỉ '+num(S_.chot),'g-green')}
+      ${mkKpi(ic('check'),'Tỉ lệ chốt chung',tl(T_.chot,T_.khach),'Lẻ '+tl(L_.chot,L_.khach)+' · Sỉ '+tl(S_.chot,S_.khach),'g-orange')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">
+      <div>${bSoSanh}${bTinh}</div><div>${bSale}${bKenh}</div>
+    </div>`;
+}
 const RPT_TH_TABS=[
+  ['tong-hop','Tổng hợp',()=>rptThTongHtml()],
   ['sale-le','Sale Lẻ',()=>{window._rptSlType='Lẻ';return rptSlOverviewHtml();}],
   ['sale-si','Sale Sỉ',()=>{window._rptSlType='Sỉ';return rptSlOverviewHtml();}],
   ['so-sanh','So sánh tháng',()=>rptSsHtml()],
@@ -4897,7 +4963,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='30/09 13:55';
+const APP_VERSION='30/09 13:59';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
