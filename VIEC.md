@@ -88,7 +88,11 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+<<<<<<< HEAD
 - **30/09** — Tài khoản **Sale Sỉ 1** (tick đủ 3 Sale Sỉ) KHÔNG thấy 45 khách Sỉ / ~3,6 tỷ do Sale Kiot giữ (Bùi Thị Kim Oanh 7, Sales Admin 11, Nguyễn Thị Chuyện 7, Phạm Kiều Minh 5…) + 10 khách trống. Nguyên nhân: `dashPhamViDayDu` đòi tick đủ Sale của CẢ 2 đội mới thấy khách không chủ, còn tên Sale Kiot thì không ai ngoài admin thấy. Sửa theo luật anh chốt (mục 3). Giả lập view: Sale Sỉ 1 thấy 1.305/1.305; tài khoản giả chỉ tick Toàn thấy 949 (của Toàn + 45 không chủ), chỉ tick Huế 87; Vân Ngọc / Chánh Tâm / Chị Oanh không đổi, sót 0 thừa 0. Số liệu admin không đổi.
+=======
+- **30/09** — **Kênh chuẩn** (`rptKenhChuan`) cho bảng "Hiệu quả theo kênh" (Sỉ + Lẻ): Online = nền tảng + page (Facebook Nến Bơ gộp vào Facebook Tự Tại Viên — cùng page; Hiền Thuỷ/Thủy gộp); Offline: Sales trực tiếp (gộp Bán trực tiếp / Gọi trực tiếp), Kênh thị trường (mọi kiểu "thị trường…"), Khách cũ giới thiệu, Khác; trống / "(nhập tay)" = Online/Offline chưa rõ kênh. Chỉ gom khi hiển thị, dữ liệu gốc giữ nguyên; rê chuột tên kênh thấy tên gốc đã gộp.
+>>>>>>> cd61f14 (Hieu qua theo kenh: gom ten kenh ve bo kenh chuan (Sales truc tiep, Kenh thi truong, Facebook + page...); VIEC.md)
 
 - **29/09** — Soạn `QUY-UOC-DUNG-CHUNG-SUPABASE.md`: quy ước cho MỌI app dùng chung project Supabase (sổ đăng ký tiền tố, bảng nào của ai, chỉ THÊM trên bảng dùng chung, khoá riêng mỗi app, tài nguyên chung, lịch chạy, checklist mở app mới). Anh dùng cho các luồng mới + gửi phiên QC.
 

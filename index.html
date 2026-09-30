@@ -4897,7 +4897,11 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
+<<<<<<< HEAD
 const APP_VERSION='30/09 10:39';
+=======
+const APP_VERSION='30/09 13:55';
+>>>>>>> cd61f14 (Hieu qua theo kenh: gom ten kenh ve bo kenh chuan (Sales truc tiep, Kenh thi truong, Facebook + page...); VIEC.md)
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5103,7 +5107,7 @@ function rptSlOverviewHtml(){
   master.forEach(r=>{const s=r.staff||'(chưa gán)';bySale[s]=bySale[s]||{data:0,chot:0,rev:0,noi:0};bySale[s].data++;if(r.isChot)bySale[s].chot++;if(r.kh)bySale[s].noi++;bySale[s].rev+=tien(r);});
   const saleRows=Object.entries(bySale).filter(([s])=>rptSlSaleCuaDoi(rptSlType()).includes(s)||s==='(chưa gán)').sort((a,b)=>b[1].rev-a[1].rev||b[1].chot-a[1].chot);
 
-  const byKenh={};master.forEach(r=>{const k=r.kenh||'(không rõ)';byKenh[k]=byKenh[k]||{n:0,chot:0,rev:0};byKenh[k].n++;if(r.isChot)byKenh[k].chot++;byKenh[k].rev+=tien(r);});
+  const byKenh={};master.forEach(r=>{const k=rptKenhChuan(r.kenh,r.nguon);byKenh[k]=byKenh[k]||{n:0,chot:0,rev:0,goc:new Set()};byKenh[k].n++;if(r.isChot)byKenh[k].chot++;byKenh[k].rev+=tien(r);byKenh[k].goc.add(r.kenh||'(trống)');});
   const kenhRows=Object.entries(byKenh).sort((a,b)=>b[1].n-a[1].n);
 
 
@@ -5212,7 +5216,7 @@ function rptSlOverviewHtml(){
       <div class="tbl-head"><div class="tbl-title">Hiệu quả theo kênh</div><div class="tbl-count">${num(kenhRows.length)}</div></div>
       <div class="tbl-scroll"><table>
         <thead><tr><th>Kênh</th><th>Khách</th><th>Đã chốt</th><th>Tỉ lệ chốt</th><th>Doanh thu</th></tr></thead>
-        <tbody>${kenhRows.map(([k,v])=>`<tr><td class="name">${k}</td><td class="num">${num(v.n)}</td><td class="num">${num(v.chot)}</td>
+        <tbody>${kenhRows.map(([k,v])=>`<tr><td class="name" title="Gộp từ: ${[...v.goc].join(' · ').replace(/"/g,'&quot;')}">${k}</td><td class="num">${num(v.n)}</td><td class="num">${num(v.chot)}</td>
           <td class="num">${pct(v.n?v.chot/v.n*100:0)}</td>
           <td class="num" style="font-weight:800;color:${v.rev?'var(--green)':'inherit'}">${v.rev?vnd(v.rev):'—'}</td></tr>`).join('')}</tbody>
       </table></div>
@@ -5335,6 +5339,24 @@ function rptSlTinhHtml(r){
   const e=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const cu=x.cu&&x.cu!==x.moi?' <span style="color:var(--muted);font-weight:600">('+e(x.cu)+' cũ)</span>':'';
   return e(x.moi)+cu+' <span title="'+e(x.nguon+': '+x.ly)+'" style="font-size:10.5px;color:var(--muted);font-weight:700;cursor:help">· '+e(x.nguon)+'</span>';
+}
+// ── KÊNH CHUẨN (anh Hải 30/9/2026: bảng "Hiệu quả theo kênh" lộn xộn) ──────────────────────────────────────
+// Dữ liệu vào từ 3 nguồn ghi 3 kiểu (Kiot "Bán trực tiếp" / "Kênh Thị Trường", Sale gõ tay "Sales trực tiếp" /
+// "Thị trường mr Trung pass sđt qua", Pancake tên page) -> gom khi HIỂN THỊ, dữ liệu gốc giữ nguyên.
+// Online = [nền tảng] + [page]; "Facebook Nến Bơ" = "Facebook Tự Tại Viên" (cùng 1 page 100667699549693).
+function rptKenhChuan(kenh,nguon){
+  const t=String(kenh||'').trim(),k=rptTinhBo(t);
+  if(!t||/^ nhap tay $/.test(k))return /offline/i.test(nguon||'')?'Offline chưa rõ kênh':'Online chưa rõ kênh';   // '(nhập tay)' = dòng nhập tay không ghi kênh
+  if(/ shopee /.test(k))return 'Shopee';
+  const nen=/ (tiktok|tik tok) /.test(k)?'TikTok':/ (website|web) /.test(k)?'Website':/ zalo /.test(k)?'Zalo':/ (facebook|fb|messenger) /.test(k)?'Facebook':'';
+  const page=/ (shidai|thoi dai) /.test(k)?'Shidai':/ (tu tai vien|nen bo) /.test(k)?'Tự Tại Viên':/ chanh tam /.test(k)?'Chánh Tâm'
+    :/ hien thuy /.test(k)?'Hiền Thủy':/ (hoang duong|ming ying) /.test(k)?'Hoàng Dương':'';
+  if(nen)return nen+(page?' '+page:nen==='Zalo'?'':' (chưa rõ page)');
+  if(/ (truc tiep|sales|sale|ban hang|goi dien) /.test(k))return 'Sales trực tiếp';
+  if(/ thi truong /.test(k))return 'Kênh thị trường';
+  if(/ (gioi thieu|khach cu) /.test(k))return 'Khách cũ giới thiệu';
+  if(/^ khac $/.test(k))return 'Khác';
+  return t;
 }
 function rptSlShow(key){const d=(window._rptSlLists||{})[key];if(!d)return;if(typeof d.lam==='function')return d.lam();dataModal(d);}
 // Popup "Khách từ quảng cáo" ở báo cáo MKT: kèm PHIẾU MUA (đơn đặt hàng Kiot) + mặt hàng từng phiếu để xem
