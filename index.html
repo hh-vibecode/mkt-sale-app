@@ -3989,7 +3989,7 @@ function saleNhanSuDS(){
   return _saleNhanSuMay;
 }
 // Đội LẺ (Pancake / 2 cửa hàng đồ thờ)
-const RPT_SL_SALE_LE=['Nguyễn Thảo Ngọc','Vân Ngọc','Chánh Tâm Ngọc Diệp','Phạm Thị Lệ'];
+const RPT_SL_SALE_LE=['Nguyễn Thảo Ngọc','Trịnh Lê Vân Ngọc','Đinh Ngọc Diệp','Phạm Thị Lệ'];   // dự phòng khi chưa tải Nhân sự Sale — đúng tên chuẩn
 // Đội SỈ = người thật sự tạo đơn ở chi nhánh Tổng kho sỉ, còn hoạt động trong 2026.
 // Gắn ĐỦ ở đây để Sale không phải gõ tay tên mình (Sale báo 24/9/2026: 'sales không tìm thấy tên mình').
 const RPT_SL_SALE_DOI_SI=['Nguyễn Thị Huế','Nguyễn Hữu Toàn','Nguyễn Thị Chuyện','Vũ Thanh Bình',
@@ -4171,18 +4171,21 @@ function rptSlSalesTrongData(){
   try{const c=JSON.parse(localStorage.getItem('dashSalesList')||'[]');if(c.length)return c;}catch(e){}
   return[];
 }
-// BÍ DANH: cùng một người nhưng Pancake và Kiot ghi tên khác nhau -> quy về MỘT tên chuẩn (tên Pancake),
+// BÍ DANH: cùng một người nhưng Pancake và Kiot ghi tên khác nhau -> quy về MỘT tên chuẩn (tên trong Nhân sự Sale),
 // nếu không thì báo cáo tách thành 2 dòng và phân quyền dữ liệu theo tên sẽ hụt data của họ.
-//   Kiot "Đinh Thị Ngọc Diệp"  = Pancake "Chánh Tâm Ngọc Diệp"
-//   Kiot "Trịnh Lê Vân Ngọc"   = Pancake "Vân Ngọc"
 // Thêm người mới bị lệch tên thì bổ sung 1 dòng vào đây.
 // Chỉ gộp các CÁCH VIẾT KHÁC NHAU CỦA CÙNG MỘT NGƯỜI trong data của mình (Pancake + dòng nhập tay),
 // để báo cáo không tách 1 người thành 2 dòng. Không liên quan tới tên bên Kiot.
+// Tên CHUẨN = tên trong Nhân sự Sale / Phân quyền (anh Hải 30/9/2026): Pancake "Vân Ngọc" và Kiot "Trịnh Lê Vân Ngọc"
+// là 1 người; Pancake "Chánh Tâm Ngọc Diệp" và Kiot "Đinh Thị Ngọc Diệp" = Đinh Ngọc Diệp. (Trước đây quy ngược về
+// tên Pancake nên mỗi người bị tách 2 tên, tài khoản Sale không thấy phần khách mang tên kia.)
 const RPT_SL_SALE_ALIAS={
-  'trịnh lê vân ngọc':'Vân Ngọc',
-  'nguyễn vân ngọc':'Vân Ngọc',
+  'vân ngọc':'Trịnh Lê Vân Ngọc',
+  'nguyễn vân ngọc':'Trịnh Lê Vân Ngọc',
   'thảo ngọc':'Nguyễn Thảo Ngọc',
-  'ngọc diệp':'Chánh Tâm Ngọc Diệp',
+  'ngọc diệp':'Đinh Ngọc Diệp',
+  'chánh tâm ngọc diệp':'Đinh Ngọc Diệp',
+  'đinh thị ngọc diệp':'Đinh Ngọc Diệp',
 };
 // TỰ QUY TÊN VỀ ĐÚNG TÊN TRONG PHÂN QUYỀN > NHÂN SỰ SALE (anh Hải 25/9/2026): tên kéo từ Pancake/Kiot
 // hay lệch 1-2 chữ so với tên Sale khai ở Phân quyền (Pancake "Nguyễn Vân Ngọc" = Phân quyền "Vân Ngọc").
@@ -5027,7 +5030,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='30/09 14:33';
+const APP_VERSION='30/09 14:37';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
