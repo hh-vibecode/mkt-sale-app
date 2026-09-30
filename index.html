@@ -4690,6 +4690,40 @@ function rptSiOSua(r){
   // muốn đổi thì thêm/sửa lượt chăm sóc ở tab Lịch sử chăm sóc (anh Hải 25/9/2026).
   return o;
 }
+// Ô sửa được của 1 khách LẺ -- chế độ sửa trong hồ sơ giống hệt Sỉ (anh Hải 30/9/2026). Cùng quy ước noi/cot.
+function rptLeOSua(r){
+  const mn=rptSlManual[r.leadId]||{};
+  const tay=r.isManual&&/^M\d+$/.test(r.key);
+  const dhm=tay?((typeof dhManual!=='undefined'?dhManual:[]).find(x=>'M'+x.id===r.key)||{}):null;
+  const o={};
+  if(tay){
+    o.ten={kieu:'text',gt:dhm.customer_name||'',noi:'dhm',cot:'customer_name'};
+    o.ngay_tao={kieu:'date',gt:String(dhm.created_date||'').slice(0,10),noi:'dhm',cot:'created_date'};
+    o.nguon={kieu:'chon',ds:['Online','Offline'],gt:dhm.nguon||'',noi:'dhm',cot:'nguon'};
+    o.kenh={kieu:'chon',ds:DH_MANUAL_KENH,gt:dhm.kenh||'',noi:'dhm',cot:'kenh'};
+    o.sdt={kieu:'text',gt:dhm.phone||'',noi:'dhm',cot:'phone'};
+    o.ma_kh={kieu:'text',gt:dhm.kiot_code||'',noi:'dhm',cot:'kiot_code'};
+  }else{
+    o.ten={kieu:'text',gt:r.name||'',noi:'mn',cot:'ten_sua'};
+    o.sdt={kieu:'text',gt:mn.si_sdt||'',noi:'mn',cot:'si_sdt'};
+    o.kenh={kieu:'chon',ds:DH_MANUAL_KENH,gt:r.kenh||'',noi:'mn',cot:'kenh_sua',rong:'— (theo Pancake)'};
+    o.nguon={kieu:'chon',ds:['Online','Offline'],gt:r.nguon||'',noi:'mn',cot:'nguon_sua',rong:'— (theo Pancake)'};
+    if(!r.kh)o.ma_kh={kieu:'text',gt:'',noi:'kh'};
+  }
+  if(dashToanQuyen()){
+    const ds=saleNhanSuDS().filter(x=>x.doi==='Lẻ'&&x.dang_lam!==false).map(x=>x.ten);
+    o.sale={kieu:'chon',ds,gt:r.staff||'',noi:'mn',cot:'si_sale'};
+  }
+  o.si_tinh={kieu:'chon',ds:RPT_TINH_34,gt:mn.si_tinh||'',noi:'mn',cot:'si_tinh',rong:'— (để app tự suy)'};
+  o.dia_chi={kieu:'text',gt:mn.si_dia_chi||r.diaChi||'',noi:'mn',cot:'si_dia_chi'};
+  // noi 'tt': chọn "Chốt đơn" đi đúng quy trình chốt (hỏi Mã KH, ghi Pancake) như dropdown ở CRM, không ghi chữ vào bảng tay
+  if(!r.isChot)o.trang_thai={kieu:'chon',ds:RPT_SL_STATUS_OPTS,gt:r.manualStatus||'',noi:'tt',cot:'status'};
+  if(!r.careAuto)o.care_date={kieu:'date',gt:String(r.careDate||'').slice(0,10),noi:'mn',cot:'care_date'};
+  if(!r.isChot)o.tiem_nang={kieu:'tien',gt:r.potential?num(r.potential):'',noi:'mn',cot:'potential_value'};
+  o.content={kieu:'dai',gt:r.content||'',noi:'mn',cot:'content'};
+  return o;
+}
+function rptSlOSua(r){return rptSlType()==='Sỉ'?rptSiOSua(r):rptLeOSua(r);}
 function rptSiHuyO(){rptSlShowCustomer(window._rptSlCusKey,false);}
 // Ô sửa trong CHẾ ĐỘ SỬA: mở sẵn, viền sáng, không nút riêng -- Enter = Lưu tất cả (ô dài thì Ctrl+Enter), Esc = Huỷ.
 function rptSiONhap(k,o){
@@ -4711,17 +4745,18 @@ function rptSiONhap(k,o){
 // LƯU TẤT CẢ ô đã đổi trong chế độ sửa. Kiểm lỗi hết trước rồi mới ghi, để không lưu dở dang nửa chừng.
 async function rptSiLuuTatCa(){
   const r=rptSlBuildMaster().find(x=>x.key===window._rptSlCusKey);if(!r)return;
-  const ds=rptSiOSua(r),msg=document.getElementById('siO_msg'),nut=document.getElementById('siO_luu');
+  const ds=rptSlOSua(r),msg=document.getElementById('siO_msg'),nut=document.getElementById('siO_luu');
   const bao=t=>{if(msg)msg.innerHTML='<span style="color:var(--red)">'+t+'</span>';};
   const doi={};
   Object.keys(ds).forEach(k=>{const el=document.getElementById('siO_'+k);if(!el)return;
     const v=String(el.value||'').trim();if(v!==String(ds[k].gt||'').trim())doi[k]=v;});
   if(!Object.keys(doi).length)return rptSiHuyO();                  // không đổi gì
   // 1) kiểm lỗi
-  const dhm={},mn={};let pl=null,kh=null;
+  const dhm={},mn={};let pl=null,kh=null,chotLe=false;
   for(const k of Object.keys(doi)){
     const o=ds[k],v=doi[k];
     if(o.noi==='pl'){pl=v;continue;}
+    if(o.noi==='tt'){if(v==='Chốt đơn')chotLe=true;else mn.status=v||null;continue;}
     if(o.noi==='kh'){const ma=rptSiChuanMa(v);
       if(!ma)return bao('Mã KH không đúng dạng. Ví dụ đúng: KH007620');
       if(!kiotCustByCode()[ma])return bao('Bên Kiot không có mã '+ma);kh=ma;continue;}
@@ -4729,7 +4764,7 @@ async function rptSiLuuTatCa(){
       if(o.cot==='customer_name'&&!gt)return bao('Chưa có tên khách');
       if(o.cot==='kiot_code'&&gt){gt=rptSiChuanMa(gt);if(!gt)return bao('Mã KH không đúng dạng. Ví dụ đúng: KH007620');
         if(!kiotCustByCode()[gt])return bao('Bên Kiot không có mã '+gt);}
-      dhm[o.cot]=gt;if(o.cot==='kenh')dhm.brand=dhManualBrand(gt||'','Sỉ');continue;}
+      dhm[o.cot]=gt;if(o.cot==='kenh')dhm.brand=dhManualBrand(gt||'',rptSlType());continue;}
     let gt=v||null;
     if(o.kieu==='tien'){const n=rptSlParseMoney(v);if(isNaN(n))return bao('Không hiểu số tiền (vd 15tr, 500k, 15.000.000)');gt=n||null;}
     if(o.cot==='si_sale')gt=v;   // '' = để trống / thu hồi (null thì app lại tự suy người tạo đơn Kiot)
@@ -4755,6 +4790,7 @@ async function rptSiLuuTatCa(){
     if(pl!==null)await rptSiSetPhanLoai(r.leadId,pl,null);
     // Mã KH của khách Pancake: dán vào ghi chú đơn, chạy ngầm như tab Nhập Liệu
     if(kh){qcCloseModal();await rptSlSaveKH(r.leadId,kh,null,false);return;}
+    if(chotLe){qcCloseModal();await rptSlChotFlow(r.leadId,null);return;}
     if(vaoChot)return;
     rptSlRender();
     const r2=rptSlBuildMaster().find(x=>x.leadId===r.leadId)||rptSlBuildMaster().find(x=>x.key===r.key);
@@ -4999,7 +5035,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='30/09 15:05';
+const APP_VERSION='30/09 15:40';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6102,6 +6138,12 @@ function rptSlBuildMasterRaw(){
   // NGUỒN KHÁCH chọn tay (saleretail_manual.nguon_sua: Online / Offline) đè nguồn Pancake -- đặt TRƯỚC bước
   // tách mua lại (khongCat) vì nguồn quyết định đơn nào còn tính cho Sale (30/9/2026)
   rows.forEach(r=>{const ng=String((rptSlManual[r.leadId]||{}).nguon_sua||'').trim();if(ng)r.nguon=ng;});
+  // LẺ: SĐT / địa chỉ Sale ghi ở chế độ sửa hồ sơ (cùng cột si_sdt / si_dia_chi với Sỉ, 30/9/2026)
+  if(rptSlType()!=='Sỉ')rows.forEach(r=>{const mn=rptSlManual[r.leadId]||{};
+    if(mn.si_sdt){const k9=rptSlLast9(mn.si_sdt);
+      r.phones=[{so:String(mn.si_sdt).trim(),tuKiot:false}].concat((r.phones||[]).filter(p=>rptSlLast9(p.so)!==k9));
+      if(!r.phone)r.phone=String(mn.si_sdt).trim();}
+    if(String(mn.si_dia_chi||'').trim())r.diaChi=String(mn.si_dia_chi).trim();});
   if(rptSlType()!=='Sỉ'){
     // LẺ: Sale gán ở tab Gán data (hoặc thu hồi về trống) ưu tiên hơn người phụ trách bên Pancake
     rows.forEach(r=>{const gan=rptSlSaleGanTayDong(r);if(gan!==null)r.staff=gan;rptSlChuyenDoi(r);});
@@ -6887,12 +6929,13 @@ function rptSlShowCustomer(key,sua){
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   // CHẾ ĐỘ SỬA (anh Hải 25/9/2026): bấm Sửa là MỌI ô sửa được mở sẵn thành ô nhập / dropdown sáng lên,
   // không bút chì; điền xong bấm Lưu 1 lần trên thanh sửa. Ô số liệu tự tính ẩn hết cho gọn.
-  const suaSi=rptSlType()==='Sỉ'&&!!window._rptSiSua;
-  const dsSua=suaSi?rptSiOSua(r):{};
+  // (tên biến giữ suaSi cho gọn diff, nhưng từ 30/9/2026 áp cho CẢ Lẻ -- anh Hải: "sửa hết trường y như bên Sỉ")
+  const suaSi=!!window._rptSiSua;
+  const dsSua=suaSi?rptSlOSua(r):{};
   const fld=(label,val,color,k)=>suaSi&&!(k&&dsSua[k])?''
     :suaSi
     ?`<div style="min-width:0;${dsSua[k].kieu==='dai'?'grid-column:1/-1':''}">
-    <div style="font-size:10.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">${label}${dmBut({si_phan_loai:'si_phan_loai',si_mo_hinh:'si_mo_hinh',si_tai_chinh:'si_tai_chinh',si_nhom_kh:'si_nhom_kh',si_sp_quan_tam:'si_sp_quan_tam',kenh:'kenh_nhap_tay',sale:'sale_si'}[k]||'')}</div>${rptSiONhap(k,dsSua[k])}</div>`
+    <div style="font-size:10.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">${label}${dmBut({si_phan_loai:'si_phan_loai',si_mo_hinh:'si_mo_hinh',si_tai_chinh:'si_tai_chinh',si_nhom_kh:'si_nhom_kh',si_sp_quan_tam:'si_sp_quan_tam',kenh:'kenh_nhap_tay',sale:rptSlType()==='Sỉ'?'sale_si':'sale_le',trang_thai:'le_trang_thai'}[k]||'')}</div>${rptSiONhap(k,dsSua[k])}</div>`
     :`<div style="min-width:0">
     <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${label}</div>
     <div style="font-size:12.5px;font-weight:700;margin-top:3px;color:${color||'var(--text)'};word-break:break-word">${val||'<span style="color:var(--muted);font-weight:600">—</span>'}</div></div>`;
@@ -6907,12 +6950,12 @@ function rptSlShowCustomer(key,sua){
     fld('Nguồn khách',esc(r.nguon||(r.sh||{}).nguon),'','nguon'),
     fld('Kênh',esc(r.kenh||(r.sh||{}).kenh),'','kenh'),
     fld('Mã KH Kiot',r.kh?rptSlKiotLink(r.kh,'<code>'+esc(r.kh)+'</code> ↗'):'','','ma_kh'),
-    ...(laSi?[
+    ...(laSi||suaSi?[
       fld('Ngày tạo',esc(dmy(rptSlNgayTao(r))),'','ngay_tao'),
       fld('Sales phụ trách',rptSlSaleHien(r.staff)+(rptSlType()==='Sỉ'&&r.staff&&!rptSlSaleCuaDoi('Sỉ').includes(r.staff)?' <span style="color:var(--muted);font-weight:600;font-size:11px">('+esc(r.staff)+')</span>':''),'','sale'),
     ]:[]),
     ...(laSi?[]:[fld('Nối bằng',linkTxt)]),   // Sỉ bỏ Nối bằng · Số đơn Pancake · Hội thoại (anh Hải 25/9/2026)
-    fld('Trạng thái',esc(r.status),RPT_SL_STATUS_COLOR[r.status]),
+    fld('Trạng thái',esc(r.status),RPT_SL_STATUS_COLOR[r.status],'trang_thai'),
     fld('Brand',esc(DH_BRAND_LABEL[r.brand]||r.brand)),
     ...(laSi?[]:[fld('Số đơn Pancake',num(r.orders.length))]),
     fld('Số đơn đặt hàng Kiot',num(r.kords.length)),
@@ -6952,11 +6995,12 @@ function rptSlShowCustomer(key,sua){
     fld('Ad ID',(()=>{const id=r.adId||(r.sh||{}).ad_id;if(!id)return'';
       return adIdNote(id)+(r.adSuyRa?' <span style="font-size:10.5px;color:var(--yellow);font-weight:700" title="Không có Ad ID sẵn — app suy ra bằng cách so SĐT '+esc(r.adSuyRaSdt||'')+' với đơn Pancake có gắn ads">· suy từ SĐT</span>':'');})()),
     fld('Ngày chưa liên hệ',r.daysIdle===null?'':num(r.daysIdle)+' ngày',r.isChot&&r.daysIdle>=10?'var(--red)':''),
-    ...(laSi?[]:[fld('Địa chỉ',esc(r.diaChi))]),
+    ...(laSi?[]:[fld('Địa chỉ',esc(r.diaChi),'','dia_chi')]),
     // Phần CHĂM SÓC -- trước đây modal chỉ có thông tin đơn/khách, thiếu hẳn thứ Sale ghi hằng ngày.
     // Sỉ: lấy từ lượt chăm sóc gần nhất (tab Lịch sử chăm sóc), chưa có lượt nào thì mới dùng số cũ
-    fld('Ngày chăm sóc',esc(dmy(laSi?(r.siCSCuoi||(r.sh||{}).ngay_cham_cuoi||r.careDate):r.careDate))),
+    fld('Ngày chăm sóc',esc(dmy(laSi?(r.siCSCuoi||(r.sh||{}).ngay_cham_cuoi||r.careDate):r.careDate)),'','care_date'),
     fld('Giá trị tiềm năng',r.isChot?'':(r.potential?vnd(r.potential):''),r.potential?'var(--orange,#f97316)':'','tiem_nang'),
+    ...(suaSi?[fld('Nội dung trao đổi','','','content')]:[]),   // Lẻ sửa nội dung ngay trong hồ sơ (Sỉ không có ô này)
   ].join('')+(!suaSi&&rptSlNguonGon(r).length>1?`<div style="grid-column:1/-1">
     <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px">Nguồn liên hệ · ${rptSlNguonGon(r).length} nguồn (cùng 1 khách)</div>
     <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted);font-size:10.5px;text-align:left"><th style="padding:4px 8px">Ngày</th><th style="padding:4px 8px">Page / kênh</th><th style="padding:4px 8px">SĐT</th><th style="padding:4px 8px">Lead ID</th></tr></thead><tbody>
@@ -6997,11 +7041,11 @@ function rptSlShowCustomer(key,sua){
   const nutTab=(ma,nhan)=>{const on=ma==='cs'?tabCs:ma==='gc'?tabGc:(!tabCs&&!tabGc);
     return `<button onclick="rptSlCusTab('${ma}')" style="border:none;background:transparent;cursor:pointer;font-family:var(--font);font-size:12.5px;font-weight:800;padding:9px 14px;color:${on?'var(--accent)':'var(--muted)'};border-bottom:2.5px solid ${on?'var(--accent)':'transparent'}">${nhan}</button>`;};
   // NÚT SỬA / XOÁ nằm trên đầu hồ sơ, cùng hàng tên khách (anh Hải 25/9/2026) -- cuối hàng Master không còn nút Sửa.
-  // Sỉ: Sửa = bật chế độ sửa (bút chì từng ô) · Lẻ: Sửa = popup sửa thông tin chăm sóc (khách đã chốt thì khoá).
+  // Sửa = bật chế độ sửa ngay trong hồ sơ, mọi ô sửa được mở sẵn -- Sỉ và Lẻ như nhau (Lẻ từ 30/9/2026).
   // Xoá chỉ có ở khách nhập tay / tự tạo (M-...): khách Pancake xoá ở đây cũng sẽ tự vào lại. Xoá hỏi xác nhận 2 lần.
   const nutDau=[
     laSi?(suaSi?'':'<button onclick="rptSlShowCustomer('+q+String(key).replace(/'/g,'')+q+',true)" class="btn-ghost" style="margin:0;height:30px;padding:0 14px;font-size:12px;font-weight:800;color:var(--accent);border:1.5px solid var(--accent)">Sửa</button>')
-      :('<button onclick="rptSlEditRow('+q+r.leadId+q+(r.isChot?',true':'')+')" class="btn-ghost" style="margin:0;height:30px;padding:0 14px;font-size:12px;font-weight:800;color:var(--accent);border:1.5px solid var(--accent)">Sửa</button>'),
+      :(suaSi?'':'<button onclick="rptSlShowCustomer('+q+String(key).replace(/'/g,'')+q+',true)" class="btn-ghost" style="margin:0;height:30px;padding:0 14px;font-size:12px;font-weight:800;color:var(--accent);border:1.5px solid var(--accent)">Sửa</button>'),
     /^M-[0-9]+$/.test(r.leadId)?'<button onclick="rptSiXoaKhach('+q+r.leadId+q+')" class="btn-ghost" style="margin:0;height:30px;padding:0 14px;font-size:12px;font-weight:800;color:var(--red);border:1.5px solid var(--red)">Xoá</button>':''
   ].join('');
   let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
@@ -7832,10 +7876,11 @@ function rptSlCrmHtmlRaw(){
   const pen=r=>r.isChot?'':`<button onclick="rptSlStop(event);rptSlEditRow('${r.leadId}')" title="Sửa thông tin chăm sóc"
     style="flex:0 0 auto;border:none;background:transparent;cursor:pointer;font-size:11px;padding:2px 3px;border-radius:5px;opacity:.55" onmouseover="this.style.opacity=1;this.style.background='var(--bg2)'" onmouseout="this.style.opacity=.55;this.style.background='transparent'">✏️</button>`;
   const lockRO=(html,full,r)=>`<td ondblclick="rptSlStop(event);rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')"
-    title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm đúp để xem hồ sơ đầy đủ)" style="cursor:default">${html}</td>`;
+    title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm để xem hồ sơ đầy đủ)" style="cursor:pointer">${html}</td>`;
   const lock=(html,full,r,right)=>`<td ondblclick="rptSlStop(event);rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')"
-    title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm đúp để xem hồ sơ đầy đủ)" style="cursor:default"><div style="display:flex;align-items:center;gap:4px;justify-content:${right?'flex-end':'space-between'}">${html}${pen(r)}</div></td>`;
-  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>{return `<tr>
+    title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm để xem hồ sơ đầy đủ)" style="cursor:pointer"><div style="display:flex;align-items:center;gap:4px;justify-content:${right?'flex-end':'space-between'}">${html}${pen(r)}</div></td>`;
+  // bấm 1 lần vào dòng = mở hồ sơ (popup) như Sỉ (anh Hải 30/9/2026); ô chọn / nút trong dòng tự chặn nổi lên
+  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>{return `<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
     ${(r.careAuto?lockRO:lock)((dmy(r.careDate)||'<span style="color:var(--muted)">—</span>')+rptSlNhanCu(r.careDate,'ngoài kỳ'),
       r.careAuto?(r.careAutoNhan||'Ngày tạo đơn Pancake đầu tiên')+' — app tự lấy vì chưa ai điền; sửa bằng nút ✏️ trên dòng':dmy(r.careDate),r)}
     <td>${rptSlSrcBadge(r)}</td>
