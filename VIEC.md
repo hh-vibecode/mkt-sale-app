@@ -7,7 +7,7 @@
 > "MKT Dev") và phiên trên máy KHÔNG đọc được hội thoại của nhau — sổ này + `CLAUDE.md` + lịch sử commit là thứ DUY NHẤT nối các phiên.
 > Việc gì làm xong / anh chốt gì / đang dở gì / chờ anh gì: ghi vào sổ, commit + push NGAY TRONG PHIÊN, đừng để cuối.
 > Đầu phiên: `git pull` rồi mới đọc sổ (phiên kia có thể vừa đẩy bản mới). Phiên cloud hay làm trên nhánh `claude/...` → xong phải gộp vào `main` (app chạy từ `main`).
-> Cập nhật lần cuối: 29/09/2026. Luồng Sale/MKT anh đánh giá xong ~90%; anh chuyển sang xây luồng QC CSKH (chat mới). Việc #18 / 18-KS (khách để SĐT trong hội thoại) ĐÃ XONG 28/9 — xem nhật ký 28/9.
+> Cập nhật lần cuối: 30/09/2026. Luồng Sale/MKT anh đánh giá xong ~90%; anh chuyển sang xây luồng QC CSKH (chat mới). Việc #18 / 18-KS (khách để SĐT trong hội thoại) ĐÃ XONG 28/9 — xem nhật ký 28/9.
 
 ---
 
@@ -61,6 +61,7 @@
 - **Làm trên cloud** (không cần bật máy, chốt 29/9/2026): claude.ai/code → môi trường **MKT Dev** + repo **hh-vibecode/mkt-sale-app**. Chạy script bằng `node`, SQL bằng `node scripts/sql.js`. Khoá nằm ở biến môi trường của MKT Dev (không có file khoá). Mọi phiên (máy + cloud) **ghi sổ + push trước khi kết thúc** — xem đầu sổ.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
 - **Admin / supreme xem HẾT dữ liệu**, chỉ bị chặn ở quyền vào trang / chức năng anh khoá riêng. Phạm vi Sale chỉ áp cho vị trí Sale / Manager.
+- **Phạm vi xem SỈ (anh chốt 30/9):** mọi tài khoản được xem Sỉ đều thấy HẾT data "Sale Kiot" (người tạo đơn Kiot không có trong Nhân sự Sale) + data chưa có Sale phụ trách; chỉ KHÔNG thấy data của Sale đội Sỉ trên app (hiện 3: Toàn, Huế, Minh Oanh) mà mình không được tick. Lẻ giữ luật cũ (khách trống chỉ hiện khi tick đủ Sale đội Lẻ). Hàm `dashSeeSale(tên, loại)`.
 - **Phạm vi xem theo Sale ĐÃ CHỐT** (gán tay > người tạo đơn Kiot > Pancake, sau luật chuyển đội), lọc SAU khi xác định Sale. Chỗ nào lọc theo tên thô (staff_name Pancake / tên gõ nhập tay) là SAI — dùng `rptSlSaleCuaDon` / `rptSlSaleCuaNhapTay`. Sửa phân quyền xong phải giả lập view từng tài khoản (khách phải thấy vs thực thấy).
 - **Commit (từ 25/9):** sửa xong thì tự pull → commit → push, không hỏi. Nhưng TRƯỚC MỖI COMMIT phải chạy `git diff --cached --stat`, chỉ có đúng file mình sửa mới commit (bài học sự cố 25/9).
 - **Đổi cấu trúc DB** (thêm cột/bảng, sửa luật): Claude **TỰ CHẠY** rồi báo lại, KHÔNG giao việc cho anh (anh chốt 25/9: "mắc gì tự làm được mà giao việc cho t"). Máy gốc chạy qua Management API (thẻ sbp_ trong supabase-keys.local.txt). Máy nào bị chặn thì mới nhờ anh, và phải nói rõ vì sao. Luôn lưu kèm file supabase-schema-*.sql để còn tra lại.
@@ -85,6 +86,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **30/09** — Tài khoản **Sale Sỉ 1** (tick đủ 3 Sale Sỉ) KHÔNG thấy 45 khách Sỉ / ~3,6 tỷ do Sale Kiot giữ (Bùi Thị Kim Oanh 7, Sales Admin 11, Nguyễn Thị Chuyện 7, Phạm Kiều Minh 5…) + 10 khách trống. Nguyên nhân: `dashPhamViDayDu` đòi tick đủ Sale của CẢ 2 đội mới thấy khách không chủ, còn tên Sale Kiot thì không ai ngoài admin thấy. Sửa theo luật anh chốt (mục 3). Giả lập view: Sale Sỉ 1 thấy 1.305/1.305; tài khoản giả chỉ tick Toàn thấy 949 (của Toàn + 45 không chủ), chỉ tick Huế 87; Vân Ngọc / Chánh Tâm / Chị Oanh không đổi, sót 0 thừa 0. Số liệu admin không đổi.
 
 - **29/09** — Soạn `QUY-UOC-DUNG-CHUNG-SUPABASE.md`: quy ước cho MỌI app dùng chung project Supabase (sổ đăng ký tiền tố, bảng nào của ai, chỉ THÊM trên bảng dùng chung, khoá riêng mỗi app, tài nguyên chung, lịch chạy, checklist mở app mới). Anh dùng cho các luồng mới + gửi phiên QC.
 

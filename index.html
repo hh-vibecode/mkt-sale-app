@@ -531,20 +531,30 @@ function dashTypes(){
 // KHÁCH CHƯA GÁN SALE: trước đây bị GIẤU khỏi mọi tài khoản có giới hạn phạm vi -- kể cả tài khoản
 // quản lý được tick đủ mọi Sale, nên số liệu của họ hụt so với tài khoản toàn quyền (báo 23/9/2026:
 // nick Chị Oanh thiếu 40 khách Sỉ / 477 triệu chỉ vì các khách đó không có Sale phụ trách).
-// Quy tắc: đã được xem data của TẤT CẢ Sale đang có thì coi như xem tất cả, thấy luôn phần chưa gán Sale.
+// Quy tắc: đã được xem data của TẤT CẢ Sale của MỘT ĐỘI thì thấy luôn phần "không có chủ" của đội đó.
 // Tài khoản chỉ được xem vài Sale thì vẫn không thấy -- data chưa gán không thuộc về ai cả.
-function dashPhamViDayDu(){
+// XÉT THEO ĐỘI (sửa 30/9/2026): trước đây đòi tick đủ Sale của CẢ 2 đội -> tài khoản Sale Sỉ tick đủ 3 Sale Sỉ
+// vẫn không thấy khách trống / "Sale Kiot" (45 khách Sỉ, ~3,6 tỷ).
+function dashPhamViDayDu(loai){
   const a=dashSales();
   if(!a.length)return true;
-  let moi=[];try{moi=rptSlSalesList();}catch(e){moi=[];}
+  let moi=[];try{moi=loai?rptSlSaleCuaDoi(loai):rptSlSalesList();}catch(e){moi=[];}
   return moi.length>0&&moi.every(x=>a.includes(x));
 }
-function dashSeeSale(name){
+// loai = 'Sỉ' / 'Lẻ' của dòng dữ liệu.
+// SỈ (anh Hải chốt 30/9/2026): MỌI tài khoản được xem Sỉ đều thấy HẾT data "Sale Kiot" (người tạo đơn Kiot không có
+// trong Nhân sự Sale: Bùi Thị Kim Oanh, Sales Admin...) và data CHƯA CÓ Sale phụ trách. Chỉ KHÔNG thấy data của các
+// Sale trong đội Sỉ trên app mà tài khoản không được tick.
+// LẺ: giữ luật cũ -- khách trống chỉ hiện khi tick đủ Sale của đội Lẻ.
+function dashSeeSale(name,loai){
   const a=dashSales();
   if(!a.length)return true;
   const t=String(name||'').trim();
-  if(!t)return dashPhamViDayDu();
-  return a.includes(t);
+  if(t&&a.includes(t))return true;
+  if(loai==='Sỉ'){let doi=[];try{doi=rptSlSaleCuaDoi('Sỉ');}catch(e){}
+    return (!t||!doi.includes(t))&&dashSeeType('Sỉ');}
+  if(!t)return dashPhamViDayDu(loai);
+  return false;
 }
 function dashSeeType(t){const a=dashTypes();return !a.length||a.includes(t||'Lẻ');}
 function applyRole(){
@@ -2206,7 +2216,7 @@ function dhFilteredOrders(){
   const to=document.getElementById('dhDateTo')?.value||'';
   const q=(document.getElementById('dhSearch')?.value||'').trim().toLowerCase();
   return dhOrders.filter(o=>{
-    if(!dashSeeSale(rptSlSaleCuaDon(o))||!dashSeeType(dhSaleTypeOrder(o)))return false;   // Sale đã tính gán tay (28/9)
+    if(!dashSeeSale(rptSlSaleCuaDon(o),dhSaleTypeOrder(o))||!dashSeeType(dhSaleTypeOrder(o)))return false;   // Sale đã tính gán tay (28/9)
     if(brand!=='all'&&o.brand!==brand)return false;
     if(from&&o.order_date<from)return false;
     if(to&&o.order_date>to)return false;
@@ -2860,7 +2870,7 @@ function dhManualHtml(){
   const mine=tatCa.filter(r=>String(r.created_date||'')>=DH_MANUAL_MOC);
   const an=tatCa.length-mine.length;
   const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none';
-  const rows=mine.filter(r=>dashSeeSale(rptSlSaleCuaNhapTay(r))&&dashSeeType(r.sale_type||'Lẻ')).slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
+  const rows=mine.filter(r=>dashSeeSale(rptSlSaleCuaNhapTay(r),r.sale_type||'Lẻ')&&dashSeeType(r.sale_type||'Lẻ')).slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
     const v=((inv[r.sale_type==='Sỉ'?'Sỉ':'Lẻ']||{})[r.kiot_code])||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
     return `<tr>
       <td>${dmy(r.created_date)||'—'}</td>
@@ -4887,7 +4897,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='29/09 17:33';
+const APP_VERSION='30/09 10:39';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5033,7 +5043,7 @@ function rptSlOverviewHtml(){
   // Áp bộ lọc ngày RIÊNG của báo cáo: khách lọc theo NGÀY TẠO, đơn thô lọc theo NGÀY ĐƠN.
   const mod0=rptSlMod();
   const master=rptSlPeriod().filter(r=>rptHopBrand(mod0,r));
-  const le=dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))&&dashSeeSale(rptSlSaleCuaDon(o))&&modInRange(mod0,o.order_date)
+  const le=dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))&&dashSeeSale(rptSlSaleCuaDon(o),dhSaleTypeOrder(o))&&modInRange(mod0,o.order_date)
     &&(!rptBrand(mod0)||o.brand===rptBrand(mod0)));
   const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
   const dat=le.filter(o=>tag(o,'LEAD ĐẠT')||dhIsQualified(o));
@@ -6132,7 +6142,7 @@ function rptSlBuildMasterRaw(){
   rows.forEach(r=>{const mn=Object.assign({},...rptSlIdsCua(r).map(id=>rptSlManual[id]||{}).map(m=>Object.fromEntries(Object.entries(m).filter(([k,v])=>v!==null&&v!==''))),
     Object.fromEntries(Object.entries(rptSlManual[r.leadId]||{}).filter(([k,v])=>v!==null&&v!=='')));r.tinh=rptSlTinhCua(r,mn);});
   if(window._rptSlSaleMaTam)rows.forEach(r=>rptSlIdsCua(r).forEach(id=>{window._rptSlSaleMaTam[id]=r.staff||'';}));
-  rows=rows.filter(r=>dashSeeSale(r.staff)&&dashSeeType(r.saleType||'Lẻ'));
+  rows=rows.filter(r=>dashSeeSale(r.staff,rptSlType())&&dashSeeType(r.saleType||'Lẻ'));
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
 }
 // 1 dòng Master SỈ -- khung hồ sơ đại lý, khác hẳn Lẻ.
