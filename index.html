@@ -3383,20 +3383,21 @@ function rptMienCua(tinh){const t=String(tinh||'').trim();for(const m in RPT_MIE
 // Bản đồ VN tô 3 miền + % khách từng miền -- cùng kiểu, cùng file vietnam-map.svg với dashboard cũ (Dashboard-Meta).
 // Trả về khung trước, hình vẽ nạp ngay sau khi trang dựng xong (rptVnMapVe).
 const RPT_MIEN_MAU={'Miền Bắc':'#0abf7a','Miền Trung':'#7c3aed','Miền Nam':'#4361ee'};
-function rptVnMapHtml(mien){
+function rptVnMapHtml(mien,tieuDe,ma){
+  ma=ma||'x';
   const tong=Object.values(mien).reduce((x,m)=>x+m.n,0),co=tong-mien['Chưa rõ'].n;
   const nhan=(ten,vt)=>{const m=mien[ten],p=co?m.n/co*100:0;
     return '<div style="position:absolute;'+vt+';text-align:left;pointer-events:none"><div style="font-size:20px;font-weight:800;color:'+RPT_MIEN_MAU[ten]+'">'+p.toFixed(1)+'% <span style="font-size:13px;color:var(--muted);font-weight:700">('+num(m.n)+')</span></div>'
       +'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+ten+' · '+(m.dt?vnd(m.dt):'—')+'</div></div>';};
   const dao=(ten,vt,c)=>'<div style="position:absolute;'+vt+';text-align:center;pointer-events:none"><div style="display:flex;gap:4px;justify-content:center;align-items:center;margin-bottom:3px">'
     +c.map(([w,m])=>'<span style="width:'+w+'px;height:'+w+'px;border-radius:50%;background:'+m+';display:inline-block"></span>').join('')+'</div><div style="font-size:10px;color:var(--muted);font-weight:600">'+ten+'</div></div>';
-  setTimeout(rptVnMapVe,0);
+  setTimeout(()=>rptVnMapVe(ma),0);
   return '<div class="tbl-card" style="padding:18px;margin-bottom:16px">'
-    +'<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Khách đã chốt theo miền</span>'
+    +'<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">'+(tieuDe||'Khách đã chốt theo miền')+'</span>'
     +'<span style="font-size:28px;font-weight:800;color:var(--accent)">'+num(tong)+'</span>'
     +(mien['Chưa rõ'].n?'<span style="font-size:11px;color:var(--muted);font-weight:700">'+num(mien['Chưa rõ'].n)+' chưa rõ tỉnh</span>':'')+'</div>'
     +'<div style="position:relative;display:flex;align-items:center;justify-content:center;min-height:430px;margin-top:4px">'
-    +'<div id="vnMapBox" style="height:430px;display:flex;align-items:center;justify-content:center;width:100%"><div style="color:var(--muted);font-size:12px">Đang vẽ bản đồ…</div></div>'
+    +'<div id="vnMapBox'+ma+'" style="height:430px;display:flex;align-items:center;justify-content:center;width:100%"><div style="color:var(--muted);font-size:12px">Đang vẽ bản đồ…</div></div>'
     +'<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">'
     +'<path d="M70,15 Q60,20 50,23" fill="none" stroke="'+RPT_MIEN_MAU['Miền Bắc']+'" stroke-width="1.2" vector-effect="non-scaling-stroke" opacity="0.55"/>'
     +'<path d="M30,49 Q39,52 47,53" fill="none" stroke="'+RPT_MIEN_MAU['Miền Trung']+'" stroke-width="1.2" vector-effect="non-scaling-stroke" opacity="0.55"/>'
@@ -3407,8 +3408,8 @@ function rptVnMapHtml(mien){
     +'</div></div>';
 }
 let _vnSvg=null;
-async function rptVnMapVe(){
-  const box=document.getElementById('vnMapBox');if(!box)return;
+async function rptVnMapVe(ma){
+  const id='vnMapBox'+(ma||'x'),box=document.getElementById(id);if(!box)return;
   const c=[RPT_MIEN_MAU['Miền Bắc'],RPT_MIEN_MAU['Miền Trung'],RPT_MIEN_MAU['Miền Nam']];
   try{
     if(_vnSvg===null){const r=await fetch('vietnam-map.svg');if(!r.ok)throw new Error(r.status);_vnSvg=await r.text();}
@@ -3420,13 +3421,13 @@ async function rptVnMapVe(){
     let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
     for(let i=0;i+1<so.length;i+=2){const x=so[i],y=so[i+1];if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
     const w=x1-x0,h=y1-y0,px=w*0.05,py=h*0.03;
-    const b2=document.getElementById('vnMapBox');if(!b2)return;
+    const b2=document.getElementById(id);if(!b2)return;
     b2.innerHTML='<svg viewBox="'+(x0-px)+' '+(y0-py)+' '+(w+2*px)+' '+(h+2*py)+'" preserveAspectRatio="xMidYMid meet" style="height:420px;width:auto;max-width:100%" xmlns="http://www.w3.org/2000/svg">'
-      +'<defs><linearGradient id="vnRegGrad" x1="0" y1="0" x2="0" y2="1">'
+      +'<defs><linearGradient id="vnRegGrad'+ma+'" x1="0" y1="0" x2="0" y2="1">'
       +'<stop offset="0%" stop-color="'+c[0]+'"/><stop offset="30%" stop-color="'+c[0]+'"/><stop offset="37%" stop-color="'+c[1]+'"/>'
       +'<stop offset="70%" stop-color="'+c[1]+'"/><stop offset="77%" stop-color="'+c[2]+'"/><stop offset="100%" stop-color="'+c[2]+'"/></linearGradient></defs>'
-      +'<path d="'+dd+'" fill="url(#vnRegGrad)" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round"/></svg>';
-  }catch(e){const b3=document.getElementById('vnMapBox');if(b3)b3.innerHTML='<div style="color:var(--muted);font-size:12px;padding:30px;text-align:center">Không tải được bản đồ (vietnam-map.svg)</div>';}
+      +'<path d="'+dd+'" fill="url(#vnRegGrad'+ma+')" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round"/></svg>';
+  }catch(e){const b3=document.getElementById(id);if(b3)b3.innerHTML='<div style="color:var(--muted);font-size:12px;padding:30px;text-align:center">Không tải được bản đồ (vietnam-map.svg)</div>';}
 }
 // ── TAB "TỔNG HỢP" (anh Hải 30/9/2026): tổng quan CẢ 2 đội Sale Lẻ + Sỉ và các chỉ số chung của 2 bên ──
 // Dùng đúng dữ liệu của 2 tab Sale Lẻ / Sale Sỉ (rptSlPeriod theo bộ lọc 'tonghop'), doanh thu = đơn tính + đơn mua lại.
@@ -3463,9 +3464,10 @@ function rptThTongHtml(){
   const bTinh=bang('Khách đã chốt theo Tỉnh / TP',num(tlst.length),['Tỉnh / TP','Khách Lẻ','Khách Sỉ','Doanh thu'],
     tlst.map(([k,x])=>'<tr><td class="name">'+e(k)+'</td>'+o(num(x.le))+o(num(x.si))+o(x.dt?vnd(x.dt):'—',1)+'</tr>'));
   // 2) BẢN ĐỒ 3 MIỀN (giống dashboard cũ, anh Hải 30/9/2026): khách đã chốt cả 2 đội, theo Tỉnh / TP mới (34 đơn vị)
-  const mien={'Miền Bắc':{n:0,dt:0},'Miền Trung':{n:0,dt:0},'Miền Nam':{n:0,dt:0},'Chưa rõ':{n:0,dt:0}};
-  d['Lẻ'].concat(d['Sỉ']).filter(r=>r.isChot).forEach(r=>{const m=rptMienCua(r.tinh&&r.tinh.moi);mien[m].n++;mien[m].dt+=tien(r);});
-  const bMap=rptVnMapHtml(mien);
+  // TÁCH 2 bản đồ Lẻ / Sỉ (anh Hải 30/9/2026 -- mẫu dashboard cũ là của Sỉ)
+  const mienCua=a=>{const m={'Miền Bắc':{n:0,dt:0},'Miền Trung':{n:0,dt:0},'Miền Nam':{n:0,dt:0},'Chưa rõ':{n:0,dt:0}};
+    a.filter(r=>r.isChot).forEach(r=>{const k=rptMienCua(r.tinh&&r.tinh.moi);m[k].n++;m[k].dt+=tien(r);});return m;};
+  const bMap=rptVnMapHtml(mienCua(d['Lẻ']),'Khách Lẻ đã chốt theo miền','Le')+rptVnMapHtml(mienCua(d['Sỉ']),'Khách Sỉ đã chốt theo miền','Si');
   return `
     <div style="${g3}">
       ${bam('thTong',mkKpi(ic('cash'),'Tổng doanh thu',vnd(T_.dt),num(T_.don)+' đơn đặt hàng Kiot · 2 đội','g-green'))}
@@ -3477,9 +3479,8 @@ function rptThTongHtml(){
       ${mkKpi(ic('check'),'Đã chốt',num(T_.chot),'Lẻ '+num(L_.chot)+' · Sỉ '+num(S_.chot),'g-green')}
       ${mkKpi(ic('check'),'Tỉ lệ chốt chung',tl(T_.chot,T_.khach),'Lẻ '+tl(L_.chot,L_.khach)+' · Sỉ '+tl(S_.chot,S_.khach),'g-orange')}
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">
-      <div>${bMap}</div><div>${bTinh}</div>
-    </div>`;
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bMap}</div>
+    ${bTinh}`;
 }
 const RPT_TH_TABS=[
   ['tong-hop','Tổng hợp',()=>rptThTongHtml()],
@@ -5081,7 +5082,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='30/09 14:44';
+const APP_VERSION='30/09 14:46';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
