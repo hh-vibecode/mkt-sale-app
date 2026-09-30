@@ -4666,6 +4666,7 @@ function rptSiOSua(r){
     o.sdt={kieu:'text',gt:mn.si_sdt||'',noi:'mn',cot:'si_sdt'};
     // Kênh: chọn tay (danh sách kênh Kiot) ghi vào hồ sơ, đè kênh Pancake; chọn "—" = quay về kênh Pancake (30/9/2026)
     o.kenh={kieu:'chon',ds:DH_MANUAL_KENH,gt:r.kenh||sh.kenh||'',noi:'mn',cot:'kenh_sua',rong:'— (theo Pancake)'};
+    o.nguon={kieu:'chon',ds:['Online','Offline'],gt:r.nguon||sh.nguon||'',noi:'mn',cot:'nguon_sua',rong:'— (theo Pancake)'};
     if(!r.kh)o.ma_kh={kieu:'text',gt:'',noi:'kh'};
   }
   if(dashToanQuyen()){
@@ -4813,6 +4814,10 @@ function rptSlEditRow(leadId,chiKenh){
           '<option value="">'+(rptSlKenhTay(r)?'— (theo Pancake)':'—')+'</option>'
           +((r.kenh&&DH_MANUAL_KENH.indexOf(r.kenh)<0?[r.kenh]:[]).concat(DH_MANUAL_KENH))
             .map(o=>'<option value="'+esc(o)+'"'+(r.kenh===o?' selected':'')+'>'+esc(o)+'</option>').join('')}</select></div>
+        <div>${lb('Nguồn khách')}<select id="rsE_nguon" style="${ip};cursor:pointer">${
+          '<option value="">'+(String((rptSlManual[r.leadId]||{}).nguon_sua||'').trim()?'— (theo Pancake)':'—')+'</option>'
+          +((r.nguon&&['Online','Offline'].indexOf(r.nguon)<0?[r.nguon]:[]).concat(['Online','Offline']))
+            .map(o=>'<option value="'+esc(o)+'"'+(r.nguon===o?' selected':'')+'>'+esc(o)+'</option>').join('')}</select></div>
         ${r.isChot?'':`<div>${lb('Ngày chăm sóc')}${r.careAuto
           ?'<div style="height:36px;display:flex;align-items:center;font-size:13px;font-weight:700">'+(dmy(r.careDate)||'—')
             +'<span style="margin-left:8px;font-size:10.5px;font-weight:600;color:var(--muted)">ngày tạo đơn Pancake đầu tiên</span></div>'
@@ -4841,12 +4846,17 @@ async function rptSlSaveRow(leadId){
   const patch={};
   const put=(k,v)=>{const a=v==null||v===''?null:v,b=cur[k]==null||cur[k]===''?null:cur[k];if(String(a)!==String(b))patch[k]=a;};
   const r=rptSlBuildMaster().find(x=>x.leadId===leadId)||{};
-  // KÊNH: khách thêm tay -> sửa thẳng datahub_manual.kenh; khách Pancake -> hồ sơ kenh_sua (đè kênh Pancake)
+  // KÊNH / NGUỒN: khách thêm tay -> sửa thẳng datahub_manual (kenh, nguon); khách Pancake -> hồ sơ
+  // kenh_sua / nguon_sua (đè giá trị Pancake; chọn "—" = quay về Pancake)
   const tay=r.isManual&&/^M\d+$/.test(r.key||'');
-  let doiKenhTay=false,kenhTay=null;
-  if(g('rsE_kenh')){const v=g('rsE_kenh').value;
-    if(tay){if(v!==(r.kenh||'')){doiKenhTay=true;kenhTay=v||null;}}
-    else if(v!==(r.kenh||'')&&!(v===''&&!rptSlKenhTay(r)))patch.kenh_sua=v||null;}
+  const dhm={};
+  [['rsE_kenh','kenh','kenh_sua'],['rsE_nguon','nguon','nguon_sua']].forEach(([id,truong,cotSua])=>{
+    if(!g(id))return;const v=g(id).value;if(v===(r[truong]||''))return;
+    if(tay)dhm[truong]=v||null;
+    else if(v||String(cur[cotSua]||'').trim())patch[cotSua]=v||null;
+  });
+  if('kenh' in dhm)dhm.brand=dhManualBrand(dhm.kenh||'','Lẻ');
+  const doiKenhTay=Object.keys(dhm).length>0;
   if(g('rsE_care'))put('care_date',g('rsE_care').value);
   if(g('rsE_content'))put('content',g('rsE_content').value.trim());
   if(g('rsE_pot')){
@@ -4863,9 +4873,9 @@ async function rptSlSaveRow(leadId){
     if(doiKenhTay){
       const res=await fetch(SUPABASE_URL+'/rest/v1/datahub_manual?id=eq.'+Number(r.key.slice(1)),{method:'PATCH',
         headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
-        body:JSON.stringify({kenh:kenhTay,brand:dhManualBrand(kenhTay||'','Lẻ'),updated_at:new Date().toISOString()})});
+        body:JSON.stringify(Object.assign({},dhm,{updated_at:new Date().toISOString()}))});
       if(!res.ok)throw new Error('lỗi '+res.status);
-      logAct('U','datahub_manual',leadId,r.name,'kenh',r.kenh||'',kenhTay||'');
+      Object.keys(dhm).forEach(c=>{if(c!=='brand')logAct('U','datahub_manual',leadId,r.name,c,r[c]||'',dhm[c]||'');});
       await dhLoadManual(true);
     }
     if(Object.keys(patch).length)await rptSlSaveManual(leadId,patch);
@@ -4989,7 +4999,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='30/09 14:40';
+const APP_VERSION='30/09 15:05';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6089,6 +6099,9 @@ function rptSlBuildMasterRaw(){
   rows.forEach(r=>{const tn=String((rptSlManual[r.leadId]||{}).ten_sua||'').trim();if(tn)r.name=tn;});
   // KÊNH Sale chọn tay trong hồ sơ (saleretail_manual.kenh_sua, dropdown kênh Kiot) đè kênh Pancake (30/9/2026)
   rows.forEach(r=>{const kn=String((rptSlManual[r.leadId]||{}).kenh_sua||'').trim();if(kn)r.kenh=kn;});
+  // NGUỒN KHÁCH chọn tay (saleretail_manual.nguon_sua: Online / Offline) đè nguồn Pancake -- đặt TRƯỚC bước
+  // tách mua lại (khongCat) vì nguồn quyết định đơn nào còn tính cho Sale (30/9/2026)
+  rows.forEach(r=>{const ng=String((rptSlManual[r.leadId]||{}).nguon_sua||'').trim();if(ng)r.nguon=ng;});
   if(rptSlType()!=='Sỉ'){
     // LẺ: Sale gán ở tab Gán data (hoặc thu hồi về trống) ưu tiên hơn người phụ trách bên Pancake
     rows.forEach(r=>{const gan=rptSlSaleGanTayDong(r);if(gan!==null)r.staff=gan;rptSlChuyenDoi(r);});
