@@ -7,7 +7,7 @@
 > "MKT Dev") và phiên trên máy KHÔNG đọc được hội thoại của nhau — sổ này + `CLAUDE.md` + lịch sử commit là thứ DUY NHẤT nối các phiên.
 > Việc gì làm xong / anh chốt gì / đang dở gì / chờ anh gì: ghi vào sổ, commit + push NGAY TRONG PHIÊN, đừng để cuối.
 > Đầu phiên: `git pull` rồi mới đọc sổ (phiên kia có thể vừa đẩy bản mới). Phiên cloud hay làm trên nhánh `claude/...` → xong phải gộp vào `main` (app chạy từ `main`).
-> Cập nhật lần cuối: 30/09/2026. Luồng Sale/MKT anh đánh giá xong ~90%; anh chuyển sang xây luồng QC CSKH (chat mới). Việc #18 / 18-KS (khách để SĐT trong hội thoại) ĐÃ XONG 28/9 — xem nhật ký 28/9.
+> Cập nhật lần cuối: 01/10/2026. Luồng Sale/MKT anh đánh giá xong ~90%; anh chuyển sang xây luồng QC CSKH (chat mới). Việc #18 / 18-KS (khách để SĐT trong hội thoại) ĐÃ XONG 28/9 — xem nhật ký 28/9.
 
 ---
 
@@ -65,6 +65,10 @@
 - **Làm trên cloud** (không cần bật máy, chốt 29/9/2026): claude.ai/code → môi trường **MKT Dev** + repo **hh-vibecode/mkt-sale-app**. Chạy script bằng `node`, SQL bằng `node scripts/sql.js`. Khoá nằm ở biến môi trường của MKT Dev (không có file khoá). Mọi phiên (máy + cloud) **ghi sổ + push trước khi kết thúc** — xem đầu sổ.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
 - **Admin / supreme xem HẾT dữ liệu**, chỉ bị chặn ở quyền vào trang / chức năng anh khoá riêng. Phạm vi Sale chỉ áp cho vị trí Sale / Manager.
+- **Đơn 0đ KHÔNG tính là phát sinh** (anh chốt 1/10): không kéo khách vào kỳ lọc, không làm nhảy ngày chăm sóc cuối (tài khoản nội bộ như KH000330 "KB SẾP OANH THỊNH-HP" xuất hàng bằng đơn 0đ gần như mỗi ngày). Khách vẫn ở "Tất cả thời gian".
+- **Ngày chăm sóc cuối Sỉ nhảy theo đơn** (anh chốt 1/10): đơn Kiot có tiền, không huỷ, mới hơn lượt CS cuối → ngày CS cuối = ngày đơn; đơn từ ngày hẹn trở đi cũng tắt chuông hẹn.
+- **Form lượt chăm sóc Sỉ 3 mục** (1/10): 1. Nội dung trao đổi (`noi_dung`) · 2. Phản hồi / vướng mắc / nhu cầu KH (`phan_hoi`) · 3. Phương án tiếp theo (`viec_tiep`) + ngày chăm sóc tiếp theo (`ngay_hen`).
+- **Nút Thu hồi data ĐÃ BỎ** (anh chốt 1/10). Đưa khách về trống = chọn "— chưa gán —" ở ô Sale (admin).
 - **Phạm vi xem SỈ (anh chốt 30/9):** mọi tài khoản được xem Sỉ đều thấy HẾT data "Sale Kiot" (người tạo đơn Kiot không có trong Nhân sự Sale) + data chưa có Sale phụ trách; chỉ KHÔNG thấy data của Sale đội Sỉ trên app (hiện 3: Toàn, Huế, Minh Oanh) mà mình không được tick. Lẻ giữ luật cũ (khách trống chỉ hiện khi tick đủ Sale đội Lẻ). Hàm `dashSeeSale(tên, loại)`.
 - **Phạm vi xem theo Sale ĐÃ CHỐT** (gán tay > người tạo đơn Kiot > Pancake, sau luật chuyển đội), lọc SAU khi xác định Sale. Chỗ nào lọc theo tên thô (staff_name Pancake / tên gõ nhập tay) là SAI — dùng `rptSlSaleCuaDon` / `rptSlSaleCuaNhapTay`. Sửa phân quyền xong phải giả lập view từng tài khoản (khách phải thấy vs thực thấy).
 - **Đẩy bản mới xong phải báo anh F5** (anh chốt 30/9): đợi trang live hiện đúng `APP_VERSION` mới rồi mới báo, ghi rõ số bản.
@@ -91,6 +95,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **01/10** — (1) Đơn 0đ không còn kéo khách vào kỳ lọc: Sỉ T9 89 → 87 khách (bớt M-0380 KH000330 + M-0369 NPP Chín Lê), 3 ngày gần nhất 7 → 6; doanh thu Sỉ / Lẻ không đổi. (2) Ngày CS cuối Sỉ nhảy theo đơn có tiền: 13/1.306 khách đổi (KH000330 14/11/2025 → 22/09/2026). (3) Form lượt chăm sóc 3 mục theo yêu cầu Sale (chị gửi anh). (4) Bỏ nút Thu hồi data. Bộ kiểm số liệu báo lệch "tháng này" là do sang tháng 10, không do sửa — so bản cũ / mới trên cùng dữ liệu: doanh thu lệch 0.
 
 - **30/09** — Báo cáo Tổng quan (Sỉ + Lẻ): bảng **Hiệu quả theo kênh** bấm từng dòng ra danh sách khách của kênh đó. Loan Nguyễn - Malaysia (L-CT2-0107) đổi lại thẻ Pancake KH LẺ → KH SỈ theo anh (đọc đúng `shop_customer.tags`, giữ LEAD TIỀM NĂNG). 2 khách kênh "Khác" giữ nguyên.
 - **30/09** — **Tắt job chấm cũ `sync-sale-review.yml`** (GitHub API disable, file giữ nguyên — bật lại: `PUT .../actions/workflows/sync-sale-review.yml/enable`). Phiên QC báo job QC đã chạy thay: bắt 43/45 lượt của job cũ (2 lượt lệch là bài đăng của page), thêm 27 lượt khách hỏi thật job cũ bỏ sót; ghi thẳng bảng chính mỗi giờ phút :25, kéo cả tin hôm nay.
