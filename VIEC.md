@@ -57,7 +57,7 @@
 - **Chia Sỉ / Lẻ cho đơn Pancake** (`dhSaleTypeOrder`): có thẻ KH SỈ / KH LẺ thì theo thẻ. Không thẻ thì theo thẻ ở đơn khác của cùng khách (trùng 9 số cuối SĐT). Vẫn không có thì đơn từ page **Shidai → Sỉ**, còn lại → Lẻ. Trước 27/9 đơn không thẻ luôn tính vào Lẻ.
 - **Lượt chăm sóc "Chốt đơn"** bắt buộc điền mã đơn đặt hàng CÓ THẬT bên Kiot.
 - **Nút Xoá** luôn nằm TRONG form Sửa, bấm phải hỏi xác nhận. **Khách chưa có Sale = để TRỐNG** (bỏ hẳn "botsale sỉ", 24/9). **Thu hồi data** (chỉ Admin) = về trống (lưu si_sale '', khác null = chưa từng gán) → rơi vào tab Gán data. Tab Gán data có ở CẢ Lẻ lẫn Sỉ.
-- **Master Sỉ** mặc định lọc 3 ngày gần nhất, tính theo NGÀY TẠO khách (anh chốt 24/9, không đổi sang ngày chăm sóc). Thẻ dash: icon + tên (chữ thường, đậm) cùng hàng, không dòng phụ.
+- **Master Sỉ** mặc định lọc 3 ngày gần nhất. Khách hiện trong kỳ khi (anh chốt lại 1/10): có đơn Kiot CÓ TIỀN trong kỳ (kể cả mua lại) · hoặc chưa có đơn có tiền thì theo ngày tạo (đã chốt thì ngày chốt) · hoặc có LƯỢT CHĂM SÓC có nội dung trong kỳ (nhãn "chăm sóc", doanh thu kỳ = 0, không tính đã chốt). Lượt chăm sóc CHỈ áp cho bảng Master, Tổng quan / doanh thu vẫn theo `rptSlPeriod`. Thẻ dash: icon + tên (chữ thường, đậm) cùng hàng, không dòng phụ.
 - **Lead ID**: dùng mã app sinh; khách đã có Mã KH Kiot thì cột đó hiện thẳng Mã KH.
 - **Tên khách Ở ĐÂU cũng kèm mã** ngay dưới (hoặc cạnh, trong tiêu đề popup): có Mã KH Kiot thì hiện Mã KH, chưa có thì Lead ID. Dùng chung hàm `rptSlMaDuoiTen` — thêm bảng mới phải gọi hàm này.
 - **1 khách nhắn nhiều nguồn** (nhiều page / nhiều SĐT) thì kê đủ: nhãn "N nguồn · M SĐT" dưới tên + bảng Nguồn liên hệ trong hồ sơ. Lead Pancake + dòng sheet cùng ngày cùng SĐT = 1 nguồn. Đinh Thị Hường (Shidai 0359752313 + Tự Tại Viên 0378682341) là 1 người — anh xác nhận 24/9.
@@ -96,6 +96,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **01/10** — Master Sỉ: khách có lượt chăm sóc trong kỳ cũng hiện ở bảng thường (anh chốt). Lọc 30/09: 2 → 7 khách (5 nhờ lượt CS); 29/9–1/10: 4 → 10; T9: 87 → 352. Doanh thu trong bộ lọc không đổi. Phát hiện sổ ghi "Master lọc theo ngày tạo" nhưng code thật ưu tiên ngày đơn có tiền — đã ghi lại luật đúng ở mục 3.
 
 - **01/10** — Bong bóng "Trao đổi gần nhất" bỏ ngày, chỉ còn icon (anh: ngày trao đổi lệch ngày CS cuối trông cấn — CS cuối nhảy theo cả đơn Kiot). Rê chuột vẫn ra ngày.
 

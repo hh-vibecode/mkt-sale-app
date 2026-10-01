@@ -5082,7 +5082,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='01/10 11:21';
+const APP_VERSION='01/10 11:28';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6515,9 +6515,9 @@ function rptSlMasterRowSi(r){
   const mauNghi=nghi2==null?'var(--muted)':nghi2>=30?'var(--red)':nghi2>=10?'var(--yellow)':'var(--text)';
   const donDau=r.kords&&r.kords.length?Number(r.kords[0].total||0):Number(sh.gia_tri_don_dau||0);
   const ngayDonDau=r.kords&&r.kords.length?String(r.kords[0].purchase_date).slice(0,10):(sh.ngay_chot_dau||'');
-  const congDon=(r.revenue+r.repeatRevenue)||Number(sh.gia_tri_cong_don||0);
+  const congDon=r._chiCS?0:((r.revenue+r.repeatRevenue)||Number(sh.gia_tri_cong_don||0));
   return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\',false)">'
-    +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+rptSlNhanCu(r.created||sh.ngay_tao,'mua lại')+'</td>'
+    +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+rptSlNhanCu(r.created||sh.ngay_tao,r._chiCS?'chăm sóc':'mua lại')+'</td>'
     +'<td>'+rptSiNguonChip(r)+'</td>'
     +rptSlSaleO(r)
     +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+'</td>'
@@ -6676,7 +6676,7 @@ function rptSiDaChamTrongKy(){
 }
 function rptSiLocCS(){window._rptSiLocCS=!window._rptSiLocCS;window._rptSlMasterPage=1;rptSlRender();}
 function rptSiDashHtml(all,daCham){
-  const chot=all.filter(r=>r.isChot);
+  const chot=all.filter(r=>r.isChot&&!r._chiCS);   // khách chỉ vào nhờ lượt chăm sóc không tính "đã chốt" trong kỳ
   const coLS=all.map(r=>({r,n:rptSiSoNgayChua(r)})).filter(x=>x.n!==null);
   const bat=!!window._rptSiLocCS;
   const lauRoi=coLS.filter(x=>x.n>=RPT_SI_LAU_NGAY);
@@ -6724,9 +6724,15 @@ function rptSiDashNguonDs(nguon){
 }
 function rptSlMasterHtmlRaw(){
   const allRaw=rptSlPeriod();
-  const all=rptSlSortNew(rptSlApplyF('master',allRaw),rptSlNgayTao);
-  const q=(window._rptSlMasterQ||'').trim().toLowerCase();
   const laSi=rptSlType()==='Sỉ',daCham=laSi?rptSiDaChamTrongKy():[];
+  // MASTER SỈ: khách có LƯỢT CHĂM SÓC trong kỳ cũng hiện ở bảng thường (anh Hải chốt 01/10/2026), cạnh khách tạo / có đơn
+  // có tiền trong kỳ. Khách chỉ vào nhờ lượt chăm sóc: doanh thu trong kỳ = 0, không tính "đã chốt" trong kỳ, nhãn "chăm sóc".
+  // CHỈ áp cho bảng Master -- Tổng quan / báo cáo doanh thu vẫn theo rptSlPeriod.
+  let loc=rptSlApplyF('master',allRaw);
+  if(laSi){const co=new Set(loc.map(r=>r.key));
+    loc=loc.concat(daCham.filter(r=>!co.has(r.key)).map(r=>Object.assign({},r,{kords:[],revenue:0,repeatOrds:[],repeatRevenue:0,_chiCS:true})));}
+  const all=rptSlSortNew(loc,rptSlNgayTao);
+  const q=(window._rptSlMasterQ||'').trim().toLowerCase();
   if(!laSi)window._rptSiLocCS=false;
   const goc=laSi&&window._rptSiLocCS?daCham:all;
   let list=goc;
