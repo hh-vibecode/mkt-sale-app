@@ -5083,7 +5083,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='01/10 11:43';
+const APP_VERSION='01/10 11:55';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6522,14 +6522,15 @@ function rptSlMasterRowSi(r){
   return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\',false)">'
     +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+rptSlNhanCu(r.created||sh.ngay_tao,r._chiCS?'chăm sóc':'mua lại')+'</td>'
     +'<td>'+rptSiNguonChip(r)+'</td>'
+    +rptSlSaleO(r)
     +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+'</td>'
     +'<td style="white-space:nowrap">'+rptSlSdtHtml(r)+'</td>'
     +rptSiPhanLoaiSelect(r)
     // CS cuối = ngày + "x ngày" chưa liên hệ ở dòng dưới (gộp 2 cột, anh Hải 01/10/2026)
     +'<td style="white-space:nowrap">'+(csCuoi?dmy(csCuoi)+'<div style="font-size:10.5px;font-weight:700;color:'+mauNghi+'">'+num(nghi2)+' ngày</div>':'—')+'</td>'
     +'<td onclick="rptSlStop(event)" style="text-align:center">'+rptSiTraoDoiO(r)+'</td>'
-    +(()=>{const d=rptSiDonChotCuoi(r);return d?'<td class="num" style="white-space:nowrap"><span style="font-weight:800">'+vnd(Number(d.total||0))+'</span>'
-      +'<div style="font-size:10.5px;font-weight:600;color:var(--muted)">'+dmy(String(d.purchase_date).slice(0,10))+'</div></td>':'<td class="num"><span style="color:var(--muted)">—</span></td>';})()
+    +(()=>{const k=rptSiKyGanNhat(r);return k?'<td class="num" style="white-space:nowrap" title="'+k.n+' đơn từ '+dmy(k.tu)+' đến '+dmy(k.den)+'"><span style="font-weight:800">'+vnd(k.tong)+'</span>'
+      +'<div style="font-size:10.5px;font-weight:600;color:var(--muted)">'+dmy(k.den)+'</div></td>':'<td class="num"><span style="color:var(--muted)">—</span></td>';})()
     +'<td class="num" style="font-weight:800;color:'+(congDon>0?'var(--green)':'inherit')+'">'+(congDon>0?vnd(congDon):'—')+'</td>'
     +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
       +rptSiChuongDong(r)
@@ -6580,10 +6581,16 @@ function rptSiDongDu(r){
   if(!window._rptSiFull||window._rptSiFull.src!==full){const m=new Map();full.forEach(x=>m.set(x.key,x));window._rptSiFull={src:full,m};}
   return window._rptSiFull.m.get(r.key)||r;
 }
-function rptSiDonChotCuoi(r){
+// GIÁ TRỊ KỲ GẦN NHẤT (anh Hải 01/10/2026): ngày = đơn chốt cuối; giá trị = tổng các đơn trong 30 ngày tính NGƯỢC từ
+// đơn cuối (đơn cuối - 30 ngày .. đơn cuối). Toàn lịch sử, không theo bộ lọc. Đơn = đơn được tính doanh thu, có tiền.
+function rptSiKyGanNhat(r){
   const x=rptSiDongDu(r);
-  return [].concat(x.kords||[],x.repeatOrds||[]).filter(o=>Number(o.total||0)>0)
-    .sort((a,b)=>String(b.purchase_date).localeCompare(String(a.purchase_date)))[0]||null;
+  const ds=[].concat(x.kords||[],x.repeatOrds||[]).filter(o=>Number(o.total||0)>0).map(o=>({d:String(o.purchase_date).slice(0,10),v:Number(o.total)}));
+  if(!ds.length)return null;
+  const den=ds.map(o=>o.d).sort().pop();
+  const tu=new Date(new Date(den).getTime()-30*86400000).toISOString().slice(0,10);
+  const trong=ds.filter(o=>o.d>=tu&&o.d<=den);
+  return {den,tu,n:trong.length,tong:trong.reduce((a,o)=>a+o.v,0)};
 }
 // ── CHUÔNG HẸN CHĂM SÓC (Sỉ, anh Hải 25/9/2026) ──
 const RPT_CHUONG_SVG='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 0 0-4-5.7V5a2 2 0 1 0-4 0v.3A6 6 0 0 0 6 11v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>';
@@ -6628,12 +6635,11 @@ const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Kênh</th><
 // và nhiều trường chỉ điền được 1/4 số khách (người dùng chốt 22/9/2026).
 // MASTER SỈ = đúng khung sheet "Master Data Sỉ" (khác hoàn toàn Lẻ): hồ sơ đại lý + diễn biến chăm sóc
 // + kết quả đơn hàng. Các trường ít dùng (GPKD, fanpage, ghi chú KH, link hồ sơ) nằm trong Chi tiết khách.
-// 01/10/2026 (anh Hải): ẨN cột Sales phụ trách ở Master Sỉ (vẫn lọc Sale ở thanh lọc, đổi Sale ở tab Gán data / hồ sơ);
-// thêm cột "Đơn chốt gần nhất" = giá trị đơn trên, ngày chốt dưới.
-const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th>'
+// 01/10/2026 (anh Hải): cột "Giá trị kỳ gần nhất" = tổng đơn 30 ngày tính ngược từ đơn cuối (trên) + ngày đơn cuối (dưới).
+const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Sales phụ trách</th>'
   +'<th>Tên cửa hàng</th><th>SĐT</th><th>Phân loại KH</th>'
   +'<th>CS cuối</th><th>Trao đổi gần nhất</th>'
-  +'<th>Đơn chốt gần nhất</th><th>Giá trị cộng dồn</th><th></th>';
+  +'<th>Giá trị kỳ gần nhất</th><th>Giá trị cộng dồn</th><th></th>';
 Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>(rptSlType()==='Sỉ'?RPT_SL_MASTER_HEAD_SI.replace('<th>Phân loại KH</th>','<th>Phân loại KH'+dmBut('si_phan_loai')+'</th>'):RPT_SL_MASTER_HEAD_LE)
   .replace('<th>Sales phụ trách</th>','<th>Sales phụ trách'+dmBut(rptSlType()==='Sỉ'?'sale_si':'sale_le')+'</th>')});
 function rptSlMasterRow(r){

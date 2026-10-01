@@ -98,6 +98,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **01/10** — Master Sỉ: TRẢ LẠI cột Sales phụ trách (anh đổi ý); cột "Đơn chốt gần nhất" đổi thành **Giá trị kỳ gần nhất** = tổng đơn (được tính, có tiền) trong 30 ngày tính ngược từ đơn cuối, dòng dưới là ngày đơn cuối; rê chuột ra số đơn + khoảng ngày. Bảng 11 cột.
+
 - **01/10** — Cột **Giá trị cộng dồn** Master Sỉ = TOÀN BỘ lịch sử khách, không nhảy theo bộ lọc ngày (anh chốt). Dòng "Doanh thu trong bộ lọc" trên bảng vẫn theo kỳ.
 
 - **01/10** — Master Sỉ: ẩn cột Sales phụ trách (anh chốt; vẫn lọc Sale ở thanh lọc, đổi Sale ở Gán data / hồ sơ — mất ô đổi Sale nhanh trên bảng của admin); thêm cột **Đơn chốt gần nhất** (giá trị trên, ngày chốt dưới; đơn được tính doanh thu, có tiền, toàn thời gian không theo kỳ lọc).
