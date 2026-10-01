@@ -11,6 +11,7 @@ Soạn 29/9/2026 bởi Monsieur Claude.
 |---|---|---|---|
 | MKT / Sale | hh-vibecode/mkt-sale-app | *(không tiền tố — các bảng có từ trước)* | Chủ các bảng lõi ở mục 2 |
 | QC CSKH | hh-vibecode/qc-cskh | `qc_` / `qc-` | Chủ `sale_response_review`, `sale_review_report` và mọi thứ `qc_*` |
+| Kế toán (tài chính) | hh-vibecode/ke-toan | `kt_` / `kt-` | Đăng ký 1/10/2026. Vào app bằng mã truy cập riêng (như QC), không dùng `dang-nhap` |
 | Dashboard-Meta (cũ) | hh-vibecode/Dashboard-Meta | — | CHỈ ĐỌC, không sửa repo đó |
 | *(app mới)* | … | `xx_` / `xx-` | tiền tố 2–4 chữ, không trùng |
 
@@ -22,6 +23,7 @@ Soạn 29/9/2026 bởi Monsieur Claude.
 - **Tài khoản & đăng nhập (dùng chung, MKT / Sale giữ):** `sales_users`, `sales_user_credentials`, Edge Function `dang-nhap`,
   hàm `la_quan_tri()`, `app_*` (tạo / sửa tài khoản).
 - **QC CSKH:** `sale_response_review`, `sale_review_report`, `qc_*` (bảng, hàm, lịch chạy).
+- **Kế toán:** mọi thứ `kt_*` / `kt-*`.
 - **Dashboard-Meta cũ:** `product_faq`, `faq_feedback`, `faq_chat_usage`, `dash_presence`, `social_page_stats`.
 - **Bảng CŨ giữ có chủ đích — không xoá, không sửa:** `customers`, `leads`, `orders`, `crm_activities`, `assignments`,
   `config_options`, `audit_log`, `issue_handled`, `saonl_*`, view `v_saleretail_*` (còn dữ liệu lịch sử thật).
