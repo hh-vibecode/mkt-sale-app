@@ -65,6 +65,7 @@
 - **Làm trên cloud** (không cần bật máy, chốt 29/9/2026): claude.ai/code → môi trường **MKT Dev** + repo **hh-vibecode/mkt-sale-app**. Chạy script bằng `node`, SQL bằng `node scripts/sql.js`. Khoá nằm ở biến môi trường của MKT Dev (không có file khoá). Mọi phiên (máy + cloud) **ghi sổ + push trước khi kết thúc** — xem đầu sổ.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
 - **Admin / supreme xem HẾT dữ liệu**, chỉ bị chặn ở quyền vào trang / chức năng anh khoá riêng. Phạm vi Sale chỉ áp cho vị trí Sale / Manager.
+- **Ô "Đã chăm sóc trong kỳ" ở Master Sỉ** (anh chốt 1/10, thay ô "Đang chăm sóc"): đếm mọi khách có lượt chăm sóc CÓ NỘI DUNG trong khoảng ngày đang lọc, kể cả khách tạo từ lâu; bấm ô = lọc bảng ra đúng các khách đó, bấm lại bỏ lọc (nút "Tất cả" cũng bỏ). Lượt "Chốt đơn" job tự tạo từ đơn Kiot (created_by Monsieur Claude, không nội dung) không tính là tư vấn.
 - **Đơn 0đ KHÔNG tính là phát sinh** (anh chốt 1/10): không kéo khách vào kỳ lọc, không làm nhảy ngày chăm sóc cuối (tài khoản nội bộ như KH000330 "KB SẾP OANH THỊNH-HP" xuất hàng bằng đơn 0đ gần như mỗi ngày). Khách vẫn ở "Tất cả thời gian".
 - **Ngày chăm sóc cuối Sỉ nhảy theo đơn** (anh chốt 1/10): đơn Kiot có tiền, không huỷ, mới hơn lượt CS cuối → ngày CS cuối = ngày đơn; đơn từ ngày hẹn trở đi cũng tắt chuông hẹn.
 - **Form lượt chăm sóc Sỉ 3 mục** (1/10): 1. Nội dung trao đổi (`noi_dung`) · 2. Phản hồi / vướng mắc / nhu cầu KH (`phan_hoi`) · 3. Phương án tiếp theo (`viec_tiep`) + ngày chăm sóc tiếp theo (`ngay_hen`).
@@ -95,6 +96,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **01/10** — Ô "Đã chăm sóc trong kỳ" bấm lọc bảng (chị quản lý Sỉ cần xem hôm qua Sale tư vấn ai). Lọc 30/09: bảng thường 2 khách, đã chăm sóc 5 khách (đúng 5 lượt Sale ghi hôm đó); T9: 330 khách. SỬA LỜI BÁO SAI: trước đó em nói "26–29/9 có 6 lượt thiếu nội dung do Sale ghi thiếu" — thật ra đó là lượt Chốt đơn job tự tạo từ đơn Kiot (Bùi Thị Kim Oanh lên đơn), mọi lượt Sale tự ghi đều có nội dung (form bắt buộc). Chờ anh duyệt phần 2: cột "Trao đổi gần nhất" ở Master Sỉ (gộp cột CS cuối + số ngày, 2 dòng, rê chuột ra đủ 3 mục).
 
 - **01/10** — **Gỡ KH000330 "KB SẾP OANH THỊNH-HP" (M-0380) khỏi báo cáo** (anh: data nội bộ không vào báo cáo): `saleretail_manual.excluded=true`, khôi phục được ở mục "Đã gỡ khỏi báo cáo" cuối tab Nhập Liệu Sỉ. Sỉ toàn thời gian 1.306 → 1.305 khách, doanh thu −590.000đ; tháng 9 và Lẻ không đổi. Gặp tài khoản nội bộ khác thì gỡ cùng cách.
 

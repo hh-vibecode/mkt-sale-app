@@ -5082,7 +5082,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='01/10 10:45';
+const APP_VERSION='01/10 11:11';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5685,12 +5685,12 @@ function rptSlF(tab,k){return (window['_rptSlF_'+rptSlType()+tab]||{})[k]||'';}
 // bộ lọc (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026. Không có bộ lọc nào thì nút ẩn.
 function rptSlCoLoc(){
   const rg=modRange(rptSlMod());
-  return !!(rg.from||rg.to||rptSlF('master','sale')||rptSlF('master','status')||rptSlF('master','sp')||rptSlF('master','brand'));
+  return !!(rg.from||rg.to||window._rptSiLocCS||rptSlF('master','sale')||rptSlF('master','status')||rptSlF('master','sp')||rptSlF('master','brand'));
 }
 function rptSlThaoLoc(){
   modRanges[rptSlMod()]={from:'',to:''};
   window['_rptSlF_'+rptSlType()+'master']={};
-  window._rptSlMasterPage=1;
+  window._rptSlMasterPage=1;window._rptSiLocCS=false;
   rptSlXoaCache();rptSlRender();
 }
 function rptSlSetF(tab,k,v){
@@ -6623,10 +6623,24 @@ function rptSiSoNgayChua(r){
   if(!d)return null;
   return Math.floor((new Date(todayISO()).getTime()-new Date(d).getTime())/86400000);
 }
-function rptSiDashHtml(all){
+// ĐÃ CHĂM SÓC TRONG KỲ (anh Hải chốt 01/10/2026, thay ô "Đang chăm sóc"): khách có LƯỢT CHĂM SÓC nằm trong khoảng ngày
+// đang lọc -- kể cả khách tạo từ lâu (bộ lọc ngày của Master xét ngày tạo / ngày đơn nên trước đây khách cũ được gọi hôm qua
+// không hiện). Chỉ tính lượt CÓ NỘI DUNG = lượt Sale tự ghi; lượt "Chốt đơn" job tự tạo từ đơn Kiot không có nội dung
+// (scripts/tu-tao-chot-don-si.js) nên không tính là tư vấn. Bấm ô -> bảng lọc đúng những khách này, bấm lần nữa bỏ lọc.
+function rptSiLuotTrongKy(r){
+  const M=rptSlMod();
+  return rptSlCsRows(r).filter(x=>String(x.noi_dung||'').trim()&&modInRange(M,String(x.ngay_cham||'').slice(0,10)));
+}
+function rptSiDaChamTrongKy(){
+  return rptSlApplyF('master',rptSlBuildMaster()).map(r=>({r,ds:rptSiLuotTrongKy(r)})).filter(x=>x.ds.length)
+    .sort((a,b)=>String(b.ds[0].ngay_cham||'').localeCompare(String(a.ds[0].ngay_cham||'')))
+    .map(x=>x.r);
+}
+function rptSiLocCS(){window._rptSiLocCS=!window._rptSiLocCS;window._rptSlMasterPage=1;rptSlRender();}
+function rptSiDashHtml(all,daCham){
   const chot=all.filter(r=>r.isChot);
   const coLS=all.map(r=>({r,n:rptSiSoNgayChua(r)})).filter(x=>x.n!==null);
-  const dangCham=coLS.filter(x=>x.n<RPT_SI_LAU_NGAY);
+  const bat=!!window._rptSiLocCS;
   const lauRoi=coLS.filter(x=>x.n>=RPT_SI_LAU_NGAY);
   const chuaTT=all.filter(r=>!String(r.siPhanLoai||'').trim());
   window._rptSiDashList=all;
@@ -6634,7 +6648,9 @@ function rptSiDashHtml(all){
     +'<div onclick="rptSiDashNguon()" style="cursor:pointer" title="Bấm để xem khách Online / Offline">'
       +mkKpi(ic('users'),'Tổng khách hàng',num(all.length),'','g-blue')+'</div>'
     +mkKpi(ic('check'),'Khách đã chốt đơn',num(chot.length),'','g-green')
-    +mkKpi(ic('chat'),'Đang chăm sóc',num(dangCham.length),'','g-teal')
+    +'<div onclick="rptSiLocCS()" style="cursor:pointer;border-radius:14px;'+(bat?'outline:2.5px solid var(--accent);outline-offset:2px':'')+'"'
+      +' title="'+(bat?'Đang lọc bảng theo khách đã chăm sóc trong kỳ — bấm để bỏ lọc':'Bấm để lọc bảng ra các khách đã chăm sóc trong kỳ')+'">'
+      +mkKpi(ic('chat'),'Đã chăm sóc trong kỳ',num(daCham.length),bat?'đang lọc bảng':'','g-teal')+'</div>'
     +mkKpi(ic('clock'),'Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',num(lauRoi.length),'','g-red')
     +mkKpi(ic('clipboard'),'Chưa cập nhật trạng thái',num(chuaTT.length),'','g-purple')
     +'</div>';
@@ -6672,14 +6688,17 @@ function rptSlMasterHtmlRaw(){
   const allRaw=rptSlPeriod();
   const all=rptSlSortNew(rptSlApplyF('master',allRaw),rptSlNgayTao);
   const q=(window._rptSlMasterQ||'').trim().toLowerCase();
-  let list=all;
+  const laSi=rptSlType()==='Sỉ',daCham=laSi?rptSiDaChamTrongKy():[];
+  if(!laSi)window._rptSiLocCS=false;
+  const goc=laSi&&window._rptSiLocCS?daCham:all;
+  let list=goc;
   // Ô TÌM KIẾM chỉ tìm TRONG bộ lọc đang đặt (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026 chốt: muốn tìm
   // rộng hơn thì tự tháo bộ lọc. Gõ có dấu hay không dấu đều ra; gõ toàn số thì so SĐT.
   if(q){
     const qb=rptSlBoDau(q).replace(/\s+/g,' ').trim(),qs=/^[\d\s.+-]+$/.test(q)?q.replace(/\D/g,''):'';   // chỉ so SĐT khi gõ toàn số
     const khop=r=>[r.name,r.kiotName,r.kh,r.leadId].some(x=>rptSlBoDau(x).includes(qb))
       ||(qs.length>=3&&((r.phones||[]).some(p=>String(p.so||'').replace(/\D/g,'').includes(qs))||String(r.phone||'').replace(/\D/g,'').includes(qs)));
-    list=all.filter(khop);
+    list=goc.filter(khop);
   }
   const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   if((window._rptSlMasterPage||1)>totalPages)window._rptSlMasterPage=1;
@@ -6689,7 +6708,7 @@ function rptSlMasterHtmlRaw(){
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(rptSlMasterRow).join('');
   const rev=list.reduce((s,r)=>s+r.revenue,0);
   return `
-    ${rptSlType()==='Sỉ'?rptSiDashHtml(all):(()=>{
+    ${rptSlType()==='Sỉ'?rptSiDashHtml(all,daCham):(()=>{
       // MASTER = NHÌN TỔNG QUAN: bao nhiêu khách, chốt được bao nhiêu, ra bao nhiêu tiền, mỗi khách bao nhiêu.
       // Việc chăm sóc (lâu chưa liên hệ, đang theo ai) thuộc về tab CRM, không để lẫn ở đây.
       const chot=all.filter(r=>r.isChot);
