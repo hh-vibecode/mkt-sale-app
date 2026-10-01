@@ -5083,7 +5083,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='01/10 11:41';
+const APP_VERSION='01/10 11:43';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6516,7 +6516,9 @@ function rptSlMasterRowSi(r){
   const mauNghi=nghi2==null?'var(--muted)':nghi2>=30?'var(--red)':nghi2>=10?'var(--yellow)':'var(--text)';
   const donDau=r.kords&&r.kords.length?Number(r.kords[0].total||0):Number(sh.gia_tri_don_dau||0);
   const ngayDonDau=r.kords&&r.kords.length?String(r.kords[0].purchase_date).slice(0,10):(sh.ngay_chot_dau||'');
-  const congDon=r._chiCS?0:((r.revenue+r.repeatRevenue)||Number(sh.gia_tri_cong_don||0));
+  // GIÁ TRỊ CỘNG DỒN = TOÀN BỘ lịch sử khách, KHÔNG nhảy theo bộ lọc ngày (anh Hải 01/10/2026) -> lấy dòng đầy đủ.
+  const du=rptSiDongDu(r);
+  const congDon=(Number(du.revenue||0)+Number(du.repeatRevenue||0))||Number(sh.gia_tri_cong_don||0);
   return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\',false)">'
     +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+rptSlNhanCu(r.created||sh.ngay_tao,r._chiCS?'chăm sóc':'mua lại')+'</td>'
     +'<td>'+rptSiNguonChip(r)+'</td>'
@@ -6573,10 +6575,13 @@ function rptSiXemTraoDoi(key){
 }
 // ĐƠN CHỐT GẦN NHẤT của khách (toàn thời gian, không theo kỳ lọc): đơn Kiot ĐƯỢC TÍNH doanh thu (kords + mua lại; bỏ
 // huỷ / phiếu báo giá / chưa có dấu vết tiền) và có tiền. Dòng trong kỳ lọc đã bị cắt bớt đơn -> tra dòng đầy đủ theo key.
-function rptSiDonChotCuoi(r){
+function rptSiDongDu(r){
   const full=rptSlBuildMaster();
   if(!window._rptSiFull||window._rptSiFull.src!==full){const m=new Map();full.forEach(x=>m.set(x.key,x));window._rptSiFull={src:full,m};}
-  const x=window._rptSiFull.m.get(r.key)||r;
+  return window._rptSiFull.m.get(r.key)||r;
+}
+function rptSiDonChotCuoi(r){
+  const x=rptSiDongDu(r);
   return [].concat(x.kords||[],x.repeatOrds||[]).filter(o=>Number(o.total||0)>0)
     .sort((a,b)=>String(b.purchase_date).localeCompare(String(a.purchase_date)))[0]||null;
 }

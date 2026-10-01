@@ -98,6 +98,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **01/10** — Cột **Giá trị cộng dồn** Master Sỉ = TOÀN BỘ lịch sử khách, không nhảy theo bộ lọc ngày (anh chốt). Dòng "Doanh thu trong bộ lọc" trên bảng vẫn theo kỳ.
+
 - **01/10** — Master Sỉ: ẩn cột Sales phụ trách (anh chốt; vẫn lọc Sale ở thanh lọc, đổi Sale ở Gán data / hồ sơ — mất ô đổi Sale nhanh trên bảng của admin); thêm cột **Đơn chốt gần nhất** (giá trị trên, ngày chốt dưới; đơn được tính doanh thu, có tiền, toàn thời gian không theo kỳ lọc).
 
 - **01/10** — 5 ô dash Master Sỉ bấm lọc bảng (T9: Online 238 · Offline 114 · đã chốt 28 · đã CS 330 · lâu chưa CS 310 · chưa cập nhật 3 — bảng lọc khớp đúng số ô). Bỏ popup Online/Offline của ô Tổng khách (thay bằng 2 nút lọc trong ô).
