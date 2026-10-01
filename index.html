@@ -957,7 +957,8 @@ function tblAlign(root){
     hs.forEach((th,i)=>{
       const td=bs[i];if(!td)return;
       const right=td.classList.contains('num')||/text-align:\s*right/.test(td.getAttribute('style')||'');
-      const want=right?'right':'left';
+      const giua=/text-align:\s*center/.test(td.getAttribute('style')||'');   // cột căn giữa (bong bóng Trao đổi gần nhất)
+      const want=right?'right':(giua?'center':'left');
       if(th.style.textAlign!==want)th.style.textAlign=want;
     });
   });
@@ -5082,7 +5083,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='01/10 11:28';
+const APP_VERSION='01/10 11:33';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6525,7 +6526,7 @@ function rptSlMasterRowSi(r){
     +rptSiPhanLoaiSelect(r)
     // CS cuối = ngày + "x ngày" chưa liên hệ ở dòng dưới (gộp 2 cột, anh Hải 01/10/2026)
     +'<td style="white-space:nowrap">'+(csCuoi?dmy(csCuoi)+'<div style="font-size:10.5px;font-weight:700;color:'+mauNghi+'">'+num(nghi2)+' ngày</div>':'—')+'</td>'
-    +'<td onclick="rptSlStop(event)">'+rptSiTraoDoiO(r)+'</td>'
+    +'<td onclick="rptSlStop(event)" style="text-align:center">'+rptSiTraoDoiO(r)+'</td>'
     +'<td class="num" style="font-weight:800;color:'+(congDon>0?'var(--green)':'inherit')+'">'+(congDon>0?vnd(congDon):'—')+'</td>'
     +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
       +rptSiChuongDong(r)
