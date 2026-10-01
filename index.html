@@ -5082,7 +5082,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='01/10 11:15';
+const APP_VERSION='01/10 11:21';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6543,8 +6543,9 @@ function rptSiTraoDoiO(r){
   if(!x)return '<span style="color:var(--muted)">—</span>';
   const q=String.fromCharCode(39);
   return '<button onclick="rptSiXemTraoDoi('+q+String(r.key).replace(/'/g,'')+q+')" title="Trao đổi ngày '+dmy(String(x.ngay_cham||'').slice(0,10))+' — bấm để xem"'
-    +' style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border:1.5px solid var(--accent);border-radius:14px;background:var(--accent-l);color:var(--accent);cursor:pointer;font-size:11px;font-weight:800;font-family:var(--font)">'
-    +'<span style="width:15px;height:15px;display:inline-flex">'+ic('chat')+'</span>'+dmy(String(x.ngay_cham||'').slice(0,10)).slice(0,5)+'</button>';
+    // chỉ bong bóng, KHÔNG kèm ngày (anh Hải 01/10/2026: ngày trao đổi lệch ngày CS cuối -- CS cuối nhảy theo cả đơn -- trông cấn)
+    +' style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:28px;border:1.5px solid var(--accent);border-radius:14px;background:var(--accent-l);color:var(--accent);cursor:pointer">'
+    +'<span style="width:16px;height:16px;display:inline-flex">'+ic('chat')+'</span></button>';
 }
 function rptSiXemTraoDoi(key){
   const r=rptSlBuildMaster().find(y=>String(y.key).replace(/'/g,'')===key);if(!r)return;
