@@ -97,7 +97,9 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
-- **01/10** — Ô "Đã chăm sóc trong kỳ" bấm lọc bảng (chị quản lý Sỉ cần xem hôm qua Sale tư vấn ai). Lọc 30/09: bảng thường 2 khách, đã chăm sóc 5 khách (đúng 5 lượt Sale ghi hôm đó); T9: 330 khách. SỬA LỜI BÁO SAI: trước đó em nói "26–29/9 có 6 lượt thiếu nội dung do Sale ghi thiếu" — thật ra đó là lượt Chốt đơn job tự tạo từ đơn Kiot (Bùi Thị Kim Oanh lên đơn), mọi lượt Sale tự ghi đều có nội dung (form bắt buộc). Chờ anh duyệt phần 2: cột "Trao đổi gần nhất" ở Master Sỉ (gộp cột CS cuối + số ngày, 2 dòng, rê chuột ra đủ 3 mục).
+- **01/10** — Master Sỉ: gộp "Ngày CS cuối" + "Ngày chưa liên hệ" thành cột **CS cuối** (ngày + "x ngày" màu đỏ/vàng); thêm cột **Trao đổi gần nhất** = bong bóng chat (ngày dd/mm), bấm ra popup lượt chăm sóc gần nhất có nội dung (3 mục + hẹn) và nút xem toàn bộ lịch sử; đang lọc "Đã chăm sóc trong kỳ" thì lấy lượt trong kỳ (anh chốt).
+
+- **01/10** — Ô "Đã chăm sóc trong kỳ" bấm lọc bảng (chị quản lý Sỉ cần xem hôm qua Sale tư vấn ai). Lọc 30/09: bảng thường 2 khách, đã chăm sóc 5 khách (đúng 5 lượt Sale ghi hôm đó); T9: 330 khách. SỬA LỜI BÁO SAI: trước đó em nói "26–29/9 có 6 lượt thiếu nội dung do Sale ghi thiếu" — thật ra đó là lượt Chốt đơn job tự tạo từ đơn Kiot (Bùi Thị Kim Oanh lên đơn), mọi lượt Sale tự ghi đều có nội dung (form bắt buộc).
 
 - **01/10** — **Gỡ KH000330 "KB SẾP OANH THỊNH-HP" (M-0380) khỏi báo cáo** (anh: data nội bộ không vào báo cáo): `saleretail_manual.excluded=true`, khôi phục được ở mục "Đã gỡ khỏi báo cáo" cuối tab Nhập Liệu Sỉ. Sỉ toàn thời gian 1.306 → 1.305 khách, doanh thu −590.000đ; tháng 9 và Lẻ không đổi. Gặp tài khoản nội bộ khác thì gỡ cùng cách.
 
