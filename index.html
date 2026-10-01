@@ -5083,7 +5083,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='01/10 11:55';
+const APP_VERSION='01/10 12:05';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6516,9 +6516,10 @@ function rptSlMasterRowSi(r){
   const mauNghi=nghi2==null?'var(--muted)':nghi2>=30?'var(--red)':nghi2>=10?'var(--yellow)':'var(--text)';
   const donDau=r.kords&&r.kords.length?Number(r.kords[0].total||0):Number(sh.gia_tri_don_dau||0);
   const ngayDonDau=r.kords&&r.kords.length?String(r.kords[0].purchase_date).slice(0,10):(sh.ngay_chot_dau||'');
-  // GIÁ TRỊ CỘNG DỒN = TOÀN BỘ lịch sử khách, KHÔNG nhảy theo bộ lọc ngày (anh Hải 01/10/2026) -> lấy dòng đầy đủ.
-  const du=rptSiDongDu(r);
-  const congDon=(Number(du.revenue||0)+Number(du.repeatRevenue||0))||Number(sh.gia_tri_cong_don||0);
+  // DOANH THU (anh Hải 01/10/2026) = đơn được tính (kể cả mua lại) có ngày nằm trong bộ lọc ngày -- dòng của rptSlPeriod đã
+  // cắt sẵn đơn theo kỳ. Số cộng dồn ghi trong sheet cũ chỉ dùng khi KHÔNG lọc ngày (nó không chia theo ngày được).
+  const rg=modRange(rptSlMod()),coLoc=!!(rg.from||rg.to);
+  const congDon=r._chiCS?0:((r.revenue+r.repeatRevenue)||(coLoc?0:Number(sh.gia_tri_cong_don||0)));
   return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\',false)">'
     +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+rptSlNhanCu(r.created||sh.ngay_tao,r._chiCS?'chăm sóc':'mua lại')+'</td>'
     +'<td>'+rptSiNguonChip(r)+'</td>'
@@ -6529,8 +6530,6 @@ function rptSlMasterRowSi(r){
     // CS cuối = ngày + "x ngày" chưa liên hệ ở dòng dưới (gộp 2 cột, anh Hải 01/10/2026)
     +'<td style="white-space:nowrap">'+(csCuoi?dmy(csCuoi)+'<div style="font-size:10.5px;font-weight:700;color:'+mauNghi+'">'+num(nghi2)+' ngày</div>':'—')+'</td>'
     +'<td onclick="rptSlStop(event)" style="text-align:center">'+rptSiTraoDoiO(r)+'</td>'
-    +(()=>{const k=rptSiKyGanNhat(r);return k?'<td class="num" style="white-space:nowrap" title="'+k.n+' đơn từ '+dmy(k.tu)+' đến '+dmy(k.den)+'"><span style="font-weight:800">'+vnd(k.tong)+'</span>'
-      +'<div style="font-size:10.5px;font-weight:600;color:var(--muted)">'+dmy(k.den)+'</div></td>':'<td class="num"><span style="color:var(--muted)">—</span></td>';})()
     +'<td class="num" style="font-weight:800;color:'+(congDon>0?'var(--green)':'inherit')+'">'+(congDon>0?vnd(congDon):'—')+'</td>'
     +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
       +rptSiChuongDong(r)
@@ -6573,24 +6572,6 @@ function rptSiXemTraoDoi(key){
    +muc('3. Phương án tiếp theo'+(x.ngay_hen?' · hẹn '+dmy(String(x.ngay_hen).slice(0,10)):''),x.viec_tiep)
    +'<div style="display:flex;justify-content:flex-end;margin-top:16px"><button onclick="qcCloseModal();rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+');rptSlCusTab('+q+'cs'+q+')" class="refresh-btn" style="padding:7px 16px;font-size:12px">Xem toàn bộ lịch sử chăm sóc · '+num(n)+' lượt</button></div>'
    +'</div></div></div>';
-}
-// ĐƠN CHỐT GẦN NHẤT của khách (toàn thời gian, không theo kỳ lọc): đơn Kiot ĐƯỢC TÍNH doanh thu (kords + mua lại; bỏ
-// huỷ / phiếu báo giá / chưa có dấu vết tiền) và có tiền. Dòng trong kỳ lọc đã bị cắt bớt đơn -> tra dòng đầy đủ theo key.
-function rptSiDongDu(r){
-  const full=rptSlBuildMaster();
-  if(!window._rptSiFull||window._rptSiFull.src!==full){const m=new Map();full.forEach(x=>m.set(x.key,x));window._rptSiFull={src:full,m};}
-  return window._rptSiFull.m.get(r.key)||r;
-}
-// GIÁ TRỊ KỲ GẦN NHẤT (anh Hải 01/10/2026): ngày = đơn chốt cuối; giá trị = tổng các đơn trong 30 ngày tính NGƯỢC từ
-// đơn cuối (đơn cuối - 30 ngày .. đơn cuối). Toàn lịch sử, không theo bộ lọc. Đơn = đơn được tính doanh thu, có tiền.
-function rptSiKyGanNhat(r){
-  const x=rptSiDongDu(r);
-  const ds=[].concat(x.kords||[],x.repeatOrds||[]).filter(o=>Number(o.total||0)>0).map(o=>({d:String(o.purchase_date).slice(0,10),v:Number(o.total)}));
-  if(!ds.length)return null;
-  const den=ds.map(o=>o.d).sort().pop();
-  const tu=new Date(new Date(den).getTime()-30*86400000).toISOString().slice(0,10);
-  const trong=ds.filter(o=>o.d>=tu&&o.d<=den);
-  return {den,tu,n:trong.length,tong:trong.reduce((a,o)=>a+o.v,0)};
 }
 // ── CHUÔNG HẸN CHĂM SÓC (Sỉ, anh Hải 25/9/2026) ──
 const RPT_CHUONG_SVG='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 0 0-4-5.7V5a2 2 0 1 0-4 0v.3A6 6 0 0 0 6 11v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0v1a3 3 0 1 1-6 0v-1m6 0H9"/></svg>';
@@ -6635,11 +6616,11 @@ const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Kênh</th><
 // và nhiều trường chỉ điền được 1/4 số khách (người dùng chốt 22/9/2026).
 // MASTER SỈ = đúng khung sheet "Master Data Sỉ" (khác hoàn toàn Lẻ): hồ sơ đại lý + diễn biến chăm sóc
 // + kết quả đơn hàng. Các trường ít dùng (GPKD, fanpage, ghi chú KH, link hồ sơ) nằm trong Chi tiết khách.
-// 01/10/2026 (anh Hải): cột "Giá trị kỳ gần nhất" = tổng đơn 30 ngày tính ngược từ đơn cuối (trên) + ngày đơn cuối (dưới).
+// 01/10/2026 (anh Hải): bỏ "Giá trị kỳ gần nhất" + ẩn "Giá trị cộng dồn"; cột DOANH THU = đơn rơi vào bộ lọc ngày.
 const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Sales phụ trách</th>'
   +'<th>Tên cửa hàng</th><th>SĐT</th><th>Phân loại KH</th>'
   +'<th>CS cuối</th><th>Trao đổi gần nhất</th>'
-  +'<th>Giá trị kỳ gần nhất</th><th>Giá trị cộng dồn</th><th></th>';
+  +'<th>Doanh thu</th><th></th>';
 Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>(rptSlType()==='Sỉ'?RPT_SL_MASTER_HEAD_SI.replace('<th>Phân loại KH</th>','<th>Phân loại KH'+dmBut('si_phan_loai')+'</th>'):RPT_SL_MASTER_HEAD_LE)
   .replace('<th>Sales phụ trách</th>','<th>Sales phụ trách'+dmBut(rptSlType()==='Sỉ'?'sale_si':'sale_le')+'</th>')});
 function rptSlMasterRow(r){
@@ -6756,7 +6737,7 @@ function rptSlMasterHtmlRaw(){
   // Bảng chỉ giữ các trường Sale dùng hàng ngày; mọi trường còn lại (Brand, Nhóm KH, Trạng thái, Mã KH,
   // Nối bằng, Tên Kiot, hoá đơn, lịch sử đơn...) nằm trong modal "Chi tiết" ở cột cuối.
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(rptSlMasterRow).join('');
-  const rev=list.reduce((s,r)=>s+r.revenue,0);
+  const rev=list.reduce((s,r)=>s+r.revenue+(r.repeatRevenue||0),0);   // cộng cả đơn mua lại = khớp tổng cột Doanh thu (01/10/2026)
   return `
     ${rptSlType()==='Sỉ'?rptSiDashHtml(all,daCham):(()=>{
       // MASTER = NHÌN TỔNG QUAN: bao nhiêu khách, chốt được bao nhiêu, ra bao nhiêu tiền, mỗi khách bao nhiêu.

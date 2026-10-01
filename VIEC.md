@@ -98,6 +98,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **01/10** — Master Sỉ: bỏ cột "Giá trị kỳ gần nhất", ẩn "Giá trị cộng dồn"; thay bằng cột **Doanh thu** = đơn được tính (kể cả mua lại) có ngày trong bộ lọc (anh chốt; số cộng dồn sheet cũ chỉ dùng khi không lọc ngày). "Doanh thu trong bộ lọc" trên bảng nay cộng cả mua lại cho khớp cột (cũ chỉ đơn đầu) — áp cả Lẻ. Lọc 30/09: 23,65tr; T9: 417,5tr (= báo cáo).
+
 - **01/10** — Master Sỉ: TRẢ LẠI cột Sales phụ trách (anh đổi ý); cột "Đơn chốt gần nhất" đổi thành **Giá trị kỳ gần nhất** = tổng đơn (được tính, có tiền) trong 30 ngày tính ngược từ đơn cuối, dòng dưới là ngày đơn cuối; rê chuột ra số đơn + khoảng ngày. Bảng 11 cột.
 
 - **01/10** — Cột **Giá trị cộng dồn** Master Sỉ = TOÀN BỘ lịch sử khách, không nhảy theo bộ lọc ngày (anh chốt). Dòng "Doanh thu trong bộ lọc" trên bảng vẫn theo kỳ.
