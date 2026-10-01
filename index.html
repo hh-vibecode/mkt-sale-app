@@ -5083,7 +5083,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='01/10 11:33';
+const APP_VERSION='01/10 11:36';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5686,12 +5686,12 @@ function rptSlF(tab,k){return (window['_rptSlF_'+rptSlType()+tab]||{})[k]||'';}
 // bộ lọc (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026. Không có bộ lọc nào thì nút ẩn.
 function rptSlCoLoc(){
   const rg=modRange(rptSlMod());
-  return !!(rg.from||rg.to||window._rptSiLocCS||rptSlF('master','sale')||rptSlF('master','status')||rptSlF('master','sp')||rptSlF('master','brand'));
+  return !!(rg.from||rg.to||window._rptSiLoc||rptSlF('master','sale')||rptSlF('master','status')||rptSlF('master','sp')||rptSlF('master','brand'));
 }
 function rptSlThaoLoc(){
   modRanges[rptSlMod()]={from:'',to:''};
   window['_rptSlF_'+rptSlType()+'master']={};
-  window._rptSlMasterPage=1;window._rptSiLocCS=false;
+  window._rptSlMasterPage=1;window._rptSiLoc='';
   rptSlXoaCache();rptSlRender();
 }
 function rptSlSetF(tab,k,v){
@@ -6536,7 +6536,7 @@ function rptSlMasterRowSi(r){
 // ── TRAO ĐỔI GẦN NHẤT (Master Sỉ, anh Hải 01/10/2026): bong bóng chat, bấm ra lượt chăm sóc gần nhất (3 mục) để khỏi mở
 // từng hồ sơ. Đang bật lọc "Đã chăm sóc trong kỳ" thì lấy lượt gần nhất TRONG KỲ. Chỉ lượt có nội dung (lượt Sale tự ghi).
 function rptSiLuotGanNhat(r){
-  const ds=window._rptSiLocCS?rptSiLuotTrongKy(r):rptSlCsRows(r).filter(x=>String(x.noi_dung||'').trim());
+  const ds=window._rptSiLoc==='cs'?rptSiLuotTrongKy(r):rptSlCsRows(r).filter(x=>String(x.noi_dung||'').trim());
   return ds[0]||null;
 }
 function rptSiTraoDoiO(r){
@@ -6675,54 +6675,36 @@ function rptSiDaChamTrongKy(){
     .sort((a,b)=>String(b.ds[0].ngay_cham||'').localeCompare(String(a.ds[0].ngay_cham||'')))
     .map(x=>x.r);
 }
-function rptSiLocCS(){window._rptSiLocCS=!window._rptSiLocCS;window._rptSlMasterPage=1;rptSlRender();}
+// BẤM Ô DASH = LỌC BẢNG (anh Hải 01/10/2026): cả 5 ô đều lọc bảng bên dưới, bấm lại ô đang bật thì bỏ lọc.
+// Ô Tổng khách: bấm = bỏ lọc ô; 2 nút Online / Offline trong ô lọc theo nguồn (thay popup Online/Offline 24/9).
+function rptSiLoc(k,ev){if(ev)ev.stopPropagation();window._rptSiLoc=(window._rptSiLoc===k?'':k);window._rptSlMasterPage=1;rptSlRender();}
+const RPT_SI_LOC_TEN={cs:'đã chăm sóc trong kỳ',chot:'đã chốt đơn',lau:'lâu chưa chăm sóc',chuaTT:'chưa cập nhật trạng thái',Online:'khách Online',Offline:'khách Offline','Chưa rõ nguồn':'khách chưa rõ nguồn'};
+function rptSiLocDs(k,all,daCham){
+  if(k==='cs')return daCham;
+  if(k==='chot')return all.filter(r=>r.isChot&&!r._chiCS);
+  if(k==='lau')return all.filter(r=>{const n=rptSiSoNgayChua(r);return n!==null&&n>=RPT_SI_LAU_NGAY;});
+  if(k==='chuaTT')return all.filter(r=>!String(r.siPhanLoai||'').trim());
+  if(k==='Online'||k==='Offline'||k==='Chưa rõ nguồn')return all.filter(r=>rptSiNguonCua(r)===k);
+  return all;
+}
 function rptSiDashHtml(all,daCham){
-  const chot=all.filter(r=>r.isChot&&!r._chiCS);   // khách chỉ vào nhờ lượt chăm sóc không tính "đã chốt" trong kỳ
-  const coLS=all.map(r=>({r,n:rptSiSoNgayChua(r)})).filter(x=>x.n!==null);
-  const bat=!!window._rptSiLocCS;
-  const lauRoi=coLS.filter(x=>x.n>=RPT_SI_LAU_NGAY);
-  const chuaTT=all.filter(r=>!String(r.siPhanLoai||'').trim());
-  window._rptSiDashList=all;
+  const L=window._rptSiLoc||'',q=String.fromCharCode(39);
+  const dem=k=>rptSiLocDs(k,all,daCham).length;
+  const o=(k,html)=>'<div onclick="rptSiLoc('+q+k+q+')" style="cursor:pointer;border-radius:14px;'+(L===k?'outline:2.5px solid var(--accent);outline-offset:2px':'')+'"'
+    +' title="'+(L===k?'Đang lọc bảng — bấm để bỏ lọc':'Bấm để lọc bảng')+'">'+html+'</div>';
+  const nut=k=>k==='Chưa rõ nguồn'&&!dem(k)?'':'<button onclick="rptSiLoc('+q+k+q+',event)" style="border:1.5px solid '+(L===k?'var(--accent)':'var(--border)')+';background:'+(L===k?'var(--accent-l)':'var(--surface)')
+    +';color:'+(L===k?'var(--accent)':'var(--text2)')+';border-radius:8px;padding:1px 8px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:var(--font)">'+(k==='Chưa rõ nguồn'?'Chưa rõ':k)+' '+num(dem(k))+'</button>';
+  const tongSub='<span style="display:inline-flex;gap:5px;flex-wrap:wrap">'+nut('Online')+nut('Offline')+nut('Chưa rõ nguồn')+'</span>';
   return '<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px">'
-    +'<div onclick="rptSiDashNguon()" style="cursor:pointer" title="Bấm để xem khách Online / Offline">'
-      +mkKpi(ic('users'),'Tổng khách hàng',num(all.length),'','g-blue')+'</div>'
-    +mkKpi(ic('check'),'Khách đã chốt đơn',num(chot.length),'','g-green')
-    +'<div onclick="rptSiLocCS()" style="cursor:pointer;border-radius:14px;'+(bat?'outline:2.5px solid var(--accent);outline-offset:2px':'')+'"'
-      +' title="'+(bat?'Đang lọc bảng theo khách đã chăm sóc trong kỳ — bấm để bỏ lọc':'Bấm để lọc bảng ra các khách đã chăm sóc trong kỳ')+'">'
-      +mkKpi(ic('chat'),'Đã chăm sóc trong kỳ',num(daCham.length),bat?'đang lọc bảng':'','g-teal')+'</div>'
-    +mkKpi(ic('clock'),'Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',num(lauRoi.length),'','g-red')
-    +mkKpi(ic('clipboard'),'Chưa cập nhật trạng thái',num(chuaTT.length),'','g-purple')
+    +'<div onclick="rptSiLoc('+q+q+')" style="cursor:pointer;border-radius:14px;'+(L===''?'':'')+'" title="Bấm để bỏ lọc ô, xem tất cả">'
+      +mkKpi(ic('users'),'Tổng khách hàng',num(all.length),tongSub,'g-blue')+'</div>'
+    +o('chot',mkKpi(ic('check'),'Khách đã chốt đơn',num(dem('chot')),L==='chot'?'đang lọc bảng':'','g-green'))
+    +o('cs',mkKpi(ic('chat'),'Đã chăm sóc trong kỳ',num(daCham.length),L==='cs'?'đang lọc bảng':'','g-teal'))
+    +o('lau',mkKpi(ic('clock'),'Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',num(dem('lau')),L==='lau'?'đang lọc bảng':'','g-red'))
+    +o('chuaTT',mkKpi(ic('clipboard'),'Chưa cập nhật trạng thái',num(dem('chuaTT')),L==='chuaTT'?'đang lọc bảng':'','g-purple'))
     +'</div>';
 }
-// Bấm ô "Tổng khách hàng" -> popup tách 2 ô Online / Offline; bấm tiếp từng ô mới ra danh sách khách
-// (anh Hải 24/9/2026). Khách chưa ghi nguồn gom thành ô thứ 3 nếu có, để tổng luôn cộng đủ.
 function rptSiNguonCua(r){return /offline/i.test(r.nguon||'')?'Offline':(/online/i.test(r.nguon||'')?'Online':'Chưa rõ nguồn');}
-function rptSiDashNguon(){
-  const all=window._rptSiDashList||[];
-  const dem={};all.forEach(r=>{const k=rptSiNguonCua(r);dem[k]=(dem[k]||0)+1;});
-  const ds=[['Online','g-blue','chat'],['Offline','g-green','users'],['Chưa rõ nguồn','g-purple','clipboard']]
-    .filter(x=>x[0]!=='Chưa rõ nguồn'||dem[x[0]]);
-  let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
-  m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
-   +'<div style="background:var(--surface);border-radius:16px;max-width:'+(ds.length>2?720:520)+'px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
-   +'<div style="display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border)">'
-   +'<div style="font-size:15px;font-weight:800">Tổng khách hàng · '+num(all.length)+'</div>'
-   +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
-   +'<div style="padding:18px 20px;display:grid;grid-template-columns:repeat('+ds.length+',minmax(0,1fr));gap:12px">'
-   +ds.map(function(x){
-      return '<div onclick="rptSiDashNguonDs('+String.fromCharCode(39)+x[0]+String.fromCharCode(39)+')" style="cursor:pointer" title="Bấm để xem danh sách khách">'
-        +mkKpi(ic(x[2]),'Khách '+x[0],num(dem[x[0]]||0),'',x[1])+'</div>';}).join('')
-   +'</div></div></div>';
-}
-function rptSiDashNguonDs(nguon){
-  const ds=(window._rptSiDashList||[]).filter(r=>rptSiNguonCua(r)===nguon);
-  const tien=r=>Number(r.revenue||0)+Number(r.repeatRevenue||0);
-  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  dataModal({title:'Khách '+nguon,
-    cols:['Ngày tạo','Sales phụ trách','Tên khách','Kênh','Phân loại KH','Doanh số'],
-    rows:ds.map(r=>[dmy(rptSlNgayTao(r))||'—',rptSlSaleHien(r.staff),e(r.name)+' <span style="color:var(--muted);font-weight:600">· '+e(r.kh||r.leadId||'')+'</span>',
-      e(r.kenh||'—'),e(r.siPhanLoai||'—'),tien(r)?vnd(tien(r)):'—']),keys:ds.map(r=>r.key)});
-}
 function rptSlMasterHtmlRaw(){
   const allRaw=rptSlPeriod();
   const laSi=rptSlType()==='Sỉ',daCham=laSi?rptSiDaChamTrongKy():[];
@@ -6734,8 +6716,8 @@ function rptSlMasterHtmlRaw(){
     loc=loc.concat(daCham.filter(r=>!co.has(r.key)).map(r=>Object.assign({},r,{kords:[],revenue:0,repeatOrds:[],repeatRevenue:0,_chiCS:true})));}
   const all=rptSlSortNew(loc,rptSlNgayTao);
   const q=(window._rptSlMasterQ||'').trim().toLowerCase();
-  if(!laSi)window._rptSiLocCS=false;
-  const goc=laSi&&window._rptSiLocCS?daCham:all;
+  if(!laSi)window._rptSiLoc='';
+  const goc=laSi&&window._rptSiLoc?rptSiLocDs(window._rptSiLoc,all,daCham):all;
   let list=goc;
   // Ô TÌM KIẾM chỉ tìm TRONG bộ lọc đang đặt (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026 chốt: muốn tìm
   // rộng hơn thì tự tháo bộ lọc. Gõ có dấu hay không dấu đều ra; gõ toàn số thì so SĐT.

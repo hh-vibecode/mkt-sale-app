@@ -65,6 +65,7 @@
 - **Làm trên cloud** (không cần bật máy, chốt 29/9/2026): claude.ai/code → môi trường **MKT Dev** + repo **hh-vibecode/mkt-sale-app**. Chạy script bằng `node`, SQL bằng `node scripts/sql.js`. Khoá nằm ở biến môi trường của MKT Dev (không có file khoá). Mọi phiên (máy + cloud) **ghi sổ + push trước khi kết thúc** — xem đầu sổ.
 - Repo `Dashboard-Meta` CHỈ ĐỌC tham khảo, tuyệt đối không sửa.
 - **Admin / supreme xem HẾT dữ liệu**, chỉ bị chặn ở quyền vào trang / chức năng anh khoá riêng. Phạm vi Sale chỉ áp cho vị trí Sale / Manager.
+- **5 ô dash Master Sỉ bấm = lọc bảng** (anh chốt 1/10), bấm lại ô đang bật = bỏ lọc, nút "Tất cả" bỏ hết. Ô Tổng khách: bấm = bỏ lọc ô; nút Online / Offline (/ Chưa rõ) trong ô lọc theo nguồn — thay popup Online/Offline (24/9).
 - **Ô "Đã chăm sóc trong kỳ" ở Master Sỉ** (anh chốt 1/10, thay ô "Đang chăm sóc"): đếm mọi khách có lượt chăm sóc CÓ NỘI DUNG trong khoảng ngày đang lọc, kể cả khách tạo từ lâu; bấm ô = lọc bảng ra đúng các khách đó, bấm lại bỏ lọc (nút "Tất cả" cũng bỏ). Lượt "Chốt đơn" job tự tạo từ đơn Kiot (created_by Monsieur Claude, không nội dung) không tính là tư vấn.
 - **Đơn 0đ KHÔNG tính là phát sinh** (anh chốt 1/10): không kéo khách vào kỳ lọc, không làm nhảy ngày chăm sóc cuối (tài khoản nội bộ như KH000330 "KB SẾP OANH THỊNH-HP" xuất hàng bằng đơn 0đ gần như mỗi ngày). Khách vẫn ở "Tất cả thời gian".
 - **Ngày chăm sóc cuối Sỉ nhảy theo đơn** (anh chốt 1/10): đơn Kiot có tiền, không huỷ, mới hơn lượt CS cuối → ngày CS cuối = ngày đơn; đơn từ ngày hẹn trở đi cũng tắt chuông hẹn.
@@ -96,6 +97,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **01/10** — 5 ô dash Master Sỉ bấm lọc bảng (T9: Online 238 · Offline 114 · đã chốt 28 · đã CS 330 · lâu chưa CS 310 · chưa cập nhật 3 — bảng lọc khớp đúng số ô). Bỏ popup Online/Offline của ô Tổng khách (thay bằng 2 nút lọc trong ô).
 
 - **01/10** — Master Sỉ: khách có lượt chăm sóc trong kỳ cũng hiện ở bảng thường (anh chốt). Lọc 30/09: 2 → 7 khách (5 nhờ lượt CS); 29/9–1/10: 4 → 10; T9: 87 → 352. Doanh thu trong bộ lọc không đổi. Phát hiện sổ ghi "Master lọc theo ngày tạo" nhưng code thật ưu tiên ngày đơn có tiền — đã ghi lại luật đúng ở mục 3.
 
