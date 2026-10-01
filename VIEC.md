@@ -98,6 +98,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **01/10** — **Chốt mốc số liệu đỏ 3 lượt** (30/9 22:39, 1/10 04:12, 13:51): (1) tối 30/9 là số TĂNG THẬT — Sỉ T9 +6% (391,9 → 415,6tr), MKT Sỉ +12% (141 → 158,3tr) do em nối 3 khách Sỉ theo SĐT chiều 30/9 (+1 khách chốt) + đơn Kiot mới ngày 30/9; (2) từ 1/10 là BÁO ĐỘNG GIẢ do sang tháng mới (chỉ số "tháng này" + MKT của tháng 10 so với mốc tháng 9 → tụt 100%). Sửa `scripts/kiem-so-lieu.js`: mốc khác tháng thì bỏ qua nhóm "tháng này" + MKT, chỉ so chỉ số toàn thời gian.
 - **01/10** — **Cho nghỉ = bàn giao**: bấm "Cho nghỉ" (bảng Nhân sự Sale hoặc khung ✏ cạnh dropdown Sale) mở mục bàn giao: đếm khách đang đứng tên người nghỉ (Sale đã chốt, cả khách đã chốt), chọn Sale cùng đội đang làm → ghi `si_sale` người nhận cho toàn bộ (gộp lô 500, chỉ đụng cột si_sale) + chuyển cả khách gán tay đã gỡ/gộp; lưu `sale_nhan_su.ban_giao_cho / ban_giao_luc` (SQL `supabase-schema-ban-giao.sql`). Hàm `nsBanGiaoForm` / `nsBanGiaoLuu`. Chạy thử đếm đúng (Toàn 903, Minh Oanh 307, Vân Ngọc 98…), CHƯA bấm bàn giao thật.
 - **01/10** — Master Sỉ: bỏ cột "Giá trị kỳ gần nhất", ẩn "Giá trị cộng dồn"; thay bằng cột **Doanh thu** = đơn được tính (kể cả mua lại) có ngày trong bộ lọc (anh chốt; số cộng dồn sheet cũ chỉ dùng khi không lọc ngày). "Doanh thu trong bộ lọc" trên bảng nay cộng cả mua lại cho khớp cột (cũ chỉ đơn đầu) — áp cả Lẻ. Lọc 30/09: 23,65tr; T9: 417,5tr (= báo cáo).
 

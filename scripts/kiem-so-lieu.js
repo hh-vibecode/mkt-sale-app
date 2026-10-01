@@ -148,8 +148,15 @@ const vnd = n => Number(n || 0).toLocaleString('vi');
   }
   const moc = JSON.parse(fs.readFileSync(FILE_MOC, 'utf8'));
   console.log('So với mốc lưu lúc', String(moc.luc).slice(0, 16).replace('T', ' '), '\n');
+  // SANG THÁNG MỚI (1/10/2026): chỉ số "tháng này" và MKT (cũng tính trong tháng) của mốc thuộc tháng trước
+  // -> so là tụt 100% giả. Mốc khác tháng thì bỏ qua nhóm này, chỉ so các chỉ số toàn thời gian.
+  const thangVN = d => new Date(new Date(d).getTime() + 7 * 3600 * 1000).toISOString().slice(0, 7);
+  const khacThang = thangVN(moc.luc) !== thangVN(Date.now());
+  const theoThang = k => /_thangNay_|^mkt_/.test(k);
+  if (khacThang) console.log('Mốc thuộc tháng ' + thangVN(moc.luc) + ', nay đã sang ' + thangVN(Date.now()) + ' -> bỏ qua chỉ số tháng này / MKT.\n');
   const canhBao = [];
   Object.keys(so).forEach(k => {
+    if (khacThang && theoThang(k)) { console.log('  --', k.padEnd(22), '(sang tháng mới, không so)'); return; }
     const cu = Number(moc.so[k] || 0), moi = Number(so[k] || 0);
     const lech = cu ? (moi - cu) / cu * 100 : (moi ? 100 : 0);
     const nang = (cu > 0 && moi === 0) || Math.abs(lech) > NGUONG_PHAN_TRAM;
