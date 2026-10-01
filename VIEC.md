@@ -96,6 +96,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **01/10** — **Gỡ KH000330 "KB SẾP OANH THỊNH-HP" (M-0380) khỏi báo cáo** (anh: data nội bộ không vào báo cáo): `saleretail_manual.excluded=true`, khôi phục được ở mục "Đã gỡ khỏi báo cáo" cuối tab Nhập Liệu Sỉ. Sỉ toàn thời gian 1.306 → 1.305 khách, doanh thu −590.000đ; tháng 9 và Lẻ không đổi. Gặp tài khoản nội bộ khác thì gỡ cùng cách.
+
 - **01/10** — (1) Đơn 0đ không còn kéo khách vào kỳ lọc: Sỉ T9 89 → 87 khách (bớt M-0380 KH000330 + M-0369 NPP Chín Lê), 3 ngày gần nhất 7 → 6; doanh thu Sỉ / Lẻ không đổi. (2) Ngày CS cuối Sỉ nhảy theo đơn có tiền: 13/1.306 khách đổi (KH000330 14/11/2025 → 22/09/2026). (3) Form lượt chăm sóc 3 mục theo yêu cầu Sale (chị gửi anh). (4) Bỏ nút Thu hồi data. Bộ kiểm số liệu báo lệch "tháng này" là do sang tháng 10, không do sửa — so bản cũ / mới trên cùng dữ liệu: doanh thu lệch 0.
 
 - **30/09** — Báo cáo Tổng quan (Sỉ + Lẻ): bảng **Hiệu quả theo kênh** bấm từng dòng ra danh sách khách của kênh đó. Loan Nguyễn - Malaysia (L-CT2-0107) đổi lại thẻ Pancake KH LẺ → KH SỈ theo anh (đọc đúng `shop_customer.tags`, giữ LEAD TIỀM NĂNG). 2 khách kênh "Khác" giữ nguyên.
