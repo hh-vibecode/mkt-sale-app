@@ -2949,7 +2949,7 @@ function dhNhanSuHtml(){
     const dong=list.map(x=>{
       const ai=aiXem(x.ten);
       return '<tr'+(x.dang_lam===false?' style="opacity:.5"':'')+'>'
-        +'<td class="name">'+e(x.ten)+(x.dang_lam===false?' <span style="font-size:10px;color:var(--muted)">(nghỉ)</span>':'')+'</td>'
+        +'<td class="name">'+e(x.ten)+(x.dang_lam===false?' <span style="font-size:10px;color:var(--muted)">(nghỉ'+(x.ban_giao_cho?' · đã bàn giao cho '+e(x.ban_giao_cho):'')+')</span>':'')+'</td>'
         +'<td class="num"'+(ai.length?'':' style="color:var(--red)"')+'>'+num(ai.length)+'</td>'
         +'<td style="white-space:nowrap">'+(suaDuoc
           ?('<button onclick="dhNhanSuSua('+x.id+')" class="btn-ghost" style="padding:3px 9px;font-size:11px;color:var(--accent);font-weight:700">Sửa</button>'
@@ -3056,10 +3056,78 @@ async function dhNhanSuDoiDoi(id,doi){
     await saleNhanSuLoad(true);dhNhanSuVeLai();
   }catch(e){rptBaoLoi('Đổi đội nhân sự',e);}
 }
+// CHO NGHỈ = BÀN GIAO (anh Hải 1/10/2026): bấm "Cho nghỉ" mở mục bàn giao, chọn 1 Sale cùng đội đang làm;
+// MỌI khách đang đứng tên người nghỉ (Sale đã chốt: gán tay > người tạo đơn Kiot > Pancake, cả khách đã chốt)
+// chuyển sang người nhận bằng cách ghi saleretail_manual.si_sale. Lưu người nhận vào sale_nhan_su.ban_giao_cho.
+async function nsKhachCua(ten,doi){
+  await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad()]);
+  await rptSlLockChot();
+  const cu=window._rptSlType,cuK=window._kiotOrdByCode;let ds=[];
+  try{window._rptSlType=doi;window._kiotOrdByCode=null;rptSlXoaCache();ds=rptSlBuildMaster().filter(r=>r.staff===ten);}
+  finally{window._rptSlType=cu;window._kiotOrdByCode=cuK;rptSlXoaCache();}
+  return ds;
+}
+async function nsBanGiaoForm(id){
+  if(!dashToanQuyen())return;
+  const x=saleNhanSuDS().find(y=>y.id===id);if(!x)return;
+  const e=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const ip='width:100%;box-sizing:border-box;height:36px;padding:6px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--font);outline:none';
+  let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
+  const khung=noi=>'<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
+    +'<div style="background:var(--surface);border-radius:16px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
+    +'<div style="display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border)">'
+    +'<div style="font-size:15px;font-weight:800">Cho nghỉ &amp; bàn giao · '+e(x.ten)+' <span style="font-size:12px;color:var(--muted);font-weight:700">· Sale '+e(x.doi)+'</span></div>'
+    +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
+    +'<div style="padding:16px 20px;display:grid;gap:12px">'+noi+'</div></div></div>';
+  m.innerHTML=khung('<div style="color:var(--muted);font-size:12.5px">Đang đếm khách đang đứng tên '+e(x.ten)+'…</div>');
+  let ds;
+  try{ds=await nsKhachCua(x.ten,x.doi);}catch(err){m.innerHTML=khung('<div style="color:var(--red);font-size:12.5px;font-weight:700">Chưa đếm được khách: '+e(err.message)+'</div>');return;}
+  const chot=ds.filter(r=>r.isChot).length;
+  window._nsBanGiao={id,ten:x.ten,doi:x.doi,ids:ds.map(r=>r.leadId)};
+  const nguoi=saleNhanSuDS().filter(y=>y.doi===x.doi&&y.dang_lam!==false&&y.id!==id&&y.ten!==RPT_SL_BOT_SI).map(y=>y.ten);
+  m.innerHTML=khung(
+    '<div style="font-size:13px;line-height:1.55">Đang đứng tên <b>'+num(ds.length)+' khách</b>'
+      +(ds.length?' <span style="color:var(--muted)">('+num(chot)+' đã chốt · '+num(ds.length-chot)+' chưa chốt)</span>':'')+'.</div>'
+    +'<div><div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Bàn giao cho'+(ds.length?' *':'')+'</div>'
+    +'<select id="nsNhan" style="'+ip+';cursor:pointer"><option value="">— chọn Sale nhận bàn giao —</option>'
+    +nguoi.map(t=>'<option value="'+e(t)+'">'+e(t)+'</option>').join('')+'</select></div>'
+    +(ds.length?'<div style="font-size:11.5px;color:var(--muted);line-height:1.5">Toàn bộ '+num(ds.length)+' khách chuyển sang người nhận, kể cả khách đã chốt (doanh thu các khách này tính cho người nhận). Người nghỉ biến khỏi mọi ô chọn Sale; cho làm lại được, nhưng khách không tự quay về.</div>':'')
+    +'<div id="nsBgMsg" style="font-size:12px;font-weight:700;color:var(--red)"></div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end"><button onclick="qcCloseModal()" class="btn-ghost" style="margin:0">Huỷ</button>'
+    +'<button id="nsBgNut" onclick="nsBanGiaoLuu()" class="refresh-btn" style="padding:8px 18px;background:var(--red);border-color:var(--red)">Cho nghỉ &amp; bàn giao</button></div>');
+}
+async function nsBanGiaoLuu(){
+  const b=window._nsBanGiao;if(!b||!dashToanQuyen())return;
+  const nhan=((document.getElementById('nsNhan')||{}).value||'').trim();
+  const msg=document.getElementById('nsBgMsg'),nut=document.getElementById('nsBgNut');
+  if(b.ids.length&&!nhan){if(msg)msg.textContent='Chọn Sale nhận bàn giao trước đã';return;}
+  if(nut)nut.disabled=true;if(msg){msg.style.color='var(--muted)';msg.textContent='Đang bàn giao '+num(b.ids.length)+' khách…';}
+  const H={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  try{
+    if(nhan){
+      const ai=localStorage.getItem('dashUser')||'app',luc=new Date().toISOString();
+      for(let i=0;i<b.ids.length;i+=500){   // ghi gộp từng lô 500 dòng, chỉ đụng cột si_sale
+        const lo=b.ids.slice(i,i+500).map(id=>({lead_id:id,si_sale:nhan,updated_at:luc,updated_by:ai}));
+        const r=await fetch(SUPABASE_URL+'/rest/v1/saleretail_manual?on_conflict=lead_id',{method:'POST',
+          headers:Object.assign({Prefer:'resolution=merge-duplicates,return=minimal'},H),body:JSON.stringify(lo)});
+        if(!r.ok)throw new Error('chuyển khách lỗi '+r.status+': '+(await r.text()).slice(0,150));
+      }
+      // khách gán tay cho người nghỉ nhưng không còn trong Master (đã gỡ / đã gộp) cũng chuyển luôn
+      const r2=await fetch(SUPABASE_URL+'/rest/v1/saleretail_manual?si_sale=eq.'+encodeURIComponent(b.ten),{method:'PATCH',
+        headers:Object.assign({Prefer:'return=minimal'},H),body:JSON.stringify({si_sale:nhan})});
+      if(!r2.ok)throw new Error('chuyển khách gán tay lỗi '+r2.status);
+    }
+    const r3=await fetch(SUPABASE_URL+'/rest/v1/sale_nhan_su?id=eq.'+b.id,{method:'PATCH',headers:H,
+      body:JSON.stringify({dang_lam:false,ban_giao_cho:nhan||null,ban_giao_luc:nhan?new Date().toISOString():null})});
+    if(!r3.ok)throw new Error('cho nghỉ lỗi '+r3.status);
+    logAct('U','sale_nhan_su',String(b.id),b.ten,'Cho nghỉ & bàn giao','đang làm · '+num(b.ids.length)+' khách',nhan?'nghỉ · bàn giao cho '+nhan:'nghỉ');
+    await Promise.all([rptSlLoadManual(true),saleNhanSuLoad(true)]);
+    window._kiotOrdByCode=null;rptSlXoaCache();qcCloseModal();dhNhanSuVeLai();
+  }catch(err){if(nut)nut.disabled=false;if(msg){msg.style.color='var(--red)';msg.textContent='Chưa bàn giao xong: '+err.message+' — bấm lại để chạy tiếp (an toàn, không ghi trùng)';}}
+}
 async function dhNhanSuNghi(id,lam){
   if(!dashToanQuyen())return;
-  if(!lam){const x=saleNhanSuDS().find(y=>y.id===id)||{};
-    if(!confirm('Cho "'+(x.ten||'nhân sự này')+'" nghỉ?\n\nNgười này sẽ biến khỏi mọi ô chọn Sale trong app. Dữ liệu khách họ đang giữ KHÔNG mất, có thể cho làm lại.'))return;}
+  if(!lam)return nsBanGiaoForm(id);   // cho nghỉ = phải bàn giao khách (1/10/2026)
   try{
     const r=await fetch(SUPABASE_URL+'/rest/v1/sale_nhan_su?id=eq.'+id,{method:'PATCH',
       headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
@@ -4029,7 +4097,7 @@ async function saleNhanSuLoad(force){
   await dmLoad(force).catch(()=>null);   // danh mục dropdown đi cùng nhân sự Sale
   if(saleNhanSuLoaded&&!force&&Date.now()-saleNhanSuLuc<60000)return saleNhanSu;
   // Tải lỗi thì GIỮ danh sách đang có (trước đây xoá trắng cả bản lưu trên máy -> dropdown Sale rỗng)
-  try{saleNhanSu=await sbFetchAll('sale_nhan_su','select=id,ten,doi,dang_lam,ghi_chu&order=doi,ten');}
+  try{saleNhanSu=await sbFetchAll('sale_nhan_su','select=id,ten,doi,dang_lam,ghi_chu,ban_giao_cho,ban_giao_luc&order=doi,ten');}
   catch(e){saleNhanSuLoaded=true;return saleNhanSu;}
   saleNhanSuLoaded=true;saleNhanSuLuc=Date.now();
   try{localStorage.setItem('dashSaleNhanSu',JSON.stringify(saleNhanSu));}catch(e){}
@@ -4487,10 +4555,7 @@ async function dmDoiTen(id,v){
 async function dmXoa(id){
   const x=dmDs(window._dmLoai).find(y=>y.id===id);if(!x)return;
   if(x.ns){
-    if(!confirm('Cho "'+x.gia_tri+'" nghỉ?\n\nNgười này biến khỏi mọi ô chọn Sale. Khách họ đang giữ KHÔNG mất, cho làm lại được ở Nhân sự Sale.'))return;
-    try{await dmGhi('sale_nhan_su?id=eq.'+id,'PATCH',{dang_lam:false});logAct('U','sale_nhan_su',String(id),x.gia_tri,'Trạng thái','đang làm','nghỉ');
-      await saleNhanSuLoad(true);window._dmMenu=null;window._dmDoi=true;dmVe();}catch(e){dmBao('Chưa cho nghỉ được: '+e.message);}
-    return;
+    return nsBanGiaoForm(id);   // cho nghỉ = phải bàn giao khách (1/10/2026)
   }
   if(x.he_thong)return dmBao('Giá trị hệ thống, không xoá được');
   try{
@@ -5083,7 +5148,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='01/10 12:05';
+const APP_VERSION='01/10 13:58';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;

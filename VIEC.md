@@ -98,6 +98,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **01/10** — **Cho nghỉ = bàn giao**: bấm "Cho nghỉ" (bảng Nhân sự Sale hoặc khung ✏ cạnh dropdown Sale) mở mục bàn giao: đếm khách đang đứng tên người nghỉ (Sale đã chốt, cả khách đã chốt), chọn Sale cùng đội đang làm → ghi `si_sale` người nhận cho toàn bộ (gộp lô 500, chỉ đụng cột si_sale) + chuyển cả khách gán tay đã gỡ/gộp; lưu `sale_nhan_su.ban_giao_cho / ban_giao_luc` (SQL `supabase-schema-ban-giao.sql`). Hàm `nsBanGiaoForm` / `nsBanGiaoLuu`. Chạy thử đếm đúng (Toàn 903, Minh Oanh 307, Vân Ngọc 98…), CHƯA bấm bàn giao thật.
 - **01/10** — Master Sỉ: bỏ cột "Giá trị kỳ gần nhất", ẩn "Giá trị cộng dồn"; thay bằng cột **Doanh thu** = đơn được tính (kể cả mua lại) có ngày trong bộ lọc (anh chốt; số cộng dồn sheet cũ chỉ dùng khi không lọc ngày). "Doanh thu trong bộ lọc" trên bảng nay cộng cả mua lại cho khớp cột (cũ chỉ đơn đầu) — áp cả Lẻ. Lọc 30/09: 23,65tr; T9: 417,5tr (= báo cáo).
 
 - **01/10** — Master Sỉ: TRẢ LẠI cột Sales phụ trách (anh đổi ý); cột "Đơn chốt gần nhất" đổi thành **Giá trị kỳ gần nhất** = tổng đơn (được tính, có tiền) trong 30 ngày tính ngược từ đơn cuối, dòng dưới là ngày đơn cuối; rê chuột ra số đơn + khoảng ngày. Bảng 11 cột.
