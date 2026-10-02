@@ -5168,7 +5168,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 17:09';
+const APP_VERSION='02/10 17:11';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6715,6 +6715,20 @@ function rptSiTraoDoiO(r){
         +';border-radius:14px;background:color-mix(in srgb,'+m+' 13%,transparent);color:'+m+';cursor:pointer">';})()
     +'<span style="width:16px;height:16px;display:inline-flex">'+ic('chat')+'</span></button>';
 }
+async function rptSiDoiTTCs(key,id,tt,el){
+  if(el){el.disabled=true;el.style.opacity='.6';}
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/salesi_crm?id=eq.'+id,{method:'PATCH',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify({trang_thai:tt,updated_at:new Date().toISOString()})});
+    if(!res.ok)throw new Error('lỗi '+res.status);
+    const r=rptSlBuildMaster().find(y=>String(y.key).replace(/'/g,'')===key)||{};
+    logAct('U','salesi_crm','#'+id,r.name||null,'Trạng thái lượt chăm sóc','',tt);
+    await siCrmLoad(true);
+    window._kiotOrdByCode=null;rptSlXoaCache();rptSlRender();
+    rptSiXemTraoDoi(key);   // mở lại popup với trạng thái mới
+  }catch(e){if(el){el.disabled=false;el.style.opacity='1';}rptBaoLoi('Đổi trạng thái chăm sóc',e);}
+}
 function rptSiXemTraoDoi(key){
   const r=rptSlBuildMaster().find(y=>String(y.key).replace(/'/g,'')===key);if(!r)return;
   const x=rptSiLuotGanNhat(r);if(!x)return;
@@ -6730,7 +6744,19 @@ function rptSiXemTraoDoi(key){
    +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
    +'<div style="padding:6px 20px 18px">'
    +'<div style="font-size:12px;font-weight:700;color:var(--text2);margin-top:8px">Trao đổi ngày '+dmy(String(x.ngay_cham||'').slice(0,10))+(x.sales?' · '+e(x.sales):'')
-     +(x.trang_thai?' · <span style="color:var(--accent)">'+e(x.trang_thai)+'</span>':'')+'</div>'
+     +'</div>'
+   // ĐỔI TRẠNG THÁI CHĂM SÓC NGAY TRONG BONG BÓNG (anh Hải 02/10/2026): áp cho lượt gần nhất (bỏ qua Chốt đơn) -- đúng lượt
+   // quyết định màu bong bóng. Bấm là lưu luôn, bong bóng ở CRM đổi màu theo.
+   +(()=>{const y=rptSlCsRows(r).find(z=>!rptSlCsLaChotLuot(z));if(!y)return '';
+     const cur=rptSlCsTTCua(y),k=String(r.key).replace(/'/g,'');
+     return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;background:var(--bg2);border-radius:10px">'
+       +'<span style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Trạng thái chăm sóc</span>'
+       +RPT_CS_TRANG_THAI.filter(t=>!rptSlCsLaChot(t)).map(t=>{const m=rptSlCsMauTT(t),on=t===cur;
+         return '<button onclick="rptSiDoiTTCs('+q+k+q+','+y.id+','+q+t+q+',this)"'+(on?' disabled':'')
+           +' style="height:28px;padding:0 13px;border-radius:14px;font-size:11.5px;font-weight:800;font-family:var(--font);cursor:'+(on?'default':'pointer')
+           +';border:1.5px solid '+m+';background:'+(on?m:'var(--surface)')+';color:'+(on?'#fff':m)+'">'+(on?'✓ ':'')+e(t)+'</button>';}).join('')
+       +(y.id!==x.id?'<span style="font-size:10.5px;color:var(--muted)">(lượt '+dmy(String(y.ngay_cham||'').slice(0,10))+')</span>':'')
+       +'</div>';})()
    +muc('1. Sản phẩm quan tâm',x.sp_quan_tam)
    +muc('2. Nội dung trao đổi',x.noi_dung)
    +muc('3. Phản hồi / vướng mắc / nhu cầu khách hàng',x.phan_hoi)
