@@ -674,9 +674,13 @@ function modDefaultFor(mod){
 // BÁO CÁO MKT CHỈ TỪ 1/6/2026 (anh Hải 28/9/2026): chi phí quảng cáo chỉ có từ T6, nên doanh thu / đơn / mọi số khác
 // của MKT cũng cắt từ đó -- không thì chọn "Tất cả" sẽ lẫn đơn Shidai cũ (kéo về từ 4/2025) không có chi phí đi kèm.
 const RPT_MKT_TU='2026-06-01';
+// CHỈ XEM TỪ 2026 (anh Hải 02/10/2026): "Tất cả" = Tất cả 2026, mọi bộ lọc không lùi được về trước 1/1/2026.
+// Số trước 2026 đã kéo 1 lần để có số chuẩn nhưng chi tiết tạm ẩn -- khi nào anh bảo mở thì đổi mốc này.
+const RPT_TU_NAM='2026-01-01';
 function modRange(mod){
   const r=modRanges[mod]||modDefaultFor(mod);
   if(mod==='mkt'&&(!r.from||r.from<RPT_MKT_TU))return {from:RPT_MKT_TU,to:(r.to&&r.to<RPT_MKT_TU)?'2026-05-31':(r.to||'')}   // kỳ nằm hẳn trước T6 -> rỗng;
+  if(!r.from||r.from<RPT_TU_NAM)return {from:RPT_TU_NAM,to:(r.to&&r.to<RPT_TU_NAM)?'2025-12-31':(r.to||'')};
   return r;
 }
 function modSetRange(mod,from,to,cb){
@@ -691,7 +695,7 @@ function modQuick(mod,v,cb){
   else if(v==='7days'){d.setDate(d.getDate()-6);from=d.toISOString().slice(0,10);}
   else if(v==='30days'){d.setDate(d.getDate()-29);from=d.toISOString().slice(0,10);}
   else if(v==='thismonth'){from=t.slice(0,8)+'01';}
-  else if(v==='all'){from='';to='';}
+  else if(v==='all'){from=RPT_TU_NAM;to='';}   // "Tất cả 2026"
   // "3/2026" -> trọn tháng đó. Tháng đang chạy thì chặn đến hôm nay cho khỏi lấy ngày tương lai.
   else if(/^thang:\d{4}-\d{2}$/.test(v)){
     const ym=v.slice(6);
@@ -765,7 +769,7 @@ function modDateBar(mod,cb){
       <option value="7days">7 ngày qua</option>
       <option value="30days">30 ngày qua</option>
       <option value="thismonth">Tháng này</option>
-      <option value="all">Tất cả</option>
+      <option value="all">Tất cả 2026</option>
       ${(()=>{ // các tháng ĐÃ QUA trong năm nay, mới nhất lên trước -- bấm 1 phát ra trọn tháng
         const t=todayISO(),nam=t.slice(0,4),thang=Number(t.slice(5,7));
         let o='<option disabled>──────────</option>';
@@ -774,9 +778,9 @@ function modDateBar(mod,cb){
         return o;})()}
     </select>
     <span style="font-size:11px;color:var(--muted);font-weight:700">Từ</span>
-    <input type="date" value="${r.from}" onchange="modSetRange('${mod}',this.value,'${r.to}','${cb}')" style="${ip}">
+    <input type="date" min="${RPT_TU_NAM}" value="${r.from}" onchange="modSetRange('${mod}',this.value,'${r.to}','${cb}')" style="${ip}">
     <span style="font-size:11px;color:var(--muted);font-weight:700">Đến</span>
-    <input type="date" value="${r.to}" onchange="modSetRange('${mod}','${r.from}',this.value,'${cb}')" style="${ip}">
+    <input type="date" min="${RPT_TU_NAM}" value="${r.to}" onchange="modSetRange('${mod}','${r.from}',this.value,'${cb}')" style="${ip}">
   </div>`;
 }
 
@@ -5150,7 +5154,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 14:08';
+const APP_VERSION='02/10 14:29';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6275,6 +6279,13 @@ function rptSlBuildMasterRaw(){
   // NGUỒN KHÁCH chọn tay (saleretail_manual.nguon_sua: Online / Offline) đè nguồn Pancake -- đặt TRƯỚC bước
   // tách mua lại (khongCat) vì nguồn quyết định đơn nào còn tính cho Sale (30/9/2026)
   rows.forEach(r=>{const ng=String((rptSlManual[r.leadId]||{}).nguon_sua||'').trim();if(ng)r.nguon=ng;});
+  // LẺ: CÓ THẺ TIỀM NĂNG MÀ CHƯA CÓ TRẠNG THÁI -> tự là "Đang chăm sóc" (anh Hải 02/10/2026, áp cả về sau: "cứ gắn thẻ
+  // tiềm năng là auto đang chăm sóc, cho tới khi sale tự thay đổi"). Tính lúc dựng dữ liệu, KHÔNG ghi bảng -> Sale chọn
+  // trạng thái khác là thắng ngay; khách đã chốt hoặc đã có trạng thái (kể cả Lead cũ) không đụng.
+  if(rptSlType()!=='Sỉ')rows.forEach(r=>{
+    if(r.isChot||String(r.manualStatus||'').trim())return;
+    if((r.orders||[]).some(o=>!dhHuy(o)&&/TIỀM NĂNG/i.test(o.customer_tags||''))){r.manualStatus='Đang chăm sóc';r.status='Đang chăm sóc';r.ttTuDong=true;}
+  });
   // LẺ: SĐT / địa chỉ Sale ghi ở chế độ sửa hồ sơ (cùng cột si_sdt / si_dia_chi với Sỉ, 30/9/2026)
   if(rptSlType()!=='Sỉ')rows.forEach(r=>{const mn=rptSlManual[r.leadId]||{};
     if(mn.si_sdt){const k9=rptSlLast9(mn.si_sdt);
@@ -6692,6 +6703,17 @@ const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Sales phụ
   +'<th>Doanh thu</th><th></th>';
 Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>(rptSlType()==='Sỉ'?RPT_SL_MASTER_HEAD_SI.replace('<th>Phân loại KH</th>','<th>Phân loại KH'+dmBut('si_phan_loai')+'</th>'):RPT_SL_MASTER_HEAD_LE)
   .replace('<th>Sales phụ trách</th>','<th>Sales phụ trách'+dmBut(rptSlType()==='Sỉ'?'sale_si':'sale_le')+'</th>')});
+// Ô TRẠNG THÁI đổi được ngay trên Master Lẻ (anh Hải 02/10/2026), như cột Phân loại bên Sỉ. Danh sách lấy từ danh mục;
+// chọn "Chốt đơn" đi đúng quy trình chốt (hỏi Mã KH) qua rptSlSetField. Khách đã chốt vẫn là nhãn, không đổi được.
+function rptSlTtChon(r){
+  const cur=r.manualStatus||'',q=String.fromCharCode(39);
+  const e=x=>String(x).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const ds=cur&&RPT_SL_STATUS_OPTS.indexOf(cur)<0?[cur].concat(RPT_SL_STATUS_OPTS):RPT_SL_STATUS_OPTS;
+  return '<select onchange="rptSlSetField('+q+r.leadId+q+','+q+'status'+q+',this.value,this)" title="Đổi trạng thái"'
+    +' style="height:26px;box-sizing:border-box;padding:2px 6px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:800;font-family:var(--font);cursor:pointer;max-width:150px'+rptSlSelTint(cur)+'">'
+    +'<option value=""'+(cur?'':' selected')+'>— chọn —</option>'
+    +ds.map(x=>'<option value="'+e(x)+'"'+(x===cur?' selected':'')+'>'+e(x)+'</option>').join('')+'</select>';
+}
 function rptSlMasterRow(r){
   if(rptSlType()==='Sỉ')return rptSlMasterRowSi(r);
   return `<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
@@ -6701,7 +6723,7 @@ function rptSlMasterRow(r){
     ${rptSlSaleO(r)}
     <td class="name">${rptSlTenKhach(r)}${rptSlMaDuoiTen(r)}</td>
     <td style="white-space:nowrap">${rptSlSdtHtml(r)}</td>
-    <td>${rptSlStatusPill(rptSlRowStatus(r))}</td>
+    <td onclick="rptSlStop(event)">${r.isChot?rptSlStatusPill(rptSlRowStatus(r)):rptSlTtChon(r)}</td>
     <td>${dmy(r.lastTouch)||'—'}${r.isChot&&r.daysIdle!==null&&r.daysIdle>=10?' <span style="color:var(--red);font-weight:800;font-size:11px">('+num(r.daysIdle)+'n)</span>':''}</td>
     <td class="num" style="font-weight:800;color:${r.revenue+r.repeatRevenue>0?'var(--green)':'inherit'}">${r.revenue+r.repeatRevenue>0?vnd(r.revenue+r.repeatRevenue):'—'}</td>
   </tr>`;
