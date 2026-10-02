@@ -43,7 +43,7 @@
 
 - **Dữ liệu nguồn nhập sai → chủ động báo anh + TỰ SỬA CHUẨN TRONG APP** bằng luật nhận diện (áp cả về sau), không chỉ dặn nhân viên (anh chốt 2/10/2026). Không ghi ngược sang Kiot / Pancake trừ khi anh bảo. Mỗi luật ghi 1 dòng nhật ký. Mẫu: khách gom đơn Shopee → Lẻ · Online · Shopee.
 - **Chỉ xem từ 2026** (anh chốt 2/10/2026): bộ lọc "Tất cả" = Tất cả 2026, không mở về trước khi anh chưa bảo. Dữ liệu trước 2026 chỉ giữ SỐ TỔNG (lưu trữ, khoá), không giữ chi tiết.
-- **Lẻ dùng chung bộ Phân loại KH của Sỉ** (2/10/2026, `si_phan_loai`). Lẻ chưa chốt, chưa phân loại: có thẻ TIỀM NĂNG → "Tiềm năng, chưa ra đơn"; không thẻ mà có SĐT → **"Lead mới"** (tự đặt, tới khi Sale đổi). Người chào hàng / dịch vụ KHÔNG được thành Lead mới (job tự tạo đã loại).
+- **Lẻ dùng chung bộ Phân loại KH của Sỉ, TRỪ "Chăm sóc dài hạn"** (2/10/2026, `si_phan_loai`, hàm `rptSlPhanLoaiDs()`). "Tiềm năng, chưa ra đơn" của Lẻ = thẻ TIỀM NĂNG cũ. Lẻ chưa chốt, chưa phân loại: có thẻ TIỀM NĂNG → "Tiềm năng, chưa ra đơn"; không thẻ mà có SĐT → **"Lead mới"** (tự đặt, tới khi Sale đổi). Người chào hàng / dịch vụ KHÔNG được thành Lead mới (job tự tạo đã loại).
 - **Doanh thu cửa hàng**: khách có phiếu tạm / đơn đặt hàng thì theo đơn; khách xuất hoá đơn luôn thì tính thẳng hoá đơn (2/10/2026). Lẻ có cả nguồn Offline cửa hàng.
 - **MINH BẠCH, KHÔNG GIẤU (anh chốt 30/9/2026):** anh rất fair, không trách khi Claude làm sai hay gặp sự cố → KHÔNG giấu, KHÔNG nói giảm.
   Mỗi lần báo cáo phải kể đủ: việc làm sai (kể cả đã tự sửa), phần CHƯA kiểm được, và các RỦI RO TIỀM TÀNG (dữ liệu, phân quyền,
@@ -106,6 +106,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (17)** — **Lẻ bỏ phân loại "Chăm sóc dài hạn"** (anh: "để tiềm năng chưa ra đơn là đủ"): mọi ô chọn / bộ lọc / form thêm khách / Nhập liệu bên Lẻ không còn mục này (Sỉ giữ); CRM Lẻ mặc định Lead mới · Tiềm năng (21 khách). Không khách Lẻ nào đang ở CS dài hạn nên không phải chuyển dữ liệu. "Tiềm năng, chưa ra đơn" = thẻ TIỀM NĂNG cũ (2 chiều: chọn → gắn thẻ Pancake; có thẻ mà chưa phân loại → tự về ô này).
 - **02/10 (16)** — **CRM sửa như Master** (anh: "khác master trường hiển thị thôi, chỉnh sửa như nhau"): ô Sales ở CRM thành dropdown đổi Sale cho tài khoản toàn quyền (Sale chỉ xem chữ, như Master); mỗi dòng thêm nút "✏ Sửa" mở thẳng hồ sơ ở chế độ sửa (cùng bộ ô với Master); Phân loại vẫn đổi ngay trên bảng. Mọi ô ghi chung `saleretail_manual` / `salesi_crm` nên Master · CRM · Nhập liệu liên thông.
 - **02/10 (15)** — **Lead mới vào Nhập liệu** (anh: "nhắc cập nhật trạng thái"): khách chưa chốt đang ở Phân loại "Lead mới" (tự đặt hoặc Sale chọn) tính vào mục "Chưa cập nhật trạng thái" (vàng, tính badge) — Lẻ + Sỉ; ô cùng tên ở dash Master cũng đếm theo. Hiện: Lẻ 0, Sỉ 15 (khách Minh Oanh) → badge Sỉ +15.
 - **02/10 (14)** — **Bộ lọc Sỉ / Lẻ chọn nhiều** (anh: "tích chọn nhiều thay vì chỉ chọn 1"): Sales · Trạng thái/Phân loại · Nguồn · Sản phẩm (Sỉ) · Brand ở Master + CRM đổi từ dropdown 1 lựa chọn sang khung tích nhiều ô (có "Bỏ chọn"); ngày giữ nguyên. Lưu dạng mảng, giá trị cũ dạng chuỗi vẫn đọc được. Thử: Lead cũ 851 + Mất kết nối 69 = tích cả 2 ra 920, khớp.

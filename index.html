@@ -4716,7 +4716,7 @@ function rptSiThemKhachForm(){
    +'<div>'+lb('Sale phụ trách'+dmBut(T==='Sỉ'?'sale_si':'sale_le'),1)+'<select id="siT_sale" style="'+ip+';cursor:pointer"><option value="">— chọn Sale —</option>'
      +sale.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select></div>'
    +'<div>'+lb('Phân loại KH'+dmBut('si_phan_loai'),1)+'<select id="siT_phanloai" style="'+ip+';cursor:pointer"><option value="">— chọn —</option>'
-     +RPT_SI_PHANLOAI_DS.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select></div>'
+     +rptSlPhanLoaiDs().map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select></div>'
    +o
    +'<div style="grid-column:1/-1">'+lb('Ghi chú')+'<input id="siT_ghichu" style="'+ip+'"></div>'
    +'</div>'
@@ -4847,7 +4847,7 @@ function rptLeOSua(r){
   o.dia_chi={kieu:'text',gt:mn.si_dia_chi||r.diaChi||'',noi:'mn',cot:'si_dia_chi'};
   // Phân loại KH dùng chung bộ với Sỉ (02/10/2026); chọn "Đã ra đơn" đi đúng quy trình chốt. Ngày / nội dung chăm sóc
   // nay ghi ở tab Lịch sử chăm sóc (nhiều lượt) như Sỉ.
-  o.si_phan_loai={kieu:'chon',ds:RPT_SI_PHANLOAI_DS,gt:r.siPhanLoai||'',noi:'pl'};
+  o.si_phan_loai={kieu:'chon',ds:rptSlPhanLoaiDs(),gt:r.siPhanLoai||'',noi:'pl'};
   if(!r.isChot)o.tiem_nang={kieu:'tien',gt:r.potential?num(r.potential):'',noi:'mn',cot:'potential_value'};
   return o;
 }
@@ -5163,7 +5163,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 16:21';
+const APP_VERSION='02/10 16:33';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5911,7 +5911,7 @@ function rptSlStatusPill(st){
 // Bộ lọc trạng thái: Sỉ lọc theo PHÂN LOẠI KH (cột trạng thái của Master Sỉ), Lẻ theo trạng thái Lẻ.
 // Danh sách lấy từ danh mục (dmLoad đổ tại chỗ) -> thêm giá trị mới ở bút ✏ là bộ lọc có ngay.
 function rptSlLocTTDs(){
-  const ds=RPT_SI_PHANLOAI_DS;   // Lẻ + Sỉ chung bộ Phân loại (02/10/2026)
+  const ds=rptSlPhanLoaiDs();   // Lẻ + Sỉ chung bộ Phân loại (02/10/2026), Lẻ bỏ Chăm sóc dài hạn
   return [...new Set(ds),'(chưa cập nhật)'];
 }
 function rptSlLocTT(r){
@@ -5943,7 +5943,7 @@ function rptSlFilterBar(tab){
   const one=(k,label,opts)=>{
     const key=tab+'|'+k;(window._rptSlOpt=window._rptSlOpt||{})[key]=opts;
     const sel=rptSlFArr(tab,k).filter(x=>opts.includes(x));
-    const chu=!sel.length?(tab==='crm'&&k==='status'?'Phân loại: Lead mới · Tiềm năng · CS dài hạn':label+': tất cả')
+    const chu=!sel.length?(tab==='crm'&&k==='status'?'Phân loại: Lead mới · Tiềm năng'+(rptSlType()==='Sỉ'?' · CS dài hạn':''):label+': tất cả')
       :sel.length===1?label+': '+sel[0]:label+': '+sel.length+' mục';
     return `<details class="rpt-ms" ${window._rptSlMoLoc===key?'open':''} ontoggle="rptSlMsToggle(this,'${key}')" style="position:relative">
     <summary title="${e(sel.join(', '))}" style="${ip};display:flex;align-items:center;gap:6px;user-select:none;${sel.length?'border-color:var(--accent);color:var(--accent)':''}">${e(chu)}
@@ -6331,10 +6331,6 @@ function rptSlBuildMasterRaw(){
   // NGUỒN KHÁCH chọn tay (saleretail_manual.nguon_sua: Online / Offline) đè nguồn Pancake -- đặt TRƯỚC bước
   // tách mua lại (khongCat) vì nguồn quyết định đơn nào còn tính cho Sale (30/9/2026)
   rows.forEach(r=>{const ng=String((rptSlManual[r.leadId]||{}).nguon_sua||'').trim();if(ng)r.nguon=ng;});
-  // LẺ: CÓ THẺ TIỀM NĂNG MÀ CHƯA CÓ TRẠNG THÁI -> tự là "Đang chăm sóc" (anh Hải 02/10/2026, áp cả về sau: "cứ gắn thẻ
-  // tiềm năng là auto đang chăm sóc, cho tới khi sale tự thay đổi"). Tính lúc dựng dữ liệu, KHÔNG ghi bảng -> Sale chọn
-  // trạng thái khác là thắng ngay; khách đã chốt hoặc đã có trạng thái (kể cả Lead cũ) không đụng.
-
   // LẺ: SĐT / địa chỉ Sale ghi ở chế độ sửa hồ sơ (cùng cột si_sdt / si_dia_chi với Sỉ, 30/9/2026)
   if(rptSlType()!=='Sỉ')rows.forEach(r=>{const mn=rptSlManual[r.leadId]||{};
     if(mn.si_sdt){const k9=rptSlLast9(mn.si_sdt);
@@ -6560,6 +6556,9 @@ function rptSiPhanLoaiMau(v){const t=String(v||'');const dmm=dmMau('si_phan_loai
 const RPT_LE_TT_MAP={'Đang chăm sóc':'Tiềm năng, chưa ra đơn','Mất lead':'Mất kết nối','Chốt đơn':'Đã ra đơn'};
 function rptLeTTMoi(v){const t=String(v||'').trim();return RPT_LE_TT_MAP[t]||t;}
 const RPT_SI_PHANLOAI_DS=['Lead mới','Đã ra đơn','Tiềm năng, chưa ra đơn','Chăm sóc dài hạn','Chưa liên hệ được','Mất kết nối','Không tiềm năng'];
+// LẺ KHÔNG CÓ "Chăm sóc dài hạn" (anh Hải 02/10/2026): khách Lẻ đang chăm để "Tiềm năng, chưa ra đơn" là đủ -- ô này
+// = thẻ TIỀM NĂNG cũ: chọn trong app thì gắn thẻ TIỀM NĂNG lên Pancake, khách có thẻ TIỀM NĂNG mà chưa phân loại thì tự về ô này.
+function rptSlPhanLoaiDs(){return rptSlType()==='Sỉ'?RPT_SI_PHANLOAI_DS:RPT_SI_PHANLOAI_DS.filter(x=>x!=='Chăm sóc dài hạn');}
 // Ô CHỌN Phân loại KH ngay trên bảng Master Sỉ -- sửa tại chỗ, không phải mở popup.
 // Lưu vào saleretail_manual.si_phan_loai; giá trị này được ưu tiên hơn phân loại lấy từ sheet.
 function rptSiPhanLoaiSelect(r){
@@ -6573,7 +6572,7 @@ function rptSiPhanLoaiSelect(r){
     +';border-radius:20px;background:'+(v?'color-mix(in srgb,'+mau+' 12%,transparent)':'var(--surface)')
     +';color:'+mau+';font-size:10.5px;font-weight:800;font-family:var(--font);cursor:pointer;outline:none">'
     +'<option value=""'+(v?'':' selected')+'>—</option>'
-    +RPT_SI_PHANLOAI_DS.concat(v&&!RPT_SI_PHANLOAI_DS.includes(v)?[v]:[]).map(x=>'<option value="'+e(x)+'"'+(v===x?' selected':'')+'>'+e(x)+'</option>').join('')   // giữ giá trị ngoài bộ (vd Lead cũ)
+    +rptSlPhanLoaiDs().concat(v&&!rptSlPhanLoaiDs().includes(v)?[v]:[]).map(x=>'<option value="'+e(x)+'"'+(v===x?' selected':'')+'>'+e(x)+'</option>').join('')   // giữ giá trị ngoài bộ (vd Lead cũ)
     +'</select></td>';
 }
 // Phân loại KH -> THẺ tương ứng trên Pancake (anh Hải chốt 23/9/2026).
@@ -8067,7 +8066,7 @@ function rptSlInputHtml(){
   const ttSel=r=>{
     const q=String.fromCharCode(39);
     const si=true;   // Lẻ + Sỉ chung Phân loại (02/10/2026)
-    const ds=si?RPT_SI_PHANLOAI_DS:RPT_SL_STATUS_OPTS;
+    const ds=si?rptSlPhanLoaiDs():RPT_SL_STATUS_OPTS;
     const cur=si?(r.siPhanLoai||''):(r.manualStatus||'');
     const goi=si?('rptSiSetPhanLoai('+q+r.leadId+q+',this.value,this)')
                :('rptSlSetField('+q+r.leadId+q+','+q+'status'+q+',this.value,this)');
@@ -8147,7 +8146,7 @@ function rptSlCrmHtml(){try{return rptSlCrmHtmlRaw();}catch(e){rptBaoLoi('Bảng
 // CRM (Lẻ + Sỉ, anh Hải 02/10/2026): danh sách khách CẦN CHĂM, mặc định lọc 3 phân loại: Lead mới · Tiềm năng, chưa ra đơn ·
 // Chăm sóc dài hạn (chưa chốt). Chọn Phân loại khác ở bộ lọc thì xem theo phân loại đó. Ghi chăm sóc ở tab Lịch sử chăm sóc
 // trong hồ sơ (nhiều lượt, có hẹn + chuông), giống Sỉ. Ngày lọc mặc định Tất cả 2026 (rptSlKyMacDinh).
-const RPT_CRM_TT=['Lead mới','Tiềm năng, chưa ra đơn','Chăm sóc dài hạn'];
+const RPT_CRM_TT=['Lead mới','Tiềm năng, chưa ra đơn','Chăm sóc dài hạn'];   // Lẻ không có CS dài hạn -> thực tế 2 mục
 function rptSlCrmHtmlRaw(){
   const st=rptSlF('crm','status');
   const allRaw=rptSlPeriod().filter(r=>st?true:(!r.isChot&&RPT_CRM_TT.includes(rptSlLocTT(r))));
