@@ -4003,7 +4003,7 @@ async function renderReportMkt(){
 let siCrmRows=[],siCrmLoaded=false;
 async function siCrmLoad(force){
   if(siCrmLoaded&&!force)return;
-  siCrmRows=await sbFetchAll('salesi_crm','select=id,lead_id,kiot_code,customer_name,phone,ngay_cham,nguon,kenh,sales,hinh_thuc,noi_dung,phan_loai,gia_tri_du_kien,viec_tiep,can_ho_tro,tinh_trang,ngay_hen,ngay_chot,gia_tri_chot,phan_hoi,trang_thai,ma_don&order=ngay_cham.desc,id.desc');
+  siCrmRows=await sbFetchAll('salesi_crm','select=id,lead_id,kiot_code,customer_name,phone,ngay_cham,sp_quan_tam,nguon,kenh,sales,hinh_thuc,noi_dung,phan_loai,gia_tri_du_kien,viec_tiep,can_ho_tro,tinh_trang,ngay_hen,ngay_chot,gia_tri_chot,phan_hoi,trang_thai,ma_don&order=ngay_cham.desc,id.desc');
   siCrmLoaded=true;
 }
 function siEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -5161,7 +5161,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 15:56';
+const APP_VERSION='02/10 16:03';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6386,6 +6386,7 @@ function rptSlBuildMasterRaw(){
         // nội dung = lượt GẦN NHẤT CÓ GHI NỘI DUNG -- dòng Chốt đơn tự tạo từ đơn Kiot không có nội dung,
         // không được đè mất nội dung chăm khách thật (scripts/tu-tao-chot-don-si.js, 25/9/2026)
         r.siNDCuoi=ds.map(x=>x.noi_dung).find(v=>String(v||'').trim())||'';
+        r.siSpCs=ds.map(x=>x.sp_quan_tam).find(v=>String(v||'').trim())||'';   // SP quan tâm Sale ghi ở lượt gần nhất
         r.siHinhThuc=m.hinh_thuc||'';
         if(!r.siPhanLoai&&m.phan_loai)r.siPhanLoai=m.phan_loai;
         r.siHoTro=ds.map(x=>x.tinh_trang).filter(Boolean)[0]||'';
@@ -7041,13 +7042,16 @@ function rptSlCsFormHtml(r){
       +'<div id="csMaWrap" style="'+(rptSlCsLaChot(tt)?'':'display:none')+'">'+lb('Mã đơn đặt hàng Kiot *')
         +'<input id="csMa" value="'+e(cu.ma_don||'')+'" placeholder="VD: DH000123" style="'+ip+'"></div>'
     +'</div>'
-    // 3 MỤC (anh Hải 01/10/2026): 1. Nội dung trao đổi · 2. Phản hồi / vướng mắc / nhu cầu KH · 3. Phương án tiếp theo
+    // 4 MỤC: 1. Nội dung trao đổi · 2. Sản phẩm quan tâm (anh Hải 02/10/2026) · 3. Phản hồi / vướng mắc / nhu cầu KH · 4. Phương án tiếp theo
     // => ngày chăm sóc tiếp theo (đến ngày thì chuông sáng). Cột CSDL giữ nguyên: noi_dung · phan_hoi · viec_tiep + ngay_hen.
     +'<div style="margin-top:12px">'+lb('1. Nội dung trao đổi *')
       +'<textarea id="csNoiDung" rows="3" style="'+ip+';resize:vertical">'+e(cu.noi_dung||'')+'</textarea></div>'
-    +'<div style="margin-top:12px">'+lb('2. Phản hồi / vướng mắc / nhu cầu khách hàng')
+    +'<div style="margin-top:12px">'+lb('2. Sản phẩm quan tâm')
+      +'<input id="csSp" list="csSpDS" value="'+e(cu.sp_quan_tam||'')+'" placeholder="vd tượng Quan Âm 48cm, bộ Tây Phương, nến..." style="'+ip+'">'
+      +'<datalist id="csSpDS">'+[...new Set(RPT_SI_SPQT_DS.concat(rptSlCsRows(r).map(x=>x.sp_quan_tam).filter(Boolean)))].map(x=>'<option value="'+e(x)+'">').join('')+'</datalist></div>'
+    +'<div style="margin-top:12px">'+lb('3. Phản hồi / vướng mắc / nhu cầu khách hàng')
       +'<textarea id="csPhanHoi" rows="2" style="'+ip+';resize:vertical">'+e(cu.phan_hoi||'')+'</textarea></div>'
-    +'<div style="margin-top:12px">'+lb('3. Phương án tiếp theo')
+    +'<div style="margin-top:12px">'+lb('4. Phương án tiếp theo')
       +'<textarea id="csViec" rows="2" placeholder="vd gọi lại báo giá, gửi mẫu..." style="'+ip+';resize:vertical">'+e(cu.viec_tiep||'')+'</textarea>'
       +'<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">'+lb('Ngày chăm sóc tiếp theo').replace('margin-bottom:4px','margin-bottom:0')
       +'<input id="csHen" type="date" value="'+e(String(cu.ngay_hen||'').slice(0,10))+'" style="'+ip+';width:170px;flex:0 0 auto"></div></div>'
@@ -7071,7 +7075,7 @@ function rptSlCsTabHtml(r){
     return '<tr style="border-bottom:1px solid var(--border)">'
       +'<td style="padding:9px 12px;font-size:12px;white-space:nowrap;vertical-align:top">'+(dmy(x.ngay_cham)||'—')
         +(x.sales?'<div style="font-size:10.5px;color:var(--muted);font-weight:600;margin-top:2px">'+e(x.sales)+'</div>':'')+'</td>'
-      +'<td style="padding:9px 12px;font-size:12px;vertical-align:top;white-space:pre-wrap;line-height:1.5">'+(x.noi_dung?e(x.noi_dung):'<span style="color:var(--muted)">—</span>')+(x.ngay_hen||x.viec_tiep?'<div style="margin-top:5px;font-size:11px;font-weight:700;color:#d97706;white-space:pre-wrap">Phương án'+(x.ngay_hen?' ('+dmy(String(x.ngay_hen).slice(0,10))+')':'')+(x.viec_tiep?': '+e(x.viec_tiep):'')+'</div>':'')+'</td>'
+      +'<td style="padding:9px 12px;font-size:12px;vertical-align:top;white-space:pre-wrap;line-height:1.5">'+(x.noi_dung?e(x.noi_dung):'<span style="color:var(--muted)">—</span>')+(x.sp_quan_tam?'<div style="margin-top:5px;font-size:11px;font-weight:700;color:var(--accent);white-space:normal">SP quan tâm: '+e(x.sp_quan_tam)+'</div>':'')+(x.ngay_hen||x.viec_tiep?'<div style="margin-top:5px;font-size:11px;font-weight:700;color:#d97706;white-space:pre-wrap">Phương án'+(x.ngay_hen?' ('+dmy(String(x.ngay_hen).slice(0,10))+')':'')+(x.viec_tiep?': '+e(x.viec_tiep):'')+'</div>':'')+'</td>'
       +'<td style="padding:9px 12px;font-size:12px;vertical-align:top;white-space:pre-wrap;line-height:1.5;color:var(--text2)">'+(x.phan_hoi?e(x.phan_hoi):'<span style="color:var(--muted)">—</span>')+'</td>'
       +'<td style="padding:9px 12px;vertical-align:top;white-space:nowrap">'+pill
         +(x.ma_don?'<div style="font-size:10.5px;font-weight:700;color:var(--muted);margin-top:3px">'+e(x.ma_don)+'</div>':'')
@@ -7116,7 +7120,7 @@ async function rptSlCsLuu(){
     phone:((r.phones||[])[0]||{}).so||r.phone||cu.phone||null,
     ngay_cham:ngay,nguon:r.nguon||cu.nguon||null,kenh:r.kenh||cu.kenh||null,
     sales:r.staff||cu.sales||null,hinh_thuc:cu.hinh_thuc||null,
-    noi_dung:nd,phan_hoi:g('csPhanHoi')||null,trang_thai:tt,ma_don:maDon||null,
+    noi_dung:nd,sp_quan_tam:g('csSp')||null,phan_hoi:g('csPhanHoi')||null,trang_thai:tt,ma_don:maDon||null,
     ngay_hen:g('csHen')||null,viec_tiep:g('csViec')||null,
     ngay_chot:don?String(don.purchase_date||ngay).slice(0,10):(cu.ngay_chot||null),
     gia_tri_chot:don?Number(don.total||0):(cu.gia_tri_chot==null?null:cu.gia_tri_chot),
@@ -7225,6 +7229,7 @@ function rptSlShowCustomer(key,sua){
     fld('Ngày đặt hàng gần nhất',esc(dmy(r.lastKiotDate))),
     ...(!laSiThat?[
       fld('Địa chỉ',esc(r.diaChi),'','dia_chi'),
+      fld('Sản phẩm quan tâm',esc(r.siSpCs)),
       fld('Phân loại KH',esc(r.siPhanLoai)+(r.ttTuDong?' <span style="font-size:10.5px;color:var(--muted);font-weight:700">· tự đặt</span>':''),rptSiPhanLoaiMau(r.siPhanLoai),'si_phan_loai'),
       fld('Ngày chốt đầu',esc(dmy(r.kords&&r.kords.length?String(r.kords[0].purchase_date).slice(0,10):''))),
       fld('Số lượt chăm sóc',r.siLuot?num(r.siLuot)+' lượt':''),
