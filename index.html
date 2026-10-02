@@ -5163,7 +5163,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 16:33';
+const APP_VERSION='02/10 16:35';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7070,13 +7070,13 @@ function rptSlCsFormHtml(r){
       +'<div id="csMaWrap" style="'+(rptSlCsLaChot(tt)?'':'display:none')+'">'+lb('Mã đơn đặt hàng Kiot *')
         +'<input id="csMa" value="'+e(cu.ma_don||'')+'" placeholder="VD: DH000123" style="'+ip+'"></div>'
     +'</div>'
-    // 4 MỤC: 1. Nội dung trao đổi · 2. Sản phẩm quan tâm (anh Hải 02/10/2026) · 3. Phản hồi / vướng mắc / nhu cầu KH · 4. Phương án tiếp theo
-    // => ngày chăm sóc tiếp theo (đến ngày thì chuông sáng). Cột CSDL giữ nguyên: noi_dung · phan_hoi · viec_tiep + ngay_hen.
-    +'<div style="margin-top:12px">'+lb('1. Nội dung trao đổi *')
-      +'<textarea id="csNoiDung" rows="3" style="'+ip+';resize:vertical">'+e(cu.noi_dung||'')+'</textarea></div>'
-    +'<div style="margin-top:12px">'+lb('2. Sản phẩm quan tâm')
+    // 4 MỤC: 1. Sản phẩm quan tâm (anh Hải 02/10/2026, lên đầu) · 2. Nội dung trao đổi · 3. Phản hồi / vướng mắc / nhu cầu KH · 4. Phương án tiếp theo
+    // => ngày chăm sóc tiếp theo (đến ngày thì chuông sáng). Cột CSDL: sp_quan_tam · noi_dung · phan_hoi · viec_tiep + ngay_hen.
+    +'<div style="margin-top:12px">'+lb('1. Sản phẩm quan tâm')
       +'<input id="csSp" list="csSpDS" value="'+e(cu.sp_quan_tam||'')+'" placeholder="vd tượng Quan Âm 48cm, bộ Tây Phương, nến..." style="'+ip+'">'
       +'<datalist id="csSpDS">'+[...new Set(RPT_SI_SPQT_DS.concat(rptSlCsRows(r).map(x=>x.sp_quan_tam).filter(Boolean)))].map(x=>'<option value="'+e(x)+'">').join('')+'</datalist></div>'
+    +'<div style="margin-top:12px">'+lb('2. Nội dung trao đổi *')
+      +'<textarea id="csNoiDung" rows="3" style="'+ip+';resize:vertical">'+e(cu.noi_dung||'')+'</textarea></div>'
     +'<div style="margin-top:12px">'+lb('3. Phản hồi / vướng mắc / nhu cầu khách hàng')
       +'<textarea id="csPhanHoi" rows="2" style="'+ip+';resize:vertical">'+e(cu.phan_hoi||'')+'</textarea></div>'
     +'<div style="margin-top:12px">'+lb('4. Phương án tiếp theo')
@@ -7103,7 +7103,7 @@ function rptSlCsTabHtml(r){
     return '<tr style="border-bottom:1px solid var(--border)">'
       +'<td style="padding:9px 12px;font-size:12px;white-space:nowrap;vertical-align:top">'+(dmy(x.ngay_cham)||'—')
         +(x.sales?'<div style="font-size:10.5px;color:var(--muted);font-weight:600;margin-top:2px">'+e(x.sales)+'</div>':'')+'</td>'
-      +'<td style="padding:9px 12px;font-size:12px;vertical-align:top;white-space:pre-wrap;line-height:1.5">'+(x.noi_dung?e(x.noi_dung):'<span style="color:var(--muted)">—</span>')+(x.sp_quan_tam?'<div style="margin-top:5px;font-size:11px;font-weight:700;color:var(--accent);white-space:normal">SP quan tâm: '+e(x.sp_quan_tam)+'</div>':'')+(x.ngay_hen||x.viec_tiep?'<div style="margin-top:5px;font-size:11px;font-weight:700;color:#d97706;white-space:pre-wrap">Phương án'+(x.ngay_hen?' ('+dmy(String(x.ngay_hen).slice(0,10))+')':'')+(x.viec_tiep?': '+e(x.viec_tiep):'')+'</div>':'')+'</td>'
+      +'<td style="padding:9px 12px;font-size:12px;vertical-align:top;white-space:pre-wrap;line-height:1.5">'+(x.sp_quan_tam?'<div style="margin-bottom:5px;font-size:11px;font-weight:700;color:var(--accent);white-space:normal">SP quan tâm: '+e(x.sp_quan_tam)+'</div>':'')+(x.noi_dung?e(x.noi_dung):'<span style="color:var(--muted)">—</span>')+(x.ngay_hen||x.viec_tiep?'<div style="margin-top:5px;font-size:11px;font-weight:700;color:#d97706;white-space:pre-wrap">Phương án'+(x.ngay_hen?' ('+dmy(String(x.ngay_hen).slice(0,10))+')':'')+(x.viec_tiep?': '+e(x.viec_tiep):'')+'</div>':'')+'</td>'
       +'<td style="padding:9px 12px;font-size:12px;vertical-align:top;white-space:pre-wrap;line-height:1.5;color:var(--text2)">'+(x.phan_hoi?e(x.phan_hoi):'<span style="color:var(--muted)">—</span>')+'</td>'
       +'<td style="padding:9px 12px;vertical-align:top;white-space:nowrap">'+pill
         +(x.ma_don?'<div style="font-size:10.5px;font-weight:700;color:var(--muted);margin-top:3px">'+e(x.ma_don)+'</div>':'')
