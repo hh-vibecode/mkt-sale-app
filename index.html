@@ -5168,7 +5168,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 17:11';
+const APP_VERSION='02/10 17:18';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6925,7 +6925,7 @@ function rptSlMasterHtmlRaw(){
   const q=(window._rptSlMasterQ||'').trim().toLowerCase();
   // đã bỏ nút lọc Online / Offline (02/10/2026): ai đang lọc dở theo nguồn thì xoá, kẻo bảng kẹt ở 1 nguồn
   if(!laSi||['Online','Offline','Chưa rõ nguồn'].includes(window._rptSiLoc))window._rptSiLoc='';
-  const goc=laSi&&window._rptSiLoc?rptSiLocDs(window._rptSiLoc,all,daCham):all;
+  window._rptSiLoc='';const goc=all;   // Master không còn ô dash lọc bảng (02/10/2026) -- lọc theo ô làm ở CRM
   let list=goc;
   // Ô TÌM KIẾM chỉ tìm TRONG bộ lọc đang đặt (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026 chốt: muốn tìm
   // rộng hơn thì tự tháo bộ lọc. Gõ có dấu hay không dấu đều ra; gõ toàn số thì so SĐT.
@@ -6943,18 +6943,7 @@ function rptSlMasterHtmlRaw(){
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(rptSlMasterRow).join('');
   const rev=list.reduce((s,r)=>s+r.revenue+(r.repeatRevenue||0),0);   // cộng cả đơn mua lại = khớp tổng cột Doanh thu (01/10/2026)
   return `
-    ${true?rptSiDashHtml(all,daCham):(()=>{
-      // MASTER = NHÌN TỔNG QUAN: bao nhiêu khách, chốt được bao nhiêu, ra bao nhiêu tiền, mỗi khách bao nhiêu.
-      // Việc chăm sóc (lâu chưa liên hệ, đang theo ai) thuộc về tab CRM, không để lẫn ở đây.
-      const chot=all.filter(r=>r.isChot);
-      const tien=all.reduce((s,r)=>s+r.revenue+(r.repeatRevenue||0),0);
-      const tb=chot.length?tien/chot.length:0;
-      return `<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px">
-        ${mkKpi(ic('users'),'Tổng khách',num(all.length),num(chot.length)+' đã chốt · '+num(all.length-chot.length)+' tiềm năng','g-blue')}
-        ${mkKpi(ic('check'),'Tỉ lệ chốt',pct(all.length?chot.length/all.length*100:0),num(chot.length)+'/'+num(all.length)+' khách','g-green')}
-        ${mkKpi(ic('cash'),'Doanh thu cộng dồn',vnd(tien),'đơn đặt hàng Kiot, gồm cả mua lại','g-teal')}
-        ${mkKpi(ic('cash'),'Bình quân / khách chốt',vnd(tb),'tổng tiền chia số khách đã chốt','g-purple')}
-      </div>`;})()}
+    <!-- Master không còn dash: các ô chuyển sang tab CRM (anh Hải 02/10/2026) -->
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-end">
       ${rptSlFilterBar('master')}${rptSiChuongLoc()}
       ${true?'<button onclick="rptSiThemKhachForm()" class="refresh-btn" style="padding:7px 18px;font-size:12.5px;font-weight:800;letter-spacing:.01em;box-shadow:0 2px 10px rgba(67,97,238,.35)">+ THÊM KHÁCH MỚI</button>':''}
@@ -8200,6 +8189,7 @@ function rptSlCrmHtml(){try{return rptSlCrmHtmlRaw();}catch(e){rptBaoLoi('Bảng
 // Chăm sóc dài hạn (chưa chốt). Chọn Phân loại khác ở bộ lọc thì xem theo phân loại đó. Ghi chăm sóc ở tab Lịch sử chăm sóc
 // trong hồ sơ (nhiều lượt, có hẹn + chuông), giống Sỉ. Ngày lọc mặc định Tất cả 2026 (rptSlKyMacDinh).
 const RPT_CRM_TT=['Lead mới','Tiềm năng, chưa ra đơn','Chăm sóc dài hạn'];   // Lẻ không có CS dài hạn -> thực tế 2 mục
+function rptCrmLoc(k){window._rptCrmLoc=(window._rptCrmLoc===k?'':k);window._rptSlCrmPage=1;rptSlRender();}
 function rptSlCrmHtmlRaw(){
   const st=rptSlF('crm','status');
   const base=rptSlPeriod().filter(r=>st?true:(!r.isChot&&RPT_CRM_TT.includes(rptSlLocTT(r))));
@@ -8211,10 +8201,19 @@ function rptSlCrmHtmlRaw(){
   const allRaw=base.concat(moLai);
   const all=rptSlApplyF('crm',allRaw).slice()
     .sort((x,y)=>(y.siNgayNghi==null?1e9:y.siNgayNghi)-(x.siNgayNghi==null?1e9:x.siNgayNghi));   // lâu chưa liên hệ nhất lên đầu
+  // DASH CỦA CRM (anh Hải 02/10/2026: "có CRM rồi, bỏ hết dashboard sang CRM", Master không cần dash).
+  // Bấm ô = lọc bảng CRM bên dưới, bấm lại ô đang bật thì bỏ lọc. Đến hẹn chăm sóc = nút chuông trên thanh lọc.
+  const CL=window._rptCrmLoc||'';
+  const locDs=k=>k==='chot'?all.filter(r=>r.isChot)
+    :k==='cs'?all.filter(r=>rptSiLuotTrongKy(r).length)
+    :k==='lau'?all.filter(r=>r.siNgayNghi==null||r.siNgayNghi>=RPT_SI_LAU_NGAY)
+    :k==='chuaTT'?all.filter(r=>!r.isChot&&['Lead mới','(chưa cập nhật)'].includes(rptSlLocTT(r)))
+    :all;
+  const goc=locDs(CL);
   const q=(window._rptSlCrmQ||'').trim();
-  let list=all;
+  let list=goc;
   if(q){const qb=rptSlBoDau(q),qs=/^[\d\s.+-]+$/.test(q)?q.replace(/\D/g,''):'';
-    list=all.filter(r=>[r.name,r.kiotName,r.kh,r.leadId,r.siNDCuoi].some(x=>rptSlBoDau(x).includes(qb))
+    list=goc.filter(r=>[r.name,r.kiotName,r.kh,r.leadId,r.siNDCuoi].some(x=>rptSlBoDau(x).includes(qb))
       ||(qs.length>=3&&((r.phones||[]).some(p=>String(p.so||'').replace(/\D/g,'').includes(qs))||String(r.phone||'').replace(/\D/g,'').includes(qs))));}
   const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   if((window._rptSlCrmPage||1)>totalPages)window._rptSlCrmPage=1;
@@ -8239,16 +8238,21 @@ function rptSlCrmHtmlRaw(){
       +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'+rptSiChuongDong(r)
         +'<button onclick="rptSlShowCustomer(\''+qk(r)+'\');rptSlCsMoForm()" title="Ghi lượt chăm sóc mới" style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">+ Chăm sóc</button></td>'
       +'</tr>';}).join('');
-  const lau=all.filter(r=>r.siNgayNghi==null||r.siNgayNghi>=RPT_SI_LAU_NGAY);
-  const henDen=all.filter(r=>r.siHenDen);
-  const g4='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px';
+  const o=(k,html)=>'<div onclick="rptCrmLoc('+String.fromCharCode(39)+k+String.fromCharCode(39)+')" style="cursor:pointer;border-radius:14px;'+(CL===k?'outline:2.5px solid var(--accent);outline-offset:2px':'')+'"'
+    +' title="'+(CL===k?'Đang lọc bảng — bấm để bỏ lọc':'Bấm để lọc bảng')+'">'+html+'</div>';
+  const dem=k=>locDs(k).length,nhan=k=>CL===k?'đang lọc bảng':'';
+  const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px';
   const inp='height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none;min-width:250px';
   return `
-    <div style="${g4}">
-      ${mkKpi(ic('users'),'Khách đang chăm',num(all.length),'','g-blue')}
-      ${mkKpi(ic('clock'),'Lâu chưa liên hệ >'+RPT_SI_LAU_NGAY+' ngày',num(lau.length),'','g-red')}
-      ${mkKpi(ic('clock'),'Đến hẹn chăm sóc',num(henDen.length),'','g-orange')}
+    <div style="${g3}">
+      <div onclick="rptCrmLoc('')" style="cursor:pointer;border-radius:14px" title="Bấm để bỏ lọc ô, xem tất cả">${mkKpi(ic('users'),'Khách cần chăm sóc',num(all.length),'','g-blue')}</div>
+      ${o('chot',mkKpi(ic('check'),'Khách chốt có nhu cầu lại',num(dem('chot')),nhan('chot'),'g-green'))}
       ${mkKpi(ic('cash'),'Giá trị đang theo',vnd(all.reduce((x,r)=>x+(r.potential||0),0)),'','g-teal')}
+    </div>
+    <div style="${g3};margin-bottom:14px">
+      ${o('cs',mkKpi(ic('chat'),'Đã chăm sóc trong kỳ',num(dem('cs')),nhan('cs'),'g-teal'))}
+      ${o('lau',mkKpi(ic('clock'),'Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',num(dem('lau')),nhan('lau'),'g-red'))}
+      ${o('chuaTT',mkKpi(ic('clipboard'),'Chưa cập nhật trạng thái',num(dem('chuaTT')),nhan('chuaTT'),'g-purple'))}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;justify-content:flex-end">
       ${rptSlFilterBar('crm')}${rptSiChuongLoc()}
