@@ -4003,6 +4003,95 @@ async function renderReportMkt(){
 // dòng mới, khách quay lại bao nhiêu lần thì bấy nhiêu dòng (người dùng chốt 22/9/2026). Hồ sơ khách
 // (mô hình hợp tác, showroom, tài chính, phân loại KH) nằm bên Master Sỉ, không lặp lại ở đây.
 let siCrmRows=[],siCrmLoaded=false;
+// ── GHI CHÚ HỌP Ở CRM (anh Hải 02/10/2026) ── nút sổ note cạnh bong bóng chat: trắng = không có việc, ĐỎ = có ghi chú
+// chưa clear (việc giao lúc họp). Sale xử xong bấm Clear -> trắng lại; ghi chú đã clear vẫn giữ làm lịch sử, bấm nút là xem.
+// Bảng salesi_crm_note (Lẻ + Sỉ, gắn khách theo lead_id). Bảng nhỏ -> nạp hết 1 lần, có phân trang (sbFetchAll).
+let crmNoteRows=[],crmNoteLoaded=false;
+async function crmNoteLoad(force){
+  if(crmNoteLoaded&&!force)return;
+  try{crmNoteRows=await sbFetchAll('salesi_crm_note','select=id,loai,lead_id,customer_name,noi_dung,created_by,created_at,cleared_at,cleared_by&order=created_at.desc');}
+  catch(e){console.warn('[Ghi chú họp] chưa tải được:',e.message);crmNoteRows=[];}
+  crmNoteLoaded=true;
+}
+function crmNoteCua(r){
+  const ids=new Set(rptSlIdsCua(r)),loai=rptSlType();
+  return crmNoteRows.filter(x=>ids.has(x.lead_id)&&(x.loai||loai)===loai);
+}
+const CRM_NOTE_SVG='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/><path d="M8 8h4M8 12h3M8 16h6"/><path d="M18.4 2.6a1.9 1.9 0 0 1 2.7 2.7L14 12.4l-3.4.9.9-3.4z"/></svg>';
+function crmNoteO(r){
+  const mo=crmNoteCua(r).filter(x=>!x.cleared_at).length,k=String(r.key).replace(/'/g,''),q=String.fromCharCode(39);
+  return '<button class="crm-note-btn" onclick="crmNoteMo('+q+k+q+',this)" title="'+(mo?mo+' ghi chú chưa clear — bấm để xem / clear':'Ghi chú họp — bấm để ghi / xem lịch sử')+'"'
+    +' style="position:relative;display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;width:32px;height:28px;border-radius:9px;cursor:pointer;'
+    +(mo?'border:1.5px solid var(--red);background:color-mix(in srgb,var(--red) 13%,transparent);color:var(--red)'
+        :'border:1.5px solid var(--border);background:var(--surface);color:var(--muted)')+'">'+CRM_NOTE_SVG
+    +(mo>1?'<span style="position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:8px;background:var(--red);color:#fff;font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center">'+mo+'</span>':'')
+    +'</button>';
+}
+function crmNoteLuc(t){const d=t?new Date(t):null;if(!d||isNaN(d))return '';
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+' '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');}
+// Tờ note NHỎ bật ngay cạnh nút (anh Hải: "ấn vào ra cái note nhỏ nhỏ xinh xinh thôi"), không phải popup to giữa màn hình.
+// Bấm ra ngoài / ✕ là đóng. Lịch sử đã clear gập lại, bấm "Lịch sử" mới mở.
+function crmNoteDong(){const p=document.getElementById('crmNotePop');if(p)p.remove();window._crmNoteKey=null;}
+document.addEventListener('mousedown',ev=>{const p=document.getElementById('crmNotePop');
+  if(p&&ev.target&&ev.target.closest&&!ev.target.closest('#crmNotePop')&&!ev.target.closest('.crm-note-btn'))crmNoteDong();});
+function crmNoteMo(key,el){
+  const r=rptSlBuildMaster().find(y=>String(y.key).replace(/'/g,'')===key);if(!r)return;
+  if(el&&window._crmNoteKey===key&&document.getElementById('crmNotePop')){crmNoteDong();return;}   // bấm lại nút = đóng
+  if(el){const b=el.getBoundingClientRect();window._crmNotePos={x:b.right,y:b.bottom};}
+  window._crmNoteKey=key;
+  const e=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const ds=crmNoteCua(r),mo=ds.filter(x=>!x.cleared_at),cu=ds.filter(x=>x.cleared_at),q=String.fromCharCode(39);
+  const ls=!!window._crmNoteLs;
+  const dong=(x,daClear)=>'<div style="padding:5px 0;border-top:1px dashed color-mix(in srgb,#ca8a04 35%,transparent)">'
+    +'<div style="font-size:12px;line-height:1.45;white-space:pre-wrap;'+(daClear?'color:var(--text2);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--green) 60%,transparent)':'')+'">'+e(x.noi_dung)+'</div>'
+    +'<div style="font-size:9.5px;color:var(--muted);font-weight:700;margin-top:1px">'+e(x.created_by||'')+' · '+crmNoteLuc(x.created_at)
+    +(daClear?' · <span style="color:var(--green)">✓ '+crmNoteLuc(x.cleared_at)+(x.cleared_by?' '+e(x.cleared_by):'')+'</span>':'')+'</div></div>';
+  let p=document.getElementById('crmNotePop');
+  if(!p){p=document.createElement('div');p.id='crmNotePop';document.body.appendChild(p);}
+  const W=290,pos=window._crmNotePos||{x:innerWidth/2+W/2,y:innerHeight/3};
+  const left=Math.max(8,Math.min(pos.x-W,innerWidth-W-8)),top=Math.min(pos.y+6+scrollY,scrollY+innerHeight-60);
+  p.setAttribute('style','position:absolute;z-index:1500;left:'+left+'px;top:'+top+'px;width:'+W+'px;box-sizing:border-box;padding:10px 12px 11px;'
+    +'border-radius:4px 4px 12px 4px;background:color-mix(in srgb,#facc15 18%,var(--surface));border:1px solid color-mix(in srgb,#ca8a04 45%,transparent);'
+    +'box-shadow:0 10px 26px rgba(0,0,0,.22);font-family:var(--font);color:var(--text)');
+  p.innerHTML='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+      +'<span style="display:inline-flex;color:#ca8a04">'+CRM_NOTE_SVG+'</span>'
+      +'<span style="font-size:11.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e(r.name)+'</span>'
+      +'<button onclick="crmNoteDong()" style="margin-left:auto;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px">✕</button></div>'
+    +(mo.length?mo.map(x=>dong(x,false)).join(''):'')
+    +'<textarea id="crmNoteND" rows="2" placeholder="Ghi việc cần làm…" onkeydown="if(event.key===\'Enter\'&&(event.ctrlKey||event.metaKey)){event.preventDefault();crmNoteThem('+q+key+q+',null);}"'
+      +' style="width:100%;box-sizing:border-box;margin-top:6px;padding:6px 8px;border:1px solid color-mix(in srgb,#ca8a04 40%,transparent);border-radius:7px;background:var(--surface);color:var(--text);font-size:12px;font-family:var(--font);resize:vertical;outline:none"></textarea>'
+    +'<div style="display:flex;align-items:center;gap:6px;margin-top:6px">'
+      +(cu.length?'<button onclick="window._crmNoteLs=!window._crmNoteLs;crmNoteMo('+q+key+q+')" style="border:none;background:transparent;color:var(--muted);font-size:10.5px;font-weight:800;cursor:pointer;padding:0;font-family:var(--font)">Lịch sử ('+cu.length+') '+(ls?'▴':'▾')+'</button>':'')
+      +'<span id="crmNoteMsg" style="font-size:10.5px;font-weight:700"></span>'
+      +(mo.length?'<button onclick="crmNoteClear('+q+key+q+',this)" style="margin-left:auto;height:26px;padding:0 10px;border-radius:7px;border:1.5px solid var(--green);background:var(--surface);color:var(--green);font-size:11px;font-weight:800;cursor:pointer;font-family:var(--font)">✓ Clear</button>':'')
+      +'<button onclick="crmNoteThem('+q+key+q+',this)" style="'+(mo.length?'':'margin-left:auto;')+'height:26px;padding:0 12px;border-radius:7px;border:none;background:#ca8a04;color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:var(--font)">Lưu</button>'
+    +'</div>'
+    +(cu.length&&ls?'<div style="max-height:180px;overflow:auto;margin-top:6px">'+cu.map(x=>dong(x,true)).join('')+'</div>':'');
+  const ta=document.getElementById('crmNoteND');if(ta&&!mo.length)ta.focus();
+}
+async function crmNoteThem(key,el){
+  const r=rptSlBuildMaster().find(y=>String(y.key).replace(/'/g,'')===key);if(!r)return;
+  const nd=String((document.getElementById('crmNoteND')||{}).value||'').trim();
+  const msg=document.getElementById('crmNoteMsg');
+  if(!nd){if(msg)msg.innerHTML='<span style="color:var(--red)">Chưa ghi nội dung</span>';return;}
+  try{if(el)el.disabled=true;if(msg)msg.textContent='Đang lưu…';
+    const ins=await sbInsert('salesi_crm_note',{loai:rptSlType(),lead_id:r.leadId,customer_name:r.name,noi_dung:nd,created_by:logWho()});
+    logAct('C','salesi_crm_note',ins&&ins.id?('#'+ins.id):null,r.name,'Ghi chú họp','',nd.slice(0,120));
+    await crmNoteLoad(true);rptSlRender();crmNoteMo(key);
+  }catch(err){if(el)el.disabled=false;if(msg)msg.innerHTML='<span style="color:var(--red)">Chưa lưu được: '+err.message+'</span>';}
+}
+async function crmNoteClear(key,el){
+  const r=rptSlBuildMaster().find(y=>String(y.key).replace(/'/g,'')===key);if(!r)return;
+  const ids=crmNoteCua(r).filter(x=>!x.cleared_at).map(x=>x.id);if(!ids.length)return;
+  try{if(el)el.disabled=true;
+    const res=await fetch(SUPABASE_URL+'/rest/v1/salesi_crm_note?id=in.('+ids.join(',')+')',{method:'PATCH',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify({cleared_at:new Date().toISOString(),cleared_by:logWho()})});
+    if(!res.ok)throw new Error('lỗi '+res.status);
+    logAct('U','salesi_crm_note',ids.map(i=>'#'+i).join(','),r.name,'Ghi chú họp','đang mở','clear '+ids.length+' ghi chú');
+    await crmNoteLoad(true);rptSlRender();crmNoteMo(key);
+  }catch(err){if(el)el.disabled=false;rptBaoLoi('Clear ghi chú họp',err);}
+}
 async function siCrmLoad(force){
   if(siCrmLoaded&&!force)return;
   siCrmRows=await sbFetchAll('salesi_crm','select=id,lead_id,kiot_code,customer_name,phone,ngay_cham,sp_quan_tam,nguon,kenh,sales,hinh_thuc,noi_dung,phan_loai,gia_tri_du_kien,viec_tiep,can_ho_tro,tinh_trang,ngay_hen,ngay_chot,gia_tri_chot,phan_hoi,trang_thai,ma_don&order=ngay_cham.desc,id.desc');
@@ -5168,7 +5257,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 17:30';
+const APP_VERSION='02/10 17:39';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5272,6 +5361,7 @@ async function rptSlRenderPage(type){
     // 5 nguồn này độc lập nhau -> tải CÙNG LÚC (trước đây nối tiếp, cộng dồn ~3 giây).
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),
       siCrmLoad(),   // Lẻ cũng có Lịch sử chăm sóc (02/10/2026)
+      crmNoteLoad(),   // ghi chú họp ở CRM (02/10/2026)
       saleNhanSuLoad().catch(()=>null)]);
     await rptSlLockChot();   // phải chạy sau vì đọc dữ liệu vừa tải xong
   }catch(e){
@@ -8235,7 +8325,7 @@ function rptSlCrmHtmlRaw(){
       +rptSiPhanLoaiSelect(r)
       // TRAO ĐỔI GẦN NHẤT ở CRM: CHỈ bong bóng, không ghi nội dung (anh Hải 02/10/2026). Màu theo lượt gần nhất:
       // đỏ = Chăm sóc định kỳ (còn nợ việc) · xanh = Đã xong · trắng = khách chưa có thông tin chăm sóc nào.
-      +'<td onclick="rptSlStop(event)" style="text-align:center">'+rptSiTraoDoiO(r)+'</td>'
+      +'<td onclick="rptSlStop(event)" style="white-space:nowrap"><div style="display:flex;gap:6px;justify-content:center">'+rptSiTraoDoiO(r)+crmNoteO(r)+'</div></td>'   // + nút ghi chú họp (02/10/2026)
       +'<td>'+hen+'</td>'
       +'<td class="num" style="font-weight:700">'+(r.potential?vnd(r.potential):'<span style="color:var(--muted);font-weight:400">—</span>')+'</td>'
       +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'+rptSiChuongDong(r)

@@ -107,6 +107,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (28)** — **Nút Ghi chú họp ở CRM** (anh: sổ note có bút cạnh bong bóng, phục vụ lúc họp): trắng = không việc, ĐỎ = có ghi chú chưa clear (số nhỏ nếu >1). Bấm ra tờ note vàng nhỏ cạnh nút: ghi việc (Ctrl+Enter lưu), ✓ Clear khi xong -> trắng lại, Lịch sử (n) mở các ghi chú đã clear (ai ghi, lúc nào, ai clear, lúc nào). Bảng mới salesi_crm_note (Lẻ + Sỉ, RLS authenticated đọc/thêm/sửa, KHÔNG xoá; supabase-schema-crm-note.sql), đã đăng ký ở QUY-UOC. Thử thêm/clear/xoá 1 dòng TEST bằng service role: OK, bảng sạch.
 - **02/10 (27)** — **Sửa lỗi lọc ngày CRM** (anh: Sale chăm hôm nay mà lọc từ 02/10 ra 0): CRM trước chỉ xét ngày tạo khách / ngày đơn. Giờ khách có LƯỢT CHĂM SÓC trong kỳ cũng tính (Lẻ + Sỉ). Hôm nay Sỉ ra 6 khách (Minh Oanh). Tất cả 2026: Sỉ 97 → 109 vì thêm khách tạo trước 2026 nhưng được chăm trong 2026. Lưu ý: 6 lượt hôm nay ghi created_by = Hoàng Hải (đăng nhập tài khoản anh).
 - **02/10 (26)** — **Dash chuyển từ Master sang CRM** (anh: "có CRM rồi bỏ hết dashboard sang CRM", "master k cần dash"): Master bỏ hẳn ô dash. CRM 6 ô (3/hàng), bấm ô = lọc bảng CRM: Khách cần chăm sóc (bỏ lọc) · Khách chốt có nhu cầu lại · Giá trị đang theo / Đã chăm sóc trong kỳ · Lâu chưa chăm sóc >10 ngày · Chưa cập nhật trạng thái. Bỏ ô Đến hẹn (đã có nút chuông).
 - **02/10 (25)** — Popup bong bóng (CRM): thêm 2 nút đổi trạng thái chăm sóc ngay trong đó (Chăm sóc định kỳ / Đã xong), áp cho lượt gần nhất không phải Chốt đơn; bấm là lưu + ghi nhật ký, bong bóng đổi màu theo (hàm rptSiDoiTTCs).
