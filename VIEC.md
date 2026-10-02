@@ -38,6 +38,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **CRM = khách còn nợ việc** (2/10/2026): (a) chưa chốt + Phân loại Lead mới / Tiềm năng / CS dài hạn (Sỉ); (b) ĐÃ chốt nhưng lượt chăm sóc gần nhất (bỏ qua Chốt đơn) còn "Chăm sóc định kỳ". Lượt chăm sóc: Chăm sóc định kỳ = đang treo (đỏ), Đã xong = clear (xanh); mỗi khách chỉ lượt gần nhất được treo.
 - **"Lead mới" = chưa cập nhật trạng thái** (2/10/2026): khách chưa chốt ở Lead mới luôn nằm trong mục nhắc của Nhập liệu tới khi Sale đổi sang phân loại khác.
 - **Dropdown lọc Sỉ / Lẻ (trừ ngày) luôn cho tích chọn nhiều** (2/10/2026) — thêm bộ lọc mới thì dùng `one()` trong `rptSlFilterBar` + `rptSlF` trả mảng.
 
@@ -106,6 +107,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (23)** — **Trạng thái lượt chăm sóc "Đã xong" + bong bóng màu ở CRM** (anh: "check CRM biết khách nào đang nợ việc, khách nào đã clear"): thêm "Đã xong" vào danh mục (`supabase-schema-cs-da-xong.sql`). Chuyển dữ liệu 1 lần: khách trong CRM giữ lượt gần nhất = Chăm sóc định kỳ (92 lượt), còn lại 1.842 lượt → Đã xong; 243 lượt Chốt đơn không đụng. Bong bóng chat trở lại ở cột Trao đổi gần nhất của CRM: đỏ = Chăm sóc định kỳ, xanh = Đã xong (bỏ qua lượt Chốt đơn). Ghi lượt mới → các lượt cũ còn treo của khách tự chuyển Đã xong. **CRM thêm khách ĐÃ CHỐT phát sinh nhu cầu lại**: lượt gần nhất (bỏ qua Chốt đơn) = Chăm sóc định kỳ thì vào CRM (lấy cả khách có đơn cuối từ năm trước, lọc theo ngày lượt đó). Lúc chuyển dữ liệu khách đã chốt tính là NGOÀI CRM → về Đã xong hết (87 khách Sỉ có lượt sau đơn cuối, đa số "chúc tháng" gửi hàng loạt; có vài nhu cầu thật: CHỊ TÚ, CỬU DIỆU THIÊN… — anh muốn mở lại ca nào thì Sale sửa lượt đó về Chăm sóc định kỳ).
 - **02/10 (22)** — Master (Lẻ + Sỉ) bỏ cột "Trao đổi gần nhất" (bong bóng); trao đổi xem ở CRM hoặc tab Lịch sử chăm sóc trong hồ sơ. Master còn 8 cột.
 - **02/10 (21)** — CRM (Lẻ + Sỉ) bỏ nút "✏ Sửa" cạnh nút "+ Chăm sóc" (anh bảo bỏ); sửa vẫn qua nút Sửa trong hồ sơ khách. Dropdown đổi Sale cho tài khoản toàn quyền giữ nguyên.
 - **02/10 (20)** — **SĐT gộp vào ô tên khách** (dưới Mã KH / Lead ID), bỏ cột SĐT riêng — Master + CRM, Lẻ + Sỉ (hàm rptSlSdtDuoiTen). Kiểm 4 bảng: số cột tiêu đề = số ô mỗi dòng.

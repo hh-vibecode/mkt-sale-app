@@ -5168,7 +5168,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 16:45';
+const APP_VERSION='02/10 17:03';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6410,6 +6410,8 @@ function rptSlBuildMasterRaw(){
       // theo Lead ID + Mã KH nên ~100 khách mở hồ sơ thấy lịch sử mà cột "CS cuối" vẫn trống (25/9/2026).
       const ds=rptSlCsRows(r);
       r.siLuot=ds.length;
+      // trạng thái + ngày lượt chăm sóc gần nhất (bỏ qua Chốt đơn) -- bong bóng màu + CRM khách chốt phát sinh lại (02/10/2026)
+      {const mo=ds.find(y=>!rptSlCsLaChotLuot(y));r.siCsTT=mo?rptSlCsTTCua(mo):'';r.siCsTTNgay=mo?String(mo.ngay_cham||'').slice(0,10):'';}
       if(ds.length){
         const m=ds[0];
         r.siCSCuoi=String(m.ngay_cham||'').slice(0,10);
@@ -6702,9 +6704,12 @@ function rptSiTraoDoiO(r){
   const x=rptSiLuotGanNhat(r);
   if(!x)return '<span style="color:var(--muted)">—</span>';
   const q=String.fromCharCode(39);
-  return '<button onclick="rptSiXemTraoDoi('+q+String(r.key).replace(/'/g,'')+q+')" title="Trao đổi ngày '+dmy(String(x.ngay_cham||'').slice(0,10))+' — bấm để xem"'
+  return '<button onclick="rptSiXemTraoDoi('+q+String(r.key).replace(/'/g,'')+q+')" title="Trao đổi ngày '+dmy(String(x.ngay_cham||'').slice(0,10))+(rptSlCsTTGanNhat(r)?' · '+rptSlCsTTGanNhat(r):'')+' — bấm để xem"'
     // chỉ bong bóng, KHÔNG kèm ngày (anh Hải 01/10/2026: ngày trao đổi lệch ngày CS cuối -- CS cuối nhảy theo cả đơn -- trông cấn)
-    +' style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:28px;border:1.5px solid var(--accent);border-radius:14px;background:var(--accent-l);color:var(--accent);cursor:pointer">'
+    // MÀU = trạng thái lượt chăm sóc gần nhất (bỏ qua Chốt đơn): Chăm sóc định kỳ đỏ = còn nợ việc, Đã xong xanh (02/10/2026)
+    +(()=>{const t=rptSlCsTTGanNhat(r),m=rptSlCsMauTT(t);
+      return ' data-tt="'+t+'" style="display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;width:32px;height:28px;border:1.5px solid '+m
+        +';border-radius:14px;background:color-mix(in srgb,'+m+' 13%,transparent);color:'+m+';cursor:pointer">';})()
     +'<span style="width:16px;height:16px;display:inline-flex">'+ic('chat')+'</span></button>';
 }
 function rptSiXemTraoDoi(key){
@@ -7011,7 +7016,14 @@ async function rptSiGcLuu(){
 // Trước đây Master chỉ có thông tin khách; muốn biết đã gọi/gặp những gì phải sang tab CRM tìm lại.
 // Giờ popup hồ sơ có 2 tab: Thông tin khách hàng · Lịch sử chăm sóc (anh Hải chốt 24/9/2026).
 // Mỗi lượt vẫn ghi vào salesi_crm như cũ -> tab CRM và Master dùng chung một nguồn, sửa đâu cũng thấy.
-const RPT_CS_TRANG_THAI=['Chăm sóc định kỳ','Chốt đơn'];
+const RPT_CS_TRANG_THAI=['Chăm sóc định kỳ','Đã xong','Chốt đơn'];
+// TRẠNG THÁI LƯỢT CHĂM SÓC (anh Hải 02/10/2026): "Chăm sóc định kỳ" = việc còn treo (đỏ), "Đã xong" = đã clear (xanh).
+// Mỗi khách chỉ lượt GẦN NHẤT được để Chăm sóc định kỳ -- ghi lượt mới thì các lượt cũ tự chuyển Đã xong (rptSlCsLuu).
+// Lượt Chốt đơn bỏ qua, không tính. Lượt cũ để trống trạng thái = Chăm sóc định kỳ.
+function rptSlCsLaChotLuot(x){return rptSlCsLaChot(x.trang_thai)||!!x.ma_don||!!x.ngay_chot;}
+function rptSlCsTTCua(x){return String(x.trang_thai||'').trim()||'Chăm sóc định kỳ';}
+function rptSlCsTTGanNhat(r){if(r.siCsTT!==undefined)return r.siCsTT;const x=rptSlCsRows(r).find(y=>!rptSlCsLaChotLuot(y));return x?rptSlCsTTCua(x):'';}
+function rptSlCsMauTT(t){return !t?'var(--accent)':/đã xong/i.test(t)?'var(--green)':'var(--red)';}
 function rptSlCsLaChot(v){return /chốt/i.test(String(v||''));}
 // Ghép lượt chăm sóc theo TÊN chỉ khi lượt đó CHƯA có chủ trong báo cáo (Lead ID / Mã KH không khớp khách nào).
 // Trước 28/9/2026 ghép tên vô điều kiện -> lịch sử của khách cũ (vd M-0128 "ĐỒ THỜ PHÚ QUÝ" 31 lượt, Đã ra đơn)
@@ -7103,7 +7115,7 @@ function rptSlCsTabHtml(r){
   const tr=ds.map(function(x){
     const chot=rptSlCsLaChot(x.trang_thai)||!!x.ma_don||!!x.ngay_chot;
     const pill='<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:800;color:#fff;background:'
-      +(chot?'var(--green)':'var(--accent)')+'">'+e(x.trang_thai||(chot?'Chốt đơn':'Chăm sóc định kỳ'))+'</span>';
+      +(chot?'var(--green)':rptSlCsMauTT(rptSlCsTTCua(x)))+'">'+e(x.trang_thai||(chot?'Chốt đơn':'Chăm sóc định kỳ'))+'</span>';
     return '<tr style="border-bottom:1px solid var(--border)">'
       +'<td style="padding:9px 12px;font-size:12px;white-space:nowrap;vertical-align:top">'+(dmy(x.ngay_cham)||'—')
         +(x.sales?'<div style="font-size:10.5px;color:var(--muted);font-weight:600;margin-top:2px">'+e(x.sales)+'</div>':'')+'</td>'
@@ -7148,6 +7160,8 @@ async function rptSlCsLuu(){
   }
   const id=window._rptSlCsForm;
   const cu=(id?rptSlCsRows(r).find(x=>x.id===id):null)||{};
+  // lượt MỚI: các lượt cũ còn treo (chưa chốt, chưa Đã xong) chuyển Đã xong -- chỉ lượt gần nhất được để Chăm sóc định kỳ
+  const dongCu=id?[]:rptSlCsRows(r).filter(x=>x.id&&!rptSlCsLaChotLuot(x)&&!/đã xong/i.test(String(x.trang_thai||''))).map(x=>x.id);
   const row={lead_id:r.leadId||null,kiot_code:r.kh||cu.kiot_code||null,customer_name:r.name,
     phone:((r.phones||[])[0]||{}).so||r.phone||cu.phone||null,
     ngay_cham:ngay,nguon:r.nguon||cu.nguon||null,kenh:r.kenh||cu.kenh||null,
@@ -7169,6 +7183,12 @@ async function rptSlCsLuu(){
       logAct('U','salesi_crm','#'+id,r.name,'Lượt chăm sóc','',ngay+' · '+nd.slice(0,80));
     }else{
       const ins=await sbInsert('salesi_crm',row);
+      if(dongCu.length){try{
+        const rs=await fetch(SUPABASE_URL+'/rest/v1/salesi_crm?id=in.('+dongCu.join(',')+')',{method:'PATCH',
+          headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+          body:JSON.stringify({trang_thai:'Đã xong',updated_at:new Date().toISOString()})});
+        if(!rs.ok)throw new Error('lỗi '+rs.status);
+      }catch(err){console.warn('[Chăm sóc] chưa chuyển được lượt cũ sang Đã xong:',err.message);}}
       logAct('C','salesi_crm',ins&&ins.id?('#'+ins.id):null,r.name,'Lượt chăm sóc','',ngay+' · '+nd.slice(0,80));
     }
     // Chốt đơn -> hồ sơ khách bên Master đổi phân loại theo luôn (Master · CRM · Nhập Liệu dùng chung 1 ô).
@@ -8153,7 +8173,13 @@ function rptSlCrmHtml(){try{return rptSlCrmHtmlRaw();}catch(e){rptBaoLoi('Bảng
 const RPT_CRM_TT=['Lead mới','Tiềm năng, chưa ra đơn','Chăm sóc dài hạn'];   // Lẻ không có CS dài hạn -> thực tế 2 mục
 function rptSlCrmHtmlRaw(){
   const st=rptSlF('crm','status');
-  const allRaw=rptSlPeriod().filter(r=>st?true:(!r.isChot&&RPT_CRM_TT.includes(rptSlLocTT(r))));
+  const base=rptSlPeriod().filter(r=>st?true:(!r.isChot&&RPT_CRM_TT.includes(rptSlLocTT(r))));
+  // KHÁCH ĐÃ CHỐT PHÁT SINH NHU CẦU LẠI (anh Hải 02/10/2026): lượt chăm sóc gần nhất (bỏ qua Chốt đơn) còn để
+  // "Chăm sóc định kỳ" thì vẫn vào CRM. Lấy từ TOÀN BỘ khách (đơn cuối có thể từ năm trước), lọc theo ngày của lượt đó.
+  const coKey=new Set(base.map(r=>r.key));
+  const moLai=st?[]:rptSlBuildMaster().filter(r=>r.isChot&&!coKey.has(r.key)&&/định kỳ/i.test(r.siCsTT||'')
+    &&modInRange(rptSlMod(),r.siCsTTNgay));
+  const allRaw=base.concat(moLai);
   const all=rptSlApplyF('crm',allRaw).slice()
     .sort((x,y)=>(y.siNgayNghi==null?1e9:y.siNgayNghi)-(x.siNgayNghi==null?1e9:x.siNgayNghi));   // lâu chưa liên hệ nhất lên đầu
   const q=(window._rptSlCrmQ||'').trim();
@@ -8179,11 +8205,11 @@ function rptSlCrmHtmlRaw(){
       +(()=>{   // TRAO ĐỔI GẦN NHẤT (anh Hải 02/10/2026) = 1. SP quan tâm + 2. Nội dung của lượt gần nhất, gọn tối đa 2 dòng;
         // rê chuột hiện đủ, bấm mở popup đủ 4 mục (giống bong bóng ở Master). Chưa có lượt nào thì lấy nội dung cũ.
         const x=rptSiLuotGanNhat(r)||{},sp=String(x.sp_quan_tam||'').trim(),nd=String(x.noi_dung||r.siNDCuoi||'').trim();
-        if(!sp&&!nd)return '<td><span style="color:var(--muted)">—</span></td>';
+        if(!sp&&!nd)return '<td onclick="rptSlStop(event)">'+rptSiTraoDoiO(r)+'</td>';
         const tip=((sp?'SP quan tâm: '+sp+'\n':'')+nd).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-        return '<td onclick="rptSlStop(event)"><div title="'+tip+'"'+(x.id?' onclick="rptSiXemTraoDoi(\''+qk(r)+'\')"':'')
+        return '<td onclick="rptSlStop(event)"><div style="display:flex;align-items:flex-start;gap:8px">'+rptSiTraoDoiO(r)+'<div title="'+tip+'"'+(x.id?' onclick="rptSiXemTraoDoi(\''+qk(r)+'\')"':'')
           +' style="font-size:11.5px;line-height:1.45;max-width:300px;min-width:180px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer">'
-          +(sp?'<b style="color:var(--accent)">'+e(sp)+'</b>'+(nd?' · ':''):'')+e(nd)+'</div></td>';})()
+          +(sp?'<b style="color:var(--accent)">'+e(sp)+'</b>'+(nd?' · ':''):'')+e(nd)+'</div></div></td>';})()
       +'<td>'+hen+'</td>'
       +'<td class="num" style="font-weight:700">'+(r.potential?vnd(r.potential):'<span style="color:var(--muted);font-weight:400">—</span>')+'</td>'
       +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'+rptSiChuongDong(r)
