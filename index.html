@@ -4046,7 +4046,7 @@ const RPT_AN_GAN_DATA=true;
 function rptSlViewMode(){const m=localStorage.getItem('rptSlViewMode_'+rptSlType())||'master';
   if(m==='overview')return 'master';
   if(m==='gan'&&RPT_AN_GAN_DATA)return 'master';
-  if(m==='crm'&&rptSlType()==='Sỉ')return 'master';   // tab CRM Sỉ đã gỡ
+  // tab CRM có lại ở CẢ Sỉ (02/10/2026)
   return m;}
 function rptSlSetViewMode(m){localStorage.setItem('rptSlViewMode_'+rptSlType(),m);window._kiotOrdByCode=null;rptSlRender();}
 function rptSlLast9(s){const d=(s||'').toString().replace(/\D/g,'');return d.length>=9?d.slice(-9):d;}
@@ -4696,20 +4696,22 @@ function rptSiThemKhachForm(){
   // * đỏ = BẮT BUỘC (anh Hải 25/9/2026): thiếu 1 trong 6 ô này thì không cho tạo khách.
   const lb=(t,bb)=>'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">'+t+(bb?' <span style="color:var(--red)">*</span>':'')+'</div>';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  const sale=saleNhanSuDS().filter(x=>x.doi==='Sỉ'&&x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);
-  const o=RPT_SI_THEM.map(([k,nhan])=>'<div>'+lb(nhan+dmBut({mohinh:'si_mo_hinh',taichinh:'si_tai_chinh',nhom:'si_nhom_kh'}[k]||''),RPT_SI_THEM_BB.includes('siT_'+k))+rptSiO('siT_'+k,k,'',ip)+'</div>').join('');
+  const T=rptSlType();
+  const sale=saleNhanSuDS().filter(x=>x.doi===T&&x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);
+  // Lẻ (02/10/2026): bỏ các ô hồ sơ cửa hàng, chỉ giữ Tên / SĐT / Mã KH / Địa chỉ
+  const o=RPT_SI_THEM.filter(([k])=>T==='Sỉ'||['ten','sdt','ma','diachi'].includes(k)).map(([k,nhan])=>'<div>'+lb((T==='Sỉ'||k!=='ten'?nhan:'Họ tên khách')+dmBut({mohinh:'si_mo_hinh',taichinh:'si_tai_chinh',nhom:'si_nhom_kh'}[k]||''),RPT_SI_THEM_BB.includes('siT_'+k))+rptSiO('siT_'+k,k,'',ip)+'</div>').join('');
   let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
   m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
    +'<div style="background:var(--surface);border-radius:16px;max-width:820px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
    +'<div style="display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border)">'
-   +'<div style="font-size:15px;font-weight:800">Thêm khách Sỉ mới</div>'
+   +'<div style="font-size:15px;font-weight:800">Thêm khách '+T+' mới</div>'
    +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
    +'<div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">'
    +'<div>'+lb('Ngày tạo',1)+'<input id="siT_ngay" type="date" value="'+todayISO()+'" style="'+ip+'"></div>'
    +'<div>'+lb('Nguồn khách',1)+'<select id="siT_nguon" style="'+ip+';cursor:pointer"><option value="">— chọn —</option><option>Offline</option><option>Online</option></select></div>'
    +'<div>'+lb('Kênh'+dmBut('kenh_nhap_tay'),1)+'<input id="siT_kenh" list="siT_kenhDS" placeholder="VD: Sales trực tiếp" style="'+ip+'">'
    +'<datalist id="siT_kenhDS">'+(typeof DH_MANUAL_KENH!=='undefined'?DH_MANUAL_KENH:[]).map(x=>'<option value="'+e(x)+'">').join('')+'</datalist></div>'
-   +'<div>'+lb('Sale phụ trách'+dmBut('sale_si'),1)+'<select id="siT_sale" style="'+ip+';cursor:pointer"><option value="">— chọn Sale —</option>'
+   +'<div>'+lb('Sale phụ trách'+dmBut(T==='Sỉ'?'sale_si':'sale_le'),1)+'<select id="siT_sale" style="'+ip+';cursor:pointer"><option value="">— chọn Sale —</option>'
      +sale.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select></div>'
    +'<div>'+lb('Phân loại KH'+dmBut('si_phan_loai'),1)+'<select id="siT_phanloai" style="'+ip+';cursor:pointer"><option value="">— chọn —</option>'
      +RPT_SI_PHANLOAI_DS.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select></div>'
@@ -4734,10 +4736,11 @@ async function rptSiThemKhach(){
   try{
     if(msg)msg.textContent='Đang lưu…';
     const kenh=g('siT_kenh');
-    const ins=await sbInsert('datahub_manual',{created_date:g('siT_ngay')||todayISO(),sale_type:'Sỉ',
-      nguon:g('siT_nguon')||'Offline',kenh:kenh||null,brand:dhManualBrand(kenh,'Sỉ'),
+    const T=rptSlType();
+    const ins=await sbInsert('datahub_manual',{created_date:g('siT_ngay')||todayISO(),sale_type:T,
+      nguon:g('siT_nguon')||'Offline',kenh:kenh||null,brand:dhManualBrand(kenh,T),
       customer_name:ten,phone:g('siT_sdt')||null,staff_name:g('siT_sale')||null,
-      kiot_code:ma||null,status:g('siT_phanloai')||null,note:g('siT_ghichu')||'Thêm tay ở Master Sỉ',
+      kiot_code:ma||null,status:g('siT_phanloai')||null,note:g('siT_ghichu')||'Thêm tay ở Master '+T,
       created_by:logWho()});
     if(!ins||!ins.id)throw new Error('không tạo được dòng khách');
     const leadId='M-'+String(ins.id).padStart(4,'0');
@@ -4747,7 +4750,7 @@ async function rptSiThemKhach(){
       si_fanpage:g('siT_fanpage')||null,si_phan_loai:g('siT_phanloai')||null,
       si_sale:g('siT_sale')||null};
     try{await rptSlSaveManual(leadId,hoSo);}catch(e){console.warn('[Master Sỉ] chưa lưu được hồ sơ:',e.message);}
-    logAct('C','datahub_manual',leadId,ten,'Khách Sỉ mới','',g('siT_ngay')||todayISO());
+    logAct('C','datahub_manual',leadId,ten,'Khách '+T+' mới','',g('siT_ngay')||todayISO());
     await dhLoadManual(true);
     window._kiotOrdByCode=null;rptSlXoaCache();
     qcCloseModal();rptSlRender();
@@ -4840,11 +4843,10 @@ function rptLeOSua(r){
   }
   o.si_tinh={kieu:'chon',ds:RPT_TINH_34,gt:mn.si_tinh||'',noi:'mn',cot:'si_tinh',rong:'— (để app tự suy)'};
   o.dia_chi={kieu:'text',gt:mn.si_dia_chi||r.diaChi||'',noi:'mn',cot:'si_dia_chi'};
-  // noi 'tt': chọn "Chốt đơn" đi đúng quy trình chốt (hỏi Mã KH, ghi Pancake) như dropdown ở CRM, không ghi chữ vào bảng tay
-  if(!r.isChot)o.trang_thai={kieu:'chon',ds:RPT_SL_STATUS_OPTS,gt:r.manualStatus||'',noi:'tt',cot:'status'};
-  if(!r.careAuto)o.care_date={kieu:'date',gt:String(r.careDate||'').slice(0,10),noi:'mn',cot:'care_date'};
+  // Phân loại KH dùng chung bộ với Sỉ (02/10/2026); chọn "Đã ra đơn" đi đúng quy trình chốt. Ngày / nội dung chăm sóc
+  // nay ghi ở tab Lịch sử chăm sóc (nhiều lượt) như Sỉ.
+  o.si_phan_loai={kieu:'chon',ds:RPT_SI_PHANLOAI_DS,gt:r.siPhanLoai||'',noi:'pl'};
   if(!r.isChot)o.tiem_nang={kieu:'tien',gt:r.potential?num(r.potential):'',noi:'mn',cot:'potential_value'};
-  o.content={kieu:'dai',gt:r.content||'',noi:'mn',cot:'content'};
   return o;
 }
 function rptSlOSua(r){return rptSlType()==='Sỉ'?rptSiOSua(r):rptLeOSua(r);}
@@ -5159,7 +5161,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 15:34';
+const APP_VERSION='02/10 15:56';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5230,6 +5232,9 @@ const rptSlLuot={};
 // Cờ _auto = do app tự đặt: rời tab CRM thì trả lại mặc định của trang (tháng này). Người dùng tự chọn
 // ngày thì không còn cờ này -> giữ nguyên lựa chọn của họ, không bị app đè lên.
 function rptSlKyMacDinh(mode){
+  if(rptSlType()==='Sỉ'&&mode==='crm'){   // CRM Sỉ mặc định Tất cả 2026 (02/10/2026)
+    const cu=modRanges.salesi;if(!cu||cu._auto)modRanges.salesi={from:RPT_TU_NAM,to:'',_auto:true};return;
+  }
   if(rptSlType()!=='Sỉ'){
     // CRM LẺ mặc định "Tất cả 2026" (anh Hải 02/10/2026); rời CRM thì Master về mặc định tháng này
     const cu=modRanges.saleretail;
@@ -5238,7 +5243,7 @@ function rptSlKyMacDinh(mode){
     return;
   }
   const cu=modRanges.salesi;
-  if(mode==='crm'||mode==='master'){
+  if(mode==='master'){
     if(cu&&!cu._auto)return;                       // người dùng đã tự chọn -> tôn trọng
     const t=todayISO();
     const tu=new Date(new Date(t).getTime()-2*86400000).toISOString().slice(0,10);
@@ -5259,7 +5264,7 @@ async function rptSlRenderPage(type){
   try{
     // 5 nguồn này độc lập nhau -> tải CÙNG LÚC (trước đây nối tiếp, cộng dồn ~3 giây).
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),
-      rptSlType()==='Sỉ'?siCrmLoad():Promise.resolve(),
+      siCrmLoad(),   // Lẻ cũng có Lịch sử chăm sóc (02/10/2026)
       saleNhanSuLoad().catch(()=>null)]);
     await rptSlLockChot();   // phải chạy sau vì đọc dữ liệu vừa tải xong
   }catch(e){
@@ -5278,7 +5283,7 @@ async function rptSlRenderPage(type){
       mode==='input'?'':cfg.mod,cfg.render,
       `<span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         <button onclick="rptSlSetViewMode('master')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='master'?'var(--accent)':'var(--surface)'};color:${mode==='master'?'#fff':'var(--text2)'}">Master Data</button>
-        ${rptSlType()==='Sỉ'?''/* Sỉ: lịch sử chăm sóc nằm trong hồ sơ khách, không còn tab CRM riêng */:`<button onclick="rptSlSetViewMode('crm')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='crm'?'var(--accent)':'var(--surface)'};color:${mode==='crm'?'#fff':'var(--text2)'}">CRM</button>`}
+        ${`<button onclick="rptSlSetViewMode('crm')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='crm'?'var(--accent)':'var(--surface)'};color:${mode==='crm'?'#fff':'var(--text2)'}">CRM</button>`}
         ${RPT_AN_GAN_DATA?'':(()=>{const n=rptSlBuildMaster().filter(rptSlCanGan).length;
           return '<button onclick="rptSlSetViewMode('+String.fromCharCode(39)+'gan'+String.fromCharCode(39)+')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:'
             +(mode==='gan'?'var(--accent)':'var(--surface)')+';color:'+(mode==='gan'?'#fff':'var(--text2)')+'">Gán data'
@@ -5416,8 +5421,9 @@ function rptSlOverviewHtml(){
       // Không để lẫn lộn tiền với số lượng trên cùng một hàng -- người đọc quét theo hàng.
       const open=master.filter(r=>!r.isChot),pv=open.reduce((s,r)=>s+r.potential,0),nPv=open.filter(r=>r.potential>0).length;
       // Trạng thái do Sale chọn (khách đã chốt bị khoá cứng là "Chốt đơn" nên không nằm ở 2 nhóm này).
-      const dangCS=master.filter(r=>!r.isChot&&(r.manualStatus==='Đang chăm sóc'||r.manualStatus==='Chăm sóc dài hạn'));
-      const matLead=master.filter(r=>!r.isChot&&r.manualStatus==='Mất lead');
+      const pl=r=>String(r.siPhanLoai||r.manualStatus||'');
+      const dangCS=master.filter(r=>!r.isChot&&/tiềm năng, chưa|chăm sóc dài hạn|lead mới|đang chăm sóc/i.test(pl(r)));
+      const matLead=master.filter(r=>!r.isChot&&/mất kết nối|mất lead|không tiềm năng/i.test(pl(r)));
       // Hàng 1: TIỀN (2 ô). Hàng 2: SỐ LƯỢNG (4 ô) -- chia đều đúng bề ngang của hàng trên.
       const g4='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px';
       const g2='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px';
@@ -5886,11 +5892,10 @@ function rptSlStatusPill(st){
 // Bộ lọc trạng thái: Sỉ lọc theo PHÂN LOẠI KH (cột trạng thái của Master Sỉ), Lẻ theo trạng thái Lẻ.
 // Danh sách lấy từ danh mục (dmLoad đổ tại chỗ) -> thêm giá trị mới ở bút ✏ là bộ lọc có ngay.
 function rptSlLocTTDs(){
-  const ds=rptSlType()==='Sỉ'?RPT_SI_PHANLOAI_DS:['Chốt đơn',...RPT_SL_STATUS_OPTS];
+  const ds=RPT_SI_PHANLOAI_DS;   // Lẻ + Sỉ chung bộ Phân loại (02/10/2026)
   return [...new Set(ds),'(chưa cập nhật)'];
 }
 function rptSlLocTT(r){
-  if(rptSlType()!=='Sỉ')return rptSlRowStatus(r);
   return String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim()||'(chưa cập nhật)';
 }
 function rptSlApplyF(tab,list){
@@ -5916,7 +5921,7 @@ function rptSlFilterBar(tab){
   const brands=[...new Set(full.map(r=>DH_BRAND_LABEL[r.brand]||r.brand||'—'))].sort();
   const ip='height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer';
   const one=(k,label,opts)=>`<select onchange="rptSlSetF('${tab}','${k}',this.value)" style="${ip}">
-    <option value="">${label}: tất cả</option>
+    <option value="">${tab==='crm'&&k==='status'?'Phân loại: Lead mới · Tiềm năng · CS dài hạn':label+': tất cả'}</option>
     ${opts.map(o=>`<option value="${String(o).replace(/"/g,'&quot;')}"${rptSlF(tab,k)===o?' selected':''}>${o}</option>`).join('')}
   </select>`;
   return one('sale','Sales',sales)+one('status','Trạng thái',stats)
@@ -6300,10 +6305,7 @@ function rptSlBuildMasterRaw(){
   // LẺ: CÓ THẺ TIỀM NĂNG MÀ CHƯA CÓ TRẠNG THÁI -> tự là "Đang chăm sóc" (anh Hải 02/10/2026, áp cả về sau: "cứ gắn thẻ
   // tiềm năng là auto đang chăm sóc, cho tới khi sale tự thay đổi"). Tính lúc dựng dữ liệu, KHÔNG ghi bảng -> Sale chọn
   // trạng thái khác là thắng ngay; khách đã chốt hoặc đã có trạng thái (kể cả Lead cũ) không đụng.
-  if(rptSlType()!=='Sỉ')rows.forEach(r=>{
-    if(r.isChot||String(r.manualStatus||'').trim())return;
-    if((r.orders||[]).some(o=>!dhHuy(o)&&/TIỀM NĂNG/i.test(o.customer_tags||''))){r.manualStatus='Đang chăm sóc';r.status='Đang chăm sóc';r.ttTuDong=true;}
-  });
+
   // LẺ: SĐT / địa chỉ Sale ghi ở chế độ sửa hồ sơ (cùng cột si_sdt / si_dia_chi với Sỉ, 30/9/2026)
   if(rptSlType()!=='Sỉ')rows.forEach(r=>{const mn=rptSlManual[r.leadId]||{};
     if(mn.si_sdt){const k9=rptSlLast9(mn.si_sdt);
@@ -6330,9 +6332,13 @@ function rptSlBuildMasterRaw(){
       r.staff=gan!==null?(gan&&rptSlSaleName(gan)):(ten||'');   // chưa có ai phụ trách thì để TRỐNG (anh Hải 24/9/2026)
       rptSlChuyenDoi(r);
     });
-    // chủ của từng lượt chăm sóc (Lead ID / Mã KH có trong Master Sỉ) -> rptSlCsRows không ghép tên lan sang khách khác
+  }
+  // HỒ SƠ + LỊCH SỬ CHĂM SÓC: dùng CHUNG cho Sỉ và Lẻ (anh Hải 02/10/2026: giao diện Lẻ y như Sỉ)
+  {
+    const laLe=rptSlType()!=='Sỉ';
+    // chủ của từng lượt chăm sóc (Lead ID / Mã KH có trong Master) -> rptSlCsRows không ghép tên lan sang khách khác
     {const ids=new Set(),kh=new Set(),so=new Set();rows.forEach(r=>{rptSlIdsCua(r).forEach(i=>ids.add(i));if(r.kh)kh.add(String(r.kh).toUpperCase());rptSlSoCua(r).forEach(k=>so.add(k));});
-      (window._rptSlCsChu=window._rptSlCsChu||{})['Sỉ']={ids,kh,so};}
+      (window._rptSlCsChu=window._rptSlCsChu||{})[rptSlType()]={ids,kh,so};}
     const ky={};
     (typeof siCrmRows!=='undefined'?siCrmRows:[]).forEach(c=>{
       const k=c.lead_id||('MA:'+(c.kiot_code||''))||('SDT:'+rptSlLast9(c.phone||''));
@@ -6344,7 +6350,8 @@ function rptSlBuildMasterRaw(){
         Object.fromEntries(Object.entries(rptSlManual[r.leadId]||{}).filter(([k,v])=>v!==null&&v!==undefined&&v!=='')));
       r.siDiaChi=mn.si_dia_chi||'';r.siGiayPhep=mn.si_giay_phep||'';r.siFanpage=mn.si_fanpage||'';
       r.siMoHinh=mn.si_mo_hinh||'';r.siDienTich=mn.si_dien_tich||'';r.siTaiChinh=mn.si_tai_chinh||'';
-      r.siPhanLoai=mn.si_phan_loai||'';r.siNhomKH=mn.si_nhom_kh||'';
+      // Lẻ dùng chung bộ Phân loại của Sỉ (02/10/2026): chưa có si_phan_loai thì quy trạng thái Lẻ cũ sang bộ mới
+      r.siPhanLoai=mn.si_phan_loai||(laLe?rptLeTTMoi(r.manualStatus):'');r.siNhomKH=mn.si_nhom_kh||'';
       r.siSpQT=mn.si_sp_quan_tam||'';r.siSpQTNguon=mn.si_sp_qt_nguon||'';r.siSpQTLy=mn.si_sp_qt_ly||'';
       // Bộ trường RIÊNG CỦA SỈ lấy nguyên từ sheet Master Sỉ (khác hẳn Lẻ): Lead ID, Ad ID, người đại diện,
       // tên cửa hàng, tỉnh/quận, link hồ sơ, ghi chú KH, ngày chốt đầu, giá trị đơn đầu / cộng dồn...
@@ -6390,16 +6397,32 @@ function rptSlBuildMasterRaw(){
         r.siHenDen=!!(r.siNgayHen&&r.siNgayHen<=todayISO()&&!ds.some(x=>x!==henDong&&String(x.ngay_cham||'').slice(0,10)>=r.siNgayHen));
         const dk=ds.map(x=>Number(x.gia_tri_du_kien||0)).filter(v=>v>0)[0];
         if(dk&&!r.potential)r.potential=dk;
-      }else{r.siCSCuoi='';r.siNDCuoi='';r.siNgayNghi=null;}
+      }else{r.siCSCuoi='';r.siNDCuoi='';r.siNgayNghi=null;
+        // Lẻ chưa có lượt nào: lấy tạm ngày / nội dung Sale ghi kiểu cũ (ô Nội dung trao đổi) cho khỏi trống
+        if(laLe){r.siCSCuoi=String(mn.care_date||'').slice(0,10);r.siNDCuoi=mn.content||r.content||'';}}
       // PHÁT SINH ĐƠN = CÓ CHĂM SÓC (anh Hải 01/10/2026): ngày chăm sóc cuối nhảy theo đơn Kiot gần nhất của khách
       // (đơn đặt hàng / hoá đơn bán thẳng, kể cả mua lại / phiếu tạm; bỏ đơn huỷ + đơn 0đ) nếu đơn mới hơn lượt chăm sóc cuối.
       // Đơn từ ngày hẹn trở đi cũng tính là đã làm hẹn.
       const donMoi=[].concat(r.kords||[],r.repeatOrds||[],r.staleOrds||[])
         .filter(o=>o&&o.status!==4&&o.purchase_date&&Number(o.total||0)>0).map(o=>String(o.purchase_date).slice(0,10)).sort().pop()||'';
       r.siDonCuoi=donMoi;
+      // Lẻ: khách nhắn Pancake (đơn Pancake mới) cũng là có tiếp xúc
+      if(laLe){const pc=(r.orders||[]).filter(o=>!dhHuy(o)).map(o=>String(o.order_date||'').slice(0,10)).sort().pop()||'';
+        if(pc&&pc>(r.siCSCuoi||'')){r.siCSCuoi=pc;r.siCSTuDon=true;}}
       if(donMoi&&donMoi>(r.siCSCuoi||'')){r.siCSCuoi=donMoi;r.siCSTuDon=true;}
       if(r.siHenDen&&donMoi>=r.siNgayHen)r.siHenDen=false;
       r.siNgayNghi=r.siCSCuoi?Math.floor((new Date()-new Date(r.siCSCuoi))/86400000):null;
+    });
+    if(laLe)rows.forEach(r=>{
+      // LẺ CHƯA CÓ PHÂN LOẠI (anh Hải 02/10/2026): có thẻ TIỀM NĂNG -> "Tiềm năng, chưa ra đơn"; đã gửi SĐT mà chưa gắn thẻ
+      // tiềm năng -> "Lead mới". Tính lúc dựng, không ghi bảng -> Sale chọn khác là thắng.
+      if(!r.isChot&&!r.siPhanLoai){
+        if((r.orders||[]).some(o=>!dhHuy(o)&&/TIỀM NĂNG/i.test(o.customer_tags||'')))r.siPhanLoai='Tiềm năng, chưa ra đơn';
+        else if((r.phones||[]).length||r.phone)r.siPhanLoai='Lead mới';
+        if(r.siPhanLoai)r.ttTuDong=true;
+      }
+      r.manualStatus=r.siPhanLoai||'';          // mọi chỗ cũ đọc manualStatus của Lẻ nay ra cùng bộ với Sỉ
+      r.status=r.isChot?'Chốt đơn':r.manualStatus;
     });
   }
   // DOANH SỐ CHỐT = mọi đơn trong VÒNG 1 THÁNG kể từ ĐƠN KIOT ĐẦU TIÊN (người dùng chốt 21/9/2026:
@@ -6503,6 +6526,9 @@ function rptSiPhanLoaiMau(v){const t=String(v||'');const dmm=dmMau('si_phan_loai
 // Các giá trị Sale Sỉ đang dùng thật -- dùng cho ô chọn ở Master Sỉ.
 // "Lead mới" (anh Hải 25/9/2026): khách lần đầu tiếp cận, chưa xác định được có tiềm năng hay không.
 // Không gắn thẻ Pancake (xem rptSiTheTuPhanLoai), nhưng vẫn tính là ĐÃ cập nhật trạng thái.
+// Trạng thái Lẻ CŨ -> bộ Phân loại dùng chung với Sỉ (02/10/2026). Giá trị đã thuộc bộ mới thì giữ nguyên.
+const RPT_LE_TT_MAP={'Đang chăm sóc':'Tiềm năng, chưa ra đơn','Mất lead':'Mất kết nối','Chốt đơn':'Đã ra đơn'};
+function rptLeTTMoi(v){const t=String(v||'').trim();return RPT_LE_TT_MAP[t]||t;}
 const RPT_SI_PHANLOAI_DS=['Lead mới','Đã ra đơn','Tiềm năng, chưa ra đơn','Chăm sóc dài hạn','Chưa liên hệ được','Mất kết nối','Không tiềm năng'];
 // Ô CHỌN Phân loại KH ngay trên bảng Master Sỉ -- sửa tại chỗ, không phải mở popup.
 // Lưu vào saleretail_manual.si_phan_loai; giá trị này được ưu tiên hơn phân loại lấy từ sheet.
@@ -6517,7 +6543,7 @@ function rptSiPhanLoaiSelect(r){
     +';border-radius:20px;background:'+(v?'color-mix(in srgb,'+mau+' 12%,transparent)':'var(--surface)')
     +';color:'+mau+';font-size:10.5px;font-weight:800;font-family:var(--font);cursor:pointer;outline:none">'
     +'<option value=""'+(v?'':' selected')+'>—</option>'
-    +RPT_SI_PHANLOAI_DS.map(x=>'<option value="'+e(x)+'"'+(v===x?' selected':'')+'>'+e(x)+'</option>').join('')
+    +RPT_SI_PHANLOAI_DS.concat(v&&!RPT_SI_PHANLOAI_DS.includes(v)?[v]:[]).map(x=>'<option value="'+e(x)+'"'+(v===x?' selected':'')+'>'+e(x)+'</option>').join('')   // giữ giá trị ngoài bộ (vd Lead cũ)
     +'</select></td>';
 }
 // Phân loại KH -> THẺ tương ứng trên Pancake (anh Hải chốt 23/9/2026).
@@ -6684,7 +6710,6 @@ function rptSiChuongDong(r){
 }
 // chuông cạnh bộ lọc Master Sỉ: số hẹn đã đến lịch, bấm ra danh sách
 function rptSiChuongLoc(){
-  if(rptSlType()!=='Sỉ')return '';
   const n=rptSlBuildMaster().filter(r=>r.siHenDen).length;
   return '<button onclick="rptSiDsHen()" title="Hẹn chăm sóc đã đến lịch" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:30px;border-radius:8px;cursor:pointer;'
     +(n?'border:1.5px solid #f59e0b;background:#fef3c7;color:#d97706;box-shadow:0 0 10px rgba(245,158,11,.45)':'border:1.5px solid var(--border);background:var(--surface);color:var(--muted)')+'">'+RPT_CHUONG_SVG
@@ -6719,7 +6744,8 @@ const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Sales phụ
   +'<th>Tên cửa hàng</th><th>SĐT</th><th>Phân loại KH</th>'
   +'<th>CS cuối</th><th>Trao đổi gần nhất</th>'
   +'<th>Doanh thu</th><th></th>';
-Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>(rptSlType()==='Sỉ'?RPT_SL_MASTER_HEAD_SI.replace('<th>Phân loại KH</th>','<th>Phân loại KH'+dmBut('si_phan_loai')+'</th>'):RPT_SL_MASTER_HEAD_LE)
+Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>RPT_SL_MASTER_HEAD_SI.replace('<th>Phân loại KH</th>','<th>Phân loại KH'+dmBut('si_phan_loai')+'</th>')
+  .replace('<th>Tên cửa hàng</th>',rptSlType()==='Sỉ'?'<th>Tên cửa hàng</th>':'<th>Họ tên khách</th>')
   .replace('<th>Sales phụ trách</th>','<th>Sales phụ trách'+dmBut(rptSlType()==='Sỉ'?'sale_si':'sale_le')+'</th>')});
 // Ô TRẠNG THÁI đổi được ngay trên Master Lẻ (anh Hải 02/10/2026), như cột Phân loại bên Sỉ. Danh sách lấy từ danh mục;
 // chọn "Chốt đơn" đi đúng quy trình chốt (hỏi Mã KH) qua rptSlSetField. Khách đã chốt vẫn là nhãn, không đổi được.
@@ -6733,7 +6759,7 @@ function rptSlTtChon(r){
     +ds.map(x=>'<option value="'+e(x)+'"'+(x===cur?' selected':'')+'>'+e(x)+'</option>').join('')+'</select>';
 }
 function rptSlMasterRow(r){
-  if(rptSlType()==='Sỉ')return rptSlMasterRowSi(r);
+  return rptSlMasterRowSi(r);   // Lẻ dùng chung dòng Master của Sỉ (02/10/2026); phần dưới giữ để tra lại
   return `<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
     <td style="white-space:nowrap">${dmy(r.created)||'—'}${rptSlNhanCu(r.created,'mua lại')}</td>
     <td>${rptSlSrcBadge(r)}</td>
@@ -6821,7 +6847,7 @@ function rptSiDashHtml(all,daCham){
 function rptSiNguonCua(r){return /offline/i.test(r.nguon||'')?'Offline':(/online/i.test(r.nguon||'')?'Online':'Chưa rõ nguồn');}
 function rptSlMasterHtmlRaw(){
   const allRaw=rptSlPeriod();
-  const laSi=rptSlType()==='Sỉ',daCham=laSi?rptSiDaChamTrongKy():[];
+  const laSi=true,daCham=rptSiDaChamTrongKy();   // Lẻ + Sỉ cùng giao diện (02/10/2026)
   // MASTER SỈ: khách có LƯỢT CHĂM SÓC trong kỳ cũng hiện ở bảng thường (anh Hải chốt 01/10/2026), cạnh khách tạo / có đơn
   // có tiền trong kỳ. Khách chỉ vào nhờ lượt chăm sóc: doanh thu trong kỳ = 0, không tính "đã chốt" trong kỳ, nhãn "chăm sóc".
   // CHỈ áp cho bảng Master -- Tổng quan / báo cáo doanh thu vẫn theo rptSlPeriod.
@@ -6850,7 +6876,7 @@ function rptSlMasterHtmlRaw(){
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(rptSlMasterRow).join('');
   const rev=list.reduce((s,r)=>s+r.revenue+(r.repeatRevenue||0),0);   // cộng cả đơn mua lại = khớp tổng cột Doanh thu (01/10/2026)
   return `
-    ${rptSlType()==='Sỉ'?rptSiDashHtml(all,daCham):(()=>{
+    ${true?rptSiDashHtml(all,daCham):(()=>{
       // MASTER = NHÌN TỔNG QUAN: bao nhiêu khách, chốt được bao nhiêu, ra bao nhiêu tiền, mỗi khách bao nhiêu.
       // Việc chăm sóc (lâu chưa liên hệ, đang theo ai) thuộc về tab CRM, không để lẫn ở đây.
       const chot=all.filter(r=>r.isChot);
@@ -6864,7 +6890,7 @@ function rptSlMasterHtmlRaw(){
       </div>`;})()}
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-end">
       ${rptSlFilterBar('master')}${rptSiChuongLoc()}
-      ${rptSlType()==='Sỉ'?'<button onclick="rptSiThemKhachForm()" class="refresh-btn" style="padding:7px 18px;font-size:12.5px;font-weight:800;letter-spacing:.01em;box-shadow:0 2px 10px rgba(67,97,238,.35)">+ THÊM KHÁCH MỚI</button>':''}
+      ${true?'<button onclick="rptSiThemKhachForm()" class="refresh-btn" style="padding:7px 18px;font-size:12.5px;font-weight:800;letter-spacing:.01em;box-shadow:0 2px 10px rgba(67,97,238,.35)">+ THÊM KHÁCH MỚI</button>':''}
       <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(rptSlRender,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
       ${rptSlCoLoc()?'<button onclick="rptSlThaoLoc()" class="btn-ghost" title="Tháo hết bộ lọc: ngày, Sale, trạng thái, brand" style="margin:0;height:30px;padding:0 14px;font-size:11.5px;font-weight:800">Tất cả</button>':''}
     </div>
@@ -6987,7 +7013,8 @@ function rptSlCsRows(r){
   if(ma)(I.ma[ma]||[]).forEach(x=>ung.add(x));
   so.forEach(k=>(I.so[k]||[]).forEach(x=>ung.add(x)));
   if(ten)(I.ten[ten]||[]).forEach(x=>ung.add(x));
-  return [...ung].filter(x=>
+  const loai=rptSlType();
+  return [...ung].filter(x=>(x.loai||'Sỉ')===loai).filter(x=>
       (x.lead_id&&ids.includes(x.lead_id))
     ||(ma&&String(x.kiot_code||'').toUpperCase()===ma)
     ||(x.phone&&so.has(rptSlLast9(x.phone))&&!(x.lead_id&&(window._rptSlCsChu||{})[rptSlType()]&&window._rptSlCsChu[rptSlType()].ids.has(x.lead_id)))
@@ -7094,6 +7121,7 @@ async function rptSlCsLuu(){
     ngay_chot:don?String(don.purchase_date||ngay).slice(0,10):(cu.ngay_chot||null),
     gia_tri_chot:don?Number(don.total||0):(cu.gia_tri_chot==null?null:cu.gia_tri_chot),
     phan_loai:rptSlCsLaChot(tt)?'Đã ra đơn':(cu.phan_loai||null),
+    loai:cu.loai||rptSlType(),   // Lẻ / Sỉ -- lịch sử chăm sóc dùng chung bảng salesi_crm (02/10/2026)
     created_by:logWho()};
   try{
     if(msg)msg.textContent='Đang lưu…';
@@ -7164,7 +7192,7 @@ function rptSlShowCustomer(key,sua){
   const linkTxt=r.linkBy==='Mã KH'?'<span style="color:var(--green)">Mã KH Sale dán</span>'
     :r.linkBy==='Sale nhập'?'<span style="color:var(--accent)">Sale nhập ở tab Nhập Liệu</span>'
     :'';
-  const laSi=rptSlType()==='Sỉ';
+  const laSi=true,laSiThat=rptSlType()==='Sỉ';   // giao diện hồ sơ Lẻ = Sỉ (02/10/2026); trường riêng cửa hàng chỉ Sỉ
   const info=[
     fld('Lead ID','<code>'+esc(r.leadId)+'</code>'),
     fld('SĐT',rptSlSdtHtml(r,''),'','sdt'),
@@ -7195,7 +7223,13 @@ function rptSlShowCustomer(key,sua){
         fld('Mua lại (quá 1 tháng)',r.repeatRevenue>0?vnd(r.repeatRevenue)+' · '+num(r.repeatOrds.length)+' đơn':'')]),
     fld('Tên bên Kiot',esc(r.kiotName)),
     fld('Ngày đặt hàng gần nhất',esc(dmy(r.lastKiotDate))),
-    ...(rptSlType()==='Sỉ'?[
+    ...(!laSiThat?[
+      fld('Địa chỉ',esc(r.diaChi),'','dia_chi'),
+      fld('Phân loại KH',esc(r.siPhanLoai)+(r.ttTuDong?' <span style="font-size:10.5px;color:var(--muted);font-weight:700">· tự đặt</span>':''),rptSiPhanLoaiMau(r.siPhanLoai),'si_phan_loai'),
+      fld('Ngày chốt đầu',esc(dmy(r.kords&&r.kords.length?String(r.kords[0].purchase_date).slice(0,10):''))),
+      fld('Số lượt chăm sóc',r.siLuot?num(r.siLuot)+' lượt':''),
+    ]:[]),
+    ...(laSiThat?[
       // Các trường hồ sơ cửa hàng đã gỡ khỏi bảng Master cho đỡ rối -- xem đầy đủ ở đây.
       fld('Người đại diện',esc(r.siNguoiDaiDien),'','si_nguoi_dai_dien'),
       // Sỉ chỉ giữ 1 ô Địa chỉ (trước hiện 2 ô trùng tên): hồ sơ Sale ghi, chưa có thì lấy địa chỉ Pancake/Kiot
@@ -7212,12 +7246,12 @@ function rptSlShowCustomer(key,sua){
       fld('Ngày chốt đầu',esc(dmy(r.kords&&r.kords.length?String(r.kords[0].purchase_date).slice(0,10):((r.sh||{}).ngay_chot_dau||'')))),
       fld('Số lượt chăm sóc',r.siLuot?num(r.siLuot)+' lượt':''),
     ]:[]),
-    ...(laSi?[]:[fld('Hội thoại',rptSlChatUrl(r)?'<a href="'+rptSlChatUrl(r)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat Pancake</a>':'')]),
+    ...(laSiThat?[]:[fld('Hội thoại',rptSlChatUrl(r)?'<a href="'+rptSlChatUrl(r)+'" target="_blank" rel="noopener" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat Pancake</a>':'')]),
     fld('Nguồn gốc (Pancake)',esc(r.source)),
     fld('Ad ID',(()=>{const id=r.adId||(r.sh||{}).ad_id;if(!id)return'';
       return adIdNote(id)+(r.adSuyRa?' <span style="font-size:10.5px;color:var(--yellow);font-weight:700" title="Không có Ad ID sẵn — app suy ra bằng cách so SĐT '+esc(r.adSuyRaSdt||'')+' với đơn Pancake có gắn ads">· suy từ SĐT</span>':'');})()),
     fld('Ngày chưa liên hệ',r.daysIdle===null?'':num(r.daysIdle)+' ngày',r.isChot&&r.daysIdle>=10?'var(--red)':''),
-    ...(laSi?[]:[fld('Địa chỉ',esc(r.diaChi),'','dia_chi')]),
+
     // Phần CHĂM SÓC -- trước đây modal chỉ có thông tin đơn/khách, thiếu hẳn thứ Sale ghi hằng ngày.
     // Sỉ: lấy từ lượt chăm sóc gần nhất (tab Lịch sử chăm sóc), chưa có lượt nào thì mới dùng số cũ
     fld('Ngày chăm sóc',esc(dmy(laSi?(r.siCSCuoi||(r.sh||{}).ngay_cham_cuoi||r.careDate):r.careDate)),'','care_date'),
@@ -7257,7 +7291,7 @@ function rptSlShowCustomer(key,sua){
     +(ct?`<tr hidden data-lsps-ct="1" style="background:var(--bg2)"><td></td><td colspan="3" style="padding:6px 12px 10px;font-size:11.5px;color:var(--text2);white-space:pre-line">${ct}</td></tr>`:'');
   }).join('')+(tl.length>3?`<tr><td colspan="4" style="padding:8px 12px"><button onclick="rptSlLspsThem(this,${tl.length-3})" class="btn-ghost" style="margin:0;padding:3px 12px;font-size:11.5px">Xem thêm ${tl.length-3} phiếu cũ hơn</button></td></tr>`:'');
   // 2 tab: Thông tin khách hàng · Lịch sử chăm sóc. Lịch sử lấy từ salesi_crm nên chỉ có bên Sỉ.
-  const coTab=rptSlType()==='Sỉ';
+  const coTab=true;   // Lẻ cũng có Ghi chú riêng + Lịch sử chăm sóc (02/10/2026)
   const tabCs=coTab&&window._rptSlCusTab==='cs';
   const tabGc=coTab&&window._rptSlCusTab==='gc';
   const nutTab=(ma,nhan)=>{const on=ma==='cs'?tabCs:ma==='gc'?tabGc:(!tabCs&&!tabGc);
@@ -7501,7 +7535,6 @@ function rptSlCoTrangThai(r){
 }
 // Sỉ đã đánh "Mất kết nối" = coi như mất lead -> thôi nhắc ghi thêm giá trị / nội dung.
 function rptSlMatLeadSi(r){
-  if(rptSlType()!=='Sỉ')return false;
   const t=String(r.siPhanLoai||(r.sh||{}).phan_loai||'');
   return /mất kết nối|mat ket noi|không liên hệ|huỷ|hủy/i.test(t);
 }
@@ -7509,7 +7542,6 @@ function rptSlMatLeadSi(r){
 // Lẻ: trạng thái "Lead cũ" (thêm 28/9/2026 cho khách Sỉ nói mua dùng gia đình chuyển sang Lẻ).
 // Anh Hải 28/9: MỌI khách Lead cũ (Lẻ lẫn Sỉ) không tính vào Nhập Liệu, trừ khi đổi sang trạng thái khác.
 function rptSlLeadCu(r){
-  if(rptSlType()!=='Sỉ')return !r.isChot&&/^lead cũ$/i.test(String(r.manualStatus||'').trim());
   return !r.isChot&&/^lead cũ$/i.test(String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim());   // đã chốt thì phải hiện lại (còn Mã KH…)
 }
 function rptSlTodoBuckets(){
@@ -7543,7 +7575,7 @@ function rptSlTodoBuckets(){
     //    Khách MẤT LEAD cũng thôi nhắc: đã bỏ rồi thì ghi nội dung trao đổi cũng không để làm gì.
     // Sỉ (anh Hải 25/9/2026): nội dung chăm khách = nội dung lượt GẦN NHẤT trong Lịch sử chăm sóc, nên chỉ báo
     // khách CHƯA CÓ lượt chăm nào. Lẻ giữ như cũ: chưa ghi ô nội dung trao đổi.
-    thieuND:rptSlType()==='Sỉ'
+    thieuND:true
       ?all.filter(r=>!rptSlMatLeadSi(r)&&!rptSlLeadCu(r)&&!(r.siLuot>0))
       :all.filter(r=>!r.isChot&&r.status!=='Mất lead'
         &&!String(r.content||'').trim()&&!String(r.siNDCuoi||'').trim()&&!String((r.sh||{}).nd_cham_cuoi||'').trim()),
@@ -7999,7 +8031,7 @@ function rptSlInputHtml(){
   // và ghi sang ô khác, nên điền xong dòng vẫn quay lại mục 'chưa cập nhật' (anh Hải báo 23/9/2026).
   const ttSel=r=>{
     const q=String.fromCharCode(39);
-    const si=rptSlType()===String.fromCharCode(83,7881);
+    const si=true;   // Lẻ + Sỉ chung Phân loại (02/10/2026)
     const ds=si?RPT_SI_PHANLOAI_DS:RPT_SL_STATUS_OPTS;
     const cur=si?(r.siPhanLoai||''):(r.manualStatus||'');
     const goi=si?('rptSiSetPhanLoai('+q+r.leadId+q+',this.value,this)')
@@ -8008,7 +8040,7 @@ function rptSlInputHtml(){
       ds.map(x=>'<option value="'+x+'"'+(cur===x?' selected':'')+'>'+x+'</option>')).join('');
     return '<td onclick="rptSlStop(event)"><select onchange="'+goi+'" style="height:26px;padding:2px 6px;border:1.5px solid var(--yellow);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">'+opt+'</select></td>';
   };
-  const s3=tbl(HEAD+'<th>Thẻ Pancake</th><th style="'+RPT_SL_TH_EDIT+'">Trạng thái'+dmBut(rptSlType()==='Sỉ'?'si_phan_loai':'le_trang_thai')+'</th>',
+  const s3=tbl(HEAD+'<th>Thẻ Pancake</th><th style="'+RPT_SL_TH_EDIT+'">Phân loại KH'+dmBut('si_phan_loai')+'</th>',
     b.chuaTT.map(r=>`${rptSlTrMo(r)}${info(r)}<td style="font-size:11px;color:var(--muted)">${r.tagStatus||'—'}</td>${ttSel(r)}</tr>`).join(''));
   const s5=tbl(HEAD+'<th>Thẻ Pancake</th><th>Trạng thái</th><th style="'+RPT_SL_TH_EDIT+'">Giá trị tiềm năng</th>',
     b.thieuGT.map(r=>`${rptSlTrMo(r)}${info(r)}<td style="font-size:11px;color:var(--muted)">${r.tagStatus||'—'}</td>
@@ -8017,7 +8049,7 @@ function rptSlInputHtml(){
         onkeydown="if(event.key==='Enter')this.blur()" onblur="if(this.value.trim())rptSlSetPotential('${r.leadId}',this.value,this)"
         style="height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--accent);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;width:120px;text-align:right"></td></tr>`).join(''));
   // Nội dung trao đổi thường dài -> không nhét ô input vào bảng, bấm nút mở popup sửa cả hàng.
-  const laSi=rptSlType()==='Sỉ';
+  const laSi=true;
   const s8=laSi
     ?tbl(HEAD+'<th>Phân loại KH</th><th>Lượt chăm gần nhất</th><th style="'+RPT_SL_TH_EDIT+'">Lịch sử chăm sóc</th>',
       b.thieuND.map(r=>`${rptSlTrMo(r)}${info(r)}
@@ -8064,7 +8096,7 @@ function rptSlInputHtml(){
     ${rptSlInputSec('sLoi','','Lỗi hệ thống — cần báo người tạo app kiểm tra','số liệu trong app vẫn đúng, chỉ chưa đẩy được sang Pancake',b.loiHT.length,'var(--red)',sLoi,true)}
     ${rptSlInputSec('s2','','Mã KH đã điền nhưng không tồn tại bên Kiot','dán lại mã đúng, app ghi sang Pancake',b.maSai.length,'var(--yellow)',s2,true)}
     ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--yellow)',s3)}
-    ${rptSlInputSec('s8','',rptSlType()==='Sỉ'?'Chưa cập nhật lịch sử chăm sóc':'Chưa ghi nội dung trao đổi',rptSlType()==='Sỉ'?'khách chưa có lượt chăm nào — không tính vào tổng việc cần làm':'ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuND.length,'var(--accent)',s8)}
+    ${rptSlInputSec('s8','',true?'Chưa cập nhật lịch sử chăm sóc':'Chưa ghi nội dung trao đổi',true?'khách chưa có lượt chăm nào — không tính vào tổng việc cần làm':'ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuND.length,'var(--accent)',s8)}
     ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
 `;
 }
@@ -8077,78 +8109,65 @@ function rptSlInputHtml(){
 function rptSlSetCrmPage(p){window._rptSlCrmPage=p;rptSlRender();}
 function rptSlCrmHtml(){try{return rptSlCrmHtmlRaw();}catch(e){rptBaoLoi('Bảng CRM',e);
   return '<div class="tbl-card" style="padding:16px 18px;border-left:4px solid var(--red)"><b style="color:var(--red)">Bảng CRM lỗi</b><div style="font-size:12px;color:var(--text2);margin-top:6px">'+String(e&&e.message||e).replace(/</g,'&lt;')+'</div></div>';}}
+// CRM (Lẻ + Sỉ, anh Hải 02/10/2026): danh sách khách CẦN CHĂM, mặc định lọc 3 phân loại: Lead mới · Tiềm năng, chưa ra đơn ·
+// Chăm sóc dài hạn (chưa chốt). Chọn Phân loại khác ở bộ lọc thì xem theo phân loại đó. Ghi chăm sóc ở tab Lịch sử chăm sóc
+// trong hồ sơ (nhiều lượt, có hẹn + chuông), giống Sỉ. Ngày lọc mặc định Tất cả 2026 (rptSlKyMacDinh).
+const RPT_CRM_TT=['Lead mới','Tiềm năng, chưa ra đơn','Chăm sóc dài hạn'];
 function rptSlCrmHtmlRaw(){
-  // SỬA LẠI (anh Hải 02/10/2026): CRM = khách TRẠNG THÁI "Đang chăm sóc", chưa chốt -- KHÔNG xét thẻ Pancake nữa
-  // (gồm cả khách nhập tay / offline). Thẻ TIỀM NĂNG chỉ còn dùng để tự đặt "Đang chăm sóc" cho khách chưa có trạng thái.
-  const allRaw=rptSlPeriod().filter(r=>!r.isChot&&r.manualStatus==='Đang chăm sóc');
-  const all=rptSlSortNew(rptSlApplyF('crm',allRaw),rptSlNgayCham);
-  const q=(window._rptSlCrmQ||'').trim().toLowerCase();
+  const st=rptSlF('crm','status');
+  const allRaw=rptSlPeriod().filter(r=>st?true:(!r.isChot&&RPT_CRM_TT.includes(rptSlLocTT(r))));
+  const all=rptSlApplyF('crm',allRaw).slice()
+    .sort((x,y)=>(y.siNgayNghi==null?1e9:y.siNgayNghi)-(x.siNgayNghi==null?1e9:x.siNgayNghi));   // lâu chưa liên hệ nhất lên đầu
+  const q=(window._rptSlCrmQ||'').trim();
   let list=all;
-  if(q)list=list.filter(r=>(r.name||'').toLowerCase().includes(q)||((r.phones||[]).some(p=>p.so.includes(q))||(r.phone||'').includes(q))||(r.kh||'').toLowerCase().includes(q)||(r.content||'').toLowerCase().includes(q));
+  if(q){const qb=rptSlBoDau(q),qs=/^[\d\s.+-]+$/.test(q)?q.replace(/\D/g,''):'';
+    list=all.filter(r=>[r.name,r.kiotName,r.kh,r.leadId,r.siNDCuoi].some(x=>rptSlBoDau(x).includes(qb))
+      ||(qs.length>=3&&((r.phones||[]).some(p=>String(p.so||'').replace(/\D/g,'').includes(qs))||String(r.phone||'').replace(/\D/g,'').includes(qs))));}
   const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   if((window._rptSlCrmPage||1)>totalPages)window._rptSlCrmPage=1;
   const page=window._rptSlCrmPage||1;
-  const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
-  // Ô Sale PHẢI thao tác -> nền xanh lá nhạt, nhìn là biết chỗ nào cần điền. Ô chỉ đọc giữ nền trắng.
-  const edit=inp;
-  const sel=(r,field,opts,cur,w)=>`<select onchange="rptSlSetField('${r.leadId}','${field}',this.value,this)" style="${edit};width:${w||130}px;cursor:pointer;font-weight:800${rptSlSelTint(cur)}">
-    <option value=""${cur?'':' selected'}>—</option>${opts.map(o=>`<option value="${o}"${cur===o?' selected':''}>${o}</option>`).join('')}</select>`;
-  // Ô TEXT (ngày, nội dung, giá trị tiềm năng) KHOÁ mặc định -- tránh gõ nhầm khi chỉ đang xem.
-  // Bấm nút ✏️ để mở sửa cho ĐÚNG hàng đó. Xem nhanh: rê chuột. Xem đầy đủ: bấm đúp mở hồ sơ khách.
-  // Ô cần điền: giá trị + icon ✏️ nhỏ NGAY TRONG Ô. Bấm icon -> popup sửa TẤT CẢ ô điền được của hàng.
-  // Rê chuột xem nhanh; bấm đúp mở hồ sơ đầy đủ.
-  const pen=r=>r.isChot?'':`<button onclick="rptSlStop(event);rptSlEditRow('${r.leadId}')" title="Sửa thông tin chăm sóc"
-    style="flex:0 0 auto;border:none;background:transparent;cursor:pointer;font-size:11px;padding:2px 3px;border-radius:5px;opacity:.55" onmouseover="this.style.opacity=1;this.style.background='var(--bg2)'" onmouseout="this.style.opacity=.55;this.style.background='transparent'">✏️</button>`;
-  const lockRO=(html,full,r)=>`<td ondblclick="rptSlStop(event);rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')"
-    title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm để xem hồ sơ đầy đủ)" style="cursor:pointer">${html}</td>`;
-  const lock=(html,full,r,right)=>`<td ondblclick="rptSlStop(event);rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')"
-    title="${String(full||'').replace(/"/g,'&quot;')}&#10;(bấm để xem hồ sơ đầy đủ)" style="cursor:pointer"><div style="display:flex;align-items:center;gap:4px;justify-content:${right?'flex-end':'space-between'}">${html}${pen(r)}</div></td>`;
-  // bấm 1 lần vào dòng = mở hồ sơ (popup) như Sỉ (anh Hải 30/9/2026); ô chọn / nút trong dòng tự chặn nổi lên
-  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>{return `<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
-    ${(r.careAuto?lockRO:lock)((dmy(r.careDate)||'<span style="color:var(--muted)">—</span>')+rptSlNhanCu(r.careDate,'ngoài kỳ'),
-      r.careAuto?(r.careAutoNhan||'Ngày tạo đơn Pancake đầu tiên')+' — app tự lấy vì chưa ai điền; sửa bằng nút ✏️ trên dòng':dmy(r.careDate),r)}
-    <td class="num">${(()=>{   // NGÀY CHƯA LIÊN HỆ (anh Hải 02/10/2026): tính từ lần chạm gần nhất (ngày chăm sóc / đơn Pancake / đơn Kiot)
-      const n=r.daysIdle;if(n===null||n===undefined)return '<span style="color:var(--muted)">—</span>';
-      return '<span style="font-weight:800;color:'+(n>=30?'var(--red)':n>=10?'var(--yellow)':'var(--text)')+'">'+num(n)+'</span>';})()}</td>
-    <td>${rptSlSrcBadge(r)}</td>
-    <td>${rptSlStaffHtml(r)}</td>
-    <td class="name">${rptSlTenKhach(r)}${rptSlMaDuoiTen(r)}</td>
-    ${lock(r.content
-          ? '<span style="font-size:11.5px;display:block;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+String(r.content).replace(/</g,'&lt;')+'</span>'
-          : '<span style="font-size:11.5px;color:var(--muted)">—</span>', r.content, r)}
-    ${r.isChot?'<td class="num"><span style="color:var(--muted)">—</span></td>'
-      :lock('<span class="num" style="font-weight:700">'+(r.potential?vnd(r.potential):'<span style="color:var(--muted);font-weight:400">—</span>')+'</span>',r.potential?vnd(r.potential):'',r,true)}
-    <td onclick="rptSlStop(event)">${r.isChot?rptSlStatusPill('Chốt đơn')
-      :sel(r,'status',RPT_SL_STATUS_OPTS,r.manualStatus,130)}</td>
-    ${rptSlOMaKH(r)}
-    <td>${dmy(r.closeDate)||'<span style="color:var(--muted)">—</span>'}</td>
-    <td class="num" style="font-weight:800;color:${r.revenue>0?'var(--green)':'inherit'}">${r.revenue>0?vnd(r.revenue):'—'}</td>
-    <td onclick="rptSlStop(event)" style="white-space:nowrap">
-      <button onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')" title="Xem hồ sơ đầy đủ"
-        style="border:1.5px solid var(--border);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700">Chi tiết</button></td>
-  </tr>`;}).join('');
-  // CRM = MÀN HÌNH CHĂM SÓC: đang theo bao nhiêu khách, ai bị bỏ quên, đã chăm được bao nhiêu,
-  // số tiền đang treo. Các con số tổng quan (tổng khách, doanh thu) để bên Master.
-  const daCham=all.filter(r=>r.careDate||r.content);
-  const dangTheo=all.filter(r=>!r.isChot&&r.status!=='Mất lead');
-  const lauCS=dangTheo.filter(r=>(!r.careDate&&!r.content)||(r.daysIdle!==null&&r.daysIdle>=10));
-  const g3='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px';
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const qk=r=>String(r.key).replace(/'/g,'');
+  const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>{
+    const n=r.siNgayNghi;
+    const mauN=n==null?'var(--red)':n>=30?'var(--red)':n>=10?'var(--yellow)':'var(--text)';
+    const hen=r.siNgayHen?'<span style="font-weight:700;color:'+(r.siHenDen?'#d97706':'var(--text2)')+'">'+dmy(r.siNgayHen)+'</span>'
+      +(r.siViecTiep?'<div style="font-size:10.5px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(r.siViecTiep).replace(/"/g,'&quot;')+'">'+e(r.siViecTiep)+'</div>':''):'<span style="color:var(--muted)">—</span>';
+    return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+qk(r)+'\')">'
+      +'<td style="white-space:nowrap">'+(r.siCSCuoi?dmy(r.siCSCuoi):'<span style="color:var(--muted)">chưa chăm</span>')+'</td>'
+      +'<td class="num"><span style="font-weight:800;color:'+mauN+'">'+(n==null?'—':num(n))+'</span></td>'
+      +'<td>'+rptSiNguonChip(r)+'</td>'
+      +'<td>'+rptSlStaffHtml(r)+'</td>'
+      +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+'</td>'
+      +'<td style="white-space:nowrap">'+rptSlSdtHtml(r)+'</td>'
+      +rptSiPhanLoaiSelect(r)
+      +'<td><span style="font-size:11.5px;display:block;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(r.siNDCuoi).replace(/"/g,'&quot;')+'">'
+        +(r.siNDCuoi?e(r.siNDCuoi):'<span style="color:var(--muted)">—</span>')+'</span></td>'
+      +'<td>'+hen+'</td>'
+      +'<td class="num" style="font-weight:700">'+(r.potential?vnd(r.potential):'<span style="color:var(--muted);font-weight:400">—</span>')+'</td>'
+      +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'+rptSiChuongDong(r)
+        +'<button onclick="rptSlShowCustomer(\''+qk(r)+'\');rptSlCsMoForm()" title="Ghi lượt chăm sóc mới" style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">+ Chăm sóc</button></td>'
+      +'</tr>';}).join('');
+  const lau=all.filter(r=>r.siNgayNghi==null||r.siNgayNghi>=RPT_SI_LAU_NGAY);
+  const henDen=all.filter(r=>r.siHenDen);
+  const g4='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px';
+  const inp='height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none;min-width:250px';
   return `
-    <div style="${g3}">
-      ${mkKpi(ic('users'),'Khách đang theo',num(dangTheo.length),'chưa chốt, chưa mất lead','g-blue')}
-      ${mkKpi(ic('clock'),'Lâu chưa liên hệ',num(lauCS.length),'chưa chăm hoặc >10 ngày — cần gọi lại','g-red')}
-      ${mkKpi(ic('check'),'Đã chăm sóc',num(daCham.length),pct(all.length?daCham.length/all.length*100:0)+' tổng khách trong kỳ','g-green')}
-      ${mkKpi(ic('cash'),'Giá trị đang theo',vnd(dangTheo.reduce((s,r)=>s+r.potential,0)),num(dangTheo.filter(r=>r.potential>0).length)+'/'+num(dangTheo.length)+' khách đã ước giá trị','g-teal')}
+    <div style="${g4}">
+      ${mkKpi(ic('users'),'Khách đang chăm',num(all.length),'','g-blue')}
+      ${mkKpi(ic('clock'),'Lâu chưa liên hệ >'+RPT_SI_LAU_NGAY+' ngày',num(lau.length),'','g-red')}
+      ${mkKpi(ic('clock'),'Đến hẹn chăm sóc',num(henDen.length),'','g-orange')}
+      ${mkKpi(ic('cash'),'Giá trị đang theo',vnd(all.reduce((x,r)=>x+(r.potential||0),0)),'','g-teal')}
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;align-items:center;justify-content:flex-end">
-      ${rptSlFilterBar('crm')}
-      <input value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(rptSlRender,350)" style="${inp};height:30px;min-width:250px">
+      ${rptSlFilterBar('crm')}${rptSiChuongLoc()}
+      <input value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(rptSlRender,350)" style="${inp}">
     </div>
     <div class="tbl-card">
-      <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div></div>
+      <div class="tbl-head"><div class="tbl-title">CRM — khách cần chăm sóc</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày chăm sóc</th><th>Ngày chưa liên hệ</th><th>Nguồn</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái${dmBut('le_trang_thai')}</th><th>Mã KH Kiot</th><th>Ngày chốt</th><th>Doanh thu</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="12">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
+        <thead><tr><th>CS cuối</th><th>Ngày chưa liên hệ</th><th>Nguồn</th><th>Sales phụ trách</th><th>${rptSlType()==='Sỉ'?'Tên cửa hàng':'Họ tên khách'}</th><th>SĐT</th><th>Phân loại KH${dmBut('si_phan_loai')}</th><th>Trao đổi gần nhất</th><th>Hẹn tiếp theo</th><th>Giá trị tiềm năng</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="11">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetCrmPage(${page-1})">‹ Trước</button>

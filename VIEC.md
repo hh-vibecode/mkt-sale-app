@@ -41,7 +41,7 @@
 
 - **Dữ liệu nguồn nhập sai → chủ động báo anh + TỰ SỬA CHUẨN TRONG APP** bằng luật nhận diện (áp cả về sau), không chỉ dặn nhân viên (anh chốt 2/10/2026). Không ghi ngược sang Kiot / Pancake trừ khi anh bảo. Mỗi luật ghi 1 dòng nhật ký. Mẫu: khách gom đơn Shopee → Lẻ · Online · Shopee.
 - **Chỉ xem từ 2026** (anh chốt 2/10/2026): bộ lọc "Tất cả" = Tất cả 2026, không mở về trước khi anh chưa bảo. Dữ liệu trước 2026 chỉ giữ SỐ TỔNG (lưu trữ, khoá), không giữ chi tiết.
-- **Lẻ: thẻ TIỀM NĂNG + chưa có trạng thái → "Đang chăm sóc"** tự động, tới khi Sale đổi (2/10/2026).
+- **Lẻ dùng chung bộ Phân loại KH của Sỉ** (2/10/2026, `si_phan_loai`). Lẻ chưa chốt, chưa phân loại: có thẻ TIỀM NĂNG → "Tiềm năng, chưa ra đơn"; không thẻ mà có SĐT → **"Lead mới"** (tự đặt, tới khi Sale đổi). Người chào hàng / dịch vụ KHÔNG được thành Lead mới (job tự tạo đã loại).
 - **Doanh thu cửa hàng**: khách có phiếu tạm / đơn đặt hàng thì theo đơn; khách xuất hoá đơn luôn thì tính thẳng hoá đơn (2/10/2026). Lẻ có cả nguồn Offline cửa hàng.
 - **MINH BẠCH, KHÔNG GIẤU (anh chốt 30/9/2026):** anh rất fair, không trách khi Claude làm sai hay gặp sự cố → KHÔNG giấu, KHÔNG nói giảm.
   Mỗi lần báo cáo phải kể đủ: việc làm sai (kể cả đã tự sửa), phần CHƯA kiểm được, và các RỦI RO TIỀM TÀNG (dữ liệu, phân quyền,
@@ -57,7 +57,8 @@
 - **Sỉ lấy full lịch sử** (không giới hạn T6). Riêng TAB Data nhập tay chỉ HIỆN từ 1/6/2026 cho đỡ dài, dòng cũ vẫn vào báo cáo.
 - **MKT chỉ lấy Sỉ Online**, Sỉ Offline chỉ vào báo cáo Sale Sỉ.
 - **Báo cáo MKT chỉ từ 1/6/2026** (chi phí ads chỉ có từ T6) — doanh thu, đơn, mọi chỉ số MKT đều cắt từ mốc này.
-- **Cột trạng thái của Sỉ**: Master = Phân loại KH. Tab CRM Sỉ ĐÃ GỠ (24/9) — lịch sử chăm sóc nằm trong popup hồ sơ khách (3 tab: Thông tin · Ghi chú riêng · Lịch sử chăm sóc), vẫn lưu ở bảng `salesi_crm`.
+- **Lẻ = giao diện Sỉ** (2/10/2026): Master, hồ sơ 3 tab (Thông tin · Ghi chú riêng · Lịch sử chăm sóc nhiều lượt + chuông), dash, nút Thêm khách — chung 1 bộ. Lịch sử chăm sóc cả 2 lưu `salesi_crm`, cột `loai` ('Lẻ'; trống = Sỉ). Trường hồ sơ cửa hàng (mô hình, diện tích, GPKD…) và Sản phẩm quan tâm chỉ Sỉ.
+- **CRM (Lẻ + Sỉ, 2/10/2026)**: mặc định khách CHƯA CHỐT có Phân loại **Lead mới · Tiềm năng, chưa ra đơn · Chăm sóc dài hạn**, ngày Tất cả 2026, lâu chưa liên hệ lên đầu; chọn Phân loại khác ở bộ lọc thì xem theo đó.
 - **Data Pancake vào báo cáo Sale** (anh chốt 27/9, thay luật 24/9): đơn **CÓ SĐT** (chưa huỷ) là vào luôn, cả Sỉ lẫn Lẻ, **không cần thẻ**. Đơn chưa có SĐT thì vẫn phải có thẻ: Sỉ cần TIỀM NĂNG / CHỐT ĐƠN · Lẻ cần CHỐT ĐƠN / BÀN GIAO / TIỀM NĂNG.
 - **Chia Sỉ / Lẻ cho đơn Pancake** (`dhSaleTypeOrder`): có thẻ KH SỈ / KH LẺ thì theo thẻ. Không thẻ thì theo thẻ ở đơn khác của cùng khách (trùng 9 số cuối SĐT). Vẫn không có thì đơn từ page **Shidai → Sỉ**, còn lại → Lẻ. Trước 27/9 đơn không thẻ luôn tính vào Lẻ.
 - **Lượt chăm sóc "Chốt đơn"** bắt buộc điền mã đơn đặt hàng CÓ THẬT bên Kiot.
@@ -103,6 +104,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (12)** — **Lẻ đổi giao diện y như Sỉ + CRM cho cả Sỉ** (anh: "form y như sỉ", "bê hết sang", "nhớ làm cả chuông"): Master / hồ sơ / sửa / dash / Nhập liệu / chuông Lẻ dùng chung code Sỉ. Trạng thái Lẻ chuyển sang bộ Phân loại Sỉ — đã chuyển 137 khách (Mất lead→Mất kết nối 116, Đang chăm sóc→Tiềm năng 18, Chưa liên hệ được 2, Lead cũ 1); cột `status` cũ giữ nguyên để tra. Nội dung trao đổi cũ của Lẻ chép thành 33 lượt chăm sóc (`salesi_crm.loai='Lẻ'`, SQL `supabase-schema-le-nhu-si.sql`). CRM mới: Lẻ 19 khách, Sỉ 98 khách. Kiểm số code cũ ↔ mới: 26/26 chỉ số khớp tuyệt đối. Ô chọn Phân loại giờ giữ giá trị ngoài bộ (Lead cũ) thay vì hiện "—".
 - **02/10 (11)** — **Loại người chào dịch vụ**: đơn #1845 Cuong Nguyen (0947630108, job tự tạo 28/9) là người chào vận chuyển / ủy thác / tư vấn thuế, không phải khách → gỡ khỏi báo cáo (L-SD-1845 excluded) + huỷ rồi xoá đơn Pancake. Job `tu-tao-don-hoi-thoai.js` thêm mẫu `RAO` (chào hàng / dịch vụ: vận chuyển, ủy thác, kho TQ, thuế, chuyên cung cấp, xưởng, mời hợp tác…). Quét lại 272 hội thoại lô 28/9: chỉ trúng đúng ca này.
 
 - **02/10 (10)** — **CRM Lẻ đổi luật** (anh: "không theo thẻ nữa"): CRM = khách **trạng thái "Đang chăm sóc", chưa chốt** — mọi nguồn, kể cả nhập tay / offline (19 khách cả 2026). Bỏ điều kiện thẻ TIỀM NĂNG. Thẻ TIỀM NĂNG chỉ còn để tự đặt "Đang chăm sóc" cho khách chưa có trạng thái.
