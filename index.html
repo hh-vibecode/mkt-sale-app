@@ -4228,8 +4228,9 @@ function rptSlSaleHien(ten){
   const t=String(ten||'').trim();
   const e=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   if(!t)return '<span style="color:var(--muted)">—</span>';
-  if(rptSlType()==='Sỉ'&&!rptSlSaleCuaDoi('Sỉ').includes(t))
-    return '<span title="Người tạo đơn bên Kiot: '+e(t)+' (không có trong danh sách Sale)" style="border-bottom:1px dashed var(--muted);cursor:help;color:var(--text2)">Sale Kiot</span>';
+  // Người tạo đơn Kiot không có trong Nhân sự Sale -> hiện ĐỦ "Sale Kiot · tên" (anh Hải 02/10/2026), cả Lẻ lẫn Sỉ
+  if(!rptSlSaleCuaDoi(rptSlType()).includes(t))
+    return '<span title="Người tạo đơn bên Kiot, không có trong danh sách Sale" style="color:var(--text2)">Sale Kiot · '+e(t)+'</span>';
   return e(t);
 }
 // Ô SALES PHỤ TRÁCH ở bảng Master: tài khoản toàn quyền thấy DROPDOWN, đổi Sale ngay trên bảng, không phải mở
@@ -4259,8 +4260,8 @@ function rptSlStaffHtml(r){
   // Sỉ: chưa có Sale phụ trách nhưng dữ liệu gốc có ghi tên (sheet cũ / người phụ trách trên Pancake / tài khoản
   // chung) -> cũng hiện "Sale Kiot", rê chuột ra tên gốc (anh Hải 25/9/2026), không hiện "tài khoản chung".
   if(r.staffRaw&&rptSlType()==='Sỉ')
-    return '<span title="Tên trên dữ liệu gốc: '+String(r.staffRaw).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')
-      +' — chưa gán Sale phụ trách (nằm ở Gán data)" style="border-bottom:1px dashed var(--muted);cursor:help;color:var(--text2)">Sale Kiot</span>';
+    return '<span title="Chưa gán Sale phụ trách (nằm ở Gán data)" style="color:var(--text2)">Sale Kiot · '
+      +String(r.staffRaw).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span>';
   if(r.staffRaw)return '<span style="color:var(--muted);font-size:11px" title="Đơn đang gán cho tài khoản chung bên Pancake ('+String(r.staffRaw).replace(/"/g,'')+') — cần gán đúng Sale phụ trách">tài khoản chung</span>';
   return '<span style="color:var(--muted)">—</span>';
 }
@@ -5154,7 +5155,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 14:32';
+const APP_VERSION='02/10 14:40';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;

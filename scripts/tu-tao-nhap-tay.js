@@ -19,7 +19,8 @@ const { fetchLai } = require('./lib/fetch-lai.js');
 const fetch = (u, o) => (!o || !o.method || o.method === 'GET') ? fetchLai(u, o, { ten: 'tu-tao-nhap-tay' }) : globalThis.fetch(u, o);
 const SUPABASE_URL = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const MOC = '2026-06-01';
+const MOC = '2026-06-01';      // dấu vết tiền chỉ đòi từ mốc này
+const MOC_LE = '2026-01-01';   // khách Lẻ lấy từ 1/1/2026 (anh Hải 02/10/2026, app xem "Tất cả 2026"); Sỉ vẫn full lịch sử
 const CHI_XEM = process.env.KHO === '1';
 
 const H = { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json' };
@@ -98,7 +99,7 @@ async function ghiLog(body, id) {
       if (!o.customer_code || daCo.has(o.customer_code)) return;
       const c = byCode[o.customer_code];
       if (/^\s*khách lẻ\s*$/i.test((c && c.name) || o.customer_name || '')) return;   // mã khách chung "khách lẻ" -- không phải 1 người
-      if (ngay < MOC && loai(c) !== 'Sỉ') return;          // Lẻ: chỉ từ 1/6/2026; Sỉ: full lịch sử
+      if (ngay < MOC_LE && loai(c) !== 'Sỉ') return;       // Lẻ: từ 1/1/2026; Sỉ: full lịch sử
       const online = ONLINE.test(o.sale_channel || '') || /shidai/i.test(o.sale_channel || '');
       // Lẻ: từ 2/10/2026 nhận CẢ khách mua trực tiếp ở cửa hàng (= nguồn Offline) -- anh Hải: "báo cáo lẻ add thêm nguồn off
       // bên cửa hàng"; khách đến cửa hàng đã có trên Kiot thì Sale không phải tạo tay. Sỉ vẫn như cũ (cả 2 nguồn).

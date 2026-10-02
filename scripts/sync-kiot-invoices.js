@@ -20,7 +20,8 @@ const CLIENT_ID = process.env.KIOT_CLIENT_ID;
 const CLIENT_SECRET = process.env.KIOT_CLIENT_SECRET;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BACKFILL = process.env.BACKFILL === '1';
-const MIN_PURCHASE_DATE = '2026-06-01';
+// Từ 1/1/2026 (anh Hải 02/10/2026: app xem "Tất cả 2026"). Trước 2026 chỉ có SỐ TỔNG ở bảng kiot_luu_tru_thang (khoá).
+const MIN_PURCHASE_DATE = '2026-01-01';
 const INCREMENTAL_DAYS = 3;
 const PAGE_SIZE = 100;
 
