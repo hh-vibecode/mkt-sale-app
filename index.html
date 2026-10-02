@@ -5155,7 +5155,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 14:52';
+const APP_VERSION='02/10 14:55';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8075,7 +8075,8 @@ function rptSlCrmHtml(){try{return rptSlCrmHtmlRaw();}catch(e){rptBaoLoi('Bảng
   return '<div class="tbl-card" style="padding:16px 18px;border-left:4px solid var(--red)"><b style="color:var(--red)">Bảng CRM lỗi</b><div style="font-size:12px;color:var(--text2);margin-top:6px">'+String(e&&e.message||e).replace(/</g,'&lt;')+'</div></div>';}}
 function rptSlCrmHtmlRaw(){
   // CRM Lẻ CHỈ khách có thẻ TIỀM NĂNG trên Pancake (anh Hải 02/10/2026) -- đây là danh sách để chăm lại
-  const allRaw=rptSlPeriod().filter(r=>(r.orders||[]).some(o=>!dhHuy(o)&&/TIỀM NĂNG/i.test(o.customer_tags||'')));
+  // khách ĐÃ CHỐT thì không còn là tiềm năng -> bỏ khỏi CRM dù Pancake còn sót thẻ TIỀM NĂNG (anh Hải 02/10/2026)
+  const allRaw=rptSlPeriod().filter(r=>!r.isChot&&(r.orders||[]).some(o=>!dhHuy(o)&&/TIỀM NĂNG/i.test(o.customer_tags||'')));
   const all=rptSlSortNew(rptSlApplyF('crm',allRaw),rptSlNgayCham);
   const q=(window._rptSlCrmQ||'').trim().toLowerCase();
   let list=all;
