@@ -5168,7 +5168,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 17:18';
+const APP_VERSION='02/10 17:30';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8192,7 +8192,10 @@ const RPT_CRM_TT=['Lead mới','Tiềm năng, chưa ra đơn','Chăm sóc dài h
 function rptCrmLoc(k){window._rptCrmLoc=(window._rptCrmLoc===k?'':k);window._rptSlCrmPage=1;rptSlRender();}
 function rptSlCrmHtmlRaw(){
   const st=rptSlF('crm','status');
-  const base=rptSlPeriod().filter(r=>st?true:(!r.isChot&&RPT_CRM_TT.includes(rptSlLocTT(r))));
+  // LỌC NGÀY CỦA CRM (anh Hải 02/10/2026, Lẻ + Sỉ): khách "trong kỳ" = tạo / có đơn trong kỳ (như Master) HOẶC có LƯỢT
+  // CHĂM SÓC rơi vào kỳ. Trước đó chỉ xét ngày tạo / ngày đơn -> chọn "hôm nay" thì khách Sale vừa chăm hôm nay không hiện.
+  const Mc=rptSlMod(),coLuotTrongKy=r=>rptSlCsRows(r).some(x=>modInRange(Mc,String(x.ngay_cham||'').slice(0,10)));
+  const base=rptSlBuildMaster().filter(r=>(st?true:(!r.isChot&&RPT_CRM_TT.includes(rptSlLocTT(r))))&&(rptSlInRange(r)||coLuotTrongKy(r)));
   // KHÁCH ĐÃ CHỐT PHÁT SINH NHU CẦU LẠI (anh Hải 02/10/2026): lượt chăm sóc gần nhất (bỏ qua Chốt đơn) còn để
   // "Chăm sóc định kỳ" thì vẫn vào CRM. Lấy từ TOÀN BỘ khách (đơn cuối có thể từ năm trước), lọc theo ngày của lượt đó.
   const coKey=new Set(base.map(r=>r.key));
