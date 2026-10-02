@@ -30,7 +30,7 @@ const NHOM_LE = /khách lẻ|khach le/i;
 const vn = n => Math.round(n || 0).toLocaleString('vi');
 const maKH = s => { const m = /KH\s*0*(\d{3,7})/i.exec(s || ''); return m ? 'KH' + m[1].padStart(6, '0') : ''; };
 const brand = k => /chánh tâm|chanh tam|ming ying|hoàng dương/i.test(k) ? 'CT'
-  : /hiền thu|hien thu/i.test(k) ? 'HT' : /nến bơ|nen bo|tự tại|tu tai/i.test(k) ? 'TTV'
+  : /hiền th[uủ]|hien thu/i.test(k) ? 'HT'   // chi nhánh Kiot viết "Hiền Thủy", kênh viết "Hiền Thuỷ" : /nến bơ|nen bo|tự tại|tu tai/i.test(k) ? 'TTV'
   : /shidai/i.test(k) ? 'Shidai' : null;
 
 async function doc(bang, cot) {
