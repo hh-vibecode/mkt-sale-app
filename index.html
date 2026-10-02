@@ -5155,7 +5155,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 14:55';
+const APP_VERSION='02/10 14:57';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8103,6 +8103,9 @@ function rptSlCrmHtmlRaw(){
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>{return `<tr style="cursor:pointer" onclick="rptSlShowCustomer('${r.key.replace(/'/g,"\\'")}')">
     ${(r.careAuto?lockRO:lock)((dmy(r.careDate)||'<span style="color:var(--muted)">—</span>')+rptSlNhanCu(r.careDate,'ngoài kỳ'),
       r.careAuto?(r.careAutoNhan||'Ngày tạo đơn Pancake đầu tiên')+' — app tự lấy vì chưa ai điền; sửa bằng nút ✏️ trên dòng':dmy(r.careDate),r)}
+    <td class="num">${(()=>{   // NGÀY CHƯA LIÊN HỆ (anh Hải 02/10/2026): tính từ lần chạm gần nhất (ngày chăm sóc / đơn Pancake / đơn Kiot)
+      const n=r.daysIdle;if(n===null||n===undefined)return '<span style="color:var(--muted)">—</span>';
+      return '<span style="font-weight:800;color:'+(n>=30?'var(--red)':n>=10?'var(--yellow)':'var(--text)')+'">'+num(n)+'</span>';})()}</td>
     <td>${rptSlSrcBadge(r)}</td>
     <td>${rptSlStaffHtml(r)}</td>
     <td class="name">${rptSlTenKhach(r)}${rptSlMaDuoiTen(r)}</td>
@@ -8140,8 +8143,8 @@ function rptSlCrmHtmlRaw(){
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — hồ sơ chăm sóc khách</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>Ngày chăm sóc</th><th>Nguồn</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái${dmBut('le_trang_thai')}</th><th>Mã KH Kiot</th><th>Ngày chốt</th><th>Doanh thu</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="10">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
+        <thead><tr><th>Ngày chăm sóc</th><th>Ngày chưa liên hệ</th><th>Nguồn</th><th>Sales phụ trách</th><th>Họ tên khách</th><th style="${RPT_SL_TH_EDIT}">Nội dung trao đổi</th><th style="${RPT_SL_TH_EDIT}">Giá trị tiềm năng</th><th style="${RPT_SL_TH_EDIT}">Trạng thái${dmBut('le_trang_thai')}</th><th>Mã KH Kiot</th><th>Ngày chốt</th><th>Doanh thu</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="12">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetCrmPage(${page-1})">‹ Trước</button>
