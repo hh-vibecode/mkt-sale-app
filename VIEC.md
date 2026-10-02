@@ -103,6 +103,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (10)** — **CRM Lẻ đổi luật** (anh: "không theo thẻ nữa"): CRM = khách **trạng thái "Đang chăm sóc", chưa chốt** — mọi nguồn, kể cả nhập tay / offline (19 khách cả 2026). Bỏ điều kiện thẻ TIỀM NĂNG. Thẻ TIỀM NĂNG chỉ còn để tự đặt "Đang chăm sóc" cho khách chưa có trạng thái.
+
 - **02/10 (9)** — **Tạm ẩn tab "Gán data"** ở Lẻ + Sỉ (anh: chưa cần). Cờ `RPT_AN_GAN_DATA=true` trong index.html; ai đang mở tab đó tự về Master. Đổi `false` là hiện lại. Chức năng gán Sale ở dropdown Master / hồ sơ vẫn dùng được.
 
 - **02/10 (8)** — **Shopee cửa hàng**: HT ghi đơn Shopee dưới khách chung **KH005025 "KL Đơn Shopee (HT)"** (kênh hay để "Bán trực tiếp" / "Siêu thị Phật Giáo Hiền Thuỷ") nên bị xếp Sỉ · Offline và báo cáo Lẻ gạt hết đơn. Sửa: dòng M-0430 → Lẻ · Online · kênh "Shopee Hiền Thuỷ" · brand HT; `kiotLoaiKhach` coi khách tên có "shopee" là Lẻ; job tự tạo: khách tên có "shopee" luôn Lẻ · Online · kênh Shopee theo cửa hàng. KH005025 nay 93 đơn 30,6tr năm 2026; MKT T6–T9 phần Shopee 8,35tr (HT 6,68 + CT 1,68).
