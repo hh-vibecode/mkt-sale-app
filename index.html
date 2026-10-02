@@ -2352,7 +2352,7 @@ function kiotPickOrderFor(inv,chotOrders){
 //  - Sale LẺ: chỉ tính đơn Kiot từ 1/6/2026. Trước mốc đó chưa có data Pancake để đối chiếu,
 //    kéo vào chỉ làm loạn số.
 //  - Sale SỈ: lấy FULL lịch sử như dashboard cũ -- khách buôn mua từ 2021, cắt mốc là mất doanh số.
-const KIOT_MOC_LE='2026-06-01';
+const KIOT_MOC_LE='2026-01-01';   // 02/10/2026: Lẻ lấy từ 1/1/2026 (trước: 1/6) -- app xem "Tất cả 2026"
 // Mốc dữ liệu Pancake: đơn/hội thoại sớm nhất app có là 4/6/2026. Trước mốc này app "mù", không được
 // dùng việc thiếu hội thoại để cắt doanh số của ai (người dùng nhắc 22/9/2026).
 const RPT_MOC_PANCAKE='2026-06-04';
@@ -5154,7 +5154,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 14:29';
+const APP_VERSION='02/10 14:32';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5757,7 +5757,7 @@ function rptSlF(tab,k){return (window['_rptSlF_'+rptSlType()+tab]||{})[k]||'';}
 // bộ lọc (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026. Không có bộ lọc nào thì nút ẩn.
 function rptSlCoLoc(){
   const rg=modRange(rptSlMod());
-  return !!(rg.from||rg.to||window._rptSiLoc||rptSlF('master','sale')||rptSlF('master','status')||rptSlF('master','sp')||rptSlF('master','brand'));
+  return !!(rg.from||rg.to||window._rptSiLoc||rptSlF('master','sale')||rptSlF('master','status')||rptSlF('master','sp')||rptSlF('master','brand')||rptSlF('master','nguon'));
 }
 function rptSlThaoLoc(){
   modRanges[rptSlMod()]={from:'',to:''};
@@ -5884,10 +5884,13 @@ function rptSlLocTT(r){
 }
 function rptSlApplyF(tab,list){
   const sale=rptSlF(tab,'sale'),br=rptSlF(tab,'brand'),sp=rptSlType()==='Sỉ'?rptSlF(tab,'sp'):'';
+  const ng=rptSlF(tab,'nguon');   // lọc Nguồn Online / Offline -- Lẻ + Sỉ (anh Hải 02/10/2026)
+  const nguonCua=r=>/offline/i.test(r.nguon||'')?'Offline':(/online/i.test(r.nguon||'')||rptSlType()!=='Sỉ')?'Online':'Chưa rõ nguồn';
   let st=rptSlF(tab,'status');
   if(st&&!rptSlLocTTDs().includes(st))st='';   // giá trị lọc cũ không còn trong danh sách -> bỏ, đừng lọc ngầm ra 0
   return list.filter(r=>
     (!sale||(r.staff||'(chưa gán)')===sale)&&
+    (!ng||nguonCua(r)===ng)&&
     (!st||rptSlLocTT(r)===st)&&
     (!sp||(r.siSpQT||'(chưa rõ)')===sp)&&
     (!br||(DH_BRAND_LABEL[r.brand]||r.brand||'—')===br));
@@ -5906,6 +5909,7 @@ function rptSlFilterBar(tab){
     ${opts.map(o=>`<option value="${String(o).replace(/"/g,'&quot;')}"${rptSlF(tab,k)===o?' selected':''}>${o}</option>`).join('')}
   </select>`;
   return one('sale','Sales',sales)+one('status','Trạng thái',stats)
+    +one('nguon','Nguồn',['Online','Offline'])
     +(rptSlType()==='Sỉ'?one('sp','Sản phẩm',[...new Set(RPT_SI_SPQT_DS),'(chưa rõ)']):'')+one('brand','Brand',brands);
 }
 // Dựng Master khá nặng (gộp đơn Pancake + Kiot + nhập tay). Một lần render gọi lại 3-8 lần với CÙNG
