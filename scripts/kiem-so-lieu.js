@@ -159,7 +159,9 @@ const vnd = n => Number(n || 0).toLocaleString('vi');
     if (khacThang && theoThang(k)) { console.log('  --', k.padEnd(22), '(sang tháng mới, không so)'); return; }
     const cu = Number(moc.so[k] || 0), moi = Number(so[k] || 0);
     const lech = cu ? (moi - cu) / cu * 100 : (moi ? 100 : 0);
-    const nang = (cu > 0 && moi === 0) || Math.abs(lech) > NGUONG_PHAN_TRAM;
+    // Chỉ số TRONG THÁNG (tháng này / MKT) tự tăng dần theo ngày -> đầu tháng 1 ngày có thể +100% mà không sai gì
+    // (2/10/2026). Nhóm này chỉ báo khi TỤT quá ngưỡng hoặc về 0; chỉ số toàn thời gian vẫn báo cả 2 chiều.
+    const nang = (cu > 0 && moi === 0) || (theoThang(k) ? lech < -NGUONG_PHAN_TRAM : Math.abs(lech) > NGUONG_PHAN_TRAM);
     const dau = nang ? '  !!' : '  ok';
     console.log(dau, k.padEnd(22), vnd(cu).padStart(16), '->', vnd(moi).padStart(16),
       (cu ? (lech >= 0 ? '+' : '') + lech.toFixed(1) + '%' : ''));

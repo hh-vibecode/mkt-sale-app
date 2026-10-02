@@ -1,6 +1,6 @@
 // ════════ TỰ TẠO DATA NHẬP TAY TỪ ĐƠN KIOT ════════
 // Chạy sau mỗi lượt kéo đơn Kiot. Bộ lọc do anh Hải chốt 23/9/2026:
-//   khách LẺ: chỉ kênh ONLINE
+//   khách LẺ: MỌI kênh (từ 2/10/2026, trước chỉ online) -- online thì nguồn "Online", mua ở cửa hàng thì "Offline"
 //   khách SỈ : MỌI kênh -- online thì nguồn "Online", "Bán trực tiếp" thì nguồn "Offline"
 //   (chung: chưa có mặt trong app · có dấu vết tiền thật -- dấu vết tiền chỉ đòi với đơn từ 1/6/2026)
 //   LẺ: chỉ đơn từ 1/6/2026. SỈ: FULL LỊCH SỬ (anh Hải 29/9/2026, luật "Sỉ lấy full lịch sử") -- trước đây Sỉ cũng cắt
@@ -9,7 +9,6 @@
 // -> mỗi khách 1 dòng datahub_manual, để doanh thu về đúng báo cáo Sale/MKT mà Sale không phải gõ tay.
 //
 // KHÔNG lấy: đơn huỷ · phiếu tạm không có dấu vết tiền (chưa trả đồng nào và khách cũng không cọc)
-//            · kênh Bán trực tiếp / Kênh Thị Trường / Khác (không phải online)
 //            · khách đã có dòng nhập tay hoặc đã có Mã KH trong ghi chú Pancake.
 // 23/9/2026 mở rộng: trước chỉ lấy khách LẺ, giờ lấy CẢ KHÁCH SỈ nguồn online (gồm kênh Facebook Shidai)
 // -- vì bóc lệch tháng 9 thấy khách sỉ online như ANH DŨNG-HY (39,2tr, có hoá đơn) bị rơi khỏi báo cáo.
@@ -94,12 +93,12 @@ async function ghiLog(body, id) {
       const c = byCode[o.customer_code];
       if (ngay < MOC && loai(c) !== 'Sỉ') return;          // Lẻ: chỉ từ 1/6/2026; Sỉ: full lịch sử
       const online = ONLINE.test(o.sale_channel || '') || /shidai/i.test(o.sale_channel || '');
-      // Lẻ chỉ nhận kênh online; Sỉ nhận cả bán trực tiếp (= nguồn Offline).
-      if (loai(c) !== 'Sỉ' && !online) return;
+      // Lẻ: từ 2/10/2026 nhận CẢ khách mua trực tiếp ở cửa hàng (= nguồn Offline) -- anh Hải: "báo cáo lẻ add thêm nguồn off
+      // bên cửa hàng"; khách đến cửa hàng đã có trên Kiot thì Sale không phải tạo tay. Sỉ vẫn như cũ (cả 2 nguồn).
       const g = gom[o.customer_code] = gom[o.customer_code] || { ma: o.customer_code,
         ten: (c && c.name) || o.customer_name || '', sdt: (c && c.phone) || null, loai: loai(c), nguon: online ? 'Online' : 'Offline',
-        ngay, kenh: o.sale_channel, sale: o.sold_by_name || null, don: 0, tien: 0 };
-      if (ngay < g.ngay) { g.ngay = ngay; g.kenh = o.sale_channel; g.sale = o.sold_by_name || null; g.nguon = online ? 'Online' : 'Offline'; }
+        ngay, kenh: o.sale_channel, cn: o.branch_name, sale: o.sold_by_name || null, don: 0, tien: 0 };
+      if (ngay < g.ngay) { g.ngay = ngay; g.kenh = o.sale_channel; g.cn = o.branch_name; g.sale = o.sold_by_name || null; g.nguon = online ? 'Online' : 'Offline'; }
       g.don++; g.tien += Number(o.total || 0);
       if (ngay < MOC) g.truocMoc = true;
     });
@@ -138,7 +137,8 @@ async function ghiLog(body, id) {
     if (!ds.length) { console.log('Không có gì mới.'); await ghiLog({ finished_at: new Date().toISOString(), status: 'success', records_created: 0 }, logId); return; }
 
     const rows = ds.map(x => ({ created_date: x.ngay, sale_type: x.loai, nguon: x.nguon, kenh: x.kenh,
-      brand: brand(x.kenh), customer_name: x.ten, phone: x.sdt, staff_name: x.sale, kiot_code: x.ma,
+      // brand theo kênh; kênh không nói brand (Bán trực tiếp…) thì theo CỬA HÀNG bán (Chánh Tâm -> CT, Hiền Thủy -> HT)
+      brand: brand(x.kenh) || (x.loai === 'Lẻ' ? brand(x.cn) : null), customer_name: x.ten, phone: x.sdt, staff_name: x.sale, kiot_code: x.ma,
       status: 'Chốt đơn', note: 'Tự tạo từ đơn Kiot · kênh ' + x.kenh, created_by: 'Monsieur Claude' }));
     let ok = 0;
     for (let i = 0; i < rows.length; i += 100) {

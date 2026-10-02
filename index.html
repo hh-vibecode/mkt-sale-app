@@ -3673,23 +3673,25 @@ function rptMktData(){
   ['Lẻ','Sỉ'].forEach(t=>{
     window._rptSlType=t;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
     rptSlPeriod().forEach(r=>{
-      if(!r.isChot||r.revenue<=0)return;
+      // Shopee: MKT tính đủ mọi đơn (cả phần "mua lại"), nguồn Online (anh Hải 02/10/2026)
+      const rev=r.revenue+(rptLaShopee(r)?(r.repeatRevenue||0):0);
+      if(!r.isChot||rev<=0)return;
       if(/offline/i.test(r.nguon||''))return;   // MKT CHỈ lấy nguồn Online -- cả Lẻ lẫn Sỉ (chốt 23/9/2026)
       const brandRow=t==='Sỉ'?'Shidai':(r.brand||'');
       if(brandLoc&&brandRow!==brandLoc)return;
       sale.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',
         brand:brandRow,adId:r.adId||'',
-        rev:r.revenue,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||''});
+        rev,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||''});
     });
   });
   window._rptSlType=cu||'Lẻ';window._rptSlMod=cuMod||null;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
   const revBrand={};RPT_MKT_BRANDS.forEach(([k])=>revBrand[k]=0);revBrand.Khac=0;
-  const plat={Facebook:0,TikTok:0,'Khác':0};
+  const plat={Facebook:0,TikTok:0,Shopee:0,'Khác':0};
   const adCamp=buildAdCampMap();
   sale.forEach(x=>{
     const key=revBrand[x.brand]!==undefined?x.brand:'Khac';revBrand[key]+=x.rev;
     const k=(x.kenh||'').toLowerCase();
-    plat[k.includes('facebook')?'Facebook':(k.includes('tiktok')||k.includes('tik tok'))?'TikTok':'Khác']+=x.rev;
+    plat[k.includes('facebook')?'Facebook':(k.includes('tiktok')||k.includes('tik tok'))?'TikTok':k.includes('shopee')?'Shopee':'Khác']+=x.rev;
     const c=adCamp[String(x.adId||'').trim()];
     if(c&&camp[c]){camp[c].rev+=x.rev;camp[c].don++;}
   });
@@ -3927,7 +3929,7 @@ function rptMktHtml(){
     +oChart('mktCBrand','Ngân sách theo brand',vnd(tienSpend))
     +oChart('mktCRev','Doanh số theo brand',rev>0?vnd(rev):'chưa có đơn')
     +oChart('mktCWave','Chi phí ads theo ngày','trong kỳ đang xem',220)
-    +oChart('mktCPlat','Doanh số theo nền tảng','Facebook · TikTok · khác')
+    +oChart('mktCPlat','Doanh số theo nền tảng','Facebook · TikTok · Shopee · khác')
     +'</div>'
     +'<div class="tbl-card"><div class="tbl-head"><div class="tbl-title">ADS / DS theo brand</div>'
     +'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:auto">chi phí ads / doanh số · thấp là tốt</span></div>'
@@ -3956,7 +3958,7 @@ function rptMktVeChart(){
   donut('mktCBrand','Brand',nhanBrand,RPT_MKT_BRANDS.map(x=>d.spendBrand[x[0]]||0).concat(d.spendBrand.Khac||0),mauBrand);
   donut('mktCRev','Rev',nhanBrand,RPT_MKT_BRANDS.map(x=>d.revBrand[x[0]]||0).concat(d.revBrand.Khac||0),mauBrand,
     RPT_MKT_BRANDS.map(x=>'mktBrand-'+x[0]).concat('mktBrand-Khac'));
-  donut('mktCPlat','Plat',['Facebook','TikTok','Khác'],[d.plat.Facebook,d.plat.TikTok,d.plat['Khác']],['#1877f2','#0f172a','#94a3b8']);
+  donut('mktCPlat','Plat',['Facebook','TikTok','Shopee','Khác'],[d.plat.Facebook,d.plat.TikTok,d.plat.Shopee,d.plat['Khác']],['#1877f2','#0f172a','#ee4d2d','#94a3b8']);
   const ngay=Object.keys(d.spendNgay).sort();
   const el=document.getElementById('mktCWave');
   if(el&&ngay.length){
@@ -5148,7 +5150,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='01/10 13:58';
+const APP_VERSION='02/10 13:56';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5835,11 +5837,13 @@ function rptSlNgayCham(r){return r.careDate||r.created||'';}
 // ĐƠN MUA LẠI (quá 1 tháng, khách không còn nhắn Pancake) KHÔNG tính cho MKT nhưng VẪN là doanh thu của SALE
 // (Sale chăm lại qua Zalo / điện thoại). Báo cáo Sale lọc kỳ theo cả đơn mua lại; báo cáo MKT (mod 'mkt') thì không.
 // Lỗi 29/9/2026: chị Mai Quy chốt DH002671 08/09/2026 21,1tr (đơn mua lại) không có trong báo cáo Sale Sỉ tháng 9.
+function rptLaShopee(r){return /shopee/i.test((r&&r.kenh)||'');}
 function rptSlInRange(r){
   const M=rptSlMod();
   // ĐƠN 0Đ KHÔNG TÍNH LÀ PHÁT SINH (anh Hải chốt 01/10/2026): tài khoản nội bộ xuất hàng / chuyển kho bằng đơn 0đ gần như
   // mỗi ngày (KH000330 "KB SẾP OANH THỊNH-HP" 88 đơn 0đ) -> khách cứ hiện ở kỳ lọc. Chỉ đơn có tiền mới kéo khách vào kỳ.
-  const don=(r.kords||[]).concat(M==='mkt'?[]:(r.repeatOrds||[])).filter(i=>Number(i.total||0)>0);
+  // MKT bỏ đơn mua lại -- TRỪ kênh SHOPEE: mỗi đơn Shopee là 1 lượt mua từ sàn, MKT tính đủ (anh Hải 02/10/2026)
+  const don=(r.kords||[]).concat(M==='mkt'&&!rptLaShopee(r)?[]:(r.repeatOrds||[])).filter(i=>Number(i.total||0)>0);
   if(don.length)return don.some(i=>modInRange(M,String(i.purchase_date).slice(0,10)));
   return modInRange(M,r.isChot&&r.closeDate?r.closeDate:r.created);
 }
