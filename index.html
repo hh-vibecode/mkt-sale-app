@@ -5150,7 +5150,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 14:03';
+const APP_VERSION='02/10 14:08';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6767,7 +6767,8 @@ function rptSiDashHtml(all,daCham){
     +' title="'+(L===k?'Đang lọc bảng — bấm để bỏ lọc':'Bấm để lọc bảng')+'">'+html+'</div>';
   const nut=k=>k==='Chưa rõ nguồn'&&!dem(k)?'':'<button onclick="rptSiLoc('+q+k+q+',event)" style="border:1.5px solid '+(L===k?'var(--accent)':'var(--border)')+';background:'+(L===k?'var(--accent-l)':'var(--surface)')
     +';color:'+(L===k?'var(--accent)':'var(--text2)')+';border-radius:8px;padding:1px 8px;font-size:10.5px;font-weight:800;cursor:pointer;font-family:var(--font)">'+(k==='Chưa rõ nguồn'?'Chưa rõ':k)+' '+num(dem(k))+'</button>';
-  const tongSub='<span style="display:inline-flex;gap:5px;flex-wrap:wrap">'+nut('Online')+nut('Offline')+nut('Chưa rõ nguồn')+'</span>';
+  // Bỏ 2 nút Online / Offline dưới ô Tổng khách (anh Hải 02/10/2026) -- tách Online / Offline xem ở thẻ doanh thu Tổng quan.
+  const tongSub='';
   return '<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px">'
     +'<div onclick="rptSiLoc('+q+q+')" style="cursor:pointer;border-radius:14px;'+(L===''?'':'')+'" title="Bấm để bỏ lọc ô, xem tất cả">'
       +mkKpi(ic('users'),'Tổng khách hàng',num(all.length),tongSub,'g-blue')+'</div>'
@@ -6789,7 +6790,8 @@ function rptSlMasterHtmlRaw(){
     loc=loc.concat(daCham.filter(r=>!co.has(r.key)).map(r=>Object.assign({},r,{kords:[],revenue:0,repeatOrds:[],repeatRevenue:0,_chiCS:true})));}
   const all=rptSlSortNew(loc,rptSlNgayTao);
   const q=(window._rptSlMasterQ||'').trim().toLowerCase();
-  if(!laSi)window._rptSiLoc='';
+  // đã bỏ nút lọc Online / Offline (02/10/2026): ai đang lọc dở theo nguồn thì xoá, kẻo bảng kẹt ở 1 nguồn
+  if(!laSi||['Online','Offline','Chưa rõ nguồn'].includes(window._rptSiLoc))window._rptSiLoc='';
   const goc=laSi&&window._rptSiLoc?rptSiLocDs(window._rptSiLoc,all,daCham):all;
   let list=goc;
   // Ô TÌM KIẾM chỉ tìm TRONG bộ lọc đang đặt (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026 chốt: muốn tìm
