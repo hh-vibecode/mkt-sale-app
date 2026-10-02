@@ -4007,6 +4007,7 @@ let siCrmRows=[],siCrmLoaded=false;
 // chưa clear (việc giao lúc họp). Sale xử xong bấm Clear -> trắng lại; ghi chú đã clear vẫn giữ làm lịch sử, bấm nút là xem.
 // Bảng salesi_crm_note (Lẻ + Sỉ, gắn khách theo lead_id). Bảng nhỏ -> nạp hết 1 lần, có phân trang (sbFetchAll).
 let crmNoteRows=[],crmNoteLoaded=false;
+const CRM_NOTE_MAX=300;   // ghi chú họp tối đa 300 ký tự (anh Hải 02/10/2026)
 async function crmNoteLoad(force){
   if(crmNoteLoaded&&!force)return;
   try{crmNoteRows=await sbFetchAll('salesi_crm_note','select=id,loai,lead_id,customer_name,noi_dung,created_by,created_at,cleared_at,cleared_by&order=created_at.desc');}
@@ -4057,11 +4058,12 @@ function crmNoteMo(key,el){
       +'<span style="display:inline-flex;color:#ca8a04">'+CRM_NOTE_SVG+'</span>'
       +'<span style="font-size:11.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e(r.name)+'</span>'
       +'<button onclick="crmNoteDong()" style="margin-left:auto;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px">✕</button></div>'
-    +(mo.length?mo.map(x=>dong(x,false)).join(''):'')
-    +'<textarea id="crmNoteND" rows="2" placeholder="Ghi việc cần làm…" onkeydown="if(event.key===\'Enter\'&&(event.ctrlKey||event.metaKey)){event.preventDefault();crmNoteThem('+q+key+q+',null);}"'
+    +(mo.length?'<div style="max-height:170px;overflow:auto">'+mo.map(x=>dong(x,false)).join('')+'</div>':'')
+    +'<textarea id="crmNoteND" rows="4" maxlength="'+CRM_NOTE_MAX+'" placeholder="Ghi việc cần làm…" oninput="var d=document.getElementById(\'crmNoteDem\');if(d)d.textContent=this.value.length+\'/'+CRM_NOTE_MAX+'\'" onkeydown="if(event.key===\'Enter\'&&(event.ctrlKey||event.metaKey)){event.preventDefault();crmNoteThem('+q+key+q+',null);}"'
       +' style="width:100%;box-sizing:border-box;margin-top:6px;padding:6px 8px;border:1px solid color-mix(in srgb,#ca8a04 40%,transparent);border-radius:7px;background:var(--surface);color:var(--text);font-size:12px;font-family:var(--font);resize:vertical;outline:none"></textarea>'
     +'<div style="display:flex;align-items:center;gap:6px;margin-top:6px">'
       +(cu.length?'<button onclick="window._crmNoteLs=!window._crmNoteLs;crmNoteMo('+q+key+q+')" style="border:none;background:transparent;color:var(--muted);font-size:10.5px;font-weight:800;cursor:pointer;padding:0;font-family:var(--font)">Lịch sử ('+cu.length+') '+(ls?'▴':'▾')+'</button>':'')
+      +'<span id="crmNoteDem" style="font-size:10px;font-weight:700;color:var(--muted)">0/'+CRM_NOTE_MAX+'</span>'
       +'<span id="crmNoteMsg" style="font-size:10.5px;font-weight:700"></span>'
       +(mo.length?'<button onclick="crmNoteClear('+q+key+q+',this)" style="margin-left:auto;height:26px;padding:0 10px;border-radius:7px;border:1.5px solid var(--green);background:var(--surface);color:var(--green);font-size:11px;font-weight:800;cursor:pointer;font-family:var(--font)">✓ Clear</button>':'')
       +'<button onclick="crmNoteThem('+q+key+q+',this)" style="'+(mo.length?'':'margin-left:auto;')+'height:26px;padding:0 12px;border-radius:7px;border:none;background:#ca8a04;color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:var(--font)">Lưu</button>'
@@ -4074,6 +4076,7 @@ async function crmNoteThem(key,el){
   const nd=String((document.getElementById('crmNoteND')||{}).value||'').trim();
   const msg=document.getElementById('crmNoteMsg');
   if(!nd){if(msg)msg.innerHTML='<span style="color:var(--red)">Chưa ghi nội dung</span>';return;}
+  if(nd.length>CRM_NOTE_MAX){if(msg)msg.innerHTML='<span style="color:var(--red)">Quá '+CRM_NOTE_MAX+' ký tự</span>';return;}
   try{if(el)el.disabled=true;if(msg)msg.textContent='Đang lưu…';
     const ins=await sbInsert('salesi_crm_note',{loai:rptSlType(),lead_id:r.leadId,customer_name:r.name,noi_dung:nd,created_by:logWho()});
     logAct('C','salesi_crm_note',ins&&ins.id?('#'+ins.id):null,r.name,'Ghi chú họp','',nd.slice(0,120));
@@ -5257,7 +5260,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 17:42';
+const APP_VERSION='02/10 17:44';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
