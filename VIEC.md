@@ -106,6 +106,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (22)** — Master (Lẻ + Sỉ) bỏ cột "Trao đổi gần nhất" (bong bóng); trao đổi xem ở CRM hoặc tab Lịch sử chăm sóc trong hồ sơ. Master còn 8 cột.
 - **02/10 (21)** — CRM (Lẻ + Sỉ) bỏ nút "✏ Sửa" cạnh nút "+ Chăm sóc" (anh bảo bỏ); sửa vẫn qua nút Sửa trong hồ sơ khách. Dropdown đổi Sale cho tài khoản toàn quyền giữ nguyên.
 - **02/10 (20)** — **SĐT gộp vào ô tên khách** (dưới Mã KH / Lead ID), bỏ cột SĐT riêng — Master + CRM, Lẻ + Sỉ (hàm rptSlSdtDuoiTen). Kiểm 4 bảng: số cột tiêu đề = số ô mỗi dòng.
 - **02/10 (19)** — **CRM gọn lại**: bỏ cột "Ngày chưa liên hệ" (vẫn xếp khách lâu chưa liên hệ lên đầu + ô KPI giữ nguyên); "Trao đổi gần nhất" = SP quan tâm (đậm) · nội dung của lượt gần nhất, tối đa 2 dòng, rê chuột xem đủ, bấm mở popup đủ 4 mục. Popup trao đổi (chung Master) đánh số theo form mới 1–4.
