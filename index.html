@@ -4041,8 +4041,11 @@ function rptSlRender(){
   const kq=f();
   if(kq&&typeof kq.then==='function')kq.then(tra,tra);else tra();
 }
+// TẠM ẨN tab "Gán data" ở cả Lẻ lẫn Sỉ (anh Hải 02/10/2026: "chưa cần lắm"). Đổi thành false là hiện lại.
+const RPT_AN_GAN_DATA=true;
 function rptSlViewMode(){const m=localStorage.getItem('rptSlViewMode_'+rptSlType())||'master';
   if(m==='overview')return 'master';
+  if(m==='gan'&&RPT_AN_GAN_DATA)return 'master';
   if(m==='crm'&&rptSlType()==='Sỉ')return 'master';   // tab CRM Sỉ đã gỡ
   return m;}
 function rptSlSetViewMode(m){localStorage.setItem('rptSlViewMode_'+rptSlType(),m);window._kiotOrdByCode=null;rptSlRender();}
@@ -5156,7 +5159,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 15:05';
+const APP_VERSION='02/10 15:21';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5276,7 +5279,7 @@ async function rptSlRenderPage(type){
       `<span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
         <button onclick="rptSlSetViewMode('master')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='master'?'var(--accent)':'var(--surface)'};color:${mode==='master'?'#fff':'var(--text2)'}">Master Data</button>
         ${rptSlType()==='Sỉ'?''/* Sỉ: lịch sử chăm sóc nằm trong hồ sơ khách, không còn tab CRM riêng */:`<button onclick="rptSlSetViewMode('crm')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='crm'?'var(--accent)':'var(--surface)'};color:${mode==='crm'?'#fff':'var(--text2)'}">CRM</button>`}
-        ${(()=>{const n=rptSlBuildMaster().filter(rptSlCanGan).length;
+        ${RPT_AN_GAN_DATA?'':(()=>{const n=rptSlBuildMaster().filter(rptSlCanGan).length;
           return '<button onclick="rptSlSetViewMode('+String.fromCharCode(39)+'gan'+String.fromCharCode(39)+')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:'
             +(mode==='gan'?'var(--accent)':'var(--surface)')+';color:'+(mode==='gan'?'#fff':'var(--text2)')+'">Gán data'
             +(n?' <span style="background:var(--yellow);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+num(n)+'</span>':'')+'</button>';})()}

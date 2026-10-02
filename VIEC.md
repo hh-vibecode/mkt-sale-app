@@ -103,6 +103,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (9)** — **Tạm ẩn tab "Gán data"** ở Lẻ + Sỉ (anh: chưa cần). Cờ `RPT_AN_GAN_DATA=true` trong index.html; ai đang mở tab đó tự về Master. Đổi `false` là hiện lại. Chức năng gán Sale ở dropdown Master / hồ sơ vẫn dùng được.
+
 - **02/10 (8)** — **Shopee cửa hàng**: HT ghi đơn Shopee dưới khách chung **KH005025 "KL Đơn Shopee (HT)"** (kênh hay để "Bán trực tiếp" / "Siêu thị Phật Giáo Hiền Thuỷ") nên bị xếp Sỉ · Offline và báo cáo Lẻ gạt hết đơn. Sửa: dòng M-0430 → Lẻ · Online · kênh "Shopee Hiền Thuỷ" · brand HT; `kiotLoaiKhach` coi khách tên có "shopee" là Lẻ; job tự tạo: khách tên có "shopee" luôn Lẻ · Online · kênh Shopee theo cửa hàng. KH005025 nay 93 đơn 30,6tr năm 2026; MKT T6–T9 phần Shopee 8,35tr (HT 6,68 + CT 1,68).
 
 - **02/10 (7)** — **CRM Lẻ chỉ hiện khách có thẻ TIỀM NĂNG, CHƯA CHỐT** (Pancake, đơn chưa huỷ) — 37 khách (10 Đang chăm sóc, 27 Mất lead; 3 khách đã chốt còn sót thẻ bị loại). Thêm cột **Ngày chưa liên hệ** (từ lần chạm gần nhất, ≥10 vàng, ≥30 đỏ). Bộ lọc ngày của CRM Lẻ mặc định **Tất cả 2026** (tự đặt khi mở CRM, rời CRM thì Master về tháng này; người dùng tự chọn kỳ thì giữ).
