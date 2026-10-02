@@ -5163,7 +5163,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 16:15';
+const APP_VERSION='02/10 16:18';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6852,7 +6852,7 @@ function rptSiLocDs(k,all,daCham){
   if(k==='cs')return daCham;
   if(k==='chot')return all.filter(r=>r.isChot&&!r._chiCS);
   if(k==='lau')return all.filter(r=>{const n=rptSiSoNgayChua(r);return n!==null&&n>=RPT_SI_LAU_NGAY;});
-  if(k==='chuaTT')return all.filter(r=>!String(r.siPhanLoai||'').trim());
+  if(k==='chuaTT')return all.filter(r=>!String(r.siPhanLoai||'').trim()||(!r.isChot&&rptSlLocTT(r)==='Lead mới'));   // Lead mới cũng là chưa cập nhật (02/10/2026)
   if(k==='Online'||k==='Offline'||k==='Chưa rõ nguồn')return all.filter(r=>rptSiNguonCua(r)===k);
   return all;
 }
@@ -7599,7 +7599,8 @@ function rptSlTodoBuckets(){
     //    SỈ KHÁC LẺ: Sale Sỉ không dùng ô trạng thái của luồng Lẻ, họ ghi ở "Phân loại KH"
     //    (Chăm sóc dài hạn / Chưa liên hệ được / Mất kết nối) bên Master và "Tình trạng hỗ trợ" bên CRM.
     //    Trước đây chỉ soi r.manualStatus nên 49/61 khách Sỉ bị nhắc oan dù sheet đã điền đủ.
-    chuaTT:all.filter(r=>!r.isChot&&!rptSlCoTrangThai(r)),
+    //    + khách đang ở "Lead mới" (anh Hải 02/10/2026): Lead mới = Sale chưa chăm / chưa phân loại -> nhắc cập nhật.
+    chuaTT:all.filter(r=>!r.isChot&&(!rptSlCoTrangThai(r)||rptSlLocTT(r)==='Lead mới')),
     // 4. Đã chọn Mất lead nhưng chưa ghi nhóm nguyên nhân.
     // 5. Khách tiềm năng (chưa chốt, chưa mất) nhưng chưa có giá trị dự kiến.
     thieuGT:all.filter(r=>!r.isChot&&r.status!=='Mất lead'&&!r.potential&&!rptSlMatLeadSi(r)&&!rptSlLeadCu(r)),

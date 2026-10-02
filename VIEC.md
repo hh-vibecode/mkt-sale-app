@@ -38,6 +38,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **"Lead mới" = chưa cập nhật trạng thái** (2/10/2026): khách chưa chốt ở Lead mới luôn nằm trong mục nhắc của Nhập liệu tới khi Sale đổi sang phân loại khác.
 - **Dropdown lọc Sỉ / Lẻ (trừ ngày) luôn cho tích chọn nhiều** (2/10/2026) — thêm bộ lọc mới thì dùng `one()` trong `rptSlFilterBar` + `rptSlF` trả mảng.
 
 - **Dữ liệu nguồn nhập sai → chủ động báo anh + TỰ SỬA CHUẨN TRONG APP** bằng luật nhận diện (áp cả về sau), không chỉ dặn nhân viên (anh chốt 2/10/2026). Không ghi ngược sang Kiot / Pancake trừ khi anh bảo. Mỗi luật ghi 1 dòng nhật ký. Mẫu: khách gom đơn Shopee → Lẻ · Online · Shopee.
@@ -105,6 +106,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (15)** — **Lead mới vào Nhập liệu** (anh: "nhắc cập nhật trạng thái"): khách chưa chốt đang ở Phân loại "Lead mới" (tự đặt hoặc Sale chọn) tính vào mục "Chưa cập nhật trạng thái" (vàng, tính badge) — Lẻ + Sỉ; ô cùng tên ở dash Master cũng đếm theo. Hiện: Lẻ 0, Sỉ 15 (khách Minh Oanh) → badge Sỉ +15.
 - **02/10 (14)** — **Bộ lọc Sỉ / Lẻ chọn nhiều** (anh: "tích chọn nhiều thay vì chỉ chọn 1"): Sales · Trạng thái/Phân loại · Nguồn · Sản phẩm (Sỉ) · Brand ở Master + CRM đổi từ dropdown 1 lựa chọn sang khung tích nhiều ô (có "Bỏ chọn"); ngày giữ nguyên. Lưu dạng mảng, giá trị cũ dạng chuỗi vẫn đọc được. Thử: Lead cũ 851 + Mất kết nối 69 = tích cả 2 ra 920, khớp.
 - **02/10 (13)** — **Form Lượt chăm sóc thêm mục 2 "Sản phẩm quan tâm"** ngay sau Nội dung trao đổi (Phản hồi → 3, Phương án → 4), chung Lẻ + Sỉ. Ô gõ tự do, gợi ý Đồ thờ / Nến / Hỗn hợp + các SP đã ghi của khách. Lưu cột mới `salesi_crm.sp_quan_tam` (`supabase-schema-cs-sp-quan-tam.sql`); hiện dưới nội dung ở bảng lịch sử; hồ sơ Lẻ có ô "Sản phẩm quan tâm" = SP ở lượt gần nhất. Sỉ giữ ô SP quan tâm phân loại cũ (Đồ thờ/Nến theo mua hàng).
 - **02/10 (12)** — **Lẻ đổi giao diện y như Sỉ + CRM cho cả Sỉ** (anh: "form y như sỉ", "bê hết sang", "nhớ làm cả chuông"): Master / hồ sơ / sửa / dash / Nhập liệu / chuông Lẻ dùng chung code Sỉ. Trạng thái Lẻ chuyển sang bộ Phân loại Sỉ — đã chuyển 137 khách (Mất lead→Mất kết nối 116, Đang chăm sóc→Tiềm năng 18, Chưa liên hệ được 2, Lead cũ 1); cột `status` cũ giữ nguyên để tra. Nội dung trao đổi cũ của Lẻ chép thành 33 lượt chăm sóc (`salesi_crm.loai='Lẻ'`, SQL `supabase-schema-le-nhu-si.sql`). CRM mới: Lẻ 19 khách, Sỉ 98 khách. Kiểm số code cũ ↔ mới: 26/26 chỉ số khớp tuyệt đối. Ô chọn Phân loại giờ giữ giá trị ngoài bộ (Lead cũ) thay vì hiện "—".
