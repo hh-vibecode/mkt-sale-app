@@ -232,6 +232,8 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
 .spin{display:inline-block;width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .err-box{background:var(--red-l);border:1.5px solid #fecaca;border-radius:12px;padding:18px 22px;color:var(--red);font-size:13px;margin:16px 0;font-weight:600}
+.rpt-ms>summary{list-style:none}.rpt-ms>summary::-webkit-details-marker{display:none}
+.rpt-ms label:hover{background:var(--bg2)}
 </style>
 </head>
 <body>
@@ -5161,7 +5163,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 16:03';
+const APP_VERSION='02/10 16:15';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5769,7 +5771,24 @@ const RPT_SL_STATUS_COLOR={'Chốt đơn':'var(--green)','Bàn giao':'var(--teal
 // khách; chọn "Tất cả" trên thanh lọc để xem toàn bộ.
 // ── BỘ LỌC CHUNG cho Master + CRM ──
 // Chỉ có 4 brand (CT / HT / Shidai / TTV); shop TikTok Hoàng Dương đã gom về CT lúc nạp dữ liệu.
-function rptSlF(tab,k){return (window['_rptSlF_'+rptSlType()+tab]||{})[k]||'';}
+// BỘ LỌC CHỌN NHIỀU (anh Hải 02/10/2026): mọi dropdown lọc của Sỉ / Lẻ (trừ ngày) tích được nhiều mục.
+// Lưu dạng mảng; rptSlF trả '' khi không chọn gì (= tất cả), còn lại trả mảng các mục đã tích.
+function rptSlFArr(tab,k){const v=(window['_rptSlF_'+rptSlType()+tab]||{})[k];return Array.isArray(v)?v:(v?[v]:[]);}
+function rptSlF(tab,k){const a=rptSlFArr(tab,k);return a.length?a:'';}
+function rptSlToggleF(tab,k,i,on){
+  const x=((window._rptSlOpt||{})[tab+'|'+k]||[])[i];if(x===undefined)return;
+  const a=rptSlFArr(tab,k).filter(y=>y!==x);if(on)a.push(x);
+  window._rptSlMoLoc=tab+'|'+k;   // giữ khung đang mở để tích tiếp
+  rptSlSetF(tab,k,a);
+}
+function rptSlMsToggle(el,key){
+  if(el.open){window._rptSlMoLoc=key;document.querySelectorAll('.rpt-ms[open]').forEach(d=>{if(d!==el)d.open=false;});}
+  else if(window._rptSlMoLoc===key)window._rptSlMoLoc=null;
+}
+document.addEventListener('click',e=>{
+  if(!e.target||!e.target.closest||e.target.closest('.rpt-ms'))return;
+  document.querySelectorAll('.rpt-ms[open]').forEach(d=>{d.open=false;});window._rptSlMoLoc=null;
+});
 // Nút "Tất cả" cạnh ô tìm kiếm Master: ô tìm chỉ tìm trong bộ lọc, muốn tìm rộng thì bấm 1 phát tháo hết
 // bộ lọc (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026. Không có bộ lọc nào thì nút ẩn.
 function rptSlCoLoc(){
@@ -5783,7 +5802,7 @@ function rptSlThaoLoc(){
   rptSlXoaCache();rptSlRender();
 }
 function rptSlSetF(tab,k,v){
-  window['_rptSlF_'+rptSlType()+tab]=Object.assign({},window['_rptSlF_'+rptSlType()+tab],{[k]:v});
+  window['_rptSlF_'+rptSlType()+tab]=Object.assign({},window['_rptSlF_'+rptSlType()+tab],{[k]:Array.isArray(v)?v:(v?[v]:[])});
   window[tab==='master'?'_rptSlMasterPage':'_rptSlCrmPage']=1;
   rptSlRender();
 }
@@ -5903,13 +5922,13 @@ function rptSlApplyF(tab,list){
   const ng=rptSlF(tab,'nguon');   // lọc Nguồn Online / Offline -- Lẻ + Sỉ (anh Hải 02/10/2026)
   const nguonCua=r=>/offline/i.test(r.nguon||'')?'Offline':(/online/i.test(r.nguon||'')||rptSlType()!=='Sỉ')?'Online':'Chưa rõ nguồn';
   let st=rptSlF(tab,'status');
-  if(st&&!rptSlLocTTDs().includes(st))st='';   // giá trị lọc cũ không còn trong danh sách -> bỏ, đừng lọc ngầm ra 0
+  if(st){st=st.filter(x=>rptSlLocTTDs().includes(x));if(!st.length)st='';}   // giá trị lọc cũ không còn trong danh sách -> bỏ, đừng lọc ngầm ra 0
   return list.filter(r=>
-    (!sale||(r.staff||'(chưa gán)')===sale)&&
-    (!ng||nguonCua(r)===ng)&&
-    (!st||rptSlLocTT(r)===st)&&
-    (!sp||(r.siSpQT||'(chưa rõ)')===sp)&&
-    (!br||(DH_BRAND_LABEL[r.brand]||r.brand||'—')===br));
+    (!sale||sale.includes(r.staff||'(chưa gán)'))&&
+    (!ng||ng.includes(nguonCua(r)))&&
+    (!st||st.includes(rptSlLocTT(r)))&&
+    (!sp||sp.includes(r.siSpQT||'(chưa rõ)'))&&
+    (!br||br.includes(DH_BRAND_LABEL[r.brand]||r.brand||'—')));
 }
 function rptSlFilterBar(tab){
   // Dựng lựa chọn từ TOÀN BỘ khách, không phải từ phần đang hiển thị -- nếu lấy theo phần đang hiển thị
@@ -5920,10 +5939,20 @@ function rptSlFilterBar(tab){
   const stats=rptSlLocTTDs();
   const brands=[...new Set(full.map(r=>DH_BRAND_LABEL[r.brand]||r.brand||'—'))].sort();
   const ip='height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer';
-  const one=(k,label,opts)=>`<select onchange="rptSlSetF('${tab}','${k}',this.value)" style="${ip}">
-    <option value="">${tab==='crm'&&k==='status'?'Phân loại: Lead mới · Tiềm năng · CS dài hạn':label+': tất cả'}</option>
-    ${opts.map(o=>`<option value="${String(o).replace(/"/g,'&quot;')}"${rptSlF(tab,k)===o?' selected':''}>${o}</option>`).join('')}
-  </select>`;
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const one=(k,label,opts)=>{
+    const key=tab+'|'+k;(window._rptSlOpt=window._rptSlOpt||{})[key]=opts;
+    const sel=rptSlFArr(tab,k).filter(x=>opts.includes(x));
+    const chu=!sel.length?(tab==='crm'&&k==='status'?'Phân loại: Lead mới · Tiềm năng · CS dài hạn':label+': tất cả')
+      :sel.length===1?label+': '+sel[0]:label+': '+sel.length+' mục';
+    return `<details class="rpt-ms" ${window._rptSlMoLoc===key?'open':''} ontoggle="rptSlMsToggle(this,'${key}')" style="position:relative">
+    <summary title="${e(sel.join(', '))}" style="${ip};display:flex;align-items:center;gap:6px;user-select:none;${sel.length?'border-color:var(--accent);color:var(--accent)':''}">${e(chu)}
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 3.5l3 3 3-3"/></svg></summary>
+    <div style="position:absolute;right:0;top:34px;z-index:60;min-width:210px;max-height:340px;overflow:auto;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.2);padding:6px">
+      <div onclick="window._rptSlMoLoc='${key}';rptSlSetF('${tab}','${k}',[])" style="padding:5px 8px;font-size:11px;font-weight:800;color:${sel.length?'var(--accent)':'var(--muted)'};cursor:pointer;border-bottom:1px solid var(--border);margin-bottom:4px">${sel.length?'Bỏ chọn ('+sel.length+')':'Đang xem tất cả'}</div>
+      ${opts.map((o,i)=>`<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap;color:var(--text)"><input type="checkbox" ${sel.includes(o)?'checked':''} onchange="rptSlToggleF('${tab}','${k}',${i},this.checked)" style="accent-color:var(--accent);cursor:pointer">${e(o)}</label>`).join('')}
+    </div></details>`;
+  };
   return one('sale','Sales',sales)+one('status','Trạng thái',stats)
     +one('nguon','Nguồn',['Online','Offline'])
     +(rptSlType()==='Sỉ'?one('sp','Sản phẩm',[...new Set(RPT_SI_SPQT_DS),'(chưa rõ)']):'')+one('brand','Brand',brands);
