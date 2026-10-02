@@ -38,7 +38,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
-- **CRM = khách còn nợ việc** (2/10/2026): (a) chưa chốt + Phân loại Lead mới / Tiềm năng / CS dài hạn (Sỉ); (b) ĐÃ chốt nhưng lượt chăm sóc gần nhất (bỏ qua Chốt đơn) còn "Chăm sóc định kỳ". Lượt chăm sóc: Chăm sóc định kỳ = đang treo (đỏ), Đã xong = clear (xanh); mỗi khách chỉ lượt gần nhất được treo.
+- **CRM = khách cần chăm** (2/10/2026): (a) chưa chốt + Phân loại Lead mới / Tiềm năng / CS dài hạn (Sỉ), lọc ngày theo ngày tạo / đơn / LƯỢT CHĂM SÓC trong kỳ; (b) ĐÃ chốt nhưng có **Ghi chú họp chưa clear** (không lọc ngày). Lượt chăm sóc chỉ 2 trạng thái Chăm sóc định kỳ / Chốt đơn (KHÔNG có "Đã xong" — anh bỏ 2/10). Bong bóng xanh dương = có lượt, trắng = chưa; nút Ghi chú họp đỏ = có việc chưa clear.
 - **"Lead mới" = chưa cập nhật trạng thái** (2/10/2026): khách chưa chốt ở Lead mới luôn nằm trong mục nhắc của Nhập liệu tới khi Sale đổi sang phân loại khác.
 - **Dropdown lọc Sỉ / Lẻ (trừ ngày) luôn cho tích chọn nhiều** (2/10/2026) — thêm bộ lọc mới thì dùng `one()` trong `rptSlFilterBar` + `rptSlF` trả mảng.
 
@@ -107,6 +107,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (29)** — **Bỏ "Đã xong", trạng thái lượt chăm sóc về như cũ** (anh nghĩ lại: "có note rồi không cần đổi màu đỏ"): còn 2 trạng thái Chăm sóc định kỳ / Chốt đơn; 1.938 lượt "Đã xong" chuyển lại Chăm sóc định kỳ, xoá "Đã xong" khỏi danh mục (`supabase-schema-cs-bo-da-xong.sql`). Bong bóng: xanh dương = có lượt chăm sóc, trắng = chưa ai ghi. Bỏ nút đổi trạng thái trong popup + bỏ tự chuyển lượt cũ. **Khách đã chốt vào CRM giờ theo GHI CHÚ HỌP chưa clear** (không lọc ngày), clear là rời CRM — thử: ĐỒ THỜ HẢI ANH (đơn cuối 2025) có ghi chú mở → vào CRM, clear → ra.
 - **02/10 (28)** — **Nút Ghi chú họp ở CRM** (anh: sổ note có bút cạnh bong bóng, phục vụ lúc họp): trắng = không việc, ĐỎ = có ghi chú chưa clear (số nhỏ nếu >1). Bấm ra tờ note vàng nhỏ cạnh nút: ghi việc (Ctrl+Enter lưu), ✓ Clear khi xong -> trắng lại, Lịch sử (n) mở các ghi chú đã clear (ai ghi, lúc nào, ai clear, lúc nào). Bảng mới salesi_crm_note (Lẻ + Sỉ, RLS authenticated đọc/thêm/sửa, KHÔNG xoá; supabase-schema-crm-note.sql), đã đăng ký ở QUY-UOC. Thử thêm/clear/xoá 1 dòng TEST bằng service role: OK, bảng sạch.
 - **02/10 (27)** — **Sửa lỗi lọc ngày CRM** (anh: Sale chăm hôm nay mà lọc từ 02/10 ra 0): CRM trước chỉ xét ngày tạo khách / ngày đơn. Giờ khách có LƯỢT CHĂM SÓC trong kỳ cũng tính (Lẻ + Sỉ). Hôm nay Sỉ ra 6 khách (Minh Oanh). Tất cả 2026: Sỉ 97 → 109 vì thêm khách tạo trước 2026 nhưng được chăm trong 2026. Lưu ý: 6 lượt hôm nay ghi created_by = Hoàng Hải (đăng nhập tài khoản anh).
 - **02/10 (26)** — **Dash chuyển từ Master sang CRM** (anh: "có CRM rồi bỏ hết dashboard sang CRM", "master k cần dash"): Master bỏ hẳn ô dash. CRM 6 ô (3/hàng), bấm ô = lọc bảng CRM: Khách cần chăm sóc (bỏ lọc) · Khách chốt có nhu cầu lại · Giá trị đang theo / Đã chăm sóc trong kỳ · Lâu chưa chăm sóc >10 ngày · Chưa cập nhật trạng thái. Bỏ ô Đến hẹn (đã có nút chuông).
