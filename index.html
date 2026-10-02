@@ -5163,7 +5163,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 16:35';
+const APP_VERSION='02/10 16:37';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6720,9 +6720,10 @@ function rptSiXemTraoDoi(key){
    +'<div style="padding:6px 20px 18px">'
    +'<div style="font-size:12px;font-weight:700;color:var(--text2);margin-top:8px">Trao đổi ngày '+dmy(String(x.ngay_cham||'').slice(0,10))+(x.sales?' · '+e(x.sales):'')
      +(x.trang_thai?' · <span style="color:var(--accent)">'+e(x.trang_thai)+'</span>':'')+'</div>'
-   +muc('1. Nội dung trao đổi',x.noi_dung)
-   +muc('2. Phản hồi / vướng mắc / nhu cầu khách hàng',x.phan_hoi)
-   +muc('3. Phương án tiếp theo'+(x.ngay_hen?' · hẹn '+dmy(String(x.ngay_hen).slice(0,10)):''),x.viec_tiep)
+   +muc('1. Sản phẩm quan tâm',x.sp_quan_tam)
+   +muc('2. Nội dung trao đổi',x.noi_dung)
+   +muc('3. Phản hồi / vướng mắc / nhu cầu khách hàng',x.phan_hoi)
+   +muc('4. Phương án tiếp theo'+(x.ngay_hen?' · hẹn '+dmy(String(x.ngay_hen).slice(0,10)):''),x.viec_tiep)
    +'<div style="display:flex;justify-content:flex-end;margin-top:16px"><button onclick="qcCloseModal();rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+');rptSlCusTab('+q+'cs'+q+')" class="refresh-btn" style="padding:7px 16px;font-size:12px">Xem toàn bộ lịch sử chăm sóc · '+num(n)+' lượt</button></div>'
    +'</div></div></div>';
 }
@@ -8164,19 +8165,23 @@ function rptSlCrmHtmlRaw(){
   const qk=r=>String(r.key).replace(/'/g,'');
   const rows=list.slice((page-1)*pageSize,page*pageSize).map(r=>{
     const n=r.siNgayNghi;
-    const mauN=n==null?'var(--red)':n>=30?'var(--red)':n>=10?'var(--yellow)':'var(--text)';
     const hen=r.siNgayHen?'<span style="font-weight:700;color:'+(r.siHenDen?'#d97706':'var(--text2)')+'">'+dmy(r.siNgayHen)+'</span>'
       +(r.siViecTiep?'<div style="font-size:10.5px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(r.siViecTiep).replace(/"/g,'&quot;')+'">'+e(r.siViecTiep)+'</div>':''):'<span style="color:var(--muted)">—</span>';
     return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+qk(r)+'\')">'
       +'<td style="white-space:nowrap">'+(r.siCSCuoi?dmy(r.siCSCuoi):'<span style="color:var(--muted)">chưa chăm</span>')+'</td>'
-      +'<td class="num"><span style="font-weight:800;color:'+mauN+'">'+(n==null?'—':num(n))+'</span></td>'
       +'<td>'+rptSiNguonChip(r)+'</td>'
       +rptSlSaleO(r)   // tài khoản toàn quyền đổi Sale ngay trên CRM như Master (anh Hải 02/10/2026)
       +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+'</td>'
       +'<td style="white-space:nowrap">'+rptSlSdtHtml(r)+'</td>'
       +rptSiPhanLoaiSelect(r)
-      +'<td><span style="font-size:11.5px;display:block;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(r.siNDCuoi).replace(/"/g,'&quot;')+'">'
-        +(r.siNDCuoi?e(r.siNDCuoi):'<span style="color:var(--muted)">—</span>')+'</span></td>'
+      +(()=>{   // TRAO ĐỔI GẦN NHẤT (anh Hải 02/10/2026) = 1. SP quan tâm + 2. Nội dung của lượt gần nhất, gọn tối đa 2 dòng;
+        // rê chuột hiện đủ, bấm mở popup đủ 4 mục (giống bong bóng ở Master). Chưa có lượt nào thì lấy nội dung cũ.
+        const x=rptSiLuotGanNhat(r)||{},sp=String(x.sp_quan_tam||'').trim(),nd=String(x.noi_dung||r.siNDCuoi||'').trim();
+        if(!sp&&!nd)return '<td><span style="color:var(--muted)">—</span></td>';
+        const tip=((sp?'SP quan tâm: '+sp+'\n':'')+nd).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+        return '<td onclick="rptSlStop(event)"><div title="'+tip+'"'+(x.id?' onclick="rptSiXemTraoDoi(\''+qk(r)+'\')"':'')
+          +' style="font-size:11.5px;line-height:1.45;max-width:300px;min-width:180px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer">'
+          +(sp?'<b style="color:var(--accent)">'+e(sp)+'</b>'+(nd?' · ':''):'')+e(nd)+'</div></td>';})()
       +'<td>'+hen+'</td>'
       +'<td class="num" style="font-weight:700">'+(r.potential?vnd(r.potential):'<span style="color:var(--muted);font-weight:400">—</span>')+'</td>'
       +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'+rptSiChuongDong(r)
@@ -8202,8 +8207,8 @@ function rptSlCrmHtmlRaw(){
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — khách cần chăm sóc</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>CS cuối</th><th>Ngày chưa liên hệ</th><th>Nguồn</th><th>Sales phụ trách</th><th>${rptSlType()==='Sỉ'?'Tên cửa hàng':'Họ tên khách'}</th><th>SĐT</th><th>Phân loại KH${dmBut('si_phan_loai')}</th><th>Trao đổi gần nhất</th><th>Hẹn tiếp theo</th><th>Giá trị tiềm năng</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="11">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
+        <thead><tr><th>CS cuối</th><th>Nguồn</th><th>Sales phụ trách</th><th>${rptSlType()==='Sỉ'?'Tên cửa hàng':'Họ tên khách'}</th><th>SĐT</th><th>Phân loại KH${dmBut('si_phan_loai')}</th><th>Trao đổi gần nhất</th><th>Hẹn tiếp theo</th><th>Giá trị tiềm năng</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="10">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetCrmPage(${page-1})">‹ Trước</button>
