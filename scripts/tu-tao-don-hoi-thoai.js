@@ -59,6 +59,9 @@ const tenThe = t => typeof t === 'string' ? t : (t && (t.name || t.text)) || '';
 // KHÔNG PHẢI HỎI HÀNG -> bỏ, không tạo đơn (anh Hải 28/9: "nội dung k phải hỏi hàng clear hết"). Thử trên 265 hội thoại
 // lô 28/9: bắt đúng 6 ca rác (xin việc, xin làm CTV, rao dịch vụ video, người rao bán tượng/nến, tin rác vay tiền), 0 khách thật.
 const RAC = /(tuyển (nhân viên|dụng|người|ctv|cộng tác)|còn tuyển|ứng tuyển|xin việc|việc làm|(làm|tuyển) cộng tác viên|cho vay|vay (vốn|tiền|nhanh|tín chấp)|giải ngân|cần là có|đến là duyệt|bên (em|mình|tôi) (có )?(sản xuất|nhận làm|chuyên cung cấp|có nhiều)|em nhận làm|nhận làm (video|web|quảng cáo|thiết kế)|shop ib (với|cho) mình|gieo duyên|lãi suất|nhận chạy (ads|quảng cáo)|thiết kế web|dạy kèm|khóa học|mong hợp tác)/i;
+// NGƯỜI CHÀO HÀNG / DỊCH VỤ tiếp cận shop (anh Hải 02/10/2026, ca #1845 "đơn vị vận chuyển... nhận ủy thác 5k/kg") -> không phải khách.
+// Quét lại 272 hội thoại lô 28/9: chỉ trúng đúng ca đó, không trúng khách thật.
+const RAO = /(đơn vị vận chuyển chưa|nhận (ủy|uỷ) thác|(ủy|uỷ) thác (nhập|xuất|hàng)|vận chuyển giá|\d+\s*k\s*\/\s*(kg|khối|cbm)|\/\s*cbm|kho bên (china|trung quốc|tq|quảng châu)|hàng về sau \d|tư vấn (về )?thuế|thủ tục nhập hàng|nhập khẩu chính ngạch|order hàng (trung|tq|quảng)|bên (em|mình|chị|anh) (chuyên|là đơn vị|nhận|cung cấp|bên mảng)|chuyên cung cấp|dịch vụ (vận chuyển|kế toán|thuế|quảng cáo|marketing|seo)|phần mềm (quản lý|bán hàng)|bên (em|mình) có (dịch vụ|xưởng|nhà máy)|xưởng (sản xuất|bên em)|mời hợp tác|đề xuất hợp tác|muốn hợp tác)/i;
 const nhieuSo = t => (t.match(/(?:\+?84|0)[35789](?:[\s.]?\d){8}/g) || []).length >= 3;   // 1 tin chứa từ 3 số = tin rác rao
 async function laRac(h) {
   let cid = null;
@@ -70,7 +73,7 @@ async function laRac(h) {
     .map(x => String(x.original_message || x.message || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
   // Sale VỪA tạo đơn cho hội thoại này (hub chưa kịp đồng bộ, trễ tới 10 phút) -> không tạo trùng
   if (((m && m.recent_orders) || []).length) h.coDonMoi = true;
-  const t = kh.find(x => RAC.test(x) || nhieuSo(x));
+  const t = kh.find(x => RAC.test(x) || RAO.test(x) || nhieuSo(x));
   // khách gửi nhiều số -> CHỈ lấy số gửi SAU CÙNG (anh Hải 28/9: số trước thường là số nhầm / số cũ)
   const so = [];
   kh.forEach(x => (x.match(/(?:\+?84|0)[35789](?:[\s.]?\d){8}/g) || []).forEach(s => { const c = chuanSo(s); if (c) so.push(c); }));

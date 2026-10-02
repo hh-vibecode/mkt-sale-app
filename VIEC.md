@@ -103,6 +103,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (11)** — **Loại người chào dịch vụ**: đơn #1845 Cuong Nguyen (0947630108, job tự tạo 28/9) là người chào vận chuyển / ủy thác / tư vấn thuế, không phải khách → gỡ khỏi báo cáo (L-SD-1845 excluded) + huỷ rồi xoá đơn Pancake. Job `tu-tao-don-hoi-thoai.js` thêm mẫu `RAO` (chào hàng / dịch vụ: vận chuyển, ủy thác, kho TQ, thuế, chuyên cung cấp, xưởng, mời hợp tác…). Quét lại 272 hội thoại lô 28/9: chỉ trúng đúng ca này.
+
 - **02/10 (10)** — **CRM Lẻ đổi luật** (anh: "không theo thẻ nữa"): CRM = khách **trạng thái "Đang chăm sóc", chưa chốt** — mọi nguồn, kể cả nhập tay / offline (19 khách cả 2026). Bỏ điều kiện thẻ TIỀM NĂNG. Thẻ TIỀM NĂNG chỉ còn để tự đặt "Đang chăm sóc" cho khách chưa có trạng thái.
 
 - **02/10 (9)** — **Tạm ẩn tab "Gán data"** ở Lẻ + Sỉ (anh: chưa cần). Cờ `RPT_AN_GAN_DATA=true` trong index.html; ai đang mở tab đó tự về Master. Đổi `false` là hiện lại. Chức năng gán Sale ở dropdown Master / hồ sơ vẫn dùng được.
