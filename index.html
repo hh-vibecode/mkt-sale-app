@@ -5168,7 +5168,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 16:40';
+const APP_VERSION='02/10 16:43';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8188,8 +8188,6 @@ function rptSlCrmHtmlRaw(){
       +'<td>'+hen+'</td>'
       +'<td class="num" style="font-weight:700">'+(r.potential?vnd(r.potential):'<span style="color:var(--muted);font-weight:400">—</span>')+'</td>'
       +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'+rptSiChuongDong(r)
-        // Sửa = mở thẳng hồ sơ ở CHẾ ĐỘ SỬA, cùng bộ ô sửa với Master (anh Hải 02/10/2026)
-        +'<button onclick="rptSlShowCustomer(\''+qk(r)+'\',true)" title="Sửa thông tin khách" style="border:1.5px solid var(--border);background:var(--surface);color:var(--text2);border-radius:7px;height:26px;padding:0 9px;cursor:pointer;font-size:11px;font-weight:700;margin-right:5px">✏ Sửa</button>'
         +'<button onclick="rptSlShowCustomer(\''+qk(r)+'\');rptSlCsMoForm()" title="Ghi lượt chăm sóc mới" style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">+ Chăm sóc</button></td>'
       +'</tr>';}).join('');
   const lau=all.filter(r=>r.siNgayNghi==null||r.siNgayNghi>=RPT_SI_LAU_NGAY);
