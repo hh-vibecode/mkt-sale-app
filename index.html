@@ -5155,7 +5155,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 14:49';
+const APP_VERSION='02/10 14:52';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5226,7 +5226,13 @@ const rptSlLuot={};
 // Cờ _auto = do app tự đặt: rời tab CRM thì trả lại mặc định của trang (tháng này). Người dùng tự chọn
 // ngày thì không còn cờ này -> giữ nguyên lựa chọn của họ, không bị app đè lên.
 function rptSlKyMacDinh(mode){
-  if(rptSlType()!=='Sỉ')return;
+  if(rptSlType()!=='Sỉ'){
+    // CRM LẺ mặc định "Tất cả 2026" (anh Hải 02/10/2026); rời CRM thì Master về mặc định tháng này
+    const cu=modRanges.saleretail;
+    if(mode==='crm'){if(!cu||cu._auto)modRanges.saleretail={from:RPT_TU_NAM,to:'',_auto:true};}
+    else if(cu&&cu._auto)delete modRanges.saleretail;
+    return;
+  }
   const cu=modRanges.salesi;
   if(mode==='crm'||mode==='master'){
     if(cu&&!cu._auto)return;                       // người dùng đã tự chọn -> tôn trọng
@@ -8068,7 +8074,8 @@ function rptSlSetCrmPage(p){window._rptSlCrmPage=p;rptSlRender();}
 function rptSlCrmHtml(){try{return rptSlCrmHtmlRaw();}catch(e){rptBaoLoi('Bảng CRM',e);
   return '<div class="tbl-card" style="padding:16px 18px;border-left:4px solid var(--red)"><b style="color:var(--red)">Bảng CRM lỗi</b><div style="font-size:12px;color:var(--text2);margin-top:6px">'+String(e&&e.message||e).replace(/</g,'&lt;')+'</div></div>';}}
 function rptSlCrmHtmlRaw(){
-  const allRaw=rptSlPeriod();
+  // CRM Lẻ CHỈ khách có thẻ TIỀM NĂNG trên Pancake (anh Hải 02/10/2026) -- đây là danh sách để chăm lại
+  const allRaw=rptSlPeriod().filter(r=>(r.orders||[]).some(o=>!dhHuy(o)&&/TIỀM NĂNG/i.test(o.customer_tags||'')));
   const all=rptSlSortNew(rptSlApplyF('crm',allRaw),rptSlNgayCham);
   const q=(window._rptSlCrmQ||'').trim().toLowerCase();
   let list=all;
