@@ -106,6 +106,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (16)** — **CRM sửa như Master** (anh: "khác master trường hiển thị thôi, chỉnh sửa như nhau"): ô Sales ở CRM thành dropdown đổi Sale cho tài khoản toàn quyền (Sale chỉ xem chữ, như Master); mỗi dòng thêm nút "✏ Sửa" mở thẳng hồ sơ ở chế độ sửa (cùng bộ ô với Master); Phân loại vẫn đổi ngay trên bảng. Mọi ô ghi chung `saleretail_manual` / `salesi_crm` nên Master · CRM · Nhập liệu liên thông.
 - **02/10 (15)** — **Lead mới vào Nhập liệu** (anh: "nhắc cập nhật trạng thái"): khách chưa chốt đang ở Phân loại "Lead mới" (tự đặt hoặc Sale chọn) tính vào mục "Chưa cập nhật trạng thái" (vàng, tính badge) — Lẻ + Sỉ; ô cùng tên ở dash Master cũng đếm theo. Hiện: Lẻ 0, Sỉ 15 (khách Minh Oanh) → badge Sỉ +15.
 - **02/10 (14)** — **Bộ lọc Sỉ / Lẻ chọn nhiều** (anh: "tích chọn nhiều thay vì chỉ chọn 1"): Sales · Trạng thái/Phân loại · Nguồn · Sản phẩm (Sỉ) · Brand ở Master + CRM đổi từ dropdown 1 lựa chọn sang khung tích nhiều ô (có "Bỏ chọn"); ngày giữ nguyên. Lưu dạng mảng, giá trị cũ dạng chuỗi vẫn đọc được. Thử: Lead cũ 851 + Mất kết nối 69 = tích cả 2 ra 920, khớp.
 - **02/10 (13)** — **Form Lượt chăm sóc thêm mục 2 "Sản phẩm quan tâm"** ngay sau Nội dung trao đổi (Phản hồi → 3, Phương án → 4), chung Lẻ + Sỉ. Ô gõ tự do, gợi ý Đồ thờ / Nến / Hỗn hợp + các SP đã ghi của khách. Lưu cột mới `salesi_crm.sp_quan_tam` (`supabase-schema-cs-sp-quan-tam.sql`); hiện dưới nội dung ở bảng lịch sử; hồ sơ Lẻ có ô "Sản phẩm quan tâm" = SP ở lượt gần nhất. Sỉ giữ ô SP quan tâm phân loại cũ (Đồ thờ/Nến theo mua hàng).
