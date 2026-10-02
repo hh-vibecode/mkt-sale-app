@@ -2308,6 +2308,7 @@ function kiotChiNhanhKhach(){
 }
 function kiotLoaiKhach(c){
   if(!c)return 'Lẻ';
+  if(/shopee/i.test(c.name||''))return 'Lẻ';   // khách gom đơn Shopee (KH005025 "KL Đơn Shopee (HT)") luôn là Lẻ (02/10/2026)
   const nhom=String(c.customer_group||'');
   if(KIOT_NHOM_SI.test(nhom))return 'Sỉ';
   if(KIOT_NHOM_LE.test(nhom))return 'Lẻ';
@@ -5155,7 +5156,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 14:57';
+const APP_VERSION='02/10 15:05';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;

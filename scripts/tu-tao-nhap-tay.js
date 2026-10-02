@@ -76,7 +76,11 @@ async function ghiLog(body, id) {
     don.forEach(o => { if (!o.customer_code) return;
       const b = cn[o.customer_code] = cn[o.customer_code] || { si: 0, le: 0 };
       if (CN_SI.test(o.branch_name || '')) b.si++; else b.le++; });
+    // KHÁCH GOM ĐƠN SHOPEE (anh Hải 02/10/2026): cửa hàng ghi đơn Shopee dưới 1 khách chung tên có chữ "shopee"
+    // (KH005025 "KL Đơn Shopee (HT)", KH007202 "KL Shopee CT"), kênh hay để "Bán trực tiếp" -> luôn là Lẻ · Online · Shopee.
+    const laShopee = c => /shopee/i.test((c && c.name) || '');
     const loai = c => { if (!c) return 'Lẻ';
+      if (laShopee(c)) return 'Lẻ';
       const g = c.customer_group || '';
       if (NHOM_SI.test(g)) return 'Sỉ';
       if (NHOM_LE.test(g)) return 'Lẻ';
@@ -100,6 +104,8 @@ async function ghiLog(body, id) {
       const c = byCode[o.customer_code];
       if (/^\s*khách lẻ\s*$/i.test((c && c.name) || o.customer_name || '')) return;   // mã khách chung "khách lẻ" -- không phải 1 người
       if (ngay < MOC_LE && loai(c) !== 'Sỉ') return;       // Lẻ: từ 1/1/2026; Sỉ: full lịch sử
+      if (laShopee(c) && !/shopee/i.test(o.sale_channel || ''))
+        o = { ...o, sale_channel: /hiền th|hien th/i.test(o.branch_name || '') ? 'Shopee Hiền Thuỷ' : /chánh tâm|chanh tam/i.test(o.branch_name || '') ? 'Shopee Chánh Tâm' : 'Shopee' };
       const online = ONLINE.test(o.sale_channel || '') || /shidai/i.test(o.sale_channel || '');
       // Lẻ: từ 2/10/2026 nhận CẢ khách mua trực tiếp ở cửa hàng (= nguồn Offline) -- anh Hải: "báo cáo lẻ add thêm nguồn off
       // bên cửa hàng"; khách đến cửa hàng đã có trên Kiot thì Sale không phải tạo tay. Sỉ vẫn như cũ (cả 2 nguồn).

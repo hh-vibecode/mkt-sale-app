@@ -102,6 +102,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (8)** — **Shopee cửa hàng**: HT ghi đơn Shopee dưới khách chung **KH005025 "KL Đơn Shopee (HT)"** (kênh hay để "Bán trực tiếp" / "Siêu thị Phật Giáo Hiền Thuỷ") nên bị xếp Sỉ · Offline và báo cáo Lẻ gạt hết đơn. Sửa: dòng M-0430 → Lẻ · Online · kênh "Shopee Hiền Thuỷ" · brand HT; `kiotLoaiKhach` coi khách tên có "shopee" là Lẻ; job tự tạo: khách tên có "shopee" luôn Lẻ · Online · kênh Shopee theo cửa hàng. KH005025 nay 93 đơn 30,6tr năm 2026; MKT T6–T9 phần Shopee 8,35tr (HT 6,68 + CT 1,68).
+
 - **02/10 (7)** — **CRM Lẻ chỉ hiện khách có thẻ TIỀM NĂNG, CHƯA CHỐT** (Pancake, đơn chưa huỷ) — 37 khách (10 Đang chăm sóc, 27 Mất lead; 3 khách đã chốt còn sót thẻ bị loại). Thêm cột **Ngày chưa liên hệ** (từ lần chạm gần nhất, ≥10 vàng, ≥30 đỏ). Bộ lọc ngày của CRM Lẻ mặc định **Tất cả 2026** (tự đặt khi mở CRM, rời CRM thì Master về tháng này; người dùng tự chọn kỳ thì giữ).
 
 - **02/10 (6)** — **Bỏ mã KH gán nhầm**: lead L-CT2-0031 Đoàn Nguyễn Minh Tài (TikTok CT 23/7, Sale Thảo Ngọc) bị gộp vào KH007517 = KB Chị Nga - Nghệ An (0976343276, tạo 13/8) vì đơn Pancake #31 ghi chú "KH007517" + thẻ CHỐT ĐƠN gắn nhầm. Anh bảo tách + bỏ Chốt đơn. Thêm 2 cột `saleretail_manual.bo_ma_kh` (mã ghi chú bỏ qua) + `bo_chot` (bỏ thẻ CHỐT ĐƠN) — SQL `supabase-schema-bo-ma.sql`; app bỏ qua mã / thẻ đó khi dựng Master nên đồng bộ Pancake sau KHÔNG gộp lại. Kiểm: Tài kh trống, chưa chốt; nhóm Nga còn #380, #31 (shop 408040224), M-0296. **Nhắc Sale Thảo Ngọc** xoá ghi chú KH007517 + thẻ CHỐT ĐƠN trên đơn Pancake #31 (shop 1943057093) cho sạch nguồn.
