@@ -5155,7 +5155,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 14:40';
+const APP_VERSION='02/10 14:49';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6064,7 +6064,10 @@ function rptSlBuildMasterRaw(){
     // chưa có mã thì tự bù bằng 9 SỐ CUỐI SĐT (logic script cũ) để Sale không phải quay lại gắn thủ công.
     // Mã KH ưu tiên lấy từ GHI CHÚ Pancake; nếu Sale nhập bù ở tab Nhập Liệu thì dùng mã đó.
     const leadId=rptSlLeadId(orders[0]),mn=rptSlManual[leadId]||{};
-    const noteKH=orders.map(o=>dhExtractKH(o.internal_note)).filter(Boolean).pop()||null;
+    // Mã KH gán nhầm (saleretail_manual.bo_ma_kh, 02/10/2026) -> bỏ qua, không nối / không gộp chung mã
+    const boMa=String(mn.bo_ma_kh||'').toUpperCase().split(',').map(x=>x.trim()).filter(Boolean);
+    const maGhiChu=o=>{const m=dhExtractKH(o.internal_note);return m&&boMa.includes(String(m).toUpperCase())?null:m;};
+    const noteKH=orders.map(maGhiChu).filter(Boolean).pop()||null;
     const manualKH=noteKH||(mn.kiot_code||'').trim()||null;
     const phoneKey=rptSlLast9(phone);
     // CHỈ nối bằng MÃ KH -- người xác nhận. KHÔNG tự nối bằng SĐT nữa: trùng SĐT không chứng minh được
@@ -6073,7 +6076,7 @@ function rptSlBuildMasterRaw(){
     let kiotCusts=[],linkBy='';
     // Khách có NHIỀU đơn Pancake mang Mã KH KHÁC nhau (vd Rain Smile: #71 ghi KH007369, #179 ghi KH007429)
     // -> nối TẤT CẢ các mã. Trước đây chỉ lấy mã của đơn cuối nên mất 900k của KH007369.
-    const allNoteKH=[...new Set(orders.map(o=>dhExtractKH(o.internal_note)).filter(Boolean))];
+    const allNoteKH=[...new Set(orders.map(maGhiChu).filter(Boolean))];
     if(allNoteKH.length>1){kiotCusts=allNoteKH.map(c=>byCode[c]).filter(Boolean);if(kiotCusts.length)linkBy='Mã KH';}
     else if(manualKH&&byCode[manualKH]){kiotCusts=[byCode[manualKH]];linkBy=noteKH?'Mã KH':'Sale nhập';}
     // SĐT để gợi ý lấy cả số Sale ghi trong GHI CHÚ Pancake (vd #11 HT ghi chú "0977266131").
@@ -6084,7 +6087,7 @@ function rptSlBuildMasterRaw(){
     const kords=kiotCusts.flatMap(c=>ordByCode[c.code]||[]).sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
     const revenue=kords.reduce((s,i)=>s+Number(i.total||0),0);
     const kh=kiotCusts.length?kiotCusts[0].code:manualKH;
-    const chot=orders.filter(dhIsOrder);
+    const chot=mn.bo_chot?[]:orders.filter(dhIsOrder);   // bo_chot: thẻ CHỐT ĐƠN gắn nhầm -> không tính chốt
     const touches=[mn.care_date,...orders.map(o=>o.order_date),...kords.map(i=>(i.purchase_date||'').slice(0,10))].filter(Boolean).sort();
     const lastTouch=touches[touches.length-1]||'';
     return{key,orders,kords,kh,revenue,linkBy,manualKH,noteKH,kiotCusts,leadId,suggest,
