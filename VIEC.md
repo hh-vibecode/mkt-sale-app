@@ -39,6 +39,7 @@
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
 
+- **Dữ liệu nguồn nhập sai → chủ động báo anh + TỰ SỬA CHUẨN TRONG APP** bằng luật nhận diện (áp cả về sau), không chỉ dặn nhân viên (anh chốt 2/10/2026). Không ghi ngược sang Kiot / Pancake trừ khi anh bảo. Mỗi luật ghi 1 dòng nhật ký. Mẫu: khách gom đơn Shopee → Lẻ · Online · Shopee.
 - **Chỉ xem từ 2026** (anh chốt 2/10/2026): bộ lọc "Tất cả" = Tất cả 2026, không mở về trước khi anh chưa bảo. Dữ liệu trước 2026 chỉ giữ SỐ TỔNG (lưu trữ, khoá), không giữ chi tiết.
 - **Lẻ: thẻ TIỀM NĂNG + chưa có trạng thái → "Đang chăm sóc"** tự động, tới khi Sale đổi (2/10/2026).
 - **Doanh thu cửa hàng**: khách có phiếu tạm / đơn đặt hàng thì theo đơn; khách xuất hoá đơn luôn thì tính thẳng hoá đơn (2/10/2026). Lẻ có cả nguồn Offline cửa hàng.
