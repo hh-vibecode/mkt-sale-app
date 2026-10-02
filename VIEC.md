@@ -106,6 +106,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/10 (20)** — **SĐT gộp vào ô tên khách** (dưới Mã KH / Lead ID), bỏ cột SĐT riêng — Master + CRM, Lẻ + Sỉ (hàm rptSlSdtDuoiTen). Kiểm 4 bảng: số cột tiêu đề = số ô mỗi dòng.
 - **02/10 (19)** — **CRM gọn lại**: bỏ cột "Ngày chưa liên hệ" (vẫn xếp khách lâu chưa liên hệ lên đầu + ô KPI giữ nguyên); "Trao đổi gần nhất" = SP quan tâm (đậm) · nội dung của lượt gần nhất, tối đa 2 dòng, rê chuột xem đủ, bấm mở popup đủ 4 mục. Popup trao đổi (chung Master) đánh số theo form mới 1–4.
 - **02/10 (18)** — Form Lượt chăm sóc: **Sản phẩm quan tâm lên mục 1** (Nội dung trao đổi → 2, Phản hồi 3, Phương án 4); bảng lịch sử hiện dòng SP quan tâm trên nội dung.
 - **02/10 (17)** — **Lẻ bỏ phân loại "Chăm sóc dài hạn"** (anh: "để tiềm năng chưa ra đơn là đủ"): mọi ô chọn / bộ lọc / form thêm khách / Nhập liệu bên Lẻ không còn mục này (Sỉ giữ); CRM Lẻ mặc định Lead mới · Tiềm năng (21 khách). Không khách Lẻ nào đang ở CS dài hạn nên không phải chuyển dữ liệu. "Tiềm năng, chưa ra đơn" = thẻ TIỀM NĂNG cũ (2 chiều: chọn → gắn thẻ Pancake; có thẻ mà chưa phân loại → tự về ô này).

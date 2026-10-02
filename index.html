@@ -4214,6 +4214,11 @@ function rptSlMaDuoiTen(r){
     +rptSlKiotLink(ma,'<span style="color:var(--accent)">'+e(ma)+'</span>')+rptSlNhanNguon(r)+'</div>';
   return r.leadId?'<div style="'+oNho+'">'+e(r.leadId)+rptSlNhanNguon(r)+'</div>':'';
 }
+// SĐT nằm dưới Mã KH trong ô tên khách (Master + CRM, Lẻ + Sỉ -- anh Hải 02/10/2026), bỏ cột SĐT riêng.
+function rptSlSdtDuoiTen(r){
+  if(!(r.phones||[]).length)return '';
+  return '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-top:1px;white-space:nowrap">'+rptSlSdtHtml(r)+'</div>';
+}
 function rptSlTenKhach(r){
   const ten=String(r.name||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const u=rptSlChatUrl(r);
@@ -5163,7 +5168,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 16:37';
+const APP_VERSION='02/10 16:40';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6677,8 +6682,7 @@ function rptSlMasterRowSi(r){
     +'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+rptSlNhanCu(r.created||sh.ngay_tao,r._chiCS?'chăm sóc':'mua lại')+'</td>'
     +'<td>'+rptSiNguonChip(r)+'</td>'
     +rptSlSaleO(r)
-    +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+'</td>'
-    +'<td style="white-space:nowrap">'+rptSlSdtHtml(r)+'</td>'
+    +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+rptSlSdtDuoiTen(r)+'</td>'   // SĐT gộp dưới mã (anh Hải 02/10/2026)
     +rptSiPhanLoaiSelect(r)
     // CS cuối = ngày + "x ngày" chưa liên hệ ở dòng dưới (gộp 2 cột, anh Hải 01/10/2026)
     +'<td style="white-space:nowrap">'+(csCuoi?dmy(csCuoi)+'<div style="font-size:10.5px;font-weight:700;color:'+mauNghi+'">'+num(nghi2)+' ngày</div>':'—')+'</td>'
@@ -6771,7 +6775,7 @@ const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Kênh</th><
 // + kết quả đơn hàng. Các trường ít dùng (GPKD, fanpage, ghi chú KH, link hồ sơ) nằm trong Chi tiết khách.
 // 01/10/2026 (anh Hải): bỏ "Giá trị kỳ gần nhất" + ẩn "Giá trị cộng dồn"; cột DOANH THU = đơn rơi vào bộ lọc ngày.
 const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Sales phụ trách</th>'
-  +'<th>Tên cửa hàng</th><th>SĐT</th><th>Phân loại KH</th>'
+  +'<th>Tên cửa hàng</th><th>Phân loại KH</th>'
   +'<th>CS cuối</th><th>Trao đổi gần nhất</th>'
   +'<th>Doanh thu</th><th></th>';
 Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>RPT_SL_MASTER_HEAD_SI.replace('<th>Phân loại KH</th>','<th>Phân loại KH'+dmBut('si_phan_loai')+'</th>')
@@ -8171,8 +8175,7 @@ function rptSlCrmHtmlRaw(){
       +'<td style="white-space:nowrap">'+(r.siCSCuoi?dmy(r.siCSCuoi):'<span style="color:var(--muted)">chưa chăm</span>')+'</td>'
       +'<td>'+rptSiNguonChip(r)+'</td>'
       +rptSlSaleO(r)   // tài khoản toàn quyền đổi Sale ngay trên CRM như Master (anh Hải 02/10/2026)
-      +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+'</td>'
-      +'<td style="white-space:nowrap">'+rptSlSdtHtml(r)+'</td>'
+      +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+rptSlSdtDuoiTen(r)+'</td>'   // SĐT gộp dưới mã (anh Hải 02/10/2026)
       +rptSiPhanLoaiSelect(r)
       +(()=>{   // TRAO ĐỔI GẦN NHẤT (anh Hải 02/10/2026) = 1. SP quan tâm + 2. Nội dung của lượt gần nhất, gọn tối đa 2 dòng;
         // rê chuột hiện đủ, bấm mở popup đủ 4 mục (giống bong bóng ở Master). Chưa có lượt nào thì lấy nội dung cũ.
@@ -8207,8 +8210,8 @@ function rptSlCrmHtmlRaw(){
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — khách cần chăm sóc</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>CS cuối</th><th>Nguồn</th><th>Sales phụ trách</th><th>${rptSlType()==='Sỉ'?'Tên cửa hàng':'Họ tên khách'}</th><th>SĐT</th><th>Phân loại KH${dmBut('si_phan_loai')}</th><th>Trao đổi gần nhất</th><th>Hẹn tiếp theo</th><th>Giá trị tiềm năng</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="10">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
+        <thead><tr><th>CS cuối</th><th>Nguồn</th><th>Sales phụ trách</th><th>${rptSlType()==='Sỉ'?'Tên cửa hàng':'Họ tên khách'}</th><th>Phân loại KH${dmBut('si_phan_loai')}</th><th>Trao đổi gần nhất</th><th>Hẹn tiếp theo</th><th>Giá trị tiềm năng</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="9">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetCrmPage(${page-1})">‹ Trước</button>
