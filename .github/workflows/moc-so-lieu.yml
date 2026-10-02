@@ -1,47 +1,38 @@
-name: Chốt mốc số liệu
+name: Kiểm số khi sửa code
 
-# Chụp lại mốc các chỉ số báo cáo 3 LẦN / NGÀY, cách nhau 8 tiếng (00:00 · 08:00 · 16:00 giờ VN).
-# Vì sao cần: mốc để lâu thì data mới về làm chỉ số trôi dần, tới lúc sửa logic thật thì không còn
-# biết con số nhảy là do mình sửa hay do data. Chụp đều đặn thì mỗi lần so chỉ còn chênh lệch của 8 tiếng.
-#
-# NGUYÊN TẮC AN TOÀN: KHÔNG bao giờ chụp đè khi đang có chỉ số nhảy bất thường.
-# Chạy so sánh trước; lệch quá 5% thì giữ nguyên mốc cũ và để job FAIL để còn nhận được mail cảnh báo
-# -- nếu cứ chụp đè thì một lỗi làm doanh thu sai sẽ được "hợp thức hoá" thành mốc mới, mất luôn tác dụng.
+# ĐỔI CÁCH KIỂM (2/10/2026, anh Hải: "chốt mốc số liệu hay lỗi lắm"):
+# Trước: 3 lần / ngày so số hiện tại với mốc 8 tiếng trước -> đơn mới, ads mới về cũng làm số nhảy (đầu tháng +100%),
+# báo động giả gần như mỗi ngày, lại sinh commit "Chot moc so lieu tu dong" hay gây xung đột git.
+# Nay: CHỈ chạy khi có người đẩy bản sửa index.html. Lấy code CŨ (trước lần đẩy) và code MỚI chạy trên CÙNG MỘT bộ dữ liệu
+# -> lệch nào cũng là do chính bản sửa code. Lệch > 5% thì FAIL (có mail) để kiểm lại.
+# Đổi số CÓ CHỦ ĐÍCH: ghi lý do vào VIEC.md và để chữ [doi-so] trong nội dung commit -> bỏ qua bước so.
 on:
-  schedule:
-    - cron: '0 17,1,9 * * *'   # UTC -> 00:00, 08:00, 16:00 giờ VN
-  workflow_dispatch: {}        # bấm chạy tay từ tab Actions
+  push:
+    branches: [main]
+    paths: ['index.html']
+  workflow_dispatch: {}        # bấm chạy tay: so bản hiện tại với bản ngay trước
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  moc:
+  kiem:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: So chỉ số hiện tại với mốc đang lưu
+      - name: So code cũ với code mới trên cùng dữ liệu
+        if: ${{ !contains(github.event.head_commit.message, '[doi-so]') }}
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/kiem-so-lieu.js
-
-      - name: Chụp mốc mới (chỉ chạy khi bước trên đã xanh)
-        env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/kiem-so-lieu.js --luu
-
-      - name: Ghi mốc mới vào repo
+          TRUOC: ${{ github.event.before }}
         run: |
-          if git diff --quiet -- scripts/moc-so-lieu.json; then
-            echo "Mốc không đổi -- không commit."
-            exit 0
-          fi
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scripts/moc-so-lieu.json
-          git commit -m "Chot moc so lieu tu dong ($(date -u +'%Y-%m-%d %H:%M') UTC)"
-          git push
+          CU="$TRUOC"
+          if [ -z "$CU" ] || [ "$CU" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$CU" 2>/dev/null; then CU=HEAD~1; fi
+          git show "$CU:index.html" > /tmp/index-cu.html
+          node scripts/kiem-so-lieu.js --so-code /tmp/index-cu.html

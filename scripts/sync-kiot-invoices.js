@@ -105,9 +105,19 @@ async function upsertRows(table, rows, conflict) {
 // KiotViet trả giờ VN không kèm múi giờ ("2026-09-15T15:11:24.97") -- gắn +07:00 để Postgres không hiểu nhầm là UTC.
 const vnTime = s => (s ? (/[zZ]|[+-]\d\d:\d\d$/.test(s) ? s : s + '+07:00') : null);
 
-function mapInvoice(i) {
+// Danh mục kênh bán (id -> tên). Hoá đơn chỉ trả saleChannelId; không có = 0 = Bán trực tiếp (2/10/2026).
+async function danhMucKenh(token) {
+  const m = { 0: 'Bán trực tiếp' };
+  const res = await fetch('https://public.kiotapi.com/salechannel?pageSize=100', { headers: { Retailer: KIOT_RETAILER, Authorization: 'Bearer ' + token } });
+  if (res.ok) ((await res.json()).data || []).forEach(c => { m[c.id] = c.name; });
+  return m;
+}
+function mapInvoice(i, dm = {}) {
+  const kenhId = i.saleChannelId ?? 0;
   return {
     id: i.id,
+    sale_channel_id: kenhId,
+    sale_channel: dm[kenhId] || null,
     code: i.code,
     purchase_date: vnTime(i.purchaseDate),
     branch_id: i.branchId || null,
@@ -170,7 +180,8 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
     const [invoices, customers] = await Promise.all([fetchInvoices(token, filter), fetchCustomers(token)]);
     const phoneByCode = {};
     customers.forEach(c => { if (c.code && c.contactNumber) phoneByCode[c.code] = c.contactNumber; });
-    const rows = invoices.map(mapInvoice).filter(r => r.purchase_date && r.purchase_date.slice(0, 10) >= MIN_PURCHASE_DATE);
+    const dm = await danhMucKenh(token);
+    const rows = invoices.map(i => mapInvoice(i, dm)).filter(r => r.purchase_date && r.purchase_date.slice(0, 10) >= MIN_PURCHASE_DATE);
     rows.forEach(r => { r.customer_phone = r.customer_code ? (phoneByCode[r.customer_code] || null) : null; });
     await upsertRows('kiot_invoices', rows, 'id');
     const custRows = customers.map(mapCustomer).filter(c => c.code);

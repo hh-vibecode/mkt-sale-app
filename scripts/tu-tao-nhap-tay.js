@@ -65,7 +65,7 @@ async function ghiLog(body, id) {
     const [don, kh, hd, dm, dh] = await Promise.all([
       doc('kiot_orders', 'code,customer_code,customer_name,purchase_date,total,total_payment,status,branch_name,sale_channel,sold_by_name'),
       doc('kiot_customers', 'code,name,phone,debt,customer_group'),
-      doc('kiot_invoices', 'customer_code,total,status'),
+      doc('kiot_invoices', 'code,customer_code,customer_name,purchase_date,total,total_payment,status,branch_name,sale_channel,sold_by_name,order_code'),
       doc('datahub_manual', 'kiot_code'),
       doc('datahub_orders', 'internal_note'),
     ]);
@@ -85,12 +85,19 @@ async function ghiLog(body, id) {
     const phieuBaoGia = o => o.status === 1 && Number(o.total_payment || 0) <= 0 && !coCoc(o.customer_code);
     const daCo = new Set([...dm.map(r => r.kiot_code), ...dh.map(o => maKH(o.internal_note))].filter(Boolean));
 
+    // HOÁ ĐƠN BÁN THẲNG (anh Hải 2/10/2026): khách đến cửa hàng thường được xuất HOÁ ĐƠN luôn, không qua phiếu tạm /
+    // đơn đặt hàng như khách online (vd KH007691 KL Chị Duyên, Facebook Hiền Thuỷ, 20,6tr). Luật: khách có đơn đặt hàng
+    // thì theo đơn đặt hàng; hoá đơn KHÔNG gắn đơn đặt hàng (order_code trống) mà đã hoàn thành thì tính thẳng hoá đơn.
+    // Hoá đơn có order_code là hoá đơn của 1 đơn đặt hàng -> bỏ, tránh tính 2 lần.
+    const banThang = hd.filter(i => i.status === 1 && !i.order_code && i.customer_code)
+      .map(i => ({ ...i, status: 3, hoaDon: true }));   // status 3 = đã hoàn thành (không phải phiếu tạm 1, không phải huỷ 4)
     const gom = {};
-    don.forEach(o => {
+    don.concat(banThang).forEach(o => {
       const ngay = String(o.purchase_date || '').slice(0, 10);
       if (o.status === 4 || phieuBaoGia(o)) return;
       if (!o.customer_code || daCo.has(o.customer_code)) return;
       const c = byCode[o.customer_code];
+      if (/^\s*khách lẻ\s*$/i.test((c && c.name) || o.customer_name || '')) return;   // mã khách chung "khách lẻ" -- không phải 1 người
       if (ngay < MOC && loai(c) !== 'Sỉ') return;          // Lẻ: chỉ từ 1/6/2026; Sỉ: full lịch sử
       const online = ONLINE.test(o.sale_channel || '') || /shidai/i.test(o.sale_channel || '');
       // Lẻ: từ 2/10/2026 nhận CẢ khách mua trực tiếp ở cửa hàng (= nguồn Offline) -- anh Hải: "báo cáo lẻ add thêm nguồn off

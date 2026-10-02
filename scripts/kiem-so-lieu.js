@@ -39,7 +39,7 @@ const tai = async (bang, truyVan) => {
 };
 
 // DOM giả đủ để index.html chạy được phần tính toán (không vẽ gì).
-function moiTruong() {
+function moiTruong(fileHtml) {
   const el = () => ({
     style: {}, classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
     innerHTML: '', value: '', dataset: {}, appendChild() {}, setAttribute() {}, getAttribute: () => null,
@@ -61,14 +61,13 @@ function moiTruong() {
   };
   ctx.window = ctx; ctx.globalThis = ctx;
   vm.createContext(ctx);
-  const src = fs.readFileSync(path.join(GOC, 'index.html'), 'utf8');
+  const src = fs.readFileSync(fileHtml || path.join(GOC, 'index.html'), 'utf8');
   const code = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/i.exec(src)[1];
   new vm.Script(code).runInContext(ctx);
   return ctx;
 }
 
-async function dongSo() {
-  const ctx = moiTruong();
+async function taiDuLieu() {
   const [dh, hd, dat, kh, dm, sm, crm, ads, giu] = await Promise.all([
     tai('datahub_orders', 'select=*'),
     tai('kiot_invoices', 'select=*'),
@@ -80,7 +79,13 @@ async function dongSo() {
     tai('mkt_spend', 'select=*'),
     tai('kiot_don_giu_tinh', 'select=code'),
   ]);
-  ctx.__d = { dh, hd, dat, kh, dm, sm, crm, ads, giu };
+  return { dh, hd, dat, kh, dm, sm, crm, ads, giu };
+}
+
+// Chạy code báo cáo của 1 file index.html (bản hiện tại hoặc bản cũ) trên bộ dữ liệu đã tải -> các chỉ số.
+async function dongSo(fileHtml, duLieu) {
+  const ctx = moiTruong(fileHtml);
+  ctx.__d = duLieu || await taiDuLieu();
   vm.runInContext(`
     dhOrders=__d.dh;kiotInvoices=__d.hd;kiotOrders=__d.dat;kiotCustomers=__d.kh;dhManual=__d.dm;
     siCrmRows=__d.crm;
@@ -138,6 +143,31 @@ async function dongSo() {
 const vnd = n => Number(n || 0).toLocaleString('vi');
 
 (async () => {
+  // SO CODE CŨ VỚI CODE MỚI TRÊN CÙNG 1 BỘ DỮ LIỆU (2/10/2026) -- cách CI dùng khi có người sửa index.html.
+  // So mốc theo giờ thì dữ liệu mới về (đơn mới, ads mới) cũng làm số nhảy -> báo động giả liên tục. So 2 bản code trên
+  // cùng dữ liệu thì chỉ còn đúng phần do code thay đổi gây ra.   node scripts/kiem-so-lieu.js --so-code duong/dan/index-cu.html
+  const iCu = process.argv.indexOf('--so-code');
+  if (iCu > 0) {
+    const fileCu = process.argv[iCu + 1];
+    const duLieu = await taiDuLieu();
+    const cu = await dongSo(fileCu, duLieu), moi = await dongSo(null, duLieu);
+    console.log('So code CŨ (' + fileCu + ') với code MỚI trên cùng dữ liệu:\n');
+    const lech = [];
+    Object.keys(moi).forEach(k => {
+      const a = Number(cu[k] || 0), b = Number(moi[k] || 0), p = a ? (b - a) / a * 100 : (b ? 100 : 0);
+      const nang = (a > 0 && b === 0) || Math.abs(p) > NGUONG_PHAN_TRAM;
+      console.log(nang ? '  !!' : (a === b ? '  ==' : '  ok'), k.padEnd(22), vnd(a).padStart(16), '->', vnd(b).padStart(16), a !== b ? (p >= 0 ? '+' : '') + p.toFixed(1) + '%' : '');
+      if (nang) lech.push(`${k}: ${vnd(a)} -> ${vnd(b)} (${p.toFixed(1)}%)`);
+    });
+    if (lech.length) {
+      console.log('\nBẢN SỬA CODE LÀM ' + lech.length + ' CHỈ SỐ NHẢY > ' + NGUONG_PHAN_TRAM + '%:');
+      lech.forEach(x => console.log('   -', x));
+      console.log('\nNếu đổi số là CÓ CHỦ ĐÍCH: ghi lý do vào VIEC.md, lần sau commit kèm chữ [doi-so] để CI bỏ qua.');
+      process.exit(1);
+    }
+    console.log('\nCode mới không làm chỉ số nào lệch quá ' + NGUONG_PHAN_TRAM + '%. An toàn.');
+    return;
+  }
   const so = await dongSo();
   const luu = process.argv.includes('--luu');
   if (luu || !fs.existsSync(FILE_MOC)) {
