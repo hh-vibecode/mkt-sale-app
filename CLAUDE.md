@@ -43,7 +43,7 @@ Phiên chạy trên cloud và phiên trên máy KHÔNG đọc được hội tho
 - **MKT**: Sỉ Online chỉ tính tháng đầu, trừ khi khách còn nhắn Pancake; đơn **mua lại** không tính MKT nhưng VẪN là doanh thu Sale.
 - **Trùng SĐT = 1 người, tự gộp**; tên không dùng để nghi trùng; gộp theo tên chỉ khi nhóm có tối đa 1 khách có SĐT.
 - **Gộp tên Sale**: chỉ khi tên ngắn nằm trọn trong tên dài (Kim Oanh ~ Nguyễn Kim Oanh).
-- **Phạm vi xem**: lọc theo Sale ĐÃ CHỐT (gán tay > người tạo đơn Kiot > Pancake), lọc SAU khi xác định Sale; admin / supreme xem hết.
+- **Phạm vi xem**: lọc theo Sale ĐÃ CHỐT (gán tay > người bán trên phiếu đặt / hoá đơn Kiot đã nối > không có mới lấy Pancake — anh chốt 3/10), lọc SAU khi xác định Sale; admin / supreme xem hết.
   Sửa phân quyền phải giả lập view từng tài khoản Sale, sót 0 mới xong.
 - **Lead cũ** (khách trước T9) không tính vào Nhập Liệu. Khách chuyển đội: từ T9 để trống Sale; trước T9 Sỉ = Nguyễn Hữu Toàn, Lẻ = Nguyễn Thảo Ngọc.
 - Tab Nhập Liệu chỉ so Pancake (lỗi Sale); lỗi liên quan hoá đơn Kiot để dành cho Đối soát. Mục đỏ / vàng = việc cần làm, tính vào badge.

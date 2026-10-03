@@ -4097,7 +4097,7 @@ async function crmNoteClear(key,el){
 }
 async function siCrmLoad(force){
   if(siCrmLoaded&&!force)return;
-  siCrmRows=await sbFetchAll('salesi_crm','select=id,lead_id,kiot_code,customer_name,phone,ngay_cham,sp_quan_tam,nguon,kenh,sales,hinh_thuc,noi_dung,phan_loai,gia_tri_du_kien,viec_tiep,can_ho_tro,tinh_trang,ngay_hen,ngay_chot,gia_tri_chot,phan_hoi,trang_thai,ma_don&order=ngay_cham.desc,id.desc');
+  siCrmRows=await sbFetchAll('salesi_crm','select=id,lead_id,kiot_code,customer_name,phone,ngay_cham,sp_quan_tam,nguon,kenh,sales,hinh_thuc,noi_dung,phan_loai,gia_tri_du_kien,viec_tiep,can_ho_tro,tinh_trang,ngay_hen,ngay_chot,gia_tri_chot,phan_hoi,trang_thai,ma_don,loai&order=ngay_cham.desc,id.desc');
   siCrmLoaded=true;
 }
 function siEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -4177,6 +4177,16 @@ function rptSlChuyenDoi(r){
   if(!ns||!ns.doi||ns.doi===loai)return;
   r.staffDoiKhac=r.staff;
   r.staff=String(r.created||'').slice(0,10)>='2026-09-01'?'':(RPT_SL_MAC_DINH_CHUYEN[loai]||'');
+}
+// NHÂN VIÊN BÁN theo Kiot (anh Hải 03/10/2026): khách đã nối phiếu đặt hàng / hoá đơn bán thẳng Kiot -> Sale = người bán
+// (soldByName) trên phiếu GẦN NHẤT, quy về tên Phân quyền. Không có phiếu nào thì trả '' -> nơi gọi lấy người phụ trách Pancake.
+// Bên Lẻ bỏ phiếu của chi nhánh Tổng kho sỉ (người bán đội Sỉ) và tài khoản chung (Sales Admin...); Sỉ giữ mọi tên như cũ.
+function rptSlSaleKiotCua(r){
+  const le=rptSlType()!=='Sỉ';
+  const don=[].concat(r.kords||[],r.repeatOrds||[],r.staleOrds||[])
+    .filter(o=>o&&(le?rptSlSaleIsHuman(o.sold_by_name)&&!KIOT_CN_SI.test(o.branch_name||''):o.sold_by_name))
+    .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
+  return don.length?rptSlSaleName(don[don.length-1].sold_by_name):'';
 }
 function rptSlSaleGanTayDong(r){
   const ids=rptSlIdsCua(r);
@@ -5260,7 +5270,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='02/10 17:44';
+const APP_VERSION='03/10 14:35';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6436,23 +6446,23 @@ function rptSlBuildMasterRaw(){
       if(!r.phone)r.phone=String(mn.si_sdt).trim();}
     if(String(mn.si_dia_chi||'').trim())r.diaChi=String(mn.si_dia_chi).trim();});
   if(rptSlType()!=='Sỉ'){
-    // LẺ: Sale gán ở tab Gán data (hoặc thu hồi về trống) ưu tiên hơn người phụ trách bên Pancake
-    rows.forEach(r=>{const gan=rptSlSaleGanTayDong(r);if(gan!==null)r.staff=gan;rptSlChuyenDoi(r);});
+    // LẺ: Sale gán ở tab Gán data (hoặc thu hồi về trống) > NHÂN VIÊN BÁN trên phiếu đặt / hoá đơn Kiot đã nối
+    // > người phụ trách bên Pancake (chỉ khi chưa có phiếu Kiot nào -- anh Hải 03/10/2026)
+    rows.forEach(r=>{const ten=rptSlSaleKiotCua(r);r.staffKiot=ten;
+      const gan=rptSlSaleGanTayDong(r);if(gan!==null)r.staff=gan;else if(ten)r.staff=ten;rptSlChuyenDoi(r);});
   }
   if(rptSlType()==='Sỉ'){
     // SALE PHỤ TRÁCH BÊN SỈ (anh Hải chốt 23/9/2026): KHÔNG lấy người phụ trách bên Pancake nữa.
     //   1) Lấy người TẠO ĐƠN trên Kiot gắn với khách (đơn gần nhất).
     //   2) Khách chưa có Mã KH / chưa có đơn Kiot -> tạm để 'botsale sỉ' cho khỏi trống.
     // Lý do: khách sỉ chốt qua điện thoại/Zalo, người trực Pancake thường không phải người bán thật.
+    // 03/10/2026 anh Hải: chưa có phiếu Kiot nào thì lấy người phụ trách bên Pancake (trước đây để TRỐNG).
     rows.forEach(r=>{
-      const don=[].concat(r.kords||[],r.repeatOrds||[],r.staleOrds||[])
-        .filter(o=>o&&o.sold_by_name)
-        .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
-      const ten=don.length?rptSlSaleName(don[don.length-1].sold_by_name):'';   // quy về tên Phân quyền
+      const ten=rptSlSaleKiotCua(r);
       r.staffKiot=ten;
-      // Ưu tiên người được GÁN TAY ở tab 'Gán data'; chưa gán thì lấy người tạo đơn Kiot; không có nữa thì bot.
+      // Ưu tiên người được GÁN TAY ở tab 'Gán data'; chưa gán thì lấy người bán trên Kiot; không có nữa thì Pancake.
       const gan=rptSlSaleGanTayDong(r);
-      r.staff=gan!==null?(gan&&rptSlSaleName(gan)):(ten||'');   // chưa có ai phụ trách thì để TRỐNG (anh Hải 24/9/2026)
+      r.staff=gan!==null?(gan&&rptSlSaleName(gan)):(ten||r.staff||'');
       rptSlChuyenDoi(r);
     });
   }
