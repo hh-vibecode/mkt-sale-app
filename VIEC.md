@@ -38,6 +38,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **Không hiện tên anh Hải trên app** (5/10/2026): người tạo / người giao là tài khoản admin-supreme thì hiện "Admin" (rptTenHien).
 - **Giao diện theo HubSpot** (5/10/2026): token màu ở :root (Canvas), thanh trên/menu #213343, nút chính cam --cta, FONT GIỮ MONTSERRAT (anh dặn). Nút thao tác phải nổi: nút chính .refresh-btn nền đặc, nút phụ .btn-ghost viền đậm — nút mới dùng 2 class này. Thêm màn mới thì dùng biến màu, đừng ghi cứng mã màu. Menu tự thu còn icon sau 1 giây không chỉ chuột.
 - **Khách đã chốt chưa có Phân loại KH = "Đã ra đơn"** (tự hiện, 5/10/2026, Lẻ + Sỉ).
 - **CRM = khách cần chăm** (2/10/2026): (a) chưa chốt + Phân loại Lead mới / Tiềm năng / CS dài hạn (Sỉ), lọc ngày theo ngày tạo / đơn / LƯỢT CHĂM SÓC trong kỳ; (b) [BỎ 5/10 cùng nút Ghi chú họp] khách đã chốt có nhu cầu lại: chưa có cách đánh dấu. Lượt chăm sóc chỉ 2 trạng thái Chăm sóc định kỳ / Chốt đơn (KHÔNG có "Đã xong" — anh bỏ 2/10). Bong bóng xanh dương = có lượt, trắng = chưa; nút Ghi chú họp đỏ = có việc chưa clear.
@@ -110,6 +111,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (26)** — Không hiện tên anh: người tạo là tài khoản admin / supreme hiện "Admin" (hàm rptTenHien, có danh sách dự phòng vì acc supreme bị giấu với người khác) ở chú thích chip Nguồn + bảng Data Hub + cột Giao lúc; tên Sale vẫn hiện. Nút "Đã xong" đổi "Xác nhận", tách khỏi nút Sửa (cách 8px).
 - **05/10 (25)** — Cột Giao lúc: hiện "bởi Admin" thay tên người giao (chỉ admin trở lên giao được việc); dữ liệu created_by giữ nguyên.
 - **05/10 (24)** — Gộp bảng vàng vào bảng đỏ Việc được giao (anh: không cần bảng vàng): việc Sale đã xong (ghi lượt mới) MỜ đi, xuống cuối, hiện hạn / xong / đúng hạn-trễ + KQ; nút Sửa (mọi người, mở lượt vừa ghi) + ✓ Đã xong (CHỈ admin trở lên, clear = kiem_luc/kiem_boi). Sale thấy việc xong của mình nhưng không clear được; badge Sale chỉ đếm việc đang làm, admin đếm thêm việc chờ clear. Bỏ hàm bảng vàng.
 - **05/10 (23)** — **Quản lý kiểm việc đã xong**: Daily Task (chỉ admin) thêm bảng VÀNG "Việc vừa xong — chờ quản lý kiểm" ngay dưới bảng đỏ: Người phụ trách · Hạn → Xong (đúng hạn / trễ N ngày) · Việc đã giao · Giao lúc · Khách · Kết quả Sale ghi (nội dung + phản hồi) · nút ✓ Đạt / Giao lại (ghi kiem_luc / kiem_boi vào chính lượt giao, supabase-schema-cs-kiem-viec.sql; Giao lại mở form giao tiếp). Tính vào badge của admin. Thêm cột giao_luc (app TỰ ghi lúc chọn / đổi người, không điền tay; supabase-schema-cs-giao-luc.sql) vì #6011 Loan Nguyễn ghi 24/09 giao 05/10 hiện sai ngày; cột Giao lúc riêng ở cả 2 bảng. Người phụ trách + Lịch hẹn/Deadline sát nhau (người trước) ở form + 2 bảng. Màu deadline: quá hạn / hôm nay / còn 1 ngày đỏ · 2–3 ngày xám · >3 ngày xanh lá. App tải thêm created_by / created_at (trước thiếu -> "giao:" hiện tên Sale thay người giao).

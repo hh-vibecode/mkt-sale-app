@@ -513,6 +513,14 @@ const PERM_ALL='*';
 //   dashToanQuyen()  = Supreme HOẶC ADMIN -> mở HẾT DỮ LIỆU và HẾT TRANG, không cần tick quyền gì.
 //   dashIsSupreme()  = CHỈ Supreme -> dành cho những thứ riêng của người làm app (lịch chạy job,
 //                      xem như tài khoản khác...). Admin KHÔNG được thấy nhóm này.
+// TÊN HIỂN THỊ CỦA NGƯỜI TẠO: tài khoản admin / supreme hiện "Admin", không hiện tên thật (anh Hải 05/10/2026). Danh sách
+// tài khoản giấu acc supreme với người khác nên có thêm danh sách dự phòng; Sale vẫn hiện đúng tên.
+const RPT_TEN_ADMIN_DU_PHONG=['Hoàng Hải'];
+function rptTenHien(t){
+  const x=String(t||'').trim();if(!x)return '';
+  const ad=(window._rptSlAccs||[]).filter(a=>a.position_title==='admin'||a.position_title==='supreme').map(a=>String(a.name).trim());
+  return ad.includes(x)||RPT_TEN_ADMIN_DU_PHONG.includes(x)?'Admin':x;
+}
 function dashToanQuyen(a){
   if(a===undefined){try{a=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){a=[];}}
   if(Array.isArray(a)&&a.indexOf(PERM_ALL)>=0)return true;
@@ -2954,7 +2962,7 @@ function dhManualHtml(){
         onblur="if(this.value.trim().toUpperCase()!=='${r.kiot_code||''}')dhManualSet(${r.id},'kiot_code',this.value.toUpperCase(),this)"></td>
       <td style="font-size:11px">${kc?kc.name:'<span style="color:var(--muted)">—</span>'}</td>
       <td class="num" style="font-weight:800;color:${v?'var(--green)':'inherit'}">${v?vnd(v):'—'}</td>
-      <td style="font-size:11px;color:var(--muted)">${r.created_by||"—"}</td>
+      <td style="font-size:11px;color:var(--muted)">${rptTenHien(r.created_by)||"—"}</td>
       <td><button onclick="dhManualEdit(${r.id})" class="btn-ghost" style="padding:3px 10px;font-size:11px;font-weight:700">Sửa</button></td>
     </tr>`;}).join('');
   const tong=mine.reduce((s,r)=>s+(inv[r.kiot_code]||0),0);
@@ -5340,7 +5348,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 12:43';
+const APP_VERSION='05/10 12:45';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6831,7 +6839,7 @@ function rptSiPhanLoaiHtml(v,esc){
 function rptSiNguoiTaoTip(r){
   if(!r.isManual)return 'Tự vào app từ đơn Pancake';
   if(r.tuKiotTao)return 'Tự tạo từ đơn Kiot (job kéo đơn Kiot)'+(r.taoLuc?' · '+new Date(r.taoLuc).toLocaleString('vi-VN'):'');
-  const ai=String(r.nguoiTao||'').trim()||'không rõ';
+  const ai=rptTenHien(r.nguoiTao)||'không rõ';
   const d=r.taoLuc?new Date(r.taoLuc):null;
   const luc=d&&!isNaN(d)?' · '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()
     +' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'):'';
@@ -8287,16 +8295,16 @@ function rptSlViecGiaoHtml(ds,xong){
     const tre=hanD&&xongD?Math.round((new Date(xongD)-new Date(hanD))/86400000):null;
     const nhan=tre==null?'':tre<=0?'<span style="color:var(--green);font-weight:800">đúng hạn</span>':'<span style="color:var(--red);font-weight:800">trễ '+tre+' ngày</span>';
     const sua='rptSlShowCustomer('+q+k+q+');rptSlCsMoForm('+Number(kq.id)+')';
-    return '<tr style="opacity:.5;cursor:pointer" onclick="rptSlShowCustomer('+q+k+q+');rptSlCusTab('+q+'cs'+q+')" title="Đã xong — chờ admin clear">'
+    return '<tr style="opacity:.5;cursor:pointer" onclick="rptSlShowCustomer('+q+k+q+');rptSlCusTab('+q+'cs'+q+')" title="Đã xong — chờ admin xác nhận">'
       +'<td style="white-space:nowrap;font-weight:700">'+e(giao.nguoi_xu_ly)+'</td>'
       +'<td style="white-space:nowrap;font-size:11.5px">hạn '+(dmy(hanD)||'—')+'<br>xong '+(dmy(xongD)||'—')+'<div style="font-size:10.5px">'+nhan+'</div></td>'
       +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+rptSlSdtDuoiTen(r)+'</td>'
       +'<td style="white-space:normal;min-width:220px;max-width:380px;font-size:12px;line-height:1.45"><s>'+e(giao.viec_tiep)+'</s>'
         +'<div style="margin-top:3px;color:var(--text2)">KQ: '+e(kq.noi_dung||'—')+(kq.phan_hoi?' · '+e(kq.phan_hoi):'')+'</div></td>'
       +'<td style="white-space:nowrap;font-size:11px;color:var(--text2)">'+giaoLuc(giao)+'<div style="color:var(--muted)">bởi Admin</div>'+'</td>'
-      +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
-        +(dashToanQuyen()?'<button onclick="rptSlKiemViec('+giao.id+','+q+'Đã xong'+q+',null,this)" class="refresh-btn" style="margin:0 5px 0 0;padding:5px 12px;font-size:11px">✓ Đã xong</button>':'')
-        +'<button onclick="'+sua+'" style="'+nutSua+'">Sửa</button></td>'
+      +'<td onclick="rptSlStop(event)"><div style="display:flex;gap:8px;align-items:center">'
+        +(dashToanQuyen()?'<button onclick="rptSlKiemViec('+giao.id+','+q+'Xác nhận'+q+',null,this)" class="refresh-btn" style="margin:0;padding:5px 12px;font-size:11px;white-space:nowrap">✓ Xác nhận</button>':'')
+        +'<button onclick="'+sua+'" style="'+nutSua+'">Sửa</button></div></td>'
       +'</tr>';}).join('');
   return '<div class="tbl-scroll"><table><thead><tr><th>Người phụ trách</th><th>Lịch hẹn / Deadline</th><th>Khách hàng</th><th>Việc cần làm</th><th>Giao lúc</th><th></th></tr></thead><tbody>'+dong+dongXong+'</tbody></table></div>';
 }
@@ -8418,7 +8426,7 @@ function rptSlInputHtml(){
       ${bam('daNoi','Bấm để xem đơn chốt đã nối / chưa nối',mkKpi(ic('check'),'Đơn chốt đã nối',num(b.all.filter(r=>r.isChot&&r.kh).length)+'/'+num(b.all.filter(r=>r.isChot).length),'nối bằng Mã KH','g-green'))}
       ${bam('chuaTT','Bấm để xem khách chưa cập nhật trạng thái',mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow'))}
     </div>
-    ${rptSlInputSec('sGiao','','Việc được giao','ghi 1 lượt chăm sóc mới là xong việc · việc xong mờ đi ở cuối, admin bấm Đã xong để clear',b.viecGiao.length+(dashToanQuyen()?b.viecXong.length:0),'var(--red)',rptSlViecGiaoHtml(b.viecGiao,b.viecXong),true)}
+    ${rptSlInputSec('sGiao','','Việc được giao','ghi 1 lượt chăm sóc mới là xong việc · việc xong mờ đi ở cuối, admin bấm Xác nhận để clear',b.viecGiao.length+(dashToanQuyen()?b.viecXong.length:0),'var(--red)',rptSlViecGiaoHtml(b.viecGiao,b.viecXong),true)}
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
     ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}
     ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
