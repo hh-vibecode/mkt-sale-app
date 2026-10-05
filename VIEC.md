@@ -111,6 +111,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (27)** — Popup bong bóng chat (CRM): thêm nút Sửa cạnh "Xem toàn bộ lịch sử", mở thẳng form sửa đúng lượt đang xem.
 - **05/10 (26)** — Không hiện tên anh: người tạo là tài khoản admin / supreme hiện "Admin" (hàm rptTenHien, có danh sách dự phòng vì acc supreme bị giấu với người khác) ở chú thích chip Nguồn + bảng Data Hub + cột Giao lúc; tên Sale vẫn hiện. Nút "Đã xong" đổi "Xác nhận", tách khỏi nút Sửa (cách 8px).
 - **05/10 (25)** — Cột Giao lúc: hiện "bởi Admin" thay tên người giao (chỉ admin trở lên giao được việc); dữ liệu created_by giữ nguyên.
 - **05/10 (24)** — Gộp bảng vàng vào bảng đỏ Việc được giao (anh: không cần bảng vàng): việc Sale đã xong (ghi lượt mới) MỜ đi, xuống cuối, hiện hạn / xong / đúng hạn-trễ + KQ; nút Sửa (mọi người, mở lượt vừa ghi) + ✓ Đã xong (CHỈ admin trở lên, clear = kiem_luc/kiem_boi). Sale thấy việc xong của mình nhưng không clear được; badge Sale chỉ đếm việc đang làm, admin đếm thêm việc chờ clear. Bỏ hàm bảng vàng.

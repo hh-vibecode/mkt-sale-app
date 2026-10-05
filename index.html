@@ -5348,7 +5348,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 12:45';
+const APP_VERSION='05/10 12:47';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6931,7 +6931,9 @@ function rptSiXemTraoDoi(key){
    +muc('2. Nội dung trao đổi',x.noi_dung)
    +muc('3. Phản hồi / vướng mắc / nhu cầu khách hàng',x.phan_hoi)
    +muc('4. Phương án tiếp theo'+(x.ngay_hen?' · hạn '+dmy(String(x.ngay_hen).slice(0,10)):'')+(x.nguoi_xu_ly?' · giao: '+e(x.nguoi_xu_ly):''),x.viec_tiep)
-   +'<div style="display:flex;justify-content:flex-end;margin-top:16px"><button onclick="qcCloseModal();rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+');rptSlCusTab('+q+'cs'+q+')" class="refresh-btn" style="padding:7px 16px;font-size:12px">Xem toàn bộ lịch sử chăm sóc · '+num(n)+' lượt</button></div>'
+   +'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">'
+     +'<button onclick="qcCloseModal();rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+');rptSlCsMoForm('+Number(x.id)+')" class="btn-ghost" style="margin:0;padding:7px 18px;font-size:12px">Sửa</button>'
+     +'<button onclick="qcCloseModal();rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+');rptSlCusTab('+q+'cs'+q+')" class="refresh-btn" style="margin:0;padding:7px 16px;font-size:12px">Xem toàn bộ lịch sử chăm sóc · '+num(n)+' lượt</button></div>'
    +'</div></div></div>';
 }
 // ── CHUÔNG HẸN CHĂM SÓC (Sỉ, anh Hải 25/9/2026) ──
