@@ -109,6 +109,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (5)** — Theo lệnh anh: chép nguyên file khoá supabase-keys.local.txt sang app kế toán, đặt tên đúng quy ước bên đó: C:/Users/HP/Desktop/ke-toan/kt-keys.local.txt (gitignore *.local.* đã chặn, git check-ignore xác nhận). File chứa CẢ khoá Pancake / Kiot / Meta / GitHub / OpenAI chứ không chỉ Supabase — đổi khoá nào thì nhớ sửa cả 2 file.
 - **05/10 (4)** — Master: nút + THÊM KHÁCH MỚI cũng sát phải (thứ tự: bộ lọc ... | + Thêm khách · chuông · ô tìm · Tất cả).
 - **05/10 (3)** — **Khách đã chốt chưa có Phân loại → tự hiện "Đã ra đơn"** (anh: có doanh số sao không tự gắn trạng thái) — Lẻ 138 + Sỉ 247 khách; tính lúc dựng, không ghi bảng, không gắn thẻ Pancake, Sale chọn khác là thắng. Còn 27 khách Sỉ CHƯA chốt mà Sale chọn "Đã ra đơn" từ trước (chưa nối được đơn Kiot) — chưa xử lý. Thanh lọc Master + CRM: chuông + ô tìm kiếm sát phải, bộ lọc bên trái.
 - **05/10 (2)** — Thanh lọc CRM căn TRÁI như Master (anh bảo); Master cũng đặt căn trái cho chắc (trước cả 2 căn phải, Master chỉ trông như trái vì hàng đủ dài). Ghi nhận: lỗi "Lẻ lưu lượt chăm sóc không hiện" (phiên 03/10 sửa) là do Monsieur Claude 02/10 viết lại `siCrmLoad` mà quên cột `loai`.
