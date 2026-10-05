@@ -38,6 +38,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **Daily Task Lẻ "Chưa cập nhật lịch sử chăm sóc"** (5/10/2026): chỉ khách tạo từ 1/9/2026, chưa chốt, Lead mới / Tiềm năng, chưa ra đơn.
 - **Không hiện tên anh Hải trên app** (5/10/2026): người tạo / người giao là tài khoản admin-supreme thì hiện "Admin" (rptTenHien).
 - **Giao diện theo HubSpot** (5/10/2026): token màu ở :root (Canvas), thanh trên/menu #213343, nút chính cam --cta, FONT GIỮ MONTSERRAT (anh dặn). Nút thao tác phải nổi: nút chính .refresh-btn nền đặc, nút phụ .btn-ghost viền đậm — nút mới dùng 2 class này. Thêm màn mới thì dùng biến màu, đừng ghi cứng mã màu. Menu tự thu còn icon sau 1 giây không chỉ chuột.
 - **Khách đã chốt chưa có Phân loại KH = "Đã ra đơn"** (tự hiện, 5/10/2026, Lẻ + Sỉ).
@@ -111,6 +112,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (29)** — Daily Task Lẻ, mục Chưa cập nhật lịch sử chăm sóc: chỉ khách tạo từ 1/9/2026, chưa chốt, Phân loại Lead mới / Tiềm năng, chưa ra đơn (anh bảo) -> 1.623 còn 15. Sỉ giữ nguyên (266, trong đó 247 khách đã chốt Đã ra đơn).
 - **05/10 (28)** — Ẩn Giá trị tiềm năng ở các chỗ hiển thị (anh bảo): Tổng quan (ô Giá trị tiềm năng; Doanh thu giãn hết hàng), CRM (cột + ô Giá trị đang theo; dash còn 3+2 ô), Daily Task (bỏ mục Khách tiềm năng chưa có giá trị dự kiến). Chỉ còn trong hồ sơ chi tiết + chế độ Sửa (ai muốn thì điền). Dữ liệu potential_value giữ nguyên.
 - **05/10 (27)** — Popup bong bóng chat (CRM): thêm nút Sửa cạnh "Xem toàn bộ lịch sử", mở thẳng form sửa đúng lượt đang xem.
 - **05/10 (26)** — Không hiện tên anh: người tạo là tài khoản admin / supreme hiện "Admin" (hàm rptTenHien, có danh sách dự phòng vì acc supreme bị giấu với người khác) ở chú thích chip Nguồn + bảng Data Hub + cột Giao lúc; tên Sale vẫn hiện. Nút "Đã xong" đổi "Xác nhận", tách khỏi nút Sửa (cách 8px).
