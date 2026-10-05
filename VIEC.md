@@ -110,6 +110,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (8)** — Icon menu Báo cáo MKT đổi sang loa phóng thanh (megaphone), trước trông như loa âm lượng (anh chê).
 - **05/10 (7)** — Menu tự thu gọn sau 5 giây (anh đổi, trước 10 giây).
 - **05/10 (6)** — **Giao diện kiểu HubSpot** (anh: "tham khảo HubSpot thay đổi giao diện"): bảng màu Canvas (nền #f5f8fa, chữ #33475b, nhấn xanh ngọc #0091ae, nút chính cam #ff7a59), thanh trên + thanh menu xanh than #213343 (mục chọn vạch cam), font Lexend Deca, thẻ/bảng bo 8px viền mảnh. Chỉ đổi giá trị token + CSS, không đổi logic. Thanh menu có lại ICON SVG (bỏ chữ viết tắt). **Tự thu gọn**: chế độ đầy đủ, chuột rời menu 10 giây -> còn icon, chỉ chuột vào -> mở lại (chế độ ☰ thu gọn / ẩn hẳn giữ nguyên). Chụp thử Chrome ngầm trên máy: OK; chưa xem kỹ chế độ Tối và điện thoại.
 - **05/10 (5)** — Theo lệnh anh: chép nguyên file khoá supabase-keys.local.txt sang app kế toán, đặt tên đúng quy ước bên đó: C:/Users/HP/Desktop/ke-toan/kt-keys.local.txt (gitignore *.local.* đã chặn, git check-ignore xác nhận). File chứa CẢ khoá Pancake / Kiot / Meta / GitHub / OpenAI chứ không chỉ Supabase — đổi khoá nào thì nhớ sửa cả 2 file.
