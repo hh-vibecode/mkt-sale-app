@@ -110,6 +110,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (21)** — CRM: thanh dropdown lọc + chuông + ô tìm lên TRÊN CÙNG (trên 6 ô dash), cách 16px; Master cũng cách bảng 16px.
 - **05/10 (20)** — Nút thao tác nổi bật (anh: nút lẫn vào nền, làm nổi hết): nút chính .refresh-btn (Lưu, Thêm, Trước/Sau… 26 chỗ) nền xanh ngọc đặc chữ đậm; nút phụ .btn-ghost (Huỷ, Sửa, Xoá… 33 chỗ) nền trắng viền đậm chữ đậm, rê chuột viền xanh. Chụp thử form + CRM: OK.
 - **05/10 (19)** — Form lượt chăm sóc: Phương án tiếp theo + Lịch hẹn / Deadline BẮT BUỘC mọi lượt (gắn *), mọi dấu * trong form màu đỏ.
 - **05/10 (18)** — **Giao việc qua lượt chăm sóc**: form lượt chăm sóc mục 4 có ô Nhân sự phụ trách (CHỈ admin trở lên thấy; cột mới salesi_crm.nguoi_xu_ly, supabase-schema-cs-giao-viec.sql), "Ngày chăm sóc tiếp theo" đổi tên "Lịch hẹn / Deadline". Daily Task có bảng ĐỎ đầu tiên "Việc được giao" (Lịch hẹn/Deadline + quá/còn N ngày · Người phụ trách · Khách · Việc cần làm · Giao ngày + ai giao · nút Cập nhật chăm sóc mở thẳng form). Việc = lượt GHI SAU CÙNG của khách có người phụ trách; ghi lượt mới (kể cả lùi ngày) là xong. Admin thấy hết; tài khoản Sale thấy việc giao cho Sale trong phạm vi xem của mình. Tính vào badge Daily Task. Giả lập: admin / Sale có - không phạm vi / form admin - Sale / ghi lượt mới -> đều đúng.

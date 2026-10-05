@@ -5340,7 +5340,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 11:28';
+const APP_VERSION='05/10 11:32';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7098,7 +7098,7 @@ function rptSlMasterHtmlRaw(){
   const rev=list.reduce((s,r)=>s+r.revenue+(r.repeatRevenue||0),0);   // cộng cả đơn mua lại = khớp tổng cột Doanh thu (01/10/2026)
   return `
     <!-- Master không còn dash: các ô chuyển sang tab CRM (anh Hải 02/10/2026) -->
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-start">
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center;justify-content:flex-start">
       ${rptSlFilterBar('master')}
       <span style="flex:1 1 0"></span>${true?'<button onclick="rptSiThemKhachForm()" class="refresh-btn" style="padding:7px 18px;font-size:12.5px;font-weight:800;letter-spacing:.01em;box-shadow:0 2px 10px rgba(0,145,174,.35)">+ THÊM KHÁCH MỚI</button>':''}${rptSiChuongLoc()}
       <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(rptSlRender,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
@@ -8437,6 +8437,11 @@ function rptSlCrmHtmlRaw(){
   const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px';
   const inp='height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none;min-width:250px';
   return `
+    <!-- thanh lọc + tìm kiếm trên cùng (05/10/2026) -->
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center;justify-content:flex-start">
+      ${rptSlFilterBar('crm')}<span style="flex:1 1 0"></span>${rptSiChuongLoc()}
+      <input id="rptSlCrmSearch" value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(rptSlRender,350)" style="${inp}">
+    </div>
     <div style="${g3}">
       <div onclick="rptCrmLoc('')" style="cursor:pointer;border-radius:14px" title="Bấm để bỏ lọc ô, xem tất cả">${mkKpi(ic('users'),'Khách cần chăm sóc',num(all.length),'','g-blue')}</div>
       ${o('chot',mkKpi(ic('check'),'Khách chốt có nhu cầu lại',num(dem('chot')),nhan('chot'),'g-green'))}
@@ -8446,10 +8451,6 @@ function rptSlCrmHtmlRaw(){
       ${o('cs',mkKpi(ic('chat'),'Đã chăm sóc trong kỳ',num(dem('cs')),nhan('cs'),'g-teal'))}
       ${o('lau',mkKpi(ic('clock'),'Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',num(dem('lau')),nhan('lau'),'g-red'))}
       ${o('chuaTT',mkKpi(ic('clipboard'),'Chưa cập nhật trạng thái',num(dem('chuaTT')),nhan('chuaTT'),'g-purple'))}
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-start">
-      ${rptSlFilterBar('crm')}<span style="flex:1 1 0"></span>${rptSiChuongLoc()}
-      <input id="rptSlCrmSearch" value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(rptSlRender,350)" style="${inp}">
     </div>
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — khách cần chăm sóc</div><div class="tbl-count">${num(list.length)}</div></div>
