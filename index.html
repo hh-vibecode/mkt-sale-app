@@ -8,39 +8,44 @@
 <meta http-equiv="Expires" content="0">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <title>APP MKT/SALE</title>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-/* Token màu lấy thật từ TailAdmin (github.com/TailAdmin/tailadmin-free-tailwind-dashboard-template,
-   src/css/style.css @theme) -- brand #465fff, gray/success/error/warning scale đúng bản gốc.
-   Chỉ đổi giá trị token + card KPI, KHÔNG đổi tên biến/class nên toàn bộ JS/HTML phía dưới không cần sửa gì. */
+/* GIAO DIỆN KIỂU HUBSPOT (anh Hải 05/10/2026): bảng màu Canvas của HubSpot -- nền Kalei #f5f8fa, chữ Obsidian #33475b,
+   viền #cbd6e2 / #dfe3eb, nhấn xanh ngọc Calypso #0091ae (mục chọn, link), nút hành động chính cam Lorax #ff7a59,
+   thanh trên + thanh menu xanh than #213343. Chỉ đổi GIÁ TRỊ token, giữ nguyên tên biến/class -> JS/HTML không phải sửa.
+   (Trước đó: token TailAdmin, brand #0091ae.) */
 :root{
-  --bg:#f9fafb;--bg2:#f2f4f7;--surface:#fff;--surface2:#f2f4f7;
-  --border:#e4e7ec;--border2:#d0d5dd;--text:#101828;--text2:#344054;--muted:#667085;
-  --accent:#465fff;--accent-l:#ecf3ff;
-  --green:#12b76a;--green-l:#ecfdf3;
-  --yellow:#f79009;--yellow-l:#fffaeb;
-  --red:#f04438;--red-l:#fef3f2;
-  --purple:#7a5af8;--purple-l:#f4f2fe;
-  --teal:#0ba5ec;--teal-l:#f0f9ff;
-  --orange:#fb6514;--orange-l:#fff6ed;
-  --shadow:0 1px 3px rgba(16,24,40,.08);
-  --shadow-md:0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06);
+  --bg:#f5f8fa;--bg2:#eaf0f6;--surface:#fff;--surface2:#f5f8fa;
+  --border:#dfe3eb;--border2:#cbd6e2;--text:#33475b;--text2:#425b76;--muted:#7c98b6;
+  --accent:#0091ae;--accent-l:#e5f5f8;
+  --green:#00a38d;--green-l:#e5f8f6;
+  --yellow:#f79009;--yellow-l:#fef8f0;
+  --red:#f2545b;--red-l:#fde9ea;
+  --purple:#6a78d1;--purple-l:#eef0fb;
+  --teal:#00a4bd;--teal-l:#e5f8fb;
+  --orange:#ff7a59;--orange-l:#fff1ee;
+  --shadow:0 1px 2px rgba(45,62,80,.08);
+  --shadow-md:0 4px 14px rgba(45,62,80,.12);
+  --nav-bg:#213343;--nav-line:rgba(255,255,255,.1);--nav-text:#cbd6e2;--nav-hover:rgba(255,255,255,.08);--nav-act:rgba(255,255,255,.14);
+  --cta:#ff7a59;--cta-hover:#ff8f73;
   --sidebar-w:220px;--sidebar-w-col:56px;
-  --font:'Montserrat','Inter',sans-serif;
+  --font:'Lexend Deca','Inter',sans-serif;
 }
 [data-theme="dark"]{
-  --bg:#0c111d;--bg2:#101828;--surface:#101828;--surface2:#1d2939;
-  --border:#1d2939;--border2:#344054;--text:#f0f2f5;--text2:#98a2b3;--muted:#667085;
-  --accent:#7592ff;--accent-l:rgba(70,95,255,.12);
-  --green:#32d583;--green-l:rgba(18,183,106,.15);
+  --bg:#0f1923;--bg2:#17232f;--surface:#17232f;--surface2:#1f2e3c;
+  --border:#263747;--border2:#33475b;--text:#eaf0f6;--text2:#b0c1d4;--muted:#7c98b6;
+  --accent:#3fc1d6;--accent-l:rgba(0,145,174,.18);
+  --green:#2fd3b9;--green-l:rgba(0,189,165,.15);
   --yellow:#fdb022;--yellow-l:rgba(247,144,9,.15);
-  --red:#f97066;--red-l:rgba(240,68,56,.15);
-  --purple:#9c8bfa;--purple-l:rgba(122,90,248,.15);
-  --teal:#36bffa;--teal-l:rgba(11,165,236,.15);
-  --orange:#fd853a;--orange-l:rgba(251,101,20,.15);
-  --shadow:0 2px 12px rgba(0,0,0,.3);--shadow-md:0 4px 24px rgba(0,0,0,.4);
+  --red:#ff7b81;--red-l:rgba(242,84,91,.16);
+  --purple:#98a2e6;--purple-l:rgba(106,120,209,.18);
+  --teal:#45cfe3;--teal-l:rgba(0,164,189,.16);
+  --orange:#ff9474;--orange-l:rgba(255,122,89,.16);
+  --shadow:0 2px 10px rgba(0,0,0,.3);--shadow-md:0 6px 22px rgba(0,0,0,.4);
+  --nav-bg:#0b141d;--nav-line:rgba(255,255,255,.08);--nav-text:#b0c1d4;--nav-hover:rgba(255,255,255,.06);--nav-act:rgba(255,255,255,.12);
+  --cta:#ff7a59;--cta-hover:#ff8f73;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;transition:background .25s,color .25s;display:flex;flex-direction:column}
@@ -63,7 +68,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .settings-btn:hover{background:var(--accent-l);color:var(--accent);border-color:var(--accent)}
 .settings-btn.active{background:var(--accent-l);color:var(--accent);border-color:var(--accent)}
 .btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);transition:all .2s;white-space:nowrap;flex-shrink:0}
-.btn:hover{background:#3451d1;transform:translateY(-1px)}
+.btn:hover{background:#007a93;transform:translateY(-1px)}
 .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .btn-ghost{background:var(--surface2);border:1.5px solid var(--border);color:var(--text2);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;white-space:nowrap;flex-shrink:0}
 .btn-ghost:hover{background:var(--bg2);color:var(--text)}
@@ -94,7 +99,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .sidebar.collapsed .sb-section{opacity:0}
 .nav-item{display:flex;align-items:center;gap:11px;padding:9px 13px;margin:2px 8px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);transition:all .18s;white-space:nowrap;overflow:hidden;border:1.5px solid transparent}
 .nav-item:hover{background:var(--bg2);color:var(--text)}
-.nav-item.active{background:var(--accent-l);color:var(--accent);border-color:rgba(67,97,238,.15)}
+.nav-item.active{background:var(--accent-l);color:var(--accent);border-color:rgba(0,145,174,.15)}
 .nav-icon{font-size:17px;flex-shrink:0;width:22px;text-align:center;display:inline-flex;align-items:center;justify-content:center}
 .nav-icon svg{width:18px;height:18px}
 .nav-label{transition:opacity .2s,width .2s;overflow:hidden}
@@ -106,7 +111,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .sb-admin{position:absolute;left:0;right:0;bottom:0;padding:8px 0 10px;border-top:1.5px solid var(--border);background:var(--surface)}
 .sb-admin-btn{display:flex;align-items:center;gap:11px;padding:9px 13px;margin:2px 8px;border-radius:10px;cursor:pointer;color:var(--text2);transition:all .18s;border:1.5px solid transparent}
 .sb-admin-btn:hover{background:var(--bg2);color:var(--text)}
-.sb-admin-btn.open{background:var(--accent-l);color:var(--accent);border-color:rgba(67,97,238,.15)}
+.sb-admin-btn.open{background:var(--accent-l);color:var(--accent);border-color:rgba(0,145,174,.15)}
 .sb-admin-btn svg{width:19px;height:19px;flex:0 0 auto}
 .sb-admin-menu{display:none;padding-bottom:4px}
 .sb-admin-menu.open{display:block}
@@ -119,7 +124,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 
 /* PERIOD BAR */
 .period-bar{display:flex;align-items:center;gap:9px;margin-bottom:20px;flex-wrap:wrap}
-.period-chip{display:inline-flex;align-items:center;gap:5px;background:var(--accent-l);border:1px solid rgba(67,97,238,.2);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;color:var(--accent)}
+.period-chip{display:inline-flex;align-items:center;gap:5px;background:var(--accent-l);border:1px solid rgba(0,145,174,.2);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;color:var(--accent)}
 .stat-chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 11px;font-size:11.5px;color:var(--text2);font-weight:600}
 .refresh-btn{margin-left:auto;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:4px 11px;font-size:12px;color:var(--text2);cursor:pointer;font-family:var(--font);font-weight:600;transition:all .15s;display:flex;align-items:center;gap:5px}
 .refresh-btn:hover{background:var(--bg2);color:var(--accent);border-color:var(--accent)}
@@ -200,7 +205,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .tbl-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
 .tbl-head{padding:14px 18px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2)}
 .tbl-title{font-size:14px;font-weight:800}
-.tbl-count{font-size:11px;font-weight:700;background:var(--accent-l);color:var(--accent);padding:3px 10px;border-radius:20px;border:1px solid rgba(67,97,238,.2)}
+.tbl-count{font-size:11px;font-weight:700;background:var(--accent-l);color:var(--accent);padding:3px 10px;border-radius:20px;border:1px solid rgba(0,145,174,.2)}
 .tbl-scroll{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:12px}
 thead tr{background:var(--surface2)}
@@ -232,13 +237,43 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
 .spin{display:inline-block;width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .err-box{background:var(--red-l);border:1.5px solid #fecaca;border-radius:12px;padding:18px 22px;color:var(--red);font-size:13px;margin:16px 0;font-weight:600}
+/* ── HUBSPOT: thanh trên + thanh menu xanh than, mục chọn có vạch cam bên trái ── */
+.topbar{background:var(--nav-bg);border-bottom:1px solid var(--nav-line);box-shadow:none}
+.top-logo-text{color:#fff}.top-logo-text span{color:var(--cta)}
+.top-logo img{background:#fff;border-radius:8px;padding:3px;width:40px!important;height:40px!important}   /* logo gọn trong thanh 54px */
+.sidebar.collapsed #appVer{display:none}   /* thu gọn: ẩn dòng phiên bản cho khỏi vỡ chữ */
+.topbar .sb-toggle,.topbar .settings-btn,.topbar .theme-toggle{background:transparent;border-color:rgba(255,255,255,.18);color:var(--nav-text)}
+.topbar .sb-toggle:hover,.topbar .settings-btn:hover,.topbar .theme-toggle:hover{background:var(--nav-hover);border-color:rgba(255,255,255,.3);color:#fff}
+.topbar .toggle-track{background:rgba(255,255,255,.25)}
+.sidebar{background:var(--nav-bg);border-right:none}
+.sb-strip{display:none}
+.sb-section{color:rgba(203,214,226,.55)}
+.nav-item{color:var(--nav-text);border-radius:6px;border-color:transparent}
+.nav-item:hover{background:var(--nav-hover);color:#fff}
+.nav-item.active{background:var(--nav-act);color:#fff;border-color:transparent;box-shadow:inset 3px 0 0 var(--cta)}
+.nav-badge{background:var(--cta)}
+.sb-admin{background:var(--nav-bg);border-top:1px solid var(--nav-line)}
+.sb-admin-btn{color:var(--nav-text);border-radius:6px}
+.sb-admin-btn:hover{background:var(--nav-hover);color:#fff}
+.sb-admin-btn.open{background:var(--nav-act);color:#fff;border-color:transparent}
+/* bo góc gọn 8px, thẻ phẳng viền mảnh như HubSpot */
+.kpi,.chart-card,.tbl-card,.tov-card,.qc-card{border-radius:8px;border-width:1px}
+.qc-group{border-radius:10px}
+.kpi:hover{transform:none;box-shadow:var(--shadow-md)}
+.kpi-icon{border-radius:8px}
+.tbl-head,.tov-head{background:var(--surface)}
+thead th,.grp-table th{color:var(--text2)}
+/* nút hành động chính: cam HubSpot */
+.btn{background:var(--cta);border-radius:6px}
+.btn:hover{background:var(--cta-hover);transform:none}
+.refresh-btn,.btn-ghost{border-radius:6px}
 .rpt-ms>summary{list-style:none}.rpt-ms>summary::-webkit-details-marker{display:none}
 .rpt-ms label:hover{background:var(--bg2)}
 </style>
 </head>
 <body>
 
-<div id="loginGate" style="position:fixed;inset:0;z-index:6000;background:#f2f4f7;display:none;align-items:center;justify-content:center;font-family:'Montserrat','Inter',sans-serif">
+<div id="loginGate" style="position:fixed;inset:0;z-index:6000;background:#f2f4f7;display:none;align-items:center;justify-content:center;font-family:'Lexend Deca','Inter',sans-serif">
   <div style="background:#fff;border:1.5px solid #e4e7ec;border-radius:16px;padding:32px 32px 28px;width:350px;box-shadow:0 12px 16px -4px rgba(16,24,40,.08),0 4px 6px -2px rgba(16,24,40,.03)">
     <div style="text-align:center;margin-bottom:20px">
       <img src="logo.png" style="width:56px;height:56px;object-fit:contain" onerror="var n=+(this.dataset.thu||0);if(n<3){this.dataset.thu=n+1;var im=this;setTimeout(function(){im.src='logo.png?r='+Date.now();},2000);}else{this.style.visibility='hidden';}">
@@ -251,7 +286,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
       <button type="button" id="loginEye" onclick="togglePass()" title="Hiện/ẩn mật khẩu" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;padding:4px 6px;line-height:1;color:#98a2b3">👁</button>
     </div>
     <div id="loginErr" style="color:#f04438;font-size:12px;min-height:16px;margin:6px 2px"></div>
-    <button onclick="doLogin()" style="width:100%;padding:12px;background:#465fff;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Đăng nhập</button>
+    <button onclick="doLogin()" style="width:100%;padding:12px;background:#0091ae;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">Đăng nhập</button>
     <div id="loginIp" style="font-size:10px;color:#98a2b3;text-align:center;margin-top:14px"></div>
   </div>
 </div>
@@ -279,21 +314,21 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
     <div class="sb-strip"></div>
     <div class="sb-section" id="sec-qt-label" style="margin-top:12px">Quản trị</div>
     <nav id="sec-qt">
-      <div class="nav-item" onclick="switchPage('report-tonghop')" id="nav-report-tonghop" data-tat="TH"><span class="nav-label">Báo cáo tổng hợp</span></div>
+      <div class="nav-item" onclick="switchPage('report-tonghop')" id="nav-report-tonghop"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span><span class="nav-label">Báo cáo tổng hợp</span></div>
     </nav>
     <div class="sb-section" id="sec-report-label" style="margin-top:12px">Báo cáo</div>
     <nav id="sec-report">
-      <div class="nav-item" onclick="switchPage('report-mkt')" id="nav-report-mkt" data-tat="MKT"><span class="nav-label">Báo cáo MKT</span></div>
-      <div class="nav-item" onclick="switchPage('report-saleretail')" id="nav-report-saleretail" data-tat="LẺ"><span class="nav-label">Báo cáo Sale Lẻ</span></div>
-      <div class="nav-item" onclick="switchPage('report-salesi')" id="nav-report-salesi" data-tat="SỈ"><span class="nav-label">Báo cáo Sale Sỉ</span></div>
+      <div class="nav-item" onclick="switchPage('report-mkt')" id="nav-report-mkt"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg></span><span class="nav-label">Báo cáo MKT</span></div>
+      <div class="nav-item" onclick="switchPage('report-saleretail')" id="nav-report-saleretail"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span class="nav-label">Báo cáo Sale Lẻ</span></div>
+      <div class="nav-item" onclick="switchPage('report-salesi')" id="nav-report-salesi"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M3 9h18v1.5a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/><path d="M5 13v8h14v-8"/><path d="M10 21v-5h4v5"/></svg></span><span class="nav-label">Báo cáo Sale Sỉ</span></div>
     </nav>
     <!-- Phân quyền + Nhật ký là việc của admin, không phải việc hằng ngày -> gom vào 1 nút cờ lê
          ghim đáy sidebar, bấm mới bung menu. Giữ id nav-settings/nav-log để applyRole() vẫn ẩn/hiện được. -->
     <div class="sb-admin">
       <div class="sb-admin-menu" id="sbAdminMenu">
-        <div class="nav-item" onclick="sbAdminGo('datahub')" id="nav-datahub" data-tat="DH"><span class="nav-label">Data Hub</span></div>
+        <div class="nav-item" onclick="sbAdminGo('datahub')" id="nav-datahub"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span><span class="nav-label">Data Hub</span></div>
         <div class="nav-item" onclick="sbAdminGo('settings')" id="nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9.5 12 1.8 1.8L15 10"/></svg></span><span class="nav-label">Phân quyền</span></div>
-        <div class="nav-item" onclick="sbAdminGo('log')" id="nav-log" data-tat="LOG"><span class="nav-label">Nhật ký chỉnh sửa</span></div>
+        <div class="nav-item" onclick="sbAdminGo('log')" id="nav-log"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg></span><span class="nav-label">Nhật ký chỉnh sửa</span></div>
       </div>
       <div id="appVer" title="Bấm để tải lại bản mới nhất" onclick="location.reload(true)"
         style="margin:6px 14px 2px;font-size:10px;color:var(--muted);font-weight:700;cursor:pointer;letter-spacing:.02em"></div>
@@ -375,10 +410,31 @@ function sbApplyMode(m){
   mc.classList.toggle('hidden',m==='hidden');
   if(btn)btn.title=SB_LABEL[m]||'';
   localStorage.setItem('sb',String(SB_MODES.indexOf(m)));
+  if(typeof sbHenThu==='function'){if(m==='full')sbHenThu();else clearTimeout(_sbHen);}
 }
 function sbMode(){const i=Number(localStorage.getItem('sb')||0);return SB_MODES[i]||'full';}
 function toggleSidebar(){sbApplyMode(SB_MODES[(SB_MODES.indexOf(sbMode())+1)%SB_MODES.length]);}
-(function(){sbApplyMode(sbMode());})();
+// TỰ THU GỌN (anh Hải 05/10/2026, kiểu HubSpot): ở chế độ ĐẦY ĐỦ, chuột không chỉ vào thanh menu quá 10 giây -> thu còn
+// icon, bảng số liệu rộng ra; chỉ chuột vào (hoặc chạm trên điện thoại) -> mở lại đầy đủ, rời ra 10 giây lại thu.
+// Hai chế độ chọn tay bằng nút ☰ (thu gọn / ẩn hẳn) giữ nguyên, không tự đổi.
+var SB_TU_THU_MS=10000,_sbHen=null;
+function sbTuThu(thu){
+  if(sbMode()!=='full')return;
+  const sb=document.getElementById('sidebar'),mc=document.getElementById('mainContent');if(!sb||!mc)return;
+  if(sb.classList.contains('collapsed')===thu)return;
+  sb.classList.toggle('collapsed',thu);mc.classList.toggle('collapsed',thu);sbCollapsed=thu;
+  if(thu){const m=document.getElementById('sbAdminMenu'),b=document.getElementById('sbAdminBtn');if(m)m.classList.remove('open');if(b)b.classList.remove('open');}
+  setTimeout(()=>window.dispatchEvent(new Event('resize')),300);   // biểu đồ vẽ lại theo bề ngang mới
+}
+function sbHenThu(){clearTimeout(_sbHen);if(sbMode()==='full')_sbHen=setTimeout(()=>sbTuThu(true),SB_TU_THU_MS);}
+(function(){
+  sbApplyMode(sbMode());
+  const sb=document.getElementById('sidebar');if(!sb)return;
+  sb.addEventListener('mouseenter',()=>{clearTimeout(_sbHen);sbTuThu(false);});
+  sb.addEventListener('mouseleave',sbHenThu);
+  sb.addEventListener('touchstart',()=>{clearTimeout(_sbHen);sbTuThu(false);sbHenThu();},{passive:true});
+  sbHenThu();
+})();
 
 // ── Auth: khoá dashboard + phân quyền (client-side) ──
 // APP ĐÃ KHOÁ HOÀN TOÀN (18/9/2026): KHÔNG còn tài khoản cứng nào trong code.
@@ -386,7 +442,7 @@ function toggleSidebar(){sbApplyMode(SB_MODES[(SB_MODES.indexOf(sbMode())+1)%SB_
 // Đừng thêm lại login cứng ở đây -- mật khẩu nằm trong file HTML công khai, ai xem nguồn cũng thấy.
 const AUTH_USERS={};
 const AUTH_ALLOWED_IPS=[]; // thêm IP máy bạn vào đây (vd '113.161.x.x') để vào thẳng khỏi đăng nhập
-function togglePass(){const p=document.getElementById('loginPass'),e=document.getElementById('loginEye');if(!p)return;if(p.type==='password'){p.type='text';e.textContent='🙈';e.style.color='#4361ee';}else{p.type='password';e.textContent='👁';e.style.color='#94a3b8';}}
+function togglePass(){const p=document.getElementById('loginPass'),e=document.getElementById('loginEye');if(!p)return;if(p.type==='password'){p.type='text';e.textContent='🙈';e.style.color='#0091ae';}else{p.type='password';e.textContent='👁';e.style.color='#94a3b8';}}
 function dashLuuTaiKhoan(account){
   localStorage.setItem('dashRole','account');
   localStorage.setItem('dashUser',account.name);
@@ -1893,7 +1949,7 @@ function dataModal(d){
 // ===== QC — So Sánh Tháng: bảng xu hướng nhiều tháng, mỗi hàng 1 tháng, chỉ số MKT/Sale Performance =====
 const QC_CMP_FLOOR='2026-06-01'; // ngày bắt đầu có data chi phí ads, không cho chọn trước mốc này
 const QC_CMP_GROUPS=[
-  {name:'MKT PERFORMANCE',color:'#4361ee',cols:[
+  {name:'MKT PERFORMANCE',color:'#0091ae',cols:[
     {key:'totalSpend',label:'Tổng Chi Phí',icon:'',type:'vnd'},
     {key:'totalMess',label:'Tổng Mess',icon:'',type:'num'},
     {key:'nTiem',label:'Số Data Tiềm Năng',icon:'‍‍',type:'num',expandKey:'tiemSrc',expandCols:[
@@ -2918,7 +2974,7 @@ function dhManualHtml(){
 // Người tạo: Monsieur Claude.
 const DH_KENH_NHOM=[
   ['Shidai (Sỉ)', /shidai/i,                                                  '#7209b7'],
-  ['Online',      /facebook|tiktok|website|instagram|shopee|google|haravan/i, '#4361ee'],
+  ['Online',      /facebook|tiktok|website|instagram|shopee|google|haravan/i, '#0091ae'],
   ['Bán trực tiếp',/bán trực tiếp|ban truc tiep/i,                            '#2a9d8f'],
 ];
 function dhKenhNhom(k){const t=String(k||'');for(const [ten,re,mau] of DH_KENH_NHOM)if(re.test(t))return{ten,mau};return{ten:'Khác',mau:'#8d99ae'};}
@@ -2974,7 +3030,7 @@ function dhNhanSuHtml(){
   return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
     +'<span style="margin-left:auto">'+nutThem+'</span></div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;align-items:start">'
-    +khoi('Lẻ','#4361ee')+khoi('Sỉ','#7209b7')+'</div>';
+    +khoi('Lẻ','#0091ae')+khoi('Sỉ','#7209b7')+'</div>';
 }
 // Bảng Nhân sự Sale đã chuyển sang trang Phân quyền (24/9/2026) nhưng thêm/sửa xong vẫn gọi renderDataHub()
 // -> trang Phân quyền không vẽ lại, người vừa thêm chưa hiện (anh Hải báo 25/9/2026). Vẽ lại đúng trang đang mở.
@@ -3458,7 +3514,7 @@ const RPT_MIEN={
 function rptMienCua(tinh){const t=String(tinh||'').trim();for(const m in RPT_MIEN)if(RPT_MIEN[m].includes(t))return m;return 'Chưa rõ';}
 // Bản đồ VN tô 3 miền + % khách từng miền -- cùng kiểu, cùng file vietnam-map.svg với dashboard cũ (Dashboard-Meta).
 // Trả về khung trước, hình vẽ nạp ngay sau khi trang dựng xong (rptVnMapVe).
-const RPT_MIEN_MAU={'Miền Bắc':'#0abf7a','Miền Trung':'#7c3aed','Miền Nam':'#4361ee'};
+const RPT_MIEN_MAU={'Miền Bắc':'#0abf7a','Miền Trung':'#7c3aed','Miền Nam':'#0091ae'};
 function rptVnMapHtml(mien,tieuDe,ma){
   ma=ma||'x';
   const tong=Object.values(mien).reduce((x,m)=>x+m.n,0),co=tong-mien['Chưa rõ'].n;
@@ -3976,8 +4032,8 @@ function rptMktVeChart(){
     const homNay=ngay[ngay.length-1]===todayISO(),n=ngay.length;
     const nhanTruc=v=>v>=1e6?(v/1e6).toLocaleString('vi-VN',{maximumFractionDigits:1})+'tr':v>=1e3?Math.round(v/1e3)+'k':String(v);
     window._mktChartWave=new Chart(el,{type:'line',
-      data:{labels:ngay.map(x=>dmy(x)),datasets:[{data:ngay.map(x=>d.spendNgay[x]),borderColor:'#4361ee',
-        backgroundColor:'rgba(67,97,238,.12)',fill:true,cubicInterpolationMode:'monotone',pointRadius:3,pointHoverRadius:5,borderWidth:2,
+      data:{labels:ngay.map(x=>dmy(x)),datasets:[{data:ngay.map(x=>d.spendNgay[x]),borderColor:'#0091ae',
+        backgroundColor:'rgba(0,145,174,.12)',fill:true,cubicInterpolationMode:'monotone',pointRadius:3,pointHoverRadius:5,borderWidth:2,
         segment:{borderDash:c=>homNay&&c.p1DataIndex===n-1?[5,4]:undefined}}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
         tooltip:{callbacks:{label:c=>vnd(c.parsed.y)+(homNay&&c.dataIndex===n-1?' (hôm nay, chưa hết ngày)':'')}}},
@@ -4553,7 +4609,7 @@ const DM_LOAI={
   // danh sách Sale = bảng Nhân sự Sale: thêm / đổi tên (chuyển luôn khách đang gán) / "xoá" = cho nghỉ
   sale_le:{ten:'Sale Lẻ',nhanSu:'Lẻ'},sale_si:{ten:'Sale Sỉ',nhanSu:'Sỉ'},
 };
-const DM_MAU=['#4361ee','#0ea5e9','#16a34a','#f59e0b','#f97316','#e11d48','#8b5cf6','#7209b7','#8d99ae','#111827'];
+const DM_MAU=['#0091ae','#0ea5e9','#16a34a','#f59e0b','#f97316','#e11d48','#8b5cf6','#7209b7','#8d99ae','#111827'];
 let _dm=[],_dmLuc=0;
 async function dmLoad(force){
   if(!force&&_dm.length&&Date.now()-_dmLuc<60000)return _dm;
@@ -4565,7 +4621,7 @@ async function dmLoad(force){
 }
 function dmDs(loai){
   const ns=DM_LOAI[loai]&&DM_LOAI[loai].nhanSu;
-  if(ns)return saleNhanSuDS().filter(x=>x.doi===ns&&x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>({id:x.id,gia_tri:x.ten,mau:'#4361ee',he_thong:false,ns:true}));
+  if(ns)return saleNhanSuDS().filter(x=>x.doi===ns&&x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>({id:x.id,gia_tri:x.ten,mau:'#0091ae',he_thong:false,ns:true}));
   return _dm.filter(x=>x.loai===loai);
 }
 function dmMau(loai,v){const x=_dm.find(y=>y.loai===loai&&y.gia_tri===v);return (x&&x.mau)||'';}
@@ -5276,7 +5332,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 09:21';
+const APP_VERSION='05/10 10:02';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5520,9 +5576,9 @@ function rptSlOverviewHtml(){
     L('ovTiemKh',{title:'Khách tiềm năng (gồm cả đã chốt)',cols:custCols,rows:custRows(tiemKh)});
   }
   const funnel=laSi
-    ?[['Tổng khách Sỉ',master.length,'ovDataKh','#94a3b8'],['Còn theo được',datKh.length,'ovDatKh','#4361ee'],
+    ?[['Tổng khách Sỉ',master.length,'ovDataKh','#94a3b8'],['Còn theo được',datKh.length,'ovDatKh','#0091ae'],
       ['Khách tiềm năng',tiemKh.length,'ovTiemKh','#f59e0b'],['Đã chốt đơn',chotKh.length,'ovChotKh','#0abf7a']]
-    :[['Tổng data Lẻ',le.length,'ovData','#94a3b8'],['Lead đạt',dat.length,'ovDat','#4361ee'],
+    :[['Tổng data Lẻ',le.length,'ovData','#94a3b8'],['Lead đạt',dat.length,'ovDat','#0091ae'],
       ['Lead tiềm năng',tiem.length,'ovTiem','#f59e0b'],['Đơn chốt',chotO.length,'ovChot','#0abf7a']];
   const fmax=funnel[0][1]||1;
   const funnelHtml=funnel.map(([l,v,k,c],i)=>`<div onclick="rptSlShow('${k}')" style="cursor:pointer;margin-bottom:10px">
@@ -5574,7 +5630,7 @@ function rptSlOverviewHtml(){
       })()}
       ${(()=>{
         const ds=Object.entries(byBrand).sort((a,b)=>b[1]-a[1]);
-        const mau=['#4361ee','#f59e0b','#0abf7a','#8b5cf6','#ef4444','#14b8a6','#94a3b8'];
+        const mau=['#0091ae','#f59e0b','#0abf7a','#8b5cf6','#ef4444','#14b8a6','#94a3b8'];
         window._rptThBrand=ds.map((x,i)=>[x[0],x[1],mau[i%mau.length]]);
         if(!ds.length)return card('Doanh thu theo brand','<div style="color:var(--muted);font-size:12px">Chưa có doanh thu</div>');
         const chuGiai=ds.map((x,i)=>`<div onclick="rptSlShow('ovBrand-${x[0]}')" title="Bấm để xem khách của ${x[0]}"
@@ -6663,7 +6719,7 @@ const RPT_SI_PHANLOAI=[
   [/không tiềm năng|khong tiem nang/i,'#8d99ae'], // xám -- loại
   [/đã ra đơn|da ra don/i,          '#16a34a'],   // xanh lá  -- đã mua
   [/tiềm năng|tiem nang/i,          '#0ea5e9'],   // xanh nước -- còn cơ hội
-  [/chăm sóc dài hạn|cham soc/i,    '#4361ee'],   // xanh dương -- đang nuôi
+  [/chăm sóc dài hạn|cham soc/i,    '#0091ae'],   // xanh dương -- đang nuôi
   [/chưa liên hệ|chua lien he/i,    '#f59e0b'],   // vàng -- chưa gọi được
   [/mất kết nối|mat ket noi/i,      '#e11d48'],   // đỏ -- mất liên lạc
 ];
@@ -7032,7 +7088,7 @@ function rptSlMasterHtmlRaw(){
     <!-- Master không còn dash: các ô chuyển sang tab CRM (anh Hải 02/10/2026) -->
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-start">
       ${rptSlFilterBar('master')}
-      <span style="flex:1 1 0"></span>${true?'<button onclick="rptSiThemKhachForm()" class="refresh-btn" style="padding:7px 18px;font-size:12.5px;font-weight:800;letter-spacing:.01em;box-shadow:0 2px 10px rgba(67,97,238,.35)">+ THÊM KHÁCH MỚI</button>':''}${rptSiChuongLoc()}
+      <span style="flex:1 1 0"></span>${true?'<button onclick="rptSiThemKhachForm()" class="refresh-btn" style="padding:7px 18px;font-size:12.5px;font-weight:800;letter-spacing:.01em;box-shadow:0 2px 10px rgba(0,145,174,.35)">+ THÊM KHÁCH MỚI</button>':''}${rptSiChuongLoc()}
       <input id="rptSlMasterSearch" value="${(window._rptSlMasterQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH…" oninput="window._rptSlMasterQ=this.value;window._rptSlMasterPage=1;clearTimeout(window._rptSlT);window._rptSlT=setTimeout(rptSlRender,350)" style="height:30px;box-sizing:border-box;padding:3px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);min-width:230px;outline:none">
       ${rptSlCoLoc()?'<button onclick="rptSlThaoLoc()" class="btn-ghost" title="Tháo hết bộ lọc: ngày, Sale, trạng thái, brand" style="margin:0;height:30px;padding:0 14px;font-size:11.5px;font-weight:800">Tất cả</button>':''}
     </div>
