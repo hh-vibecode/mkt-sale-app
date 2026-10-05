@@ -110,6 +110,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (23)** — **Quản lý kiểm việc đã xong**: Daily Task (chỉ admin) thêm bảng VÀNG "Việc vừa xong — chờ quản lý kiểm" ngay dưới bảng đỏ: Người phụ trách · Hạn → Xong (đúng hạn / trễ N ngày) · Việc đã giao · Giao lúc · Khách · Kết quả Sale ghi (nội dung + phản hồi) · nút ✓ Đạt / Giao lại (ghi kiem_luc / kiem_boi vào chính lượt giao, supabase-schema-cs-kiem-viec.sql; Giao lại mở form giao tiếp). Tính vào badge của admin. Thêm cột giao_luc (app TỰ ghi lúc chọn / đổi người, không điền tay; supabase-schema-cs-giao-luc.sql) vì #6011 Loan Nguyễn ghi 24/09 giao 05/10 hiện sai ngày; cột Giao lúc riêng ở cả 2 bảng. Người phụ trách + Lịch hẹn/Deadline sát nhau (người trước) ở form + 2 bảng. Màu deadline: quá hạn / hôm nay / còn 1 ngày đỏ · 2–3 ngày xám · >3 ngày xanh lá. App tải thêm created_by / created_at (trước thiếu -> "giao:" hiện tên Sale thay người giao).
 - **05/10 (22)** — Bong bóng chat CRM: lượt chăm sóc gần nhất có giao Nhân sự phụ trách = CAM (tooltip ghi người + hạn); không giao = xanh; chưa có lượt = trắng. Giả lập: xanh -> cam khi giao -> xanh khi ghi lượt mới.
 - **05/10 (21)** — CRM: thanh dropdown lọc + chuông + ô tìm lên TRÊN CÙNG (trên 6 ô dash), cách 16px; Master cũng cách bảng 16px.
 - **05/10 (20)** — Nút thao tác nổi bật (anh: nút lẫn vào nền, làm nổi hết): nút chính .refresh-btn (Lưu, Thêm, Trước/Sau… 26 chỗ) nền xanh ngọc đặc chữ đậm; nút phụ .btn-ghost (Huỷ, Sửa, Xoá… 33 chỗ) nền trắng viền đậm chữ đậm, rê chuột viền xanh. Chụp thử form + CRM: OK.
