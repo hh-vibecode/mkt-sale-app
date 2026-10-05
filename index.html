@@ -294,7 +294,6 @@ thead th,.grp-table th{color:var(--text2)}
 <div class="topbar">
   <button class="sb-toggle" onclick="toggleSidebar()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg></button>
   <div class="top-logo">
-    <img src="logo.png" style="width:60px;height:60px;object-fit:contain" id="logoImg" onerror="var n=+(this.dataset.thu||0);if(n<3){this.dataset.thu=n+1;var im=this;setTimeout(function(){im.src='logo.png?r='+Date.now();},2000);}else{this.style.visibility='hidden';}">
     <span class="top-logo-text">APP <span>MKT/SALE</span></span>
   </div>
   <div class="topbar-right">
@@ -5334,7 +5333,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 11:04';
+const APP_VERSION='05/10 11:05';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;

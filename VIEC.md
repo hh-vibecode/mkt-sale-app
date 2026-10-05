@@ -110,6 +110,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (15)** — Bỏ logo con mèo trên thanh trên (anh bảo), chỉ còn chữ APP MKT/SALE. Màn đăng nhập vẫn giữ logo.
 - **05/10 (14)** — **Gộp 2 đội Sale** (anh: "Sale gộp hết, Sỉ / Lẻ t phân quyền cho thoải mái, đẩy hết Sale vào dropdown"): mọi dropdown Sale (Master / CRM / hồ sơ / Thêm khách / Data Hub / bàn giao / bộ lọc) hiện TẤT CẢ Sale đang làm; trang Nhân sự Sale 1 bảng "Đội Sale", thêm người không chọn đội (cột doi giữ trong CSDL, mặc định Lẻ, app không dùng); khung tick phạm vi xem 1 nhóm. Bỏ luật chuyển đội (10 khách từng bị đổi), thay luật BÀN GIAO TIẾP: khách đứng tên Sale đã nghỉ có người nhận bàn giao -> thuộc người nhận (tính lúc dựng). Giả lập 4 tài khoản trước/sau: Hoàng Hải + Chị Oanh khớp 100%; Sale Chánh Tâm 520 -> 514 và Nguyễn Vân Ngọc 496 -> 490 Lẻ = đúng 6 khách Lẻ đứng tên Nguyễn Thị Huế (đã nghỉ, bàn giao Đặng Thị Minh Oanh 2/10) giờ sang Minh Oanh thay vì Thảo Ngọc (luật chuyển đội cũ). 4 khách Sỉ (Liên Lê, Le Anhhong, Trần Ngọc Tú, L-CT2-0031) giờ theo Sale Lẻ đã chăm (Vân Ngọc / Thảo Ngọc) thay vì trống / Toàn.
 - **05/10 (13)** — Menu trái tự thu sau 1 giây rời chuột (anh đổi; trước 5 giây).
 - **05/10 (12)** — Ô tìm kiếm CRM gõ bị mất con trỏ: rptSlRender chỉ trả con trỏ cho ô CÓ id, ô CRM thiếu id -> thêm id rptSlCrmSearch (Master đã có id rptSlMasterSearch). Ô tìm mới sau này nhớ đặt id.
