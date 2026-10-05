@@ -111,6 +111,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (28)** — Ẩn Giá trị tiềm năng ở các chỗ hiển thị (anh bảo): Tổng quan (ô Giá trị tiềm năng; Doanh thu giãn hết hàng), CRM (cột + ô Giá trị đang theo; dash còn 3+2 ô), Daily Task (bỏ mục Khách tiềm năng chưa có giá trị dự kiến). Chỉ còn trong hồ sơ chi tiết + chế độ Sửa (ai muốn thì điền). Dữ liệu potential_value giữ nguyên.
 - **05/10 (27)** — Popup bong bóng chat (CRM): thêm nút Sửa cạnh "Xem toàn bộ lịch sử", mở thẳng form sửa đúng lượt đang xem.
 - **05/10 (26)** — Không hiện tên anh: người tạo là tài khoản admin / supreme hiện "Admin" (hàm rptTenHien, có danh sách dự phòng vì acc supreme bị giấu với người khác) ở chú thích chip Nguồn + bảng Data Hub + cột Giao lúc; tên Sale vẫn hiện. Nút "Đã xong" đổi "Xác nhận", tách khỏi nút Sửa (cách 8px).
 - **05/10 (25)** — Cột Giao lúc: hiện "bởi Admin" thay tên người giao (chỉ admin trở lên giao được việc); dữ liệu created_by giữ nguyên.

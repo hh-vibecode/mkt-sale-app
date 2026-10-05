@@ -5348,7 +5348,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 12:47';
+const APP_VERSION='05/10 13:53';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5615,9 +5615,8 @@ function rptSlOverviewHtml(){
       const g4='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px';
       const g2='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px';
       return `
-    <div style="${g2}">
+    <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px">
       <div onclick="rptSlShow('ovRev')" style="cursor:pointer" title="Bấm để xem danh sách khách">${mkKpi(ic('cash'),'Doanh thu đã chốt',vnd(rev),num(ordCount)+' đơn đặt hàng Kiot · bấm để xem','g-green')}</div>
-      ${mkKpi(ic('cash'),'Giá trị tiềm năng',vnd(pv),nPv?num(nPv)+'/'+num(open.length)+' khách chưa chốt đã ước lượng':'chưa khách nào được ước lượng','g-orange')}
     </div>
     <div style="${g4};margin-bottom:14px">
       ${mkKpi(ic('users'),'Khách tiềm năng',num(master.length),num(chotKh.length)+' đã chốt · '+num(master.length-chotKh.length)+' chưa chốt','g-blue')}
@@ -8436,7 +8435,6 @@ function rptSlInputHtml(){
     ${rptSlInputSec('s2','','Mã KH đã điền nhưng không tồn tại bên Kiot','dán lại mã đúng, app ghi sang Pancake',b.maSai.length,'var(--yellow)',s2,true)}
     ${rptSlInputSec('s3','','Chưa cập nhật trạng thái','',b.chuaTT.length,'var(--yellow)',s3)}
     ${rptSlInputSec('s8','',true?'Chưa cập nhật lịch sử chăm sóc':'Chưa ghi nội dung trao đổi',true?'khách chưa có lượt chăm nào — không tính vào tổng việc cần làm':'ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuND.length,'var(--accent)',s8)}
-    ${rptSlInputSec('s5','','Khách tiềm năng chưa có giá trị dự kiến','ghi thêm cho đầy hồ sơ — không tính vào tổng việc cần làm',b.thieuGT.length,'var(--teal,#14b8a6)',s5)}
 `;
 }
 // ── CRM: TOÀN BỘ khách chốt + tiềm năng từ Master đổ sang, mỗi khách 1 DÒNG.
@@ -8498,7 +8496,6 @@ function rptSlCrmHtmlRaw(){
       // xanh dương = đã có lượt chăm sóc · trắng = chưa ai ghi. Cạnh đó là nút Ghi chú họp (đỏ = có việc chưa clear).
       +'<td onclick="rptSlStop(event)" style="white-space:nowrap"><div style="display:flex;gap:6px;justify-content:center">'+rptSiTraoDoiO(r)+'</div></td>'   // nút Ghi chú họp đã BỎ (anh Hải 05/10/2026)
       +'<td>'+hen+'</td>'
-      +'<td class="num" style="font-weight:700">'+(r.potential?vnd(r.potential):'<span style="color:var(--muted);font-weight:400">—</span>')+'</td>'
       +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'+rptSiChuongDong(r)
         +'<button onclick="rptSlShowCustomer(\''+qk(r)+'\');rptSlCsMoForm()" title="Ghi lượt chăm sóc mới" style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">+ Chăm sóc</button></td>'
       +'</tr>';}).join('');
@@ -8516,18 +8513,17 @@ function rptSlCrmHtmlRaw(){
     <div style="${g3}">
       <div onclick="rptCrmLoc('')" style="cursor:pointer;border-radius:14px" title="Bấm để bỏ lọc ô, xem tất cả">${mkKpi(ic('users'),'Khách cần chăm sóc',num(all.length),'','g-blue')}</div>
       ${o('chot',mkKpi(ic('check'),'Khách chốt có nhu cầu lại',num(dem('chot')),nhan('chot'),'g-green'))}
-      ${mkKpi(ic('cash'),'Giá trị đang theo',vnd(all.reduce((x,r)=>x+(r.potential||0),0)),'','g-teal')}
-    </div>
-    <div style="${g3};margin-bottom:14px">
       ${o('cs',mkKpi(ic('chat'),'Đã chăm sóc trong kỳ',num(dem('cs')),nhan('cs'),'g-teal'))}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px">
       ${o('lau',mkKpi(ic('clock'),'Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',num(dem('lau')),nhan('lau'),'g-red'))}
       ${o('chuaTT',mkKpi(ic('clipboard'),'Chưa cập nhật trạng thái',num(dem('chuaTT')),nhan('chuaTT'),'g-purple'))}
     </div>
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — khách cần chăm sóc</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr><th>CS cuối</th><th>Nguồn</th><th>Sales phụ trách</th><th>${rptSlType()==='Sỉ'?'Tên cửa hàng':'Họ tên khách'}</th><th>Phân loại KH${dmBut('si_phan_loai')}</th><th>Trao đổi gần nhất</th><th>Hẹn tiếp theo</th><th>Giá trị tiềm năng</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="9">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
+        <thead><tr><th>CS cuối</th><th>Nguồn</th><th>Sales phụ trách</th><th>${rptSlType()==='Sỉ'?'Tên cửa hàng':'Họ tên khách'}</th><th>Phân loại KH${dmBut('si_phan_loai')}</th><th>Trao đổi gần nhất</th><th>Hẹn tiếp theo</th><th></th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="8">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetCrmPage(${page-1})">‹ Trước</button>
