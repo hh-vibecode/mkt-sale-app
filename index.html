@@ -2810,14 +2810,14 @@ const DH_LIVE=[
   ['Tạo tài khoản / sửa quyền','Ghi thẳng vào Supabase, KHÔNG qua job đồng bộ — đo thật: tạo xong 0,5 giây sau đã đăng nhập được. Người đang mở sẵn app thì F5 là nhận quyền mới.'],
   ['Quyền + phạm vi dữ liệu của tài khoản','Mỗi lần mở app hoặc F5, app đọc lại quyền từ server. Admin sửa quyền xong người dùng chỉ cần tải lại trang, không phải đăng xuất. Tài khoản bị khoá cũng bị đá ra ngay lần mở kế tiếp.'],
   ['Bản app trên web (giao diện, tính năng mới)','Mỗi lần đẩy mã nguồn lên GitHub, bản live tự dựng lại trong khoảng 40 giây. Người dùng F5 (hoặc Ctrl+F5 nếu trình duyệt còn giữ bản cũ) là thấy.'],
-  ['Ô Sale nhập trong CRM / Nhập Liệu','Bấm Lưu là ghi thẳng Supabase, mọi người có quyền thấy ngay, không chờ job.'],
+  ['Ô Sale nhập trong CRM / Daily Task','Bấm Lưu là ghi thẳng Supabase, mọi người có quyền thấy ngay, không chờ job.'],
   ['Mã KH điền trong app','Ghi thẳng sang ghi chú nội bộ đơn Pancake ngay lúc bấm Lưu, đồng thời cập nhật bản sao trong Supabase.'],
   ['Số liệu báo cáo','Đọc thẳng Supabase mỗi lần mở trang hoặc bấm Tải lại. Muốn số mới từ Pancake/Kiot thì bấm Chạy ngay ở trên.'],
 ];
 // Những việc máy TỰ LÀM, kèm giới hạn an toàn -- ghi ra đây để khỏi phải nhớ.
 const DH_AUTO=[
   ['Đổi trạng thái đơn Pancake (B3)','Chỉ khách LẺ · chỉ đẩy TỚI, không bao giờ hạ · chỉ từ trạng thái Mới hoặc Đã xác nhận · bỏ qua đơn đã huỷ · chỉ đơn từ 1/6'],
-  ['Ghi Mã KH vào ghi chú nội bộ Pancake','Chạy khi Sale bấm Lưu ở tab Nhập Liệu · nối thêm chứ không ghi đè ghi chú cũ · bỏ qua nếu mã đã có'],
+  ['Ghi Mã KH vào ghi chú nội bộ Pancake','Chạy khi Sale bấm Lưu ở tab Daily Task · nối thêm chứ không ghi đè ghi chú cũ · bỏ qua nếu mã đã có'],
   ['Khoá hồ sơ khách đã chốt','Khách có thẻ CHỐT ĐƠN thì không sửa được gì nữa, kể cả nội dung trao đổi'],
   ['Dừng khi dữ liệu bất thường','Lượt đồng bộ nào không lấy được đơn nào, hoặc có shop lỗi, thì BỎ QUA phần gắn thẻ và đổi trạng thái — máy không hành động trên dữ liệu thiếu'],
   ['KHÔNG tự làm','Huỷ hoặc xoá đơn · gỡ thẻ CHỐT ĐƠN · tự nối khách bằng SĐT'],
@@ -5333,7 +5333,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 11:11';
+const APP_VERSION='05/10 11:12';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5460,7 +5460,7 @@ async function rptSlRenderPage(type){
           return '<button onclick="rptSlSetViewMode('+String.fromCharCode(39)+'gan'+String.fromCharCode(39)+')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:'
             +(mode==='gan'?'var(--accent)':'var(--surface)')+';color:'+(mode==='gan'?'#fff':'var(--text2)')+'">Gán data'
             +(n?' <span style="background:var(--yellow);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+num(n)+'</span>':'')+'</button>';})()}
-        <button onclick="rptSlSetViewMode('input')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='input'?'var(--accent)':'var(--surface)'};color:${mode==='input'?'#fff':'var(--text2)'}">Nhập Liệu${(()=>{const n=rptSlTodoCount();return n?' <span style="background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+n+'</span>':'';})()}</button>
+        <button onclick="rptSlSetViewMode('input')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='input'?'var(--accent)':'var(--surface)'};color:${mode==='input'?'#fff':'var(--text2)'}">Daily Task${(()=>{const n=rptSlTodoCount();return n?' <span style="background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+n+'</span>':'';})()}</button>
       </span>`)}
     <div class="rptSlBody"></div>`;
   // Dựng phần thân trong try/catch: trước đây một hàm con lỗi là #rptSlBody rỗng -> người dùng thấy
@@ -7397,7 +7397,7 @@ function rptSlShowCustomer(key,sua){
     <div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${label}</div>
     <div style="font-size:12.5px;font-weight:700;margin-top:3px;color:${color||'var(--text)'};word-break:break-word">${val||'<span style="color:var(--muted);font-weight:600">—</span>'}</div></div>`;
   const linkTxt=r.linkBy==='Mã KH'?'<span style="color:var(--green)">Mã KH Sale dán</span>'
-    :r.linkBy==='Sale nhập'?'<span style="color:var(--accent)">Sale nhập ở tab Nhập Liệu</span>'
+    :r.linkBy==='Sale nhập'?'<span style="color:var(--accent)">Sale nhập ở tab Daily Task</span>'
     :'';
   const laSi=true,laSiThat=rptSlType()==='Sỉ';   // giao diện hồ sơ Lẻ = Sỉ (02/10/2026); trường riêng cửa hàng chỉ Sỉ
   const info=[
@@ -7616,7 +7616,7 @@ async function rptSlSaveKH(leadId,val,el,chotLuon){
             sync_payload:{shop_id:o.shop_id,order_id:o.order_id,code:maChuan,chot:true,system_id:o.system_id,khach:r.name}});}catch(e2){}
           logAct('U','datahub_orders','#'+o.system_id,r.name,'Thẻ CHỐT ĐƠN','chưa gắn được',vi);
           alert('Đã ghi Mã KH '+maChuan+' và doanh thu trong app, nhưng Pancake CHƯA gắn được thẻ CHỐT ĐƠN.\n'
-            +'Lý do: '+vi+'\n\nApp đã đánh dấu lỗi hệ thống ở tab Nhập Liệu để người tạo app xử lý.');
+            +'Lý do: '+vi+'\n\nApp đã đánh dấu lỗi hệ thống ở tab Daily Task để người tạo app xử lý.');
         }
       }
       // trạng thái đơn không đẩy được (Pancake chỉ cho tiến) -> nói rõ, khỏi tưởng app hỏng
@@ -7629,7 +7629,7 @@ async function rptSlSaveKH(leadId,val,el,chotLuon){
         sync_payload:{shop_id:o.shop_id,order_id:o.order_id,code:maChuan,chot:!!chotLuon,system_id:o.system_id,khach:r.name}});}catch(e2){}
       logAct('U','saleretail_manual',leadId,r.name,'Lỗi đẩy sang Pancake','',String(e.message||e).slice(0,200));
       alert('Đã ghi nhận trong app (doanh thu vẫn tính đúng), nhưng CHƯA đẩy được sang Pancake:\n'
-        +String(e.message||e)+'\n\nApp đã đánh dấu là lỗi hệ thống ở tab Nhập Liệu để người tạo app xử lý.');
+        +String(e.message||e)+'\n\nApp đã đánh dấu là lỗi hệ thống ở tab Daily Task để người tạo app xử lý.');
     }finally{
       RPT_SL_DANG_LUU.delete(leadId);
       rptSlRender();
