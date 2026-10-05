@@ -110,6 +110,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (10)** — **Sửa lỗi kênh bán đơn đặt hàng không cập nhật khi sửa trên Kiot** (anh: DH002798 KL Cô Linh - HN đổi sang Shidai 10:14 mà app vẫn "Bán trực tiếp"). Nguyên nhân: API /orders không trả kênh, `sync-kiot-orders.js` chỉ gọi chi tiết cho đơn CHƯA có kênh -> đơn đã có kênh giữ giá trị cũ mãi (lỗi có từ khi thêm kênh). Sửa: cột mới `kiot_orders.kenh_lay_luc` (`supabase-schema-kiot-kenh-lay-luc.sql`), đơn có modifiedDate mới hơn -> gọi lại chi tiết, ưu tiên đơn sửa gần nhất, 400 đơn / lượt; lần đầu lấy lại dần ~3.100 đơn (~2 tiếng). Log in danh sách đơn đổi kênh. Hoá đơn KHÔNG dính (API trả saleChannelId sẵn).
 - **05/10 (9)** — Bỏ icon menu Báo cáo MKT (anh bảo), ô icon thay bằng chữ nhỏ MKT cho thẳng hàng + thu gọn vẫn nhận ra.
 - **05/10 (8)** — Icon menu Báo cáo MKT đổi sang loa phóng thanh (megaphone), trước trông như loa âm lượng (anh chê).
 - **05/10 (7)** — Menu tự thu gọn sau 5 giây (anh đổi, trước 10 giây).

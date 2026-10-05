@@ -68,11 +68,11 @@ async function kenhDaCo() {
   let offset = 0;
   for (;;) {
     // Phân trang bằng limit/offset trên URL (bộ chặn scripts/check-pagination.js chỉ nhận dạng này).
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/kiot_orders?select=code,sale_channel,sale_channel_id&sale_channel=not.is.null&limit=1000&offset=${offset}`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/kiot_orders?select=code,sale_channel,sale_channel_id,kenh_lay_luc&sale_channel=not.is.null&limit=1000&offset=${offset}`, {
       headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY } });
     if (!res.ok) throw new Error('Đọc kênh bán đã có lỗi ' + res.status);
     const rows = await res.json();
-    rows.forEach(r => { m[r.code] = { ten: r.sale_channel, id: r.sale_channel_id }; });
+    rows.forEach(r => { m[r.code] = { ten: r.sale_channel, id: r.sale_channel_id, luc: r.kenh_lay_luc || null }; });
     if (rows.length < 1000) return m;
     offset += 1000;
   }
@@ -99,21 +99,29 @@ async function layKenh(token, code, dm) {
 
 async function ganKenh(token, rows) {
   const daCo = await kenhDaCo();
-  const thieu = rows.filter(r => !daCo[r.code]).slice(0, GIOI_HAN_CHI_TIET);
-  if (!thieu.length) { rows.forEach(r => { const k = daCo[r.code] || {}; r.sale_channel = k.ten || null; r.sale_channel_id = k.id ?? null; }); return; }
+  // LẤY LẠI KÊNH KHI ĐƠN BỊ SỬA TRÊN KIOT (05/10/2026): trước chỉ gọi chi tiết cho đơn CHƯA có kênh -> sửa kênh trên Kiot
+  // (vd DH002798 Cô Linh đổi sang Shidai) app không bao giờ cập nhật. Giờ gọi lại khi modifiedDate của đơn mới hơn
+  // kenh_lay_luc (lúc lấy kênh lần trước); dòng chưa có kenh_lay_luc cũng lấy lại. Đơn sửa gần nhất được ưu tiên.
+  const ms = t => (t ? new Date(t).getTime() : 0);
+  const canLay = r => { const k = daCo[r.code]; return !k || !k.luc || ms(r.modified_date) > ms(k.luc); };
+  const thieu = rows.filter(canLay).sort((a, b) => ms(b.modified_date) - ms(a.modified_date)).slice(0, GIOI_HAN_CHI_TIET);
+  const ganVao = () => rows.forEach(r => { const k = daCo[r.code] || {}; r.sale_channel = k.ten || null; r.sale_channel_id = k.id ?? null; r.kenh_lay_luc = k.luc || null; });
+  if (!thieu.length) { ganVao(); return; }
   const dm = await danhMucKenh(token);
   let lay = 0;
+  const doi = [];   // đơn đổi kênh so với lần trước -> in ra log để soát
   for (let i = 0; i < thieu.length; i += 5) {
     const lo = thieu.slice(i, i + 5);
     const kq = await Promise.all(lo.map(r => layKenh(token, r.code, dm).catch(() => null)));
-    lo.forEach((r, k) => { if (kq[k] && kq[k].ten) { daCo[r.code] = kq[k]; lay++; } });
+    lo.forEach((r, k) => { if (kq[k] && kq[k].ten) { const cu = daCo[r.code]; if (cu && cu.ten !== kq[k].ten) doi.push(r.code + ': ' + cu.ten + ' -> ' + kq[k].ten); daCo[r.code] = { ...kq[k], luc: r.modified_date || new Date().toISOString() }; lay++; } });
     await new Promise(r => setTimeout(r, 120));
   }
   // Mọi dòng đều phải có ĐỦ 2 khoá này, nếu không PostgREST báo "All object keys must match".
   // Dòng cũ lấy lại đúng giá trị đang có trong DB -> upsert không xoá mất kênh đã biết.
-  rows.forEach(r => { const k = daCo[r.code] || {}; r.sale_channel = k.ten || null; r.sale_channel_id = k.id ?? null; });
+  ganVao();
   const conThieu = rows.filter(r => !r.sale_channel).length;
   console.log(`Kênh bán: gọi chi tiết ${thieu.length} đơn, lấy được ${lay}. Còn ${conThieu} đơn chưa có kênh.`);
+  if (doi.length) console.log('Đổi kênh: ' + doi.slice(0, 30).join(' · ') + (doi.length > 30 ? ' … (+' + (doi.length - 30) + ')' : ''));
 }
 
 function mapOrder(o) {
