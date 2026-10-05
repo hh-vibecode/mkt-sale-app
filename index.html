@@ -5340,7 +5340,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 12:39';
+const APP_VERSION='05/10 12:43';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8276,7 +8276,7 @@ function rptSlViecGiaoHtml(ds,xong){
       +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+rptSlSdtDuoiTen(r)+'</td>'
       +'<td style="white-space:normal;min-width:220px;max-width:380px;font-size:12px;line-height:1.45" title="'+e(v.noi_dung||'')+'">'+e(v.viec_tiep)+'</td>'
       +'<td style="white-space:nowrap;font-size:11px;color:var(--text2)">'+giaoLuc(v)
-        +(v.created_by?'<div style="color:var(--muted)">bởi '+e(v.created_by)+'</div>':'')+'</td>'
+        +'<div style="color:var(--muted)">bởi Admin</div>'+'</td>'
       +'<td onclick="rptSlStop(event)"><button onclick="'+mo+'" style="border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:28px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:800;white-space:nowrap;font-family:var(--font)">Cập nhật chăm sóc</button></td>'
       +'</tr>';}).join('');
   // VIỆC ĐÃ XONG (Sale đã ghi lượt mới): mờ đi, xuống cuối. Sale chỉ có nút Sửa (sửa lượt vừa ghi); admin trở lên có thêm
@@ -8293,7 +8293,7 @@ function rptSlViecGiaoHtml(ds,xong){
       +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+rptSlSdtDuoiTen(r)+'</td>'
       +'<td style="white-space:normal;min-width:220px;max-width:380px;font-size:12px;line-height:1.45"><s>'+e(giao.viec_tiep)+'</s>'
         +'<div style="margin-top:3px;color:var(--text2)">KQ: '+e(kq.noi_dung||'—')+(kq.phan_hoi?' · '+e(kq.phan_hoi):'')+'</div></td>'
-      +'<td style="white-space:nowrap;font-size:11px;color:var(--text2)">'+giaoLuc(giao)+(giao.created_by?'<div style="color:var(--muted)">bởi '+e(giao.created_by)+'</div>':'')+'</td>'
+      +'<td style="white-space:nowrap;font-size:11px;color:var(--text2)">'+giaoLuc(giao)+'<div style="color:var(--muted)">bởi Admin</div>'+'</td>'
       +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
         +(dashToanQuyen()?'<button onclick="rptSlKiemViec('+giao.id+','+q+'Đã xong'+q+',null,this)" class="refresh-btn" style="margin:0 5px 0 0;padding:5px 12px;font-size:11px">✓ Đã xong</button>':'')
         +'<button onclick="'+sua+'" style="'+nutSua+'">Sửa</button></td>'
