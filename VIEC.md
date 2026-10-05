@@ -112,6 +112,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (30)** — SĐT chép từ sổ Kiot (chữ xám) ghi thêm "(số trong Kiot)" ở mọi chỗ hiện SĐT, tránh tưởng khách có 2 số (ca a Hiệp - Hàng Khoai / KH000457 Bác Hà Lập: số 02439280220 là số Kiot, app đúng khi nghi gán nhầm).
 - **05/10 (29)** — Daily Task Lẻ, mục Chưa cập nhật lịch sử chăm sóc: chỉ khách tạo từ 1/9/2026, chưa chốt, Phân loại Lead mới / Tiềm năng, chưa ra đơn (anh bảo) -> 1.623 còn 15. Sỉ giữ nguyên (266, trong đó 247 khách đã chốt Đã ra đơn).
 - **05/10 (28)** — Ẩn Giá trị tiềm năng ở các chỗ hiển thị (anh bảo): Tổng quan (ô Giá trị tiềm năng; Doanh thu giãn hết hàng), CRM (cột + ô Giá trị đang theo; dash còn 3+2 ô), Daily Task (bỏ mục Khách tiềm năng chưa có giá trị dự kiến). Chỉ còn trong hồ sơ chi tiết + chế độ Sửa (ai muốn thì điền). Dữ liệu potential_value giữ nguyên.
 - **05/10 (27)** — Popup bong bóng chat (CRM): thêm nút Sửa cạnh "Xem toàn bộ lịch sử", mở thẳng form sửa đúng lượt đang xem.

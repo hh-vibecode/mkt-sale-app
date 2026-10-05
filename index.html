@@ -4341,7 +4341,7 @@ function rptSlSdtHtml(r,khiTrong){
   const ds=r.phones||[];
   if(!ds.length)return khiTrong||'<span style="color:var(--muted)">—</span>';
   return ds.map(p=>p.tuKiot
-    ?'<span style="color:var(--muted)" title="Số ghi trong sổ Kiot">'+p.so+'</span>'
+    ?'<span style="color:var(--muted)" title="Số ghi trong sổ Kiot của mã KH đã dán — không phải số khách để lại">'+p.so+' <span style="font-size:9.5px;font-weight:700;white-space:nowrap">(số trong Kiot)</span></span>'
     :'<span>'+p.so+'</span>').join('<br>');
 }
 // Link mở hồ sơ khách bên KiotViet theo Mã KH (người dùng gửi mẫu 22/9/2026).
@@ -5348,7 +5348,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 13:55';
+const APP_VERSION='05/10 16:53';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
