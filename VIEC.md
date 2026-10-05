@@ -109,6 +109,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (4)** — Master: nút + THÊM KHÁCH MỚI cũng sát phải (thứ tự: bộ lọc ... | + Thêm khách · chuông · ô tìm · Tất cả).
 - **05/10 (3)** — **Khách đã chốt chưa có Phân loại → tự hiện "Đã ra đơn"** (anh: có doanh số sao không tự gắn trạng thái) — Lẻ 138 + Sỉ 247 khách; tính lúc dựng, không ghi bảng, không gắn thẻ Pancake, Sale chọn khác là thắng. Còn 27 khách Sỉ CHƯA chốt mà Sale chọn "Đã ra đơn" từ trước (chưa nối được đơn Kiot) — chưa xử lý. Thanh lọc Master + CRM: chuông + ô tìm kiếm sát phải, bộ lọc bên trái.
 - **05/10 (2)** — Thanh lọc CRM căn TRÁI như Master (anh bảo); Master cũng đặt căn trái cho chắc (trước cả 2 căn phải, Master chỉ trông như trái vì hàng đủ dài). Ghi nhận: lỗi "Lẻ lưu lượt chăm sóc không hiện" (phiên 03/10 sửa) là do Monsieur Claude 02/10 viết lại `siCrmLoad` mà quên cột `loai`.
 - **05/10** — Biểu đồ "Chi phí ads theo ngày" (MKT) sửa tỉ lệ: trục tung từ 0 (trước tự cắt ~200k -> ngày dở dang trông như sập), nhãn 1 số lẻ (trước 1,6tr / 1,8tr đều ra "2tr"), đường cong monotone không vồng quá điểm, ngày hôm nay nét đứt + tooltip "chưa hết ngày". Số liệu không đổi (vẫn bỏ chiến dịch tuyển dụng: 02/10 = 1,58tr, CSDL gồm cả tuyển dụng = 1,88tr). Kiểm 5 đơn DH002790–2801 anh hỏi: 2 đã vào app, 3 phiếu tạm chưa cọc (đúng luật).
