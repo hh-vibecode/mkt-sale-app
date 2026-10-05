@@ -4156,7 +4156,7 @@ async function crmNoteClear(key,el){
 }
 async function siCrmLoad(force){
   if(siCrmLoaded&&!force)return;
-  siCrmRows=await sbFetchAll('salesi_crm','select=id,lead_id,kiot_code,customer_name,phone,ngay_cham,sp_quan_tam,nguon,kenh,sales,hinh_thuc,noi_dung,phan_loai,gia_tri_du_kien,viec_tiep,can_ho_tro,tinh_trang,ngay_hen,ngay_chot,gia_tri_chot,phan_hoi,trang_thai,ma_don,loai&order=ngay_cham.desc,id.desc');
+  siCrmRows=await sbFetchAll('salesi_crm','select=id,lead_id,kiot_code,customer_name,phone,ngay_cham,sp_quan_tam,nguoi_xu_ly,nguon,kenh,sales,hinh_thuc,noi_dung,phan_loai,gia_tri_du_kien,viec_tiep,can_ho_tro,tinh_trang,ngay_hen,ngay_chot,gia_tri_chot,phan_hoi,trang_thai,ma_don,loai&order=ngay_cham.desc,id.desc');
   siCrmLoaded=true;
 }
 function siEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -5333,7 +5333,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 11:12';
+const APP_VERSION='05/10 11:20';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6575,6 +6575,10 @@ function rptSlBuildMasterRaw(){
       // theo Lead ID + Mã KH nên ~100 khách mở hồ sơ thấy lịch sử mà cột "CS cuối" vẫn trống (25/9/2026).
       const ds=rptSlCsRows(r);
       r.siLuot=ds.length;
+      // VIỆC ĐƯỢC GIAO (05/10/2026): lượt GHI SAU CÙNG (id lớn nhất, không theo ngày chăm để Sale chọn lùi ngày vẫn clear được)
+      // có Nhân sự phụ trách + phương án -> việc đang mở. Ghi lượt mới là lượt giao không còn mới nhất -> tự xong.
+      {const moi=ds.reduce((a,x)=>!a||Number(x.id||0)>Number(a.id||0)?x:a,null);
+       r.viecGiao=moi&&String(moi.nguoi_xu_ly||'').trim()&&String(moi.viec_tiep||'').trim()?moi:null;}
       // trạng thái + ngày lượt chăm sóc gần nhất (bỏ qua Chốt đơn) -- bong bóng màu + CRM khách chốt phát sinh lại (02/10/2026)
       {const mo=ds.find(y=>!rptSlCsLaChotLuot(y));r.siCsTT=mo?rptSlCsTTCua(mo):'';r.siCsTTNgay=mo?String(mo.ngay_cham||'').slice(0,10):'';}
       if(ds.length){
@@ -6707,6 +6711,7 @@ function rptSlBuildMasterRaw(){
   rows.forEach(r=>{const mn=Object.assign({},...rptSlIdsCua(r).map(id=>rptSlManual[id]||{}).map(m=>Object.fromEntries(Object.entries(m).filter(([k,v])=>v!==null&&v!==''))),
     Object.fromEntries(Object.entries(rptSlManual[r.leadId]||{}).filter(([k,v])=>v!==null&&v!=='')));r.tinh=rptSlTinhCua(r,mn);});
   if(window._rptSlSaleMaTam)rows.forEach(r=>rptSlIdsCua(r).forEach(id=>{window._rptSlSaleMaTam[id]=r.staff||'';}));
+  (window._rptSlViecGiao=window._rptSlViecGiao||{})[rptSlType()]=rows.filter(r=>r.viecGiao);
   rows=rows.filter(r=>dashSeeSale(r.staff,rptSlType())&&dashSeeType(r.saleType||'Lẻ'));
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
 }
@@ -6902,7 +6907,7 @@ function rptSiXemTraoDoi(key){
    +muc('1. Sản phẩm quan tâm',x.sp_quan_tam)
    +muc('2. Nội dung trao đổi',x.noi_dung)
    +muc('3. Phản hồi / vướng mắc / nhu cầu khách hàng',x.phan_hoi)
-   +muc('4. Phương án tiếp theo'+(x.ngay_hen?' · hẹn '+dmy(String(x.ngay_hen).slice(0,10)):''),x.viec_tiep)
+   +muc('4. Phương án tiếp theo'+(x.ngay_hen?' · hạn '+dmy(String(x.ngay_hen).slice(0,10)):'')+(x.nguoi_xu_ly?' · giao: '+e(x.nguoi_xu_ly):''),x.viec_tiep)
    +'<div style="display:flex;justify-content:flex-end;margin-top:16px"><button onclick="qcCloseModal();rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+');rptSlCusTab('+q+'cs'+q+')" class="refresh-btn" style="padding:7px 16px;font-size:12px">Xem toàn bộ lịch sử chăm sóc · '+num(n)+' lượt</button></div>'
    +'</div></div></div>';
 }
@@ -7254,9 +7259,17 @@ function rptSlCsFormHtml(r){
       +'<textarea id="csNoiDung" rows="3" style="'+ip+';resize:vertical">'+e(cu.noi_dung||'')+'</textarea></div>'
     +'<div style="margin-top:12px">'+lb('3. Phản hồi / vướng mắc / nhu cầu khách hàng')
       +'<textarea id="csPhanHoi" rows="2" style="'+ip+';resize:vertical">'+e(cu.phan_hoi||'')+'</textarea></div>'
-    +'<div style="margin-top:12px">'+lb('4. Phương án tiếp theo')
+    +'<div style="margin-top:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">'
+      +lb('4. Phương án tiếp theo').replace('margin-bottom:4px','margin-bottom:0')
+      // NHÂN SỰ PHỤ TRÁCH (anh Hải 05/10/2026): CHỈ admin trở lên thấy / chọn -> giao việc; Sale chỉ thấy tên người được giao
+      +(dashToanQuyen()
+        ?'<span style="margin-left:auto;display:inline-flex;align-items:center;gap:6px">'+lb('Nhân sự phụ trách').replace('margin-bottom:4px','margin-bottom:0')
+          +'<select id="csNguoi" style="'+ip+';width:200px;cursor:pointer;font-weight:700"><option value="">— không giao —</option>'
+          +[...new Set(rptSlSaleCuaDoi().concat(cu.nguoi_xu_ly?[cu.nguoi_xu_ly]:[]))].map(x=>'<option'+(cu.nguoi_xu_ly===x?' selected':'')+'>'+e(x)+'</option>').join('')+'</select></span>'
+        :(cu.nguoi_xu_ly?'<span style="margin-left:auto;font-size:11.5px;font-weight:800;color:var(--red)">Giao: '+e(cu.nguoi_xu_ly)+'</span>':''))
+      +'</div>'
       +'<textarea id="csViec" rows="2" placeholder="vd gọi lại báo giá, gửi mẫu..." style="'+ip+';resize:vertical">'+e(cu.viec_tiep||'')+'</textarea>'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">'+lb('Ngày chăm sóc tiếp theo').replace('margin-bottom:4px','margin-bottom:0')
+      +'<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">'+lb('Lịch hẹn / Deadline').replace('margin-bottom:4px','margin-bottom:0')
       +'<input id="csHen" type="date" value="'+e(String(cu.ngay_hen||'').slice(0,10))+'" style="'+ip+';width:170px;flex:0 0 auto"></div></div>'
     +'<div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">'
       +(id?'<button onclick="rptSlCsXoa('+id+')" class="btn-ghost" style="padding:7px 16px;font-size:12px;font-weight:700;color:var(--red);border:1.5px solid var(--red)">Xoá lượt này</button>':'')
@@ -7306,7 +7319,8 @@ async function rptSlCsLuu(){
   const bao=t=>{if(msg)msg.innerHTML='<span style="color:var(--red)">'+t+'</span>';};
   const ngay=g('csNgay');if(!ngay)return bao('Chưa chọn ngày chăm sóc');
   const nd=g('csNoiDung');if(!nd)return bao('Chưa ghi nội dung trao đổi');
-  if(g('csViec')&&!g('csHen'))return bao('Có phương án tiếp theo thì chọn luôn ngày chăm sóc tiếp theo');
+  if(g('csViec')&&!g('csHen'))return bao('Có phương án tiếp theo thì chọn luôn Lịch hẹn / Deadline');
+  if(g('csNguoi')&&!g('csViec'))return bao('Giao việc thì ghi Phương án tiếp theo (việc cần làm)');
   const tt=g('csTrangThai')||RPT_CS_TRANG_THAI[0];
   let maDon='',don=null;
   if(rptSlCsLaChot(tt)){
@@ -7325,6 +7339,8 @@ async function rptSlCsLuu(){
     sales:r.staff||cu.sales||null,hinh_thuc:cu.hinh_thuc||null,
     noi_dung:nd,sp_quan_tam:g('csSp')||null,phan_hoi:g('csPhanHoi')||null,trang_thai:tt,ma_don:maDon||null,
     ngay_hen:g('csHen')||null,viec_tiep:g('csViec')||null,
+    // người phụ trách: admin chọn ở form; tài khoản khác sửa lượt cũ thì giữ nguyên, ghi lượt mới thì không giao (= xong việc cũ)
+    nguoi_xu_ly:document.getElementById('csNguoi')?(g('csNguoi')||null):(id?(cu.nguoi_xu_ly||null):null),
     ngay_chot:don?String(don.purchase_date||ngay).slice(0,10):(cu.ngay_chot||null),
     gia_tri_chot:don?Number(don.total||0):(cu.gia_tri_chot==null?null:cu.gia_tri_chot),
     phan_loai:rptSlCsLaChot(tt)?'Đã ra đơn':(cu.phan_loai||null),
@@ -7769,6 +7785,7 @@ function rptSlTodoBuckets(){
     // 2c. Bước 1 (ghi trong app) xong nhưng bước 2 (đẩy ngược sang Pancake) hỏng -> LỖI HỆ THỐNG.
     //     Số liệu báo cáo vẫn đúng, nhưng Pancake chưa khớp; Sale không tự sửa được, cần người tạo app.
     loiHT:all.filter(r=>(rptSlManual[r.leadId]||{}).sync_error),
+    viecGiao:rptSlViecGiaoDs(),   // việc admin giao ở lượt chăm sóc (05/10/2026) -- bảng đỏ đầu Daily Task
     // 3. Chưa cập nhật trạng thái (chỉ nhóm chưa chốt -- nhóm chốt đã khoá cứng).
     //    SỈ KHÁC LẺ: Sale Sỉ không dùng ô trạng thái của luồng Lẻ, họ ghi ở "Phân loại KH"
     //    (Chăm sóc dài hạn / Chưa liên hệ được / Mất kết nối) bên Master và "Tình trạng hỗ trợ" bên CRM.
@@ -7799,9 +7816,18 @@ function rptSlTodoCount(){
 // Nghi trùng khách tính theo NHÓM (1 nhóm = 1 việc phải xử) -- anh Hải 25/9/2026 bảo phải tính vào.
 // KHÔNG đếm "chưa có giá trị dự kiến" và "chưa ghi nội dung trao đổi": đó là phần ghi thêm cho đẹp hồ sơ,
 // không phải việc buộc phải làm -- để trong số đếm thì badge lúc nào cũng đỏ, Sale nhờn, việc thật bị lẫn.
+// VIỆC ĐƯỢC GIAO của tài khoản đang xem: admin / toàn quyền thấy hết; tài khoản Sale thấy việc giao cho các Sale nằm trong
+// phạm vi xem của mình (Phân quyền). Xếp hạn gần nhất lên đầu, chưa đặt hạn xuống cuối.
+function rptSlViecGiaoDs(){
+  rptSlBuildMaster();
+  const ds=((window._rptSlViecGiao||{})[rptSlType()]||[]);
+  const sc=dashToanQuyen()?[]:dashSales();
+  return ds.filter(r=>!sc.length||sc.includes(String(r.viecGiao.nguoi_xu_ly).trim()))
+    .sort((a,b)=>String(a.viecGiao.ngay_hen||'9999').localeCompare(String(b.viecGiao.ngay_hen||'9999')));
+}
 function rptSlTongViec(b,nghi){
   const n=(nghi||rptSlNghiTrung(b.all)).length+(b.trungMa||[]).length;
-  return b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length+n;
+  return (b.viecGiao||[]).length+b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length+n;
 }
 // 3 mục QUAN TRỌNG NHẤT luôn mở sẵn data lỗi; các mục còn lại gập lại, bấm tiêu đề mới bung ra.
 function rptSlSecOpen(id){return !!(window._rptSlSecOpen||{})[id];}
@@ -8196,6 +8222,29 @@ function rptSlNlDashDs(k){
   if(k==='chuaTT')return dataModal({title:'Chưa cập nhật trạng thái',cols:COT.concat(['Thẻ Pancake','Doanh số']),
     rows:b.chuaTT.map(r=>co(r).concat([e(r.tagStatus||'—'),tien(r)?vnd(tien(r)):'—'])),keys:b.chuaTT.map(r=>r.key)});
 }
+// BẢNG VIỆC ĐƯỢC GIAO (anh Hải 05/10/2026): Lịch hẹn / Deadline · người phụ trách · khách · việc cần làm · ai giao.
+// Bấm dòng hoặc "Cập nhật chăm sóc" -> mở hồ sơ, form lượt chăm sóc mới; lưu lượt mới là việc biến khỏi bảng.
+function rptSlViecGiaoHtml(ds){
+  if(!ds.length)return '<div style="padding:14px 18px;font-size:12.5px;color:var(--muted)">Không có việc nào đang giao</div>';
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const q=String.fromCharCode(39),hom=todayISO();
+  const han=d=>{if(!d)return '<span style="color:var(--muted)">chưa đặt</span>';
+    const n=Math.round((new Date(d)-new Date(hom))/86400000);
+    const nhan=n<0?'quá '+(-n)+' ngày':n===0?'hôm nay':'còn '+n+' ngày',mau=n<0?'var(--red)':n===0?'var(--orange)':'var(--muted)';
+    return '<b>'+dmy(d)+'</b><div style="font-size:10.5px;font-weight:800;color:'+mau+'">'+nhan+'</div>';};
+  const dong=ds.map(r=>{const v=r.viecGiao,k=String(r.key).replace(/'/g,'');
+    const mo='rptSlShowCustomer('+q+k+q+');rptSlCsMoForm()';
+    return '<tr style="cursor:pointer" onclick="'+mo+'">'
+      +'<td style="white-space:nowrap">'+han(String(v.ngay_hen||'').slice(0,10))+'</td>'
+      +'<td style="white-space:nowrap;font-weight:700">'+e(v.nguoi_xu_ly)+'</td>'
+      +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+rptSlSdtDuoiTen(r)+'</td>'
+      +'<td style="white-space:normal;min-width:220px;max-width:380px;font-size:12px;line-height:1.45" title="'+e(v.noi_dung||'')+'">'+e(v.viec_tiep)+'</td>'
+      +'<td style="white-space:nowrap;font-size:11px;color:var(--text2)">'+(dmy(String(v.ngay_cham||'').slice(0,10))||'—')
+        +(v.sales||v.created_by?'<div style="color:var(--muted)">giao: '+e(v.created_by||v.sales)+'</div>':'')+'</td>'
+      +'<td onclick="rptSlStop(event)"><button onclick="'+mo+'" style="border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:28px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:800;white-space:nowrap;font-family:var(--font)">Cập nhật chăm sóc</button></td>'
+      +'</tr>';}).join('');
+  return '<div class="tbl-scroll"><table><thead><tr><th>Lịch hẹn / Deadline</th><th>Người phụ trách</th><th>Khách hàng</th><th>Việc cần làm</th><th>Giao ngày</th><th></th></tr></thead><tbody>'+dong+'</tbody></table></div>';
+}
 function rptSlInputHtml(){
   const b=rptSlTodoBuckets();
   const info=r=>`<td>${dmy(r.created)||'—'}</td>
@@ -8299,6 +8348,7 @@ function rptSlInputHtml(){
       ${bam('daNoi','Bấm để xem đơn chốt đã nối / chưa nối',mkKpi(ic('check'),'Đơn chốt đã nối',num(b.all.filter(r=>r.isChot&&r.kh).length)+'/'+num(b.all.filter(r=>r.isChot).length),'nối bằng Mã KH','g-green'))}
       ${bam('chuaTT','Bấm để xem khách chưa cập nhật trạng thái',mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow'))}
     </div>
+    ${rptSlInputSec('sGiao','','Việc được giao','ghi 1 lượt chăm sóc mới cho khách là xong việc',b.viecGiao.length,'var(--red)',rptSlViecGiaoHtml(b.viecGiao),true)}
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
     ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}
     ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
