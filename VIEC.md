@@ -110,6 +110,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (19)** — Form lượt chăm sóc: Phương án tiếp theo + Lịch hẹn / Deadline BẮT BUỘC mọi lượt (gắn *), mọi dấu * trong form màu đỏ.
 - **05/10 (18)** — **Giao việc qua lượt chăm sóc**: form lượt chăm sóc mục 4 có ô Nhân sự phụ trách (CHỈ admin trở lên thấy; cột mới salesi_crm.nguoi_xu_ly, supabase-schema-cs-giao-viec.sql), "Ngày chăm sóc tiếp theo" đổi tên "Lịch hẹn / Deadline". Daily Task có bảng ĐỎ đầu tiên "Việc được giao" (Lịch hẹn/Deadline + quá/còn N ngày · Người phụ trách · Khách · Việc cần làm · Giao ngày + ai giao · nút Cập nhật chăm sóc mở thẳng form). Việc = lượt GHI SAU CÙNG của khách có người phụ trách; ghi lượt mới (kể cả lùi ngày) là xong. Admin thấy hết; tài khoản Sale thấy việc giao cho Sale trong phạm vi xem của mình. Tính vào badge Daily Task. Giả lập: admin / Sale có - không phạm vi / form admin - Sale / ghi lượt mới -> đều đúng.
 - **05/10 (17)** — Tab Nhập Liệu đổi tên hiển thị thành Daily Task (nút tab + mô tả lịch chạy + hồ sơ + 2 thông báo lỗi); code / chú thích giữ chữ Nhập Liệu.
 - **05/10 (16)** — **Bỏ nút Ghi chú họp ở CRM** (anh bảo): bỏ nút + thôi tải ghi chú + bỏ luật khách đã chốt có ghi chú mở vào CRM (ô Khách chốt có nhu cầu lại giờ luôn 0 — chờ anh chốt cách đánh dấu). 6 ghi chú vẫn giữ trong salesi_crm_note; 3 chưa clear (Hà Ngân: gửi lại báo giá tượng · a Hiệp Hàng Khoai: lên đơn khách đặt · Namphong Tran: nhắc sales miền trung gửi chính sách T10) đã báo lại anh.

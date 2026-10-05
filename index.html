@@ -5333,7 +5333,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 11:20';
+const APP_VERSION='05/10 11:25';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7239,7 +7239,7 @@ function rptSlCsFormHtml(r){
   const cu=(id?rptSlCsRows(r).find(x=>x.id===id):null)||{};
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const ip='width:100%;box-sizing:border-box;padding:7px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:12.5px;font-family:var(--font);outline:none';
-  const lb=t=>'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">'+t+'</div>';
+  const lb=t=>'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">'+t.replace(/\*/g,'<span style="color:var(--red)">*</span>')+'</div>';   // dấu * bắt buộc màu đỏ (05/10/2026)
   const tt=cu.trang_thai||RPT_CS_TRANG_THAI[0];
   return '<div style="background:var(--bg2);border:1.5px solid var(--border);border-radius:12px;padding:14px;margin:0 20px 14px">'
     +'<div style="font-size:13px;font-weight:800;margin-bottom:10px">'+(id?'Sửa lượt chăm sóc':'Lượt chăm sóc mới')+'</div>'
@@ -7260,7 +7260,7 @@ function rptSlCsFormHtml(r){
     +'<div style="margin-top:12px">'+lb('3. Phản hồi / vướng mắc / nhu cầu khách hàng')
       +'<textarea id="csPhanHoi" rows="2" style="'+ip+';resize:vertical">'+e(cu.phan_hoi||'')+'</textarea></div>'
     +'<div style="margin-top:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">'
-      +lb('4. Phương án tiếp theo').replace('margin-bottom:4px','margin-bottom:0')
+      +lb('4. Phương án tiếp theo *').replace('margin-bottom:4px','margin-bottom:0')
       // NHÂN SỰ PHỤ TRÁCH (anh Hải 05/10/2026): CHỈ admin trở lên thấy / chọn -> giao việc; Sale chỉ thấy tên người được giao
       +(dashToanQuyen()
         ?'<span style="margin-left:auto;display:inline-flex;align-items:center;gap:6px">'+lb('Nhân sự phụ trách').replace('margin-bottom:4px','margin-bottom:0')
@@ -7269,7 +7269,7 @@ function rptSlCsFormHtml(r){
         :(cu.nguoi_xu_ly?'<span style="margin-left:auto;font-size:11.5px;font-weight:800;color:var(--red)">Giao: '+e(cu.nguoi_xu_ly)+'</span>':''))
       +'</div>'
       +'<textarea id="csViec" rows="2" placeholder="vd gọi lại báo giá, gửi mẫu..." style="'+ip+';resize:vertical">'+e(cu.viec_tiep||'')+'</textarea>'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">'+lb('Lịch hẹn / Deadline').replace('margin-bottom:4px','margin-bottom:0')
+      +'<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">'+lb('Lịch hẹn / Deadline *').replace('margin-bottom:4px','margin-bottom:0')
       +'<input id="csHen" type="date" value="'+e(String(cu.ngay_hen||'').slice(0,10))+'" style="'+ip+';width:170px;flex:0 0 auto"></div></div>'
     +'<div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">'
       +(id?'<button onclick="rptSlCsXoa('+id+')" class="btn-ghost" style="padding:7px 16px;font-size:12px;font-weight:700;color:var(--red);border:1.5px solid var(--red)">Xoá lượt này</button>':'')
@@ -7319,7 +7319,9 @@ async function rptSlCsLuu(){
   const bao=t=>{if(msg)msg.innerHTML='<span style="color:var(--red)">'+t+'</span>';};
   const ngay=g('csNgay');if(!ngay)return bao('Chưa chọn ngày chăm sóc');
   const nd=g('csNoiDung');if(!nd)return bao('Chưa ghi nội dung trao đổi');
-  if(g('csViec')&&!g('csHen'))return bao('Có phương án tiếp theo thì chọn luôn Lịch hẹn / Deadline');
+  // Phương án tiếp theo + Lịch hẹn / Deadline BẮT BUỘC mọi lượt (anh Hải 05/10/2026)
+  if(!g('csViec'))return bao('Chưa ghi Phương án tiếp theo');
+  if(!g('csHen'))return bao('Chưa chọn Lịch hẹn / Deadline');
   if(g('csNguoi')&&!g('csViec'))return bao('Giao việc thì ghi Phương án tiếp theo (việc cần làm)');
   const tt=g('csTrangThai')||RPT_CS_TRANG_THAI[0];
   let maDon='',don=null;
