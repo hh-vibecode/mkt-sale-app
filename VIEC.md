@@ -38,7 +38,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
-- **Giao diện theo HubSpot** (5/10/2026): token màu ở :root (Canvas), thanh trên/menu #213343, nút chính cam --cta. Thêm màn mới thì dùng biến màu, đừng ghi cứng mã màu. Menu tự thu còn icon sau 10 giây không chỉ chuột.
+- **Giao diện theo HubSpot** (5/10/2026): token màu ở :root (Canvas), thanh trên/menu #213343, nút chính cam --cta. Thêm màn mới thì dùng biến màu, đừng ghi cứng mã màu. Menu tự thu còn icon sau 5 giây không chỉ chuột.
 - **Khách đã chốt chưa có Phân loại KH = "Đã ra đơn"** (tự hiện, 5/10/2026, Lẻ + Sỉ).
 - **CRM = khách cần chăm** (2/10/2026): (a) chưa chốt + Phân loại Lead mới / Tiềm năng / CS dài hạn (Sỉ), lọc ngày theo ngày tạo / đơn / LƯỢT CHĂM SÓC trong kỳ; (b) ĐÃ chốt nhưng có **Ghi chú họp chưa clear** (không lọc ngày). Lượt chăm sóc chỉ 2 trạng thái Chăm sóc định kỳ / Chốt đơn (KHÔNG có "Đã xong" — anh bỏ 2/10). Bong bóng xanh dương = có lượt, trắng = chưa; nút Ghi chú họp đỏ = có việc chưa clear.
 - **"Lead mới" = chưa cập nhật trạng thái** (2/10/2026): khách chưa chốt ở Lead mới luôn nằm trong mục nhắc của Nhập liệu tới khi Sale đổi sang phân loại khác.
@@ -110,6 +110,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (7)** — Menu tự thu gọn sau 5 giây (anh đổi, trước 10 giây).
 - **05/10 (6)** — **Giao diện kiểu HubSpot** (anh: "tham khảo HubSpot thay đổi giao diện"): bảng màu Canvas (nền #f5f8fa, chữ #33475b, nhấn xanh ngọc #0091ae, nút chính cam #ff7a59), thanh trên + thanh menu xanh than #213343 (mục chọn vạch cam), font Lexend Deca, thẻ/bảng bo 8px viền mảnh. Chỉ đổi giá trị token + CSS, không đổi logic. Thanh menu có lại ICON SVG (bỏ chữ viết tắt). **Tự thu gọn**: chế độ đầy đủ, chuột rời menu 10 giây -> còn icon, chỉ chuột vào -> mở lại (chế độ ☰ thu gọn / ẩn hẳn giữ nguyên). Chụp thử Chrome ngầm trên máy: OK; chưa xem kỹ chế độ Tối và điện thoại.
 - **05/10 (5)** — Theo lệnh anh: chép nguyên file khoá supabase-keys.local.txt sang app kế toán, đặt tên đúng quy ước bên đó: C:/Users/HP/Desktop/ke-toan/kt-keys.local.txt (gitignore *.local.* đã chặn, git check-ignore xác nhận). File chứa CẢ khoá Pancake / Kiot / Meta / GitHub / OpenAI chứ không chỉ Supabase — đổi khoá nào thì nhớ sửa cả 2 file.
 - **05/10 (4)** — Master: nút + THÊM KHÁCH MỚI cũng sát phải (thứ tự: bộ lọc ... | + Thêm khách · chuông · ô tìm · Tất cả).
