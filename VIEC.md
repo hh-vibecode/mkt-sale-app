@@ -38,7 +38,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
-- **Giao diện theo HubSpot** (5/10/2026): token màu ở :root (Canvas), thanh trên/menu #213343, nút chính cam --cta, FONT GIỮ MONTSERRAT (anh dặn). Thêm màn mới thì dùng biến màu, đừng ghi cứng mã màu. Menu tự thu còn icon sau 1 giây không chỉ chuột.
+- **Giao diện theo HubSpot** (5/10/2026): token màu ở :root (Canvas), thanh trên/menu #213343, nút chính cam --cta, FONT GIỮ MONTSERRAT (anh dặn). Nút thao tác phải nổi: nút chính .refresh-btn nền đặc, nút phụ .btn-ghost viền đậm — nút mới dùng 2 class này. Thêm màn mới thì dùng biến màu, đừng ghi cứng mã màu. Menu tự thu còn icon sau 1 giây không chỉ chuột.
 - **Khách đã chốt chưa có Phân loại KH = "Đã ra đơn"** (tự hiện, 5/10/2026, Lẻ + Sỉ).
 - **CRM = khách cần chăm** (2/10/2026): (a) chưa chốt + Phân loại Lead mới / Tiềm năng / CS dài hạn (Sỉ), lọc ngày theo ngày tạo / đơn / LƯỢT CHĂM SÓC trong kỳ; (b) [BỎ 5/10 cùng nút Ghi chú họp] khách đã chốt có nhu cầu lại: chưa có cách đánh dấu. Lượt chăm sóc chỉ 2 trạng thái Chăm sóc định kỳ / Chốt đơn (KHÔNG có "Đã xong" — anh bỏ 2/10). Bong bóng xanh dương = có lượt, trắng = chưa; nút Ghi chú họp đỏ = có việc chưa clear.
 - **"Lead mới" = chưa cập nhật trạng thái** (2/10/2026): khách chưa chốt ở Lead mới luôn nằm trong mục nhắc của Nhập liệu tới khi Sale đổi sang phân loại khác.
@@ -110,6 +110,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (20)** — Nút thao tác nổi bật (anh: nút lẫn vào nền, làm nổi hết): nút chính .refresh-btn (Lưu, Thêm, Trước/Sau… 26 chỗ) nền xanh ngọc đặc chữ đậm; nút phụ .btn-ghost (Huỷ, Sửa, Xoá… 33 chỗ) nền trắng viền đậm chữ đậm, rê chuột viền xanh. Chụp thử form + CRM: OK.
 - **05/10 (19)** — Form lượt chăm sóc: Phương án tiếp theo + Lịch hẹn / Deadline BẮT BUỘC mọi lượt (gắn *), mọi dấu * trong form màu đỏ.
 - **05/10 (18)** — **Giao việc qua lượt chăm sóc**: form lượt chăm sóc mục 4 có ô Nhân sự phụ trách (CHỈ admin trở lên thấy; cột mới salesi_crm.nguoi_xu_ly, supabase-schema-cs-giao-viec.sql), "Ngày chăm sóc tiếp theo" đổi tên "Lịch hẹn / Deadline". Daily Task có bảng ĐỎ đầu tiên "Việc được giao" (Lịch hẹn/Deadline + quá/còn N ngày · Người phụ trách · Khách · Việc cần làm · Giao ngày + ai giao · nút Cập nhật chăm sóc mở thẳng form). Việc = lượt GHI SAU CÙNG của khách có người phụ trách; ghi lượt mới (kể cả lùi ngày) là xong. Admin thấy hết; tài khoản Sale thấy việc giao cho Sale trong phạm vi xem của mình. Tính vào badge Daily Task. Giả lập: admin / Sale có - không phạm vi / form admin - Sale / ghi lượt mới -> đều đúng.
 - **05/10 (17)** — Tab Nhập Liệu đổi tên hiển thị thành Daily Task (nút tab + mô tả lịch chạy + hồ sơ + 2 thông báo lỗi); code / chú thích giữ chữ Nhập Liệu.
