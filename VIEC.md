@@ -38,7 +38,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
-- **Giao diện theo HubSpot** (5/10/2026): token màu ở :root (Canvas), thanh trên/menu #213343, nút chính cam --cta. Thêm màn mới thì dùng biến màu, đừng ghi cứng mã màu. Menu tự thu còn icon sau 5 giây không chỉ chuột.
+- **Giao diện theo HubSpot** (5/10/2026): token màu ở :root (Canvas), thanh trên/menu #213343, nút chính cam --cta, FONT GIỮ MONTSERRAT (anh dặn). Thêm màn mới thì dùng biến màu, đừng ghi cứng mã màu. Menu tự thu còn icon sau 5 giây không chỉ chuột.
 - **Khách đã chốt chưa có Phân loại KH = "Đã ra đơn"** (tự hiện, 5/10/2026, Lẻ + Sỉ).
 - **CRM = khách cần chăm** (2/10/2026): (a) chưa chốt + Phân loại Lead mới / Tiềm năng / CS dài hạn (Sỉ), lọc ngày theo ngày tạo / đơn / LƯỢT CHĂM SÓC trong kỳ; (b) ĐÃ chốt nhưng có **Ghi chú họp chưa clear** (không lọc ngày). Lượt chăm sóc chỉ 2 trạng thái Chăm sóc định kỳ / Chốt đơn (KHÔNG có "Đã xong" — anh bỏ 2/10). Bong bóng xanh dương = có lượt, trắng = chưa; nút Ghi chú họp đỏ = có việc chưa clear.
 - **"Lead mới" = chưa cập nhật trạng thái** (2/10/2026): khách chưa chốt ở Lead mới luôn nằm trong mục nhắc của Nhập liệu tới khi Sale đổi sang phân loại khác.
@@ -110,7 +110,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
-- **05/10 (10)** — **Sửa lỗi kênh bán đơn đặt hàng không cập nhật khi sửa trên Kiot** (anh: DH002798 KL Cô Linh - HN đổi sang Shidai 10:14 mà app vẫn "Bán trực tiếp"). Nguyên nhân: API /orders không trả kênh, `sync-kiot-orders.js` chỉ gọi chi tiết cho đơn CHƯA có kênh -> đơn đã có kênh giữ giá trị cũ mãi (lỗi có từ khi thêm kênh). Sửa: cột mới `kiot_orders.kenh_lay_luc` (`supabase-schema-kiot-kenh-lay-luc.sql`), đơn có modifiedDate mới hơn -> gọi lại chi tiết, ưu tiên đơn sửa gần nhất, 400 đơn / lượt; lần đầu lấy lại dần ~3.100 đơn (~2 tiếng). Log in danh sách đơn đổi kênh. Hoá đơn KHÔNG dính (API trả saleChannelId sẵn).
+- **05/10 (11)** — **HOÀN TÁC theo lệnh anh** ("hoàn tác lại logic cũ trước lúc cô Linh"; "luồng app: sai thì sửa trong Kiot / trong app, nạp mới là được, không cần check lại"): `sync-kiot-orders.js` về đúng bản trước commit 0ed9426 (lại CHỈ lấy kênh cho đơn chưa có kênh). Dừng vòng rà lại: đã rà 1.600 / 3.119 đơn (kênh các đơn này đã đúng theo Kiot lúc 10:28–10:45, giữ nguyên). Cột `kiot_orders.kenh_lay_luc` để lại (vô hại, script cũ không đọc). Logic job tự sửa đè dòng khách tự tạo + sửa brand Nến Bơ→TTV: đã bỏ, chưa từng ghi dữ liệu (chỉ chạy KHO=1). Còn sai anh tự sửa trong app. Font đổi lại Montserrat (anh dặn).
+- **05/10 (10)** — **[ĐÃ HOÀN TÁC, xem (11)] Sửa lỗi kênh bán đơn đặt hàng không cập nhật khi sửa trên Kiot** (anh: DH002798 KL Cô Linh - HN đổi sang Shidai 10:14 mà app vẫn "Bán trực tiếp"). Nguyên nhân: API /orders không trả kênh, `sync-kiot-orders.js` chỉ gọi chi tiết cho đơn CHƯA có kênh -> đơn đã có kênh giữ giá trị cũ mãi (lỗi có từ khi thêm kênh). Sửa: cột mới `kiot_orders.kenh_lay_luc` (`supabase-schema-kiot-kenh-lay-luc.sql`), đơn có modifiedDate mới hơn -> gọi lại chi tiết, ưu tiên đơn sửa gần nhất, 400 đơn / lượt; lần đầu lấy lại dần ~3.100 đơn (~2 tiếng). Log in danh sách đơn đổi kênh. Hoá đơn KHÔNG dính (API trả saleChannelId sẵn).
 - **05/10 (9)** — Bỏ icon menu Báo cáo MKT (anh bảo), ô icon thay bằng chữ nhỏ MKT cho thẳng hàng + thu gọn vẫn nhận ra.
 - **05/10 (8)** — Icon menu Báo cáo MKT đổi sang loa phóng thanh (megaphone), trước trông như loa âm lượng (anh chê).
 - **05/10 (7)** — Menu tự thu gọn sau 5 giây (anh đổi, trước 10 giây).
