@@ -110,6 +110,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (22)** — Bong bóng chat CRM: lượt chăm sóc gần nhất có giao Nhân sự phụ trách = CAM (tooltip ghi người + hạn); không giao = xanh; chưa có lượt = trắng. Giả lập: xanh -> cam khi giao -> xanh khi ghi lượt mới.
 - **05/10 (21)** — CRM: thanh dropdown lọc + chuông + ô tìm lên TRÊN CÙNG (trên 6 ô dash), cách 16px; Master cũng cách bảng 16px.
 - **05/10 (20)** — Nút thao tác nổi bật (anh: nút lẫn vào nền, làm nổi hết): nút chính .refresh-btn (Lưu, Thêm, Trước/Sau… 26 chỗ) nền xanh ngọc đặc chữ đậm; nút phụ .btn-ghost (Huỷ, Sửa, Xoá… 33 chỗ) nền trắng viền đậm chữ đậm, rê chuột viền xanh. Chụp thử form + CRM: OK.
 - **05/10 (19)** — Form lượt chăm sóc: Phương án tiếp theo + Lịch hẹn / Deadline BẮT BUỘC mọi lượt (gắn *), mọi dấu * trong form màu đỏ.
