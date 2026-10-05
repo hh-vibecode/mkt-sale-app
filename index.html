@@ -3970,13 +3970,19 @@ function rptMktVeChart(){
   const el=document.getElementById('mktCWave');
   if(el&&ngay.length){
     huy('Wave');
+    // SỬA TỈ LỆ (anh Hải 05/10/2026): trục tung tính từ 0 (trước tự cắt từ ~200k -> ngày dở dang trông như sập),
+    // nhãn 1 chữ số thập phân (trước làm tròn 1,6tr / 1,8tr đều thành "2tr"), đường cong monotone không vồng quá
+    // điểm thật. Ngày HÔM NAY chưa hết ngày (Meta mới kéo 1 phần) -> nét đứt + ghi chú ở tooltip.
+    const homNay=ngay[ngay.length-1]===todayISO(),n=ngay.length;
+    const nhanTruc=v=>v>=1e6?(v/1e6).toLocaleString('vi-VN',{maximumFractionDigits:1})+'tr':v>=1e3?Math.round(v/1e3)+'k':String(v);
     window._mktChartWave=new Chart(el,{type:'line',
       data:{labels:ngay.map(x=>dmy(x)),datasets:[{data:ngay.map(x=>d.spendNgay[x]),borderColor:'#4361ee',
-        backgroundColor:'rgba(67,97,238,.12)',fill:true,tension:.35,pointRadius:2,borderWidth:2}]},
+        backgroundColor:'rgba(67,97,238,.12)',fill:true,cubicInterpolationMode:'monotone',pointRadius:3,pointHoverRadius:5,borderWidth:2,
+        segment:{borderDash:c=>homNay&&c.p1DataIndex===n-1?[5,4]:undefined}}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
-        tooltip:{callbacks:{label:c=>vnd(c.parsed.y)}}},
+        tooltip:{callbacks:{label:c=>vnd(c.parsed.y)+(homNay&&c.dataIndex===n-1?' (hôm nay, chưa hết ngày)':'')}}},
         scales:{x:{ticks:{color:chuGam,font:{size:10}},grid:{display:false}},
-          y:{ticks:{color:chuGam,font:{size:10},callback:v=>v>=1e6?(v/1e6).toFixed(0)+'tr':(v/1e3).toFixed(0)+'k'},grid:{color:luoi}}}}});
+          y:{beginAtZero:true,ticks:{color:chuGam,font:{size:10},maxTicksLimit:6,callback:nhanTruc},grid:{color:luoi}}}}});
   }
 }
 async function renderReportMkt(){
@@ -5270,7 +5276,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='03/10 14:35';
+const APP_VERSION='05/10 08:44';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
