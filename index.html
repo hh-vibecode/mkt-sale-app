@@ -5332,7 +5332,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 10:50';
+const APP_VERSION='05/10 10:56';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8392,7 +8392,7 @@ function rptSlCrmHtmlRaw(){
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center;justify-content:flex-start">
       ${rptSlFilterBar('crm')}<span style="flex:1 1 0"></span>${rptSiChuongLoc()}
-      <input value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(rptSlRender,350)" style="${inp}">
+      <input id="rptSlCrmSearch" value="${(window._rptSlCrmQ||'').replace(/"/g,'&quot;')}" placeholder="Tên / SĐT / Mã KH / nội dung…" oninput="window._rptSlCrmQ=this.value;window._rptSlCrmPage=1;clearTimeout(window._rptSlCrmT);window._rptSlCrmT=setTimeout(rptSlRender,350)" style="${inp}">
     </div>
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — khách cần chăm sóc</div><div class="tbl-count">${num(list.length)}</div></div>
