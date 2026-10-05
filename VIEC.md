@@ -40,7 +40,7 @@
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
 - **Giao diện theo HubSpot** (5/10/2026): token màu ở :root (Canvas), thanh trên/menu #213343, nút chính cam --cta, FONT GIỮ MONTSERRAT (anh dặn). Thêm màn mới thì dùng biến màu, đừng ghi cứng mã màu. Menu tự thu còn icon sau 1 giây không chỉ chuột.
 - **Khách đã chốt chưa có Phân loại KH = "Đã ra đơn"** (tự hiện, 5/10/2026, Lẻ + Sỉ).
-- **CRM = khách cần chăm** (2/10/2026): (a) chưa chốt + Phân loại Lead mới / Tiềm năng / CS dài hạn (Sỉ), lọc ngày theo ngày tạo / đơn / LƯỢT CHĂM SÓC trong kỳ; (b) ĐÃ chốt nhưng có **Ghi chú họp chưa clear** (không lọc ngày). Lượt chăm sóc chỉ 2 trạng thái Chăm sóc định kỳ / Chốt đơn (KHÔNG có "Đã xong" — anh bỏ 2/10). Bong bóng xanh dương = có lượt, trắng = chưa; nút Ghi chú họp đỏ = có việc chưa clear.
+- **CRM = khách cần chăm** (2/10/2026): (a) chưa chốt + Phân loại Lead mới / Tiềm năng / CS dài hạn (Sỉ), lọc ngày theo ngày tạo / đơn / LƯỢT CHĂM SÓC trong kỳ; (b) [BỎ 5/10 cùng nút Ghi chú họp] khách đã chốt có nhu cầu lại: chưa có cách đánh dấu. Lượt chăm sóc chỉ 2 trạng thái Chăm sóc định kỳ / Chốt đơn (KHÔNG có "Đã xong" — anh bỏ 2/10). Bong bóng xanh dương = có lượt, trắng = chưa; nút Ghi chú họp đỏ = có việc chưa clear.
 - **"Lead mới" = chưa cập nhật trạng thái** (2/10/2026): khách chưa chốt ở Lead mới luôn nằm trong mục nhắc của Nhập liệu tới khi Sale đổi sang phân loại khác.
 - **Dropdown lọc Sỉ / Lẻ (trừ ngày) luôn cho tích chọn nhiều** (2/10/2026) — thêm bộ lọc mới thì dùng `one()` trong `rptSlFilterBar` + `rptSlF` trả mảng.
 
@@ -110,6 +110,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (16)** — **Bỏ nút Ghi chú họp ở CRM** (anh bảo): bỏ nút + thôi tải ghi chú + bỏ luật khách đã chốt có ghi chú mở vào CRM (ô Khách chốt có nhu cầu lại giờ luôn 0 — chờ anh chốt cách đánh dấu). 6 ghi chú vẫn giữ trong salesi_crm_note; 3 chưa clear (Hà Ngân: gửi lại báo giá tượng · a Hiệp Hàng Khoai: lên đơn khách đặt · Namphong Tran: nhắc sales miền trung gửi chính sách T10) đã báo lại anh.
 - **05/10 (15)** — Bỏ logo con mèo trên thanh trên (anh bảo), chỉ còn chữ APP MKT/SALE. Màn đăng nhập vẫn giữ logo.
 - **05/10 (14)** — **Gộp 2 đội Sale** (anh: "Sale gộp hết, Sỉ / Lẻ t phân quyền cho thoải mái, đẩy hết Sale vào dropdown"): mọi dropdown Sale (Master / CRM / hồ sơ / Thêm khách / Data Hub / bàn giao / bộ lọc) hiện TẤT CẢ Sale đang làm; trang Nhân sự Sale 1 bảng "Đội Sale", thêm người không chọn đội (cột doi giữ trong CSDL, mặc định Lẻ, app không dùng); khung tick phạm vi xem 1 nhóm. Bỏ luật chuyển đội (10 khách từng bị đổi), thay luật BÀN GIAO TIẾP: khách đứng tên Sale đã nghỉ có người nhận bàn giao -> thuộc người nhận (tính lúc dựng). Giả lập 4 tài khoản trước/sau: Hoàng Hải + Chị Oanh khớp 100%; Sale Chánh Tâm 520 -> 514 và Nguyễn Vân Ngọc 496 -> 490 Lẻ = đúng 6 khách Lẻ đứng tên Nguyễn Thị Huế (đã nghỉ, bàn giao Đặng Thị Minh Oanh 2/10) giờ sang Minh Oanh thay vì Thảo Ngọc (luật chuyển đội cũ). 4 khách Sỉ (Liên Lê, Le Anhhong, Trần Ngọc Tú, L-CT2-0031) giờ theo Sale Lẻ đã chăm (Vân Ngọc / Thảo Ngọc) thay vì trống / Toàn.
 - **05/10 (13)** — Menu trái tự thu sau 1 giây rời chuột (anh đổi; trước 5 giây).

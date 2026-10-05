@@ -5333,7 +5333,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 11:05';
+const APP_VERSION='05/10 11:11';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5437,7 +5437,6 @@ async function rptSlRenderPage(type){
     // 5 nguồn này độc lập nhau -> tải CÙNG LÚC (trước đây nối tiếp, cộng dồn ~3 giây).
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),
       siCrmLoad(),   // Lẻ cũng có Lịch sử chăm sóc (02/10/2026)
-      crmNoteLoad(),   // ghi chú họp ở CRM (02/10/2026)
       saleNhanSuLoad().catch(()=>null)]);
     await rptSlLockChot();   // phải chạy sau vì đọc dữ liệu vừa tải xong
   }catch(e){
@@ -8330,11 +8329,9 @@ function rptSlCrmHtmlRaw(){
   // CHĂM SÓC rơi vào kỳ. Trước đó chỉ xét ngày tạo / ngày đơn -> chọn "hôm nay" thì khách Sale vừa chăm hôm nay không hiện.
   const Mc=rptSlMod(),coLuotTrongKy=r=>rptSlCsRows(r).some(x=>modInRange(Mc,String(x.ngay_cham||'').slice(0,10)));
   const base=rptSlBuildMaster().filter(r=>(st?true:(!r.isChot&&RPT_CRM_TT.includes(rptSlLocTT(r))))&&(rptSlInRange(r)||coLuotTrongKy(r)));
-  // KHÁCH ĐÃ CHỐT PHÁT SINH NHU CẦU LẠI (anh Hải 02/10/2026): có GHI CHÚ HỌP chưa clear thì vào CRM (việc đang giao),
-  // clear xong là rời CRM. (Trước dựa trạng thái lượt "Chăm sóc định kỳ" -- đã bỏ cùng "Đã xong".) Không lọc ngày: việc
-  // còn treo thì luôn hiện. Lấy từ TOÀN BỘ khách (đơn cuối có thể từ năm trước).
-  const coKey=new Set(base.map(r=>r.key));
-  const moLai=st?[]:rptSlBuildMaster().filter(r=>r.isChot&&!coKey.has(r.key)&&crmNoteCua(r).some(x=>!x.cleared_at));
+  // KHÁCH ĐÃ CHỐT PHÁT SINH NHU CẦU LẠI: trước dựa "Ghi chú họp" chưa clear -- anh Hải BỎ nút ghi chú 05/10/2026 nên bỏ
+  // luôn luật này (ghi chú vẫn còn trong bảng salesi_crm_note, không xoá). Chờ anh chốt cách đánh dấu mới.
+  const moLai=[];
   const allRaw=base.concat(moLai);
   const all=rptSlApplyF('crm',allRaw).slice()
     .sort((x,y)=>(y.siNgayNghi==null?1e9:y.siNgayNghi)-(x.siNgayNghi==null?1e9:x.siNgayNghi));   // lâu chưa liên hệ nhất lên đầu
@@ -8369,7 +8366,7 @@ function rptSlCrmHtmlRaw(){
       +rptSiPhanLoaiSelect(r)
       // TRAO ĐỔI GẦN NHẤT ở CRM: CHỈ bong bóng, không ghi nội dung (anh Hải 02/10/2026). Màu theo lượt gần nhất:
       // xanh dương = đã có lượt chăm sóc · trắng = chưa ai ghi. Cạnh đó là nút Ghi chú họp (đỏ = có việc chưa clear).
-      +'<td onclick="rptSlStop(event)" style="white-space:nowrap"><div style="display:flex;gap:6px;justify-content:center">'+rptSiTraoDoiO(r)+crmNoteO(r)+'</div></td>'   // + nút ghi chú họp (02/10/2026)
+      +'<td onclick="rptSlStop(event)" style="white-space:nowrap"><div style="display:flex;gap:6px;justify-content:center">'+rptSiTraoDoiO(r)+'</div></td>'   // nút Ghi chú họp đã BỎ (anh Hải 05/10/2026)
       +'<td>'+hen+'</td>'
       +'<td class="num" style="font-weight:700">'+(r.potential?vnd(r.potential):'<span style="color:var(--muted);font-weight:400">—</span>')+'</td>'
       +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'+rptSiChuongDong(r)
