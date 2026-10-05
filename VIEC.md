@@ -38,6 +38,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **Khách đã chốt chưa có Phân loại KH = "Đã ra đơn"** (tự hiện, 5/10/2026, Lẻ + Sỉ).
 - **CRM = khách cần chăm** (2/10/2026): (a) chưa chốt + Phân loại Lead mới / Tiềm năng / CS dài hạn (Sỉ), lọc ngày theo ngày tạo / đơn / LƯỢT CHĂM SÓC trong kỳ; (b) ĐÃ chốt nhưng có **Ghi chú họp chưa clear** (không lọc ngày). Lượt chăm sóc chỉ 2 trạng thái Chăm sóc định kỳ / Chốt đơn (KHÔNG có "Đã xong" — anh bỏ 2/10). Bong bóng xanh dương = có lượt, trắng = chưa; nút Ghi chú họp đỏ = có việc chưa clear.
 - **"Lead mới" = chưa cập nhật trạng thái** (2/10/2026): khách chưa chốt ở Lead mới luôn nằm trong mục nhắc của Nhập liệu tới khi Sale đổi sang phân loại khác.
 - **Dropdown lọc Sỉ / Lẻ (trừ ngày) luôn cho tích chọn nhiều** (2/10/2026) — thêm bộ lọc mới thì dùng `one()` trong `rptSlFilterBar` + `rptSlF` trả mảng.
@@ -108,6 +109,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **05/10 (3)** — **Khách đã chốt chưa có Phân loại → tự hiện "Đã ra đơn"** (anh: có doanh số sao không tự gắn trạng thái) — Lẻ 138 + Sỉ 247 khách; tính lúc dựng, không ghi bảng, không gắn thẻ Pancake, Sale chọn khác là thắng. Còn 27 khách Sỉ CHƯA chốt mà Sale chọn "Đã ra đơn" từ trước (chưa nối được đơn Kiot) — chưa xử lý. Thanh lọc Master + CRM: chuông + ô tìm kiếm sát phải, bộ lọc bên trái.
 - **05/10 (2)** — Thanh lọc CRM căn TRÁI như Master (anh bảo); Master cũng đặt căn trái cho chắc (trước cả 2 căn phải, Master chỉ trông như trái vì hàng đủ dài). Ghi nhận: lỗi "Lẻ lưu lượt chăm sóc không hiện" (phiên 03/10 sửa) là do Monsieur Claude 02/10 viết lại `siCrmLoad` mà quên cột `loai`.
 - **05/10** — Biểu đồ "Chi phí ads theo ngày" (MKT) sửa tỉ lệ: trục tung từ 0 (trước tự cắt ~200k -> ngày dở dang trông như sập), nhãn 1 số lẻ (trước 1,6tr / 1,8tr đều ra "2tr"), đường cong monotone không vồng quá điểm, ngày hôm nay nét đứt + tooltip "chưa hết ngày". Số liệu không đổi (vẫn bỏ chiến dịch tuyển dụng: 02/10 = 1,58tr, CSDL gồm cả tuyển dụng = 1,88tr). Kiểm 5 đơn DH002790–2801 anh hỏi: 2 đã vào app, 3 phiếu tạm chưa cọc (đúng luật).
 - **03/10 (2)** — **Sửa lỗi Lẻ lưu lượt chăm sóc xong không hiện** (anh: ghi đủ, bấm Lưu không thấy lưu): `siCrmLoad` không lấy cột `loai` → mọi lượt bị coi là Sỉ, hồ sơ Lẻ lọc mất hết. Thật ra ĐÃ LƯU vào `salesi_crm` (anh bấm lại nên trùng: #6190/#6191 Tien Hoangvan L-HT-0393 — #6191 bản gõ lại thiếu 'Phương án tiếp theo'; #6192–6195 'test' Chú Long M-0013). Thêm `loai` vào select; giả lập dữ liệu thật: Tien Hoangvan 0 → 2 lượt, Chú Long 0 → 5. Chưa xoá dòng trùng nào — để anh tự ✕ trong app.
