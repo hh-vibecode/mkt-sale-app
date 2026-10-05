@@ -5340,7 +5340,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 12:03';
+const APP_VERSION='05/10 12:39';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7849,15 +7849,18 @@ function rptSlViecGiaoDs(){
     .sort((a,b)=>String(a.viecGiao.ngay_hen||'9999').localeCompare(String(b.viecGiao.ngay_hen||'9999')));
 }
 // VIỆC VỪA XONG CHỜ KIỂM: chỉ admin / toàn quyền thấy. Mỗi phần tử {r, giao, kq}. Mới xong lên đầu.
+// VIỆC ĐÃ XONG CHỜ CLEAR (gộp vào bảng Việc được giao, anh Hải 05/10/2026): mọi tài khoản thấy việc của Sale trong phạm vi
+// xem; chỉ admin trở lên bấm "Đã xong" để clear. Mới xong lên đầu (trong nhóm đã xong).
 function rptSlViecXongDs(){
-  if(!dashToanQuyen())return [];
   rptSlBuildMaster();
-  const ds=[];((window._rptSlViecXong||{})[rptSlType()]||[]).forEach(r=>(r.viecXong||[]).forEach(v=>ds.push({r,giao:v.giao,kq:v.kq})));
+  const sc=dashToanQuyen()?[]:dashSales();
+  const ds=[];((window._rptSlViecXong||{})[rptSlType()]||[]).forEach(r=>(r.viecXong||[]).forEach(v=>{
+    if(!sc.length||sc.includes(String(v.giao.nguoi_xu_ly).trim()))ds.push({r,giao:v.giao,kq:v.kq});}));
   return ds.sort((a,b)=>Number(b.kq.id||0)-Number(a.kq.id||0));
 }
 function rptSlTongViec(b,nghi){
   const n=(nghi||rptSlNghiTrung(b.all)).length+(b.trungMa||[]).length;
-  return (b.viecGiao||[]).length+(b.viecXong||[]).length+b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length+n;
+  return (b.viecGiao||[]).length+(dashToanQuyen()?(b.viecXong||[]).length:0)+b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length+n;
 }
 // 3 mục QUAN TRỌNG NHẤT luôn mở sẵn data lỗi; các mục còn lại gập lại, bấm tiêu đề mới bung ra.
 function rptSlSecOpen(id){return !!(window._rptSlSecOpen||{})[id];}
@@ -8254,8 +8257,9 @@ function rptSlNlDashDs(k){
 }
 // BẢNG VIỆC ĐƯỢC GIAO (anh Hải 05/10/2026): Lịch hẹn / Deadline · người phụ trách · khách · việc cần làm · ai giao.
 // Bấm dòng hoặc "Cập nhật chăm sóc" -> mở hồ sơ, form lượt chăm sóc mới; lưu lượt mới là việc biến khỏi bảng.
-function rptSlViecGiaoHtml(ds){
-  if(!ds.length)return '<div style="padding:14px 18px;font-size:12.5px;color:var(--muted)">Không có việc nào đang giao</div>';
+function rptSlViecGiaoHtml(ds,xong){
+  xong=xong||[];
+  if(!ds.length&&!xong.length)return '<div style="padding:14px 18px;font-size:12.5px;color:var(--muted)">Không có việc nào đang giao</div>';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const q=String.fromCharCode(39),hom=todayISO();
   const giaoLuc=v=>{const d=new Date(v.giao_luc||v.created_at||'');return isNaN(d)?(dmy(String(v.ngay_cham||'').slice(0,10))||'—'):dmy(d.toISOString().slice(0,10))+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
@@ -8275,34 +8279,26 @@ function rptSlViecGiaoHtml(ds){
         +(v.created_by?'<div style="color:var(--muted)">bởi '+e(v.created_by)+'</div>':'')+'</td>'
       +'<td onclick="rptSlStop(event)"><button onclick="'+mo+'" style="border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:28px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:800;white-space:nowrap;font-family:var(--font)">Cập nhật chăm sóc</button></td>'
       +'</tr>';}).join('');
-  return '<div class="tbl-scroll"><table><thead><tr><th>Người phụ trách</th><th>Lịch hẹn / Deadline</th><th>Khách hàng</th><th>Việc cần làm</th><th>Giao lúc</th><th></th></tr></thead><tbody>'+dong+'</tbody></table></div>';
-}
-// BẢNG VIỆC VỪA XONG (anh Hải 05/10/2026): Việc đã giao · Người phụ trách · Hạn -> Xong (đúng hạn / trễ) · Khách · Kết quả · Đạt / Giao lại
-function rptSlViecXongHtml(ds){
-  if(!ds.length)return '<div style="padding:14px 18px;font-size:12.5px;color:var(--muted)">Không có việc nào chờ kiểm</div>';
-  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  const q=String.fromCharCode(39);
-  const giaoLuc=v=>{const d=new Date(v.giao_luc||v.created_at||'');return isNaN(d)?(dmy(String(v.ngay_cham||'').slice(0,10))||'—'):dmy(d.toISOString().slice(0,10))+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
-  const dong=ds.map(({r,giao,kq})=>{
-    const k=String(r.key).replace(/'/g,''),han=String(giao.ngay_hen||'').slice(0,10),xong=String(kq.ngay_cham||'').slice(0,10);
-    const tre=han&&xong?Math.round((new Date(xong)-new Date(han))/86400000):null;
+  // VIỆC ĐÃ XONG (Sale đã ghi lượt mới): mờ đi, xuống cuối. Sale chỉ có nút Sửa (sửa lượt vừa ghi); admin trở lên có thêm
+  // "Đã xong" -> clear (ghi kiem_luc / kiem_boi vào lượt giao việc).
+  const nutSua='border:1.5px solid var(--border2);background:var(--surface);color:var(--text);border-radius:7px;height:28px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:800;white-space:nowrap;font-family:var(--font)';
+  const dongXong=xong.map(({r,giao,kq})=>{const k=String(r.key).replace(/'/g,'');
+    const hanD=String(giao.ngay_hen||'').slice(0,10),xongD=String(kq.ngay_cham||'').slice(0,10);
+    const tre=hanD&&xongD?Math.round((new Date(xongD)-new Date(hanD))/86400000):null;
     const nhan=tre==null?'':tre<=0?'<span style="color:var(--green);font-weight:800">đúng hạn</span>':'<span style="color:var(--red);font-weight:800">trễ '+tre+' ngày</span>';
-    const ghiLuc=kq.created_at?new Date(kq.created_at):null;
-    return '<tr>'
+    const sua='rptSlShowCustomer('+q+k+q+');rptSlCsMoForm('+Number(kq.id)+')';
+    return '<tr style="opacity:.5;cursor:pointer" onclick="rptSlShowCustomer('+q+k+q+');rptSlCusTab('+q+'cs'+q+')" title="Đã xong — chờ admin clear">'
       +'<td style="white-space:nowrap;font-weight:700">'+e(giao.nguoi_xu_ly)+'</td>'
-      +'<td style="white-space:nowrap;font-size:11.5px">hạn '+(dmy(han)||'—')+'<br>xong '+(dmy(xong)||'—')+'<div style="font-size:10.5px">'+nhan+'</div>'
-        +(ghiLuc&&!isNaN(ghiLuc)?'<div style="font-size:10px;color:var(--muted)">ghi lúc '+String(ghiLuc.getHours()).padStart(2,'0')+':'+String(ghiLuc.getMinutes()).padStart(2,'0')+' '+dmy(ghiLuc.toISOString().slice(0,10))+'</div>':'')+'</td>'
-      +'<td style="white-space:normal;min-width:180px;max-width:280px;font-size:12px;line-height:1.45"><b>'+e(giao.viec_tiep)+'</b>'
-        +'</td>'
+      +'<td style="white-space:nowrap;font-size:11.5px">hạn '+(dmy(hanD)||'—')+'<br>xong '+(dmy(xongD)||'—')+'<div style="font-size:10.5px">'+nhan+'</div></td>'
+      +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+rptSlSdtDuoiTen(r)+'</td>'
+      +'<td style="white-space:normal;min-width:220px;max-width:380px;font-size:12px;line-height:1.45"><s>'+e(giao.viec_tiep)+'</s>'
+        +'<div style="margin-top:3px;color:var(--text2)">KQ: '+e(kq.noi_dung||'—')+(kq.phan_hoi?' · '+e(kq.phan_hoi):'')+'</div></td>'
       +'<td style="white-space:nowrap;font-size:11px;color:var(--text2)">'+giaoLuc(giao)+(giao.created_by?'<div style="color:var(--muted)">bởi '+e(giao.created_by)+'</div>':'')+'</td>'
-      +'<td class="name" style="cursor:pointer" onclick="rptSlShowCustomer('+q+k+q+');rptSlCusTab('+q+'cs'+q+')">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+'</td>'
-      +'<td style="white-space:normal;min-width:220px;max-width:360px;font-size:12px;line-height:1.45">'+e(kq.noi_dung||'—')
-        +(kq.phan_hoi?'<div style="color:var(--text2);margin-top:3px">Phản hồi: '+e(kq.phan_hoi)+'</div>':'')
-        +'<div style="font-size:10.5px;color:var(--muted);margin-top:2px">'+e(kq.created_by||kq.sales||'')+'</div></td>'
-      +'<td style="white-space:nowrap"><button onclick="rptSlKiemViec('+giao.id+','+q+'Đạt'+q+',null,this)" class="refresh-btn" style="margin:0 5px 0 0;padding:5px 12px;font-size:11.5px">✓ Đạt</button>'
-        +'<button onclick="rptSlKiemViec('+giao.id+','+q+'Giao lại'+q+','+q+k+q+',this)" class="btn-ghost" style="padding:5px 12px;font-size:11.5px">Giao lại</button></td>'
+      +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
+        +(dashToanQuyen()?'<button onclick="rptSlKiemViec('+giao.id+','+q+'Đã xong'+q+',null,this)" class="refresh-btn" style="margin:0 5px 0 0;padding:5px 12px;font-size:11px">✓ Đã xong</button>':'')
+        +'<button onclick="'+sua+'" style="'+nutSua+'">Sửa</button></td>'
       +'</tr>';}).join('');
-  return '<div class="tbl-scroll"><table><thead><tr><th>Người phụ trách</th><th>Hạn → Xong</th><th>Việc đã giao</th><th>Giao lúc</th><th>Khách hàng</th><th>Kết quả Sale ghi</th><th></th></tr></thead><tbody>'+dong+'</tbody></table></div>';
+  return '<div class="tbl-scroll"><table><thead><tr><th>Người phụ trách</th><th>Lịch hẹn / Deadline</th><th>Khách hàng</th><th>Việc cần làm</th><th>Giao lúc</th><th></th></tr></thead><tbody>'+dong+dongXong+'</tbody></table></div>';
 }
 // Quản lý kiểm 1 việc: ghi kiem_luc / kiem_boi vào CHÍNH lượt giao việc. "Giao lại" -> mở form lượt mới của khách để giao tiếp.
 async function rptSlKiemViec(id,ketLuan,key,el){
@@ -8422,8 +8418,7 @@ function rptSlInputHtml(){
       ${bam('daNoi','Bấm để xem đơn chốt đã nối / chưa nối',mkKpi(ic('check'),'Đơn chốt đã nối',num(b.all.filter(r=>r.isChot&&r.kh).length)+'/'+num(b.all.filter(r=>r.isChot).length),'nối bằng Mã KH','g-green'))}
       ${bam('chuaTT','Bấm để xem khách chưa cập nhật trạng thái',mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow'))}
     </div>
-    ${rptSlInputSec('sGiao','','Việc được giao','ghi 1 lượt chăm sóc mới cho khách là xong việc',b.viecGiao.length,'var(--red)',rptSlViecGiaoHtml(b.viecGiao),true)}
-    ${dashToanQuyen()?rptSlInputSec('sXong','','Việc vừa xong — chờ quản lý kiểm','so việc giao với kết quả Sale ghi · Đạt = cất đi · Giao lại = giao tiếp',b.viecXong.length,'var(--yellow)',rptSlViecXongHtml(b.viecXong),true):''}
+    ${rptSlInputSec('sGiao','','Việc được giao','ghi 1 lượt chăm sóc mới là xong việc · việc xong mờ đi ở cuối, admin bấm Đã xong để clear',b.viecGiao.length+(dashToanQuyen()?b.viecXong.length:0),'var(--red)',rptSlViecGiaoHtml(b.viecGiao,b.viecXong),true)}
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
     ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}
     ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
