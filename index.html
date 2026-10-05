@@ -414,10 +414,10 @@ function sbApplyMode(m){
 }
 function sbMode(){const i=Number(localStorage.getItem('sb')||0);return SB_MODES[i]||'full';}
 function toggleSidebar(){sbApplyMode(SB_MODES[(SB_MODES.indexOf(sbMode())+1)%SB_MODES.length]);}
-// TỰ THU GỌN (anh Hải 05/10/2026, kiểu HubSpot): ở chế độ ĐẦY ĐỦ, chuột không chỉ vào thanh menu quá 5 giây -> thu còn
-// icon, bảng số liệu rộng ra; chỉ chuột vào (hoặc chạm trên điện thoại) -> mở lại đầy đủ, rời ra 5 giây lại thu.
+// TỰ THU GỌN (anh Hải 05/10/2026, kiểu HubSpot): ở chế độ ĐẦY ĐỦ, chuột không chỉ vào thanh menu quá 1 giây -> thu còn
+// icon, bảng số liệu rộng ra; chỉ chuột vào (hoặc chạm trên điện thoại) -> mở lại đầy đủ, rời ra 1 giây lại thu.
 // Hai chế độ chọn tay bằng nút ☰ (thu gọn / ẩn hẳn) giữ nguyên, không tự đổi.
-var SB_TU_THU_MS=5000,_sbHen=null;   // 5 giây (anh Hải 05/10/2026, trước 10 giây)
+var SB_TU_THU_MS=1000,_sbHen=null;   // 1 giây (anh Hải 05/10/2026; trước 10 rồi 5 giây)
 function sbTuThu(thu){
   if(sbMode()!=='full')return;
   const sb=document.getElementById('sidebar'),mc=document.getElementById('mainContent');if(!sb||!mc)return;
@@ -5332,7 +5332,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 10:56';
+const APP_VERSION='05/10 10:58';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
