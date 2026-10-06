@@ -5442,7 +5442,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='06/10 14:20';
+const APP_VERSION='06/10 14:39';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6195,7 +6195,8 @@ function rptSlLocTTDs(){
   return [...new Set(ds),...cu,'(chưa cập nhật)'];
 }
 function rptSlLocTT(r){
-  return String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim()||'(chưa cập nhật)';
+  const v=String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim();
+  return /^chăm sóc dài hạn$/i.test(v)?'Tiềm năng, chưa ra đơn':(v||'(chưa cập nhật)');   // đồng nhất 06/10/2026
 }
 function rptSlApplyF(tab,list){
   const sale=rptSlF(tab,'sale'),br=rptSlF(tab,'brand'),sp=rptSlType()==='Sỉ'?rptSlF(tab,'sp'):'';
@@ -6223,7 +6224,7 @@ function rptSlFilterBar(tab){
   const one=(k,label,opts)=>{
     const key=tab+'|'+k;(window._rptSlOpt=window._rptSlOpt||{})[key]=opts;
     const sel=rptSlFArr(tab,k).filter(x=>opts.includes(x));
-    const chu=!sel.length?(tab==='crm'&&k==='status'?'Phân loại: Lead mới · Tiềm năng'+(rptSlType()==='Sỉ'?' · CS dài hạn':''):label+': tất cả')
+    const chu=!sel.length?(tab==='crm'&&k==='status'?'Phân loại: Lead mới · Tiềm năng':label+': tất cả')
       :sel.length===1?label+': '+sel[0]:label+': '+sel.length+' mục';
     return `<details class="rpt-ms" ${window._rptSlMoLoc===key?'open':''} ontoggle="rptSlMsToggle(this,'${key}')" style="position:relative">
     <summary title="${e(sel.join(', '))}" style="${ip};display:flex;align-items:center;gap:6px;user-select:none;${sel.length?'border-color:var(--accent);color:var(--accent)':''}">${e(chu)}
@@ -6732,6 +6733,8 @@ function rptSlBuildMasterRaw(){
     });
     // KHÁCH ĐÃ CHỐT (có doanh số) MÀ CHƯA CÓ PHÂN LOẠI -> tự hiện "Đã ra đơn" (anh Hải 05/10/2026, Lẻ + Sỉ). Tính lúc dựng,
     // KHÔNG ghi bảng, không gắn thẻ Pancake -> Sale chọn phân loại khác (vd Chăm sóc dài hạn) là thắng.
+    // PHÂN LOẠI ĐỒNG NHẤT (06/10/2026): giá trị cũ "Chăm sóc dài hạn" (sheet Master Sỉ cũ...) quy về "Tiềm năng, chưa ra đơn"
+    rows.forEach(r=>{if(/^chăm sóc dài hạn$/i.test(String(r.siPhanLoai||'').trim()))r.siPhanLoai='Tiềm năng, chưa ra đơn';});
     rows.forEach(r=>{if(r.isChot&&!String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim()){r.siPhanLoai='Đã ra đơn';r.ttTuDong=true;}});
     if(laLe)rows.forEach(r=>{
       // LẺ CHƯA CÓ PHÂN LOẠI (anh Hải 02/10/2026): có thẻ TIỀM NĂNG -> "Tiềm năng, chưa ra đơn"; đã gửi SĐT mà chưa gắn thẻ
@@ -8558,7 +8561,7 @@ function rptSlCrmHtml(){try{return rptSlCrmHtmlRaw();}catch(e){rptBaoLoi('Bảng
 // CRM (Lẻ + Sỉ, anh Hải 02/10/2026): danh sách khách CẦN CHĂM, mặc định lọc 3 phân loại: Lead mới · Tiềm năng, chưa ra đơn ·
 // Chăm sóc dài hạn (chưa chốt). Chọn Phân loại khác ở bộ lọc thì xem theo phân loại đó. Ghi chăm sóc ở tab Lịch sử chăm sóc
 // trong hồ sơ (nhiều lượt, có hẹn + chuông), giống Sỉ. Ngày lọc mặc định Tất cả 2026 (rptSlKyMacDinh).
-const RPT_CRM_TT=['Lead mới','Tiềm năng, chưa ra đơn','Chăm sóc dài hạn'];   // Lẻ không có CS dài hạn -> thực tế 2 mục
+const RPT_CRM_TT=['Lead mới','Tiềm năng, chưa ra đơn'];   // Lẻ không có CS dài hạn -> thực tế 2 mục
 function rptCrmLoc(k){window._rptCrmLoc=(window._rptCrmLoc===k?'':k);window._rptSlCrmPage=1;rptSlRender();}
 function rptSlCrmHtmlRaw(){
   const st=rptSlF('crm','status');
