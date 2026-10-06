@@ -1943,11 +1943,19 @@ function qcOnlChotShow(idx){const d=(window._onlChotLists||{})[idx];if(d)dataMod
 // ── Báo Cáo Đối Soát: doanh số ghi nhận (Online + Sỉ đã chốt) vs doanh thu thực nhận (hoá đơn Kiot), nối qua Mã KH ──
 // Modal danh sách data (bấm vào dash 6/10/12)
 function qcCloseModal(){const m=document.getElementById('qcModal');if(m)m.innerHTML='';}
+// Mở hồ sơ khách của loại KHÁC loại đang xem (popup báo cáo MKT trộn Lẻ + Sỉ), CHỈ tab Thông tin, không Sửa / Xoá
+// (anh Hải 06/10/2026). Đổi tạm loại để dựng đúng Master rồi trả lại như cũ.
+function rptMoKhachLoai(loai,key){
+  const cu=window._rptSlType,cuMod=window._rptSlMod;
+  try{window._rptSlType=loai;window._rptSlMod=null;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==='function')rptSlXoaCache();
+    window._rptSlChiInfo=true;window._rptSlCusKey=null;window._rptSlCusTab='info';rptSlShowCustomer(key);}
+  finally{window._rptSlChiInfo=false;window._rptSlType=cu;window._rptSlMod=cuMod;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==='function')rptSlXoaCache();}
+}
 // Modal danh sách tổng quát {title,cols,rows}
 function dataModal(d){
   if(!d)return;
   const head=d.cols.map(c=>`<th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);position:sticky;top:0;background:var(--bg2);white-space:nowrap">${c}</th>`).join('');
-  const body=d.rows.length?d.rows.map((row,ri)=>`<tr style="border-bottom:1px solid var(--border)${d.keys&&d.keys[ri]?';cursor:pointer':''}"${d.keys&&d.keys[ri]?' onclick="rptSlShowCustomer(\''+String(d.keys[ri]).replace(/[\'"\\]/g,'')+'\')" title="Bấm để xem thông tin khách"':''}>${row.map((v,i)=>`<td style="padding:8px 12px;font-size:12px;${i===2?'font-weight:700;color:var(--text)':'color:var(--text2)'};white-space:nowrap">${(v==null||v==='')?'—':v}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${d.cols.length}" style="padding:24px;text-align:center;color:var(--muted)">Không có dữ liệu</td></tr>`;
+  const body=d.rows.length?d.rows.map((row,ri)=>`<tr style="border-bottom:1px solid var(--border)${d.keys&&d.keys[ri]?';cursor:pointer':''}"${d.keys&&d.keys[ri]?' onclick="'+(d.loais&&d.loais[ri]?'rptMoKhachLoai(\''+d.loais[ri]+'\',':'rptSlShowCustomer(')+'\''+String(d.keys[ri]).replace(/[\'"\\]/g,'')+'\')" title="Bấm để xem thông tin khách"':''}>${row.map((v,i)=>`<td style="padding:8px 12px;font-size:12px;${i===2?'font-weight:700;color:var(--text)':'color:var(--text2)'};white-space:nowrap">${(v==null||v==='')?'—':v}</td>`).join('')}</tr>`).join(''):`<tr><td colspan="${d.cols.length}" style="padding:24px;text-align:center;color:var(--muted)">Không có dữ liệu</td></tr>`;
   let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
   m.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)qcCloseModal()">
     <div style="background:var(--surface);border-radius:16px;max-width:1100px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">
@@ -3756,7 +3764,7 @@ function rptMktData(){
       if(brandLoc&&brandRow!==brandLoc)return;
       sale.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',
         brand:brandRow,adId:r.adId||'',
-        rev,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||''});
+        rev,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||'',key:r.key});
     });
   });
   window._rptSlType=cu||'Lẻ';window._rptSlMod=cuMod||null;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
@@ -3871,26 +3879,26 @@ function rptMktHtml(){
   const L=(k,v)=>{window._rptSlLists[k]=v;return k;};
   const tenBrand=b=>(RPT_MKT_BRANDS.filter(x=>x[0]===b)[0]||[null,b||'Khác'])[1];
   const colDon=['Loại','Ngày chốt','Khách','SĐT','Kênh','Brand','Sales','Mã KH','Doanh số'];
-  const rowDon=l=>l.slice().sort((a,b)=>String(b.ngay).localeCompare(String(a.ngay)))
+  const xep=l=>l.slice().sort((a,b)=>String(b.ngay).localeCompare(String(a.ngay)));
+  const dsDon=(title,l)=>{const x=xep(l);return {title,cols:colDon,rows:rowDon(x),keys:x.map(y=>y.key),loais:x.map(y=>y.loai)};};   // bấm dòng mở hồ sơ
+  const rowDon=l=>xep(l)
     .map(x=>[x.loai,dmy(x.ngay),x.name,x.phone||'',x.kenh||'',tenBrand(x.brand),x.staff||'',x.kh||'',vnd(x.rev)]);
   const le=d.sale.filter(x=>x.loai==='Lẻ'),si=d.sale.filter(x=>x.loai==='Sỉ');
   const tienLe=le.reduce((a,x)=>a+x.rev,0),tienSi=si.reduce((a,x)=>a+x.rev,0);
   window._rptMktTach={le:tienLe,si:tienSi,nLe:le.length,nSi:si.length};
-  L('mktDon',{title:'Đơn đã chốt · Lẻ '+vnd(tienLe)+' ('+num(le.length)+' đơn) + Sỉ '+vnd(tienSi)+' ('+num(si.length)+' đơn)',
-    cols:colDon,rows:rowDon(d.sale)});
-  L('mktLe',{title:'Doanh số LẺ · '+vnd(tienLe),cols:colDon,rows:rowDon(le)});
-  L('mktSi',{title:'Doanh số SỈ · '+vnd(tienSi),cols:colDon,rows:rowDon(si)});
+  L('mktDon',dsDon('Đơn đã chốt · Lẻ '+vnd(tienLe)+' ('+num(le.length)+' đơn) + Sỉ '+vnd(tienSi)+' ('+num(si.length)+' đơn)',d.sale));
+  L('mktLe',dsDon('Doanh số LẺ · '+vnd(tienLe),le));
+  L('mktSi',dsDon('Doanh số SỈ · '+vnd(tienSi),si));
   RPT_MKT_BRANDS.concat([['Khac','Khác','#94a3b8']]).forEach(b=>{
     const l=d.sale.filter(x=>(d.revBrand[x.brand]!==undefined?x.brand:'Khac')===b[0]);
-    L('mktBrand-'+b[0],{title:'Doanh số '+b[1]+' · '+vnd(l.reduce((a,x)=>a+x.rev,0)),cols:colDon,rows:rowDon(l)});
+    L('mktBrand-'+b[0],dsDon('Doanh số '+b[1]+' · '+vnd(l.reduce((a,x)=>a+x.rev,0)),l));
   });
   const camps0=Object.values(d.camp).sort((a,b)=>b.spend-a.spend);
   L('mktChi',{title:'Chi phí quảng cáo · '+vnd(kpi.totalSpend),
     cols:['Chiến dịch','Brand','Chi phí','Mess','CP/mess','Đơn chốt','Doanh số'],
     rows:camps0.map(c=>[c.ten,tenBrand(c.brand),vnd(c.spend),num(c.mess),c.mess?vnd(c.spend/c.mess):'',c.don||'',c.rev?vnd(c.rev):''])});
   const adCamp0=buildAdCampMap();
-  camps0.forEach((c,i)=>L('mktCamp-'+i,{title:'Đơn chốt của chiến dịch: '+c.ten,
-    cols:colDon,rows:rowDon(d.sale.filter(x=>adCamp0[String(x.adId||'').trim()]===c.ten))}));
+  camps0.forEach((c,i)=>L('mktCamp-'+i,dsDon('Đơn chốt của chiến dịch: '+c.ten,d.sale.filter(x=>adCamp0[String(x.adId||'').trim()]===c.ten))));
   const bam=(key,html,tip)=>'<div onclick="rptSlShow('+String.fromCharCode(39)+key+String.fromCharCode(39)+')" style="cursor:pointer" title="'+(tip||'Bấm để xem danh sách')+'">'+html+'</div>';
   const tienSpend=kpi.totalSpend;
   const adsDs=rev>0?tienSpend/rev*100:null;
@@ -5348,7 +5356,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/10 16:53';
+const APP_VERSION='06/10 14:04';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6755,10 +6763,11 @@ function rptSiPhanLoaiMau(v){const t=String(v||'');const dmm=dmMau('si_phan_loai
 // Trạng thái Lẻ CŨ -> bộ Phân loại dùng chung với Sỉ (02/10/2026). Giá trị đã thuộc bộ mới thì giữ nguyên.
 const RPT_LE_TT_MAP={'Đang chăm sóc':'Tiềm năng, chưa ra đơn','Mất lead':'Mất kết nối','Chốt đơn':'Đã ra đơn'};
 function rptLeTTMoi(v){const t=String(v||'').trim();return RPT_LE_TT_MAP[t]||t;}
-const RPT_SI_PHANLOAI_DS=['Lead mới','Đã ra đơn','Tiềm năng, chưa ra đơn','Chăm sóc dài hạn','Chưa liên hệ được','Mất kết nối','Không tiềm năng'];
+// ĐỒNG NHẤT Lẻ + Sỉ (anh Hải 06/10/2026): 7 phân loại, bỏ "Chăm sóc dài hạn" (khách cũ đang mang giá trị này vẫn giữ / vẫn hiện)
+const RPT_SI_PHANLOAI_DS=['Lead mới','Lead cũ','Đã ra đơn','Tiềm năng, chưa ra đơn','Chưa liên hệ được','Mất kết nối','Không tiềm năng'];
 // LẺ KHÔNG CÓ "Chăm sóc dài hạn" (anh Hải 02/10/2026): khách Lẻ đang chăm để "Tiềm năng, chưa ra đơn" là đủ -- ô này
 // = thẻ TIỀM NĂNG cũ: chọn trong app thì gắn thẻ TIỀM NĂNG lên Pancake, khách có thẻ TIỀM NĂNG mà chưa phân loại thì tự về ô này.
-function rptSlPhanLoaiDs(){return rptSlType()==='Sỉ'?RPT_SI_PHANLOAI_DS:RPT_SI_PHANLOAI_DS.filter(x=>x!=='Chăm sóc dài hạn');}
+function rptSlPhanLoaiDs(){return RPT_SI_PHANLOAI_DS;}   // Lẻ + Sỉ chung 1 bộ (06/10/2026)
 // Ô CHỌN Phân loại KH ngay trên bảng Master Sỉ -- sửa tại chỗ, không phải mở popup.
 // Lưu vào saleretail_manual.si_phan_loai; giá trị này được ưu tiên hơn phân loại lấy từ sheet.
 function rptSiPhanLoaiSelect(r){
@@ -7546,7 +7555,7 @@ function rptSlShowCustomer(key,sua){
     +(ct?`<tr hidden data-lsps-ct="1" style="background:var(--bg2)"><td></td><td colspan="3" style="padding:6px 12px 10px;font-size:11.5px;color:var(--text2);white-space:pre-line">${ct}</td></tr>`:'');
   }).join('')+(tl.length>3?`<tr><td colspan="4" style="padding:8px 12px"><button onclick="rptSlLspsThem(this,${tl.length-3})" class="btn-ghost" style="margin:0;padding:3px 12px;font-size:11.5px">Xem thêm ${tl.length-3} phiếu cũ hơn</button></td></tr>`:'');
   // 2 tab: Thông tin khách hàng · Lịch sử chăm sóc. Lịch sử lấy từ salesi_crm nên chỉ có bên Sỉ.
-  const coTab=true;   // Lẻ cũng có Ghi chú riêng + Lịch sử chăm sóc (02/10/2026)
+  const coTab=!window._rptSlChiInfo;   // Lẻ cũng có Ghi chú riêng + Lịch sử chăm sóc (02/10/2026); mở từ báo cáo MKT = chỉ tab Thông tin
   const tabCs=coTab&&window._rptSlCusTab==='cs';
   const tabGc=coTab&&window._rptSlCusTab==='gc';
   const nutTab=(ma,nhan)=>{const on=ma==='cs'?tabCs:ma==='gc'?tabGc:(!tabCs&&!tabGc);
@@ -7554,7 +7563,7 @@ function rptSlShowCustomer(key,sua){
   // NÚT SỬA / XOÁ nằm trên đầu hồ sơ, cùng hàng tên khách (anh Hải 25/9/2026) -- cuối hàng Master không còn nút Sửa.
   // Sửa = bật chế độ sửa ngay trong hồ sơ, mọi ô sửa được mở sẵn -- Sỉ và Lẻ như nhau (Lẻ từ 30/9/2026).
   // Xoá chỉ có ở khách nhập tay / tự tạo (M-...): khách Pancake xoá ở đây cũng sẽ tự vào lại. Xoá hỏi xác nhận 2 lần.
-  const nutDau=[
+  const nutDau=window._rptSlChiInfo?'':[
     laSi?(suaSi?'':'<button onclick="rptSlShowCustomer('+q+String(key).replace(/'/g,'')+q+',true)" class="btn-ghost" style="margin:0;height:30px;padding:0 14px;font-size:12px;font-weight:800;color:var(--accent);border:1.5px solid var(--accent)">Sửa</button>')
       :(suaSi?'':'<button onclick="rptSlShowCustomer('+q+String(key).replace(/'/g,'')+q+',true)" class="btn-ghost" style="margin:0;height:30px;padding:0 14px;font-size:12px;font-weight:800;color:var(--accent);border:1.5px solid var(--accent)">Sửa</button>'),
     /^M-[0-9]+$/.test(r.leadId)?'<button onclick="rptSiXoaKhach('+q+r.leadId+q+')" class="btn-ghost" style="margin:0;height:30px;padding:0 14px;font-size:12px;font-weight:800;color:var(--red);border:1.5px solid var(--red)">Xoá</button>':''

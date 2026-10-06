@@ -48,7 +48,7 @@
 
 - **Dữ liệu nguồn nhập sai → chủ động báo anh + TỰ SỬA CHUẨN TRONG APP** bằng luật nhận diện (áp cả về sau), không chỉ dặn nhân viên (anh chốt 2/10/2026). Không ghi ngược sang Kiot / Pancake trừ khi anh bảo. Mỗi luật ghi 1 dòng nhật ký. Mẫu: khách gom đơn Shopee → Lẻ · Online · Shopee.
 - **Chỉ xem từ 2026** (anh chốt 2/10/2026): bộ lọc "Tất cả" = Tất cả 2026, không mở về trước khi anh chưa bảo. Dữ liệu trước 2026 chỉ giữ SỐ TỔNG (lưu trữ, khoá), không giữ chi tiết.
-- **Lẻ dùng chung bộ Phân loại KH của Sỉ, TRỪ "Chăm sóc dài hạn"** (2/10/2026, `si_phan_loai`, hàm `rptSlPhanLoaiDs()`). "Tiềm năng, chưa ra đơn" của Lẻ = thẻ TIỀM NĂNG cũ. Lẻ chưa chốt, chưa phân loại: có thẻ TIỀM NĂNG → "Tiềm năng, chưa ra đơn"; không thẻ mà có SĐT → **"Lead mới"** (tự đặt, tới khi Sale đổi). Người chào hàng / dịch vụ KHÔNG được thành Lead mới (job tự tạo đã loại).
+- **[06/10: Lẻ + Sỉ ĐỒNG NHẤT 7 phân loại, không còn Chăm sóc dài hạn]** ~~Lẻ dùng chung bộ Phân loại KH của Sỉ, TRỪ "Chăm sóc dài hạn"~~ (2/10/2026, `si_phan_loai`, hàm `rptSlPhanLoaiDs()`). "Tiềm năng, chưa ra đơn" của Lẻ = thẻ TIỀM NĂNG cũ. Lẻ chưa chốt, chưa phân loại: có thẻ TIỀM NĂNG → "Tiềm năng, chưa ra đơn"; không thẻ mà có SĐT → **"Lead mới"** (tự đặt, tới khi Sale đổi). Người chào hàng / dịch vụ KHÔNG được thành Lead mới (job tự tạo đã loại).
 - **Doanh thu cửa hàng**: khách có phiếu tạm / đơn đặt hàng thì theo đơn; khách xuất hoá đơn luôn thì tính thẳng hoá đơn (2/10/2026). Lẻ có cả nguồn Offline cửa hàng.
 - **MINH BẠCH, KHÔNG GIẤU (anh chốt 30/9/2026):** anh rất fair, không trách khi Claude làm sai hay gặp sự cố → KHÔNG giấu, KHÔNG nói giảm.
   Mỗi lần báo cáo phải kể đủ: việc làm sai (kể cả đã tự sửa), phần CHƯA kiểm được, và các RỦI RO TIỀM TÀNG (dữ liệu, phân quyền,
@@ -112,6 +112,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **06/10 (1)** — Phân loại KH ĐỒNG NHẤT Lẻ + Sỉ: Lead mới · Lead cũ · Đã ra đơn · Tiềm năng, chưa ra đơn · Chưa liên hệ được · Mất kết nối · Không tiềm năng (code + danh_muc, supabase-schema-phan-loai-dong-nhat.sql). Bỏ "Chăm sóc dài hạn" khỏi dropdown; 51 khách Sỉ đang mang giá trị này GIỮ NGUYÊN, chờ anh quyết đổi sang mục nào. Popup Doanh số báo cáo MKT: bấm dòng mở hồ sơ khách CHỈ tab Thông tin (không Ghi chú / Lịch sử, không Sửa / Xoá; rptMoKhachLoai đổi tạm loại Lẻ/Sỉ rồi trả lại).
 - **05/10 (30)** — SĐT chép từ sổ Kiot (chữ xám) ghi thêm "(số trong Kiot)" ở mọi chỗ hiện SĐT, tránh tưởng khách có 2 số (ca a Hiệp - Hàng Khoai / KH000457 Bác Hà Lập: số 02439280220 là số Kiot, app đúng khi nghi gán nhầm).
 - **05/10 (29)** — Daily Task Lẻ, mục Chưa cập nhật lịch sử chăm sóc: chỉ khách tạo từ 1/9/2026, chưa chốt, Phân loại Lead mới / Tiềm năng, chưa ra đơn (anh bảo) -> 1.623 còn 15. Sỉ giữ nguyên (266, trong đó 247 khách đã chốt Đã ra đơn).
 - **05/10 (28)** — Ẩn Giá trị tiềm năng ở các chỗ hiển thị (anh bảo): Tổng quan (ô Giá trị tiềm năng; Doanh thu giãn hết hàng), CRM (cột + ô Giá trị đang theo; dash còn 3+2 ô), Daily Task (bỏ mục Khách tiềm năng chưa có giá trị dự kiến). Chỉ còn trong hồ sơ chi tiết + chế độ Sửa (ai muốn thì điền). Dữ liệu potential_value giữ nguyên.
