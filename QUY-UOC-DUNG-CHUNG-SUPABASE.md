@@ -17,7 +17,7 @@ Soạn 29/9/2026 bởi Monsieur Claude.
 
 ## 2. Ai sở hữu bảng nào
 
-- **MKT / Sale (lõi, nhiều app đọc):** `datahub_orders`, `datahub_manual`, `saleretail_manual`, `salesi_crm`, `salesi_crm_note`, `kiot_orders`,
+- **MKT / Sale (lõi, nhiều app đọc):** `datahub_orders`, `datahub_manual`, `saleretail_manual`, `salesi_crm`, `salesi_crm_note`, `mkt_ads_trang_thai`, `kiot_orders`,
   `kiot_invoices`, `kiot_customers`, `kiot_don_giu_tinh`, `mkt_spend`, `danh_muc`, `sale_nhan_su`, `pancake_tu_tao_don`, `job_moc`,
   `activity_log`, `sync_log`, `datahub_sync_log`, `backup_snapshots`.
 - **Tài khoản & đăng nhập (dùng chung, MKT / Sale giữ):** `sales_users`, `sales_user_credentials`, Edge Function `dang-nhap`,

@@ -3683,6 +3683,19 @@ async function renderReportTongHop(){
 //   allRows    = gộp về cấp CHIẾN DỊCH/ngày -> tính KPI, khỏi cộng trùng
 // Chỉ nạp khi mở Báo cáo MKT (lazy), giữ lại trong phiên.
 let mktLoaded=false;
+// TRẠNG THÁI QUẢNG CÁO (anh Hải 06/10/2026): bảng mkt_ads_trang_thai do job Meta ghi (7h · 12h · 15h). Lỗi tải thì bỏ qua,
+// bảng vẫn hiện số liệu, chỉ thiếu chấm trạng thái.
+let mktTT={ad:{},camp:{},nhom:{},luc:''};
+async function mktLoadTrangThai(){
+  try{const ds=await sbFetchAll('mkt_ads_trang_thai','select=ad_id,ad_status,adset_name,adset_status,campaign_name,campaign_status,cap_nhat&order=ad_id');
+    const t={ad:{},camp:{},nhom:{},luc:''};
+    ds.forEach(x=>{t.ad[x.ad_id]=x.ad_status;
+      const c=String(x.campaign_name||'').trim(),n=String(x.adset_name||'').trim();
+      if(c&&(!t.camp[c]||x.campaign_status==='ACTIVE'))t.camp[c]=x.campaign_status;
+      if(c&&n&&(!t.nhom[c+'|'+n]||x.adset_status==='ACTIVE'))t.nhom[c+'|'+n]=x.adset_status;
+      if(String(x.cap_nhat||'')>t.luc)t.luc=String(x.cap_nhat||'');});
+    mktTT=t;}catch(e){console.warn('[MKT] chưa tải được trạng thái quảng cáo:',e.message);}
+}
 async function mktLoadSpend(force){
   if(mktLoaded&&!force)return;
   const rows=await sbFetchAll('mkt_spend','select=ad_id,ad_date,campaign_name,adset_name,ad_name,reach,impressions,spend,messages,ctr,cpc,comments&order=ad_date.desc');
@@ -3928,10 +3941,12 @@ function rptMktHtml(){
   }).join('');
   // Bảng chiến dịch
   const camps=Object.values(d.camp).sort((a,b)=>b.spend-a.spend);
+  const chamTT=t=>!t?'':t==='ACTIVE'?'<span title="Đang chạy" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 22%,transparent);margin-right:8px;vertical-align:middle"></span>'
+    :'<span title="Tắt" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--border2);margin-right:8px;vertical-align:middle"></span>';
   const bang=camps.map(function(c,i){
     const ty=c.rev>0?c.spend/c.rev*100:null;
     const brandTen=(RPT_MKT_BRANDS.filter(x=>x[0]===c.brand)[0]||[null,'—'])[1];
-    return '<tr'+(c.don?' onclick="rptSlShow('+String.fromCharCode(39)+'mktCamp-'+i+String.fromCharCode(39)+')" style="cursor:pointer" title="Bấm để xem '+c.don+' đơn chốt"':'')+'><td class="name">'+String(c.ten).replace(/</g,'&lt;')+'</td>'
+    return '<tr'+(c.don?' onclick="rptSlShow('+String.fromCharCode(39)+'mktCamp-'+i+String.fromCharCode(39)+')" style="cursor:pointer" title="Bấm để xem '+c.don+' đơn chốt"':'')+'><td class="name">'+chamTT(mktTT.camp[String(c.ten).trim()])+String(c.ten).replace(/</g,'&lt;')+'</td>'
       +'<td style="font-size:11px">'+brandTen+'</td>'
       +'<td class="num">'+vnd(c.spend)+'</td>'
       +'<td class="num">'+num(c.mess)+'</td>'
@@ -3956,7 +3971,18 @@ function rptMktHtml(){
     [c,n].forEach(x=>{x.spend+=a.spend;x.mess+=a.mess;x.khach+=a.khach.length;x.don+=a.don;x.rev+=a.rev;});
     c.soQc++;n.ads.push(Object.assign({},a,{idx:i}));
   });
-  const dsCamp=Object.values(cay).sort((x,y)=>y.spend-x.spend);
+  // TRẠNG THÁI kiểu Ads Manager (06/10/2026): chấm xanh = đang chạy. Chiến dịch / nhóm theo trạng thái riêng của nó,
+  // quảng cáo theo effective_status (đang phân phối). Đang chạy lên đầu; nút "Chỉ đang chạy" lọc gọn.
+  const ttC=c=>mktTT.camp[c.ten],ttN=(c,n)=>mktTT.nhom[c.ten+'|'+n.ten],ttA=a=>mktTT.ad[a.id];
+  const chay=t=>t==='ACTIVE';
+  Object.values(cay).forEach(c=>{c.chay=chay(ttC(c));c.soChay=0;Object.values(c.nhom).forEach(n=>{n.chay=chay(ttN(c,n));
+    n.ads.forEach(a=>{a.chay=chay(ttA(a));if(a.chay)c.soChay++;});});});
+  const chiChay=!!window._mktChiChay;
+  const dsCamp=Object.values(cay).filter(c=>!chiChay||c.chay||c.soChay)
+    .sort((x,y)=>(y.chay-x.chay)||(y.soChay-x.soChay)||(y.spend-x.spend));
+  const oTT=t=>'<td style="white-space:nowrap">'+(!t?'<span style="color:var(--muted);font-size:11px">—</span>'
+    :chay(t)?'<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--green)"><span style="width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 22%,transparent)"></span>Đang chạy</span>'
+    :'<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--muted)"><span style="width:9px;height:9px;border-radius:50%;background:var(--border2)"></span>Tắt</span>')+'</td>';
   const q=String.fromCharCode(39);
   const oSo=(x,dam)=>'<td class="num">'+vnd(x.spend)+'</td><td class="num">'+num(x.mess)+'</td>'
     +'<td class="num">'+(x.mess>0?vnd(x.spend/x.mess):'—')+'</td>'
@@ -3967,21 +3993,21 @@ function rptMktHtml(){
     +(x.rev>0?(x.spend/x.rev*100).toFixed(1)+'%':'—')+'</td>';
   let bangAd='';
   dsCamp.forEach((c,ci)=>{
-    bangAd+='<tr onclick="rptMktMo('+q+'c'+ci+q+')" style="cursor:pointer;background:var(--bg2)">'
+    bangAd+='<tr onclick="rptMktMo('+q+'c'+ci+q+')" style="cursor:pointer;background:var(--bg2)">'+oTT(ttC(c))
       +'<td class="name" colspan="2"><span id="mkt-mui-c'+ci+'" style="color:var(--muted);font-size:10px;margin-right:6px">▶</span>'
       +String(c.ten).replace(/</g,'&lt;')+'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'
-      +num(Object.keys(c.nhom).length)+' nhóm · '+num(c.soQc)+' quảng cáo</div></td>'
+      +num(Object.keys(c.nhom).length)+' nhóm · '+num(c.soQc)+' quảng cáo'+(c.soChay?' · <span style="color:var(--green)">'+num(c.soChay)+' đang chạy</span>':'')+'</div></td>'
       +oSo(c,true)+'</tr>';
-    Object.values(c.nhom).sort((x,y)=>y.spend-x.spend).forEach((n,ni)=>{
+    Object.values(c.nhom).filter(n=>!chiChay||n.chay||n.ads.some(a=>a.chay)).sort((x,y)=>(y.chay-x.chay)||(y.spend-x.spend)).forEach((n,ni)=>{
       const kn='c'+ci+'-n'+ni;
-      bangAd+='<tr data-cha="c'+ci+'" hidden onclick="rptMktMo('+q+kn+q+')" style="cursor:pointer">'
+      bangAd+='<tr data-cha="c'+ci+'" hidden onclick="rptMktMo('+q+kn+q+')" style="cursor:pointer">'+oTT(ttN(c,n))
         +'<td colspan="2" style="padding-left:26px"><span id="mkt-mui-'+kn+'" style="color:var(--muted);font-size:10px;margin-right:6px">▶</span>'
         +'<span style="font-size:11.5px;font-weight:700">'+String(n.ten).replace(/</g,'&lt;')+'</span>'
         +'<span style="font-size:10.5px;color:var(--muted);font-weight:600"> · '+num(n.ads.length)+' QC</span></td>'
         +oSo(n,false)+'</tr>';
-      n.ads.sort((x,y)=>y.spend-x.spend).forEach(a=>{
+      n.ads.filter(a=>!chiChay||a.chay).sort((x,y)=>(y.chay-x.chay)||(y.spend-x.spend)).forEach(a=>{
         bangAd+='<tr data-cha="'+kn+'" hidden'+(a.khach.length?' onclick="rptSlShow('+q+'mktAd-'+a.idx+q+')" style="cursor:pointer" title="Bấm để xem '+a.khach.length+' khách"':'')+'>'
-          +'<td style="padding-left:48px;font-size:11.5px">'+String(a.ten||'(không tên)').replace(/</g,'&lt;')+'</td>'
+          +oTT(ttA(a))+'<td style="padding-left:48px;font-size:11.5px">'+String(a.ten||'(không tên)').replace(/</g,'&lt;')+'</td>'
           +'<td style="font-size:10.5px;color:var(--muted)">'+a.id+'</td>'
           +oSo({spend:a.spend,mess:a.mess,khach:a.khach.length,don:a.don,rev:a.rev},false)+'</tr>';
       });
@@ -3989,9 +4015,12 @@ function rptMktHtml(){
   });
   const cuonAd='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Chi tiết quảng cáo</div>'
     +'<div class="tbl-count">'+num(dsCamp.length)+' chiến dịch</div>'
-    +'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:auto">bấm chiến dịch → nhóm QC → quảng cáo; bấm dòng quảng cáo để xem khách</span></div>'
-    +'<div class="tbl-scroll"><table><thead><tr><th colspan="2">Chiến dịch / Nhóm / Quảng cáo</th><th>Chi phí</th><th>Mess</th><th>CP/mess</th><th>Khách</th><th>Đơn chốt</th><th>Doanh thu</th><th>ADS/DS</th></tr></thead><tbody>'
-    +(bangAd||'<tr><td colspan="9" style="text-align:center;padding:22px;color:var(--muted)">Chưa có dữ liệu quảng cáo trong kỳ</td></tr>')
+    +'<span style="margin-left:auto;display:inline-flex;gap:6px;align-items:center">'
+    +(mktTT.luc?'<span style="font-size:10.5px;color:var(--muted);font-weight:600">trạng thái cập nhật '+dmy(mktTT.luc.slice(0,10))+' '+new Date(mktTT.luc).toTimeString().slice(0,5)+'</span>':'')
+    +'<button onclick="window._mktChiChay=false;renderReportMkt()" class="'+(chiChay?'btn-ghost':'refresh-btn')+'" style="margin:0;padding:4px 12px;font-size:11px">Tất cả</button>'
+    +'<button onclick="window._mktChiChay=true;renderReportMkt()" class="'+(chiChay?'refresh-btn':'btn-ghost')+'" style="margin:0;padding:4px 12px;font-size:11px">Chỉ đang chạy</button></span></div>'
+    +'<div class="tbl-scroll"><table><thead><tr><th>Trạng thái</th><th colspan="2">Chiến dịch / Nhóm / Quảng cáo</th><th>Chi phí</th><th>Mess</th><th>CP/mess</th><th>Khách</th><th>Đơn chốt</th><th>Doanh thu</th><th>ADS/DS</th></tr></thead><tbody>'
+    +(bangAd||'<tr><td colspan="10" style="text-align:center;padding:22px;color:var(--muted)">'+(chiChay?'Không có quảng cáo nào đang chạy trong kỳ':'Chưa có dữ liệu quảng cáo trong kỳ')+'</td></tr>')
     +'</tbody></table></div></div>';
   const cuonBang='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Chiến dịch quảng cáo</div>'
     +'<span style="font-size:11px;color:var(--muted);font-weight:600;margin-left:auto">đơn chốt gắn theo Ads ID trong đơn Pancake</span></div>'
@@ -4066,7 +4095,7 @@ async function renderReportMkt(){
   if(!el)return;
   if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo MKT');
   try{
-    await mktLoadSpend();
+    await Promise.all([mktLoadSpend(),mktLoadTrangThai()]);
     await dhLoadOrders();
     await kiotLoadInvoices();
     await dhLoadManual();
@@ -5356,7 +5385,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='06/10 14:04';
+const APP_VERSION='06/10 14:10';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;

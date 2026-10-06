@@ -98,6 +98,41 @@ async function upsertMktSpend(rows) {
 
 // Ghi lịch sử vào sync_log để Data Hub (Admin) thấy được job này thực sự chạy khi nào, lấy/tạo/lỗi bao nhiêu --
 // không có bảng này thì "Sync History" trên Data Hub chỉ là khung rỗng mãi mãi dù MKT vẫn tự chạy thật mỗi ngày.
+// TRẠNG THÁI BẬT / TẮT của từng quảng cáo + nhóm + chiến dịch (anh Hải 06/10/2026: chấm xanh như Ads Manager).
+// Ghi đè bảng mkt_ads_trang_thai (1 dòng / quảng cáo). Lỗi ở bước này chỉ cảnh báo, KHÔNG làm hỏng việc kéo chi phí.
+async function fetchTrangThai(adAccountId) {
+  let url = `https://graph.facebook.com/${META_API_VERSION}/${adAccountId}/ads?fields=id,name,effective_status,adset{id,name,effective_status},campaign{id,name,effective_status}&limit=500&access_token=${ACCESS_TOKEN}`;
+  let all = [], trang = 0;
+  while (url && trang < 30) {
+    const res = await fetch(url);
+    const j = await res.json();
+    if (j.error) throw new Error('Meta ads status: ' + (j.error.message || '').slice(0, 150));
+    all = all.concat(j.data || []);
+    url = (j.paging || {}).next || null;
+    trang++;
+  }
+  return all.map(a => ({
+    ad_id: a.id, ad_name: a.name || null, ad_status: a.effective_status || null,
+    adset_id: (a.adset || {}).id || null, adset_name: (a.adset || {}).name || null, adset_status: (a.adset || {}).effective_status || null,
+    campaign_id: (a.campaign || {}).id || null, campaign_name: (a.campaign || {}).name || null, campaign_status: (a.campaign || {}).effective_status || null,
+    tai_khoan: adAccountId, cap_nhat: new Date().toISOString(),
+  }));
+}
+async function ghiTrangThai(adAccountIds) {
+  let rows = [];
+  for (const act of adAccountIds) rows = rows.concat(await fetchTrangThai(act));
+  for (let i = 0; i < rows.length; i += 500) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/mkt_ads_trang_thai?on_conflict=ad_id`, {
+      method: 'POST',
+      headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(rows.slice(i, i + 500)),
+    });
+    if (!res.ok) throw new Error('Ghi mkt_ads_trang_thai lỗi ' + res.status + ': ' + (await res.text()).slice(0, 150));
+  }
+  const bat = rows.filter(r => r.ad_status === 'ACTIVE').length;
+  console.log(`Trạng thái quảng cáo: ${rows.length} quảng cáo, ${bat} đang chạy.`);
+}
+
 async function logSyncStart() {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/sync_log`, {
     method: 'POST',
@@ -120,6 +155,10 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
   if (!ACCESS_TOKEN || !AD_ACCOUNT_ID_RAW || !SERVICE_ROLE_KEY) {
     console.error('Thiếu secret: cần đủ META_ACCESS_TOKEN, META_AD_ACCOUNT_ID, SUPABASE_SERVICE_ROLE_KEY');
     process.exit(1);
+  }
+  if (process.env.CHI_TRANG_THAI === '1') {
+    const ids = AD_ACCOUNT_ID_RAW.split(',').map(x => x.trim()).filter(Boolean).map(id => id.startsWith('act_') ? id : `act_${id}`);
+    await ghiTrangThai(ids); return;
   }
   const logId = await logSyncStart().catch(() => null);
   try {
@@ -158,6 +197,7 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
     }
 
     await upsertMktSpend(rows);
+    try { await ghiTrangThai(adAccountIds); } catch (e) { console.warn('Kéo trạng thái quảng cáo lỗi (bỏ qua, chi phí vẫn đã ghi):', e.message); }
     const theoNgay = {};
     rows.forEach(r => { theoNgay[r.ad_date] = (theoNgay[r.ad_date] || 0) + Number(r.spend || 0); });
     Object.entries(theoNgay).sort().forEach(([d, v]) =>
