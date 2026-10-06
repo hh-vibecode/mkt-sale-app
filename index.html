@@ -274,6 +274,8 @@ thead th,.grp-table th{color:var(--text2)}
 .refresh-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
 .btn-ghost{border-radius:6px;background:var(--surface);border:1.5px solid var(--border2);color:var(--text);font-weight:800;box-shadow:0 1px 2px rgba(45,62,80,.1)}
 .btn-ghost:hover{background:var(--surface);border-color:var(--accent);color:var(--accent)}
+/* hai bảng đứng liền nhau luôn cách 16px (anh Hải 06/10/2026: các bảng dính sát vào nhau) */
+.tbl-card+.tbl-card{margin-top:16px}
 .rpt-ms>summary{list-style:none}.rpt-ms>summary::-webkit-details-marker{display:none}
 .rpt-ms label:hover{background:var(--bg2)}
 </style>
@@ -3599,9 +3601,12 @@ function rptThTongHtml(){
   const cols=['Đội','Ngày chốt','Mã','Họ tên','SĐT','Kênh','Sales','Tỉnh / TP','Doanh thu'];
   const dong=(a,doi)=>a.slice().sort((x,y)=>tien(y)-tien(x)).map(r=>[doi,dmy(r.closeDate)||'—',e(r.kh||r.leadId),e(r.name),e(r.phone||''),e(rptKenhChuan(r.kenh,r.nguon)),rptSlSaleHien(r.staff),e(r.tinh&&r.tinh.moi||''),tien(r)?vnd(tien(r)):'—']);
   window._rptSlLists=window._rptSlLists||{};
-  window._rptSlLists.thTong={title:'Khách có doanh thu (Lẻ + Sỉ) · '+vnd(T_.dt),cols,rows:dong(L_.coDt,'Lẻ').concat(dong(S_.coDt,'Sỉ'))};
-  window._rptSlLists.thLe={title:'Khách Lẻ có doanh thu · '+vnd(L_.dt),cols,rows:dong(L_.coDt,'Lẻ')};
-  window._rptSlLists.thSi={title:'Khách Sỉ có doanh thu · '+vnd(S_.dt),cols,rows:dong(S_.coDt,'Sỉ')};
+  // bấm dòng -> hồ sơ khách CHỈ tab Thông tin, không sửa (anh Hải 06/10/2026, như popup báo cáo MKT): kèm mã + loại từng dòng
+  const ks=a=>a.slice().sort((x,y)=>tien(y)-tien(x)).map(r=>r.key),lo=(a,doi)=>a.map(()=>doi);
+  window._rptSlLists.thTong={title:'Khách có doanh thu (Lẻ + Sỉ) · '+vnd(T_.dt),cols,rows:dong(L_.coDt,'Lẻ').concat(dong(S_.coDt,'Sỉ')),
+    keys:ks(L_.coDt).concat(ks(S_.coDt)),loais:lo(L_.coDt,'Lẻ').concat(lo(S_.coDt,'Sỉ'))};
+  window._rptSlLists.thLe={title:'Khách Lẻ có doanh thu · '+vnd(L_.dt),cols,rows:dong(L_.coDt,'Lẻ'),keys:ks(L_.coDt),loais:lo(L_.coDt,'Lẻ')};
+  window._rptSlLists.thSi={title:'Khách Sỉ có doanh thu · '+vnd(S_.dt),cols,rows:dong(S_.coDt,'Sỉ'),keys:ks(S_.coDt),loais:lo(S_.coDt,'Sỉ')};
   const bam=(k,html)=>'<div onclick="rptSlShow(\''+k+'\')" style="cursor:pointer" title="Bấm để xem danh sách khách">'+html+'</div>';
   const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px';
   // bảng dùng chung
@@ -5442,7 +5447,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='06/10 14:39';
+const APP_VERSION='06/10 16:07';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
