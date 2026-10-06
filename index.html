@@ -3730,6 +3730,13 @@ function rptMktInRange(d){return modInRange('mkt',String(d||'').slice(0,10));}
 // LƯỢT MUA CỦA QUẢNG CÁO: chỉ tính khi data ĐƯỢC ĐÁNH THẺ CHỐT ĐƠN trên Pancake **và** mang Ad ID
 // của chính quảng cáo đó. Có Mã KH mà thẻ chưa chốt -> doanh thu vẫn về báo cáo Sale, nhưng KHÔNG
 // ghi công cho quảng cáo; dòng nhập tay (thẻ 'Nhập tay') cũng không được tính cho MKT.
+// DOANH THU TÍNH CHO MKT trong kỳ (06/10/2026): Shopee tính đủ (cả mua lại); khách "tính hết" chỉ lấy r.kordsMkt; còn lại = r.revenue.
+function rptSlDoanhThuMkt(r){
+  if(rptLaShopee(r))return r.revenue+(r.repeatRevenue||0);
+  if(!r.kordsMkt)return r.revenue;
+  const M=rptSlMod();
+  return r.kordsMkt.filter(o=>modInRange(M,String(o.purchase_date).slice(0,10))).reduce((x,o)=>x+Number(o.total||0),0);
+}
 function rptMktDuocTinh(r){
   if(!String(r.adId||'').trim())return false;
   return /ch\u1ed1t/i.test(r.tagStatus||'');
@@ -3770,7 +3777,7 @@ function rptMktData(){
     window._rptSlType=t;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
     rptSlPeriod().forEach(r=>{
       // Shopee: MKT tính đủ mọi đơn (cả phần "mua lại"), nguồn Online (anh Hải 02/10/2026)
-      const rev=r.revenue+(rptLaShopee(r)?(r.repeatRevenue||0):0);
+      const rev=rptSlDoanhThuMkt(r);   // MKT không tính đơn mua lại (kể cả khách Lẻ Online "tính hết" của Sale)
       if(!r.isChot||rev<=0)return;
       if(/offline/i.test(r.nguon||''))return;   // MKT CHỈ lấy nguồn Online -- cả Lẻ lẫn Sỉ (chốt 23/9/2026)
       const brandRow=t==='Sỉ'?'Shidai':(r.brand||'');
@@ -3822,9 +3829,9 @@ function rptMktData(){
       // ra ai), nhưng KHÔNG cộng vào lượt mua / doanh thu của quảng cáo.
       const tinh=rptMktDuocTinh(r);   // MKT CHỈ lấy nguồn Online -- cả Lẻ lẫn Sỉ (chốt 23/9/2026)
       theoAd[id].khach.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',staff:r.staff||'',
-        kh:r.kh||'',ngay:r.isChot?r.closeDate:r.created,rev:r.isChot?r.revenue:0,chot:!!r.isChot,
+        kh:r.kh||'',ngay:r.isChot?r.closeDate:r.created,rev:r.isChot?rptSlDoanhThuMkt(r):0,chot:!!r.isChot,
         don:r.isChot?(r.kords||[]).map(o=>o.code):[]});   // phiếu mua (đơn đặt hàng Kiot) để xem khách mua gì
-      if(r.isChot&&tinh){theoAd[id].don++;theoAd[id].rev+=r.revenue;}
+      if(r.isChot&&tinh){const v=rptSlDoanhThuMkt(r);if(v>0){theoAd[id].don++;theoAd[id].rev+=v;}}
     });
   });
   window._rptSlType=cu2||'Lẻ';window._rptSlMod=cuMod2||null;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
@@ -5435,7 +5442,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='06/10 14:13';
+const APP_VERSION='06/10 14:20';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6781,6 +6788,14 @@ function rptSlBuildMasterRaw(){
       // khách TÍNH HẾT (Sỉ Offline...): doanh thu = mọi đơn. Vẫn tính riêng số THÁNG ĐẦU để hồ sơ ghi đúng nhãn
       // (anh Hải 25/9/2026: KH004099 hiện 3,47 tỷ dưới nhãn "tháng đầu" -- thật ra là 79 đơn từ 2024).
       r.tinhHet=true;
+      // MKT KHÔNG "tính hết" (anh Hải 06/10/2026, ca KL Chị Lan Phương: mua đầu 11/01, đơn 02/10 là mua lại mà vẫn tính MKT).
+      // Doanh thu SALE vẫn tính hết; phần của MKT chỉ: đơn trong 1 tháng đầu · đơn khi khách còn nhắn Pancake (30 ngày sau
+      // lần nhắn cuối) · đơn trước mốc có dữ liệu Pancake -- đúng luật MKT đã chốt. Dùng ở rptSlDoanhThuMkt.
+      if(dung.length){const hm=new Date(String(dung[0].purchase_date).slice(0,10));hm.setMonth(hm.getMonth()+1);
+        const ct=r.lastChat?new Date(new Date(String(r.lastChat).slice(0,10)).getTime()+30*86400000):null;
+        r.kordsMkt=dung.filter(o=>{const d=new Date(String(o.purchase_date).slice(0,10));
+          return d<hm||(ct&&d<=ct)||String(o.purchase_date).slice(0,10)<RPT_MOC_PANCAKE;});}
+      else r.kordsMkt=[];
       if(dung.length){const h=new Date(String(dung[0].purchase_date).slice(0,10));h.setMonth(h.getMonth()+1);
         r.revenueThangDau=dung.filter(o=>new Date(String(o.purchase_date).slice(0,10))<h).reduce((x,o)=>x+Number(o.total||0),0);}
       if(dung.length)r.lastKiotDate=String(dung[dung.length-1].purchase_date).slice(0,10);
