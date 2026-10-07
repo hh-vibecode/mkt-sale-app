@@ -116,6 +116,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **07/10 (4)** — Nhãn "chăm sóc" / "mua lại" cạnh Ngày tạo ở Master: rê chuột ra 1 câu giải thích ngắn (khách cũ, tạo ngày nào, vì sao hiện trong kỳ).
 - **07/10 (3)** — Gộp Master + CRM, thêm tab Tổng quan (số khớp Tổng hợp: Lẻ 1–7/10 124.373.000, Sỉ 130.440.500). Khoá Phân loại khách đã chốt với Sale. LỖI em gây ra: đổi Sale sang đội kia rồi bấm Huỷ, ô chọn rơi về "— chưa gán —" với khách đứng tên Sale Kiot (không có option tên đó) -> anh chọn lại "chưa gán" nên M-0620 KB Cô Thảo Đồ đồng bị lưu si_sale='' 17:05. Đã trả si_sale=null (về lại Sale Kiot Lê Thị Hòa), Huỷ giờ trả ô về đúng lựa chọn lúc vẽ. Không có thay đổi Pancake / Lẻ-Sỉ nào cho khách này.
 - **07/10 (2)** — Chia lại 2 đội Sale ở Phân quyền (2 bảng, nút "Chuyển sang Lẻ/Sỉ", phạm vi xem 2 khung); bộ lọc Sales theo đội; dropdown gán Sale chia 2 nhóm + nhãn. Gán khách cho Sale đội kia -> hỏi xác nhận rồi chuyển khách (Edge pancake-note v20 thêm tham số loai). Anh bảo chuyển tay 2 khách Phạm Thị Lệ (L-SD-1656 Liên Lê, L-SD-1660 Tạ Văn Chinh): thẻ Pancake KH SỈ -> KH LẺ (đọc lại đúng), datahub_orders cập nhật, 2 lượt chăm sóc #6214/#6215 loai -> Lẻ. CHƯA ghi activity_log cho 2 ca làm tay này.
 - **07/10 (1)** — Chốt luật: mọi mốc giờ theo giờ VN (UTC+7), áp mọi app — ghi vào CLAUDE.md, QUY-UOC-DUNG-CHUNG-SUPABASE.md (luật 10), mục 3 sổ này và bộ nhớ.

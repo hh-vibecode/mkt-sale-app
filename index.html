@@ -5589,7 +5589,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='07/10 17:07';
+const APP_VERSION='07/10 17:17';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6292,10 +6292,16 @@ function rptSlNgoaiKy(d){
   const x=String(d||'').slice(0,10);
   return !!x&&!modInRange(M,x);
 }
+// Rê chuột vào nhãn -> giải thích DỄ HIỂU, có ngày cụ thể của khách (anh Hải 07/10/2026: "độc chữ không hiểu gì").
 function rptSlNhanCu(d,nhan){
   if(!rptSlNgoaiKy(d))return '';
-  return ' <span title="Khách cũ (tạo trước kỳ đang lọc) nhưng có phát sinh trong kỳ nên vẫn được tính"'
-    +' style="display:inline-block;padding:1px 6px;border-radius:20px;font-size:9.5px;font-weight:800;white-space:nowrap;'
+  const tao=dmy(String(d||'').slice(0,10))||'?';
+  // viết ngắn, dễ hiểu (anh Hải 07/10/2026)
+  const giai=nhan==='chăm sóc'?'Khách cũ (tạo '+tao+'). Hiện ở đây vì có chăm sóc trong khoảng ngày đang xem.'
+    :nhan==='mua lại'?'Khách cũ (tạo '+tao+'). Hiện ở đây vì có mua đơn trong khoảng ngày đang xem.'
+    :'Khách cũ (tạo '+tao+'). Hiện ở đây vì có phát sinh trong khoảng ngày đang xem.';
+  return ' <span title="'+giai.replace(/"/g,'&quot;')+'"'
+    +' style="display:inline-block;padding:1px 6px;border-radius:20px;font-size:9.5px;font-weight:800;white-space:nowrap;cursor:help;'
     +'color:var(--muted);background:var(--bg2);border:1px solid var(--border)">'+(nhan||'khách cũ')+'</span>';
 }
 function rptSlNgayCham(r){return r.careDate||r.created||'';}
