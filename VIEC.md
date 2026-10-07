@@ -38,6 +38,8 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **Báo cáo Sale Lẻ / Sỉ = 3 tab: Tổng quan (trái cùng) · Master Data · Daily Task** (7/10/2026): BỎ tab CRM, gộp vào Master (cột Trao đổi gần nhất + nút + Chăm sóc, bỏ chuông từng dòng, chuông lọc trên thanh vẫn giữ; Master mặc định TẤT CẢ khách, không dash). Tổng quan cho quản lý: Doanh thu + khách · Phân loại trong kỳ · Theo từng Sale · Việc & chăm sóc (hiện tại).
+- **Khách đã chốt: Phân loại khoá với Sale, admin vẫn đổi** (7/10/2026, rptSlKhoaChot).
 - **Chuyển khách Lẻ ↔ Sỉ theo Sale** (7/10/2026): quản lý gán khách cho Sale ĐỘI KIA -> LUÔN hỏi xác nhận -> đổi thẻ Pancake KH SỈ↔KH LẺ (giữ thẻ khác), Data nhập tay đổi sale_type, lượt chăm sóc đổi loai, trạng thái giữ nguyên, việc quản lý đã giao chuyển sang Sale mới. Đội của Sale = cột Đội ở Phân quyền (đã chia lại 2 đội; bộ lọc Sales theo đội, dropdown gán Sale đủ 2 đội có nhãn).
 - **Mốc giờ luôn theo giờ VN (UTC+7)** (7/10/2026, áp mọi app): hiển thị / báo cáo / "hôm nay" / lịch job; cron chạy UTC = giờ VN − 7.
 - **Daily Task Lẻ "Chưa cập nhật lịch sử chăm sóc"** (5/10/2026): chỉ khách tạo từ 1/9/2026, chưa chốt, Lead mới / Tiềm năng, chưa ra đơn.
@@ -114,6 +116,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **07/10 (3)** — Gộp Master + CRM, thêm tab Tổng quan (số khớp Tổng hợp: Lẻ 1–7/10 124.373.000, Sỉ 130.440.500). Khoá Phân loại khách đã chốt với Sale. LỖI em gây ra: đổi Sale sang đội kia rồi bấm Huỷ, ô chọn rơi về "— chưa gán —" với khách đứng tên Sale Kiot (không có option tên đó) -> anh chọn lại "chưa gán" nên M-0620 KB Cô Thảo Đồ đồng bị lưu si_sale='' 17:05. Đã trả si_sale=null (về lại Sale Kiot Lê Thị Hòa), Huỷ giờ trả ô về đúng lựa chọn lúc vẽ. Không có thay đổi Pancake / Lẻ-Sỉ nào cho khách này.
 - **07/10 (2)** — Chia lại 2 đội Sale ở Phân quyền (2 bảng, nút "Chuyển sang Lẻ/Sỉ", phạm vi xem 2 khung); bộ lọc Sales theo đội; dropdown gán Sale chia 2 nhóm + nhãn. Gán khách cho Sale đội kia -> hỏi xác nhận rồi chuyển khách (Edge pancake-note v20 thêm tham số loai). Anh bảo chuyển tay 2 khách Phạm Thị Lệ (L-SD-1656 Liên Lê, L-SD-1660 Tạ Văn Chinh): thẻ Pancake KH SỈ -> KH LẺ (đọc lại đúng), datahub_orders cập nhật, 2 lượt chăm sóc #6214/#6215 loai -> Lẻ. CHƯA ghi activity_log cho 2 ca làm tay này.
 - **07/10 (1)** — Chốt luật: mọi mốc giờ theo giờ VN (UTC+7), áp mọi app — ghi vào CLAUDE.md, QUY-UOC-DUNG-CHUNG-SUPABASE.md (luật 10), mục 3 sổ này và bộ nhớ.
 - **06/10 (6)** — Báo cáo tổng hợp: popup Khách có doanh thu (Lẻ + Sỉ / Lẻ / Sỉ) bấm dòng mở hồ sơ CHỈ tab Thông tin, không sửa (như MKT). CSS: 2 bảng đứng liền nhau tự cách 16px (anh: các bảng dính sát nhau ở Tổng quan).
