@@ -47,6 +47,9 @@ Soạn 29/9/2026 bởi Monsieur Claude.
    khi lộ và phân biệt lưu lượng. Token dùng chung (Pancake, Kiot, Meta) thay ở chỗ nào thì phải thay ở MỌI repo đang dùng.
 8. **Mọi thay đổi CSDL lưu file** `supabase-schema-*.sql` trong repo của app làm thay đổi đó.
 9. **Xoá / sửa hàng loạt** chỉ trên bảng của mình, chạy xem trước (KHO=1) và chụp sao lưu trước (`chup_backup()`).
+10. **Mốc giờ luôn theo giờ Việt Nam (UTC+7)** (anh chốt 7/10/2026): giờ hiển thị, báo cáo, "hôm nay / hôm qua", lịch chạy job.
+    pg_cron và GitHub Actions chạy giờ UTC → đặt lịch = giờ VN − 7 và ghi chú giờ VN cạnh lịch; tính ngày bằng
+    `now() at time zone 'Asia/Ho_Chi_Minh'` (JS: cộng 7h). `timestamptz` lưu UTC là bình thường, chỉ đổi khi hiện / cắt ngày.
 
 ## 4. Tài nguyên dùng chung (cả org chung 1 hạn mức)
 

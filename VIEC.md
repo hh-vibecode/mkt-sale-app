@@ -38,6 +38,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **Mốc giờ luôn theo giờ VN (UTC+7)** (7/10/2026, áp mọi app): hiển thị / báo cáo / "hôm nay" / lịch job; cron chạy UTC = giờ VN − 7.
 - **Daily Task Lẻ "Chưa cập nhật lịch sử chăm sóc"** (5/10/2026): chỉ khách tạo từ 1/9/2026, chưa chốt, Lead mới / Tiềm năng, chưa ra đơn.
 - **Không hiện tên anh Hải trên app** (5/10/2026): người tạo / người giao là tài khoản admin-supreme thì hiện "Admin" (rptTenHien).
 - **Giao diện theo HubSpot** (5/10/2026): token màu ở :root (Canvas), thanh trên/menu #213343, nút chính cam --cta, FONT GIỮ MONTSERRAT (anh dặn). Nút thao tác phải nổi: nút chính .refresh-btn nền đặc, nút phụ .btn-ghost viền đậm — nút mới dùng 2 class này. Thêm màn mới thì dùng biến màu, đừng ghi cứng mã màu. Menu tự thu còn icon sau 1 giây không chỉ chuột.
@@ -112,6 +113,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **07/10 (1)** — Chốt luật: mọi mốc giờ theo giờ VN (UTC+7), áp mọi app — ghi vào CLAUDE.md, QUY-UOC-DUNG-CHUNG-SUPABASE.md (luật 10), mục 3 sổ này và bộ nhớ.
 - **06/10 (6)** — Báo cáo tổng hợp: popup Khách có doanh thu (Lẻ + Sỉ / Lẻ / Sỉ) bấm dòng mở hồ sơ CHỈ tab Thông tin, không sửa (như MKT). CSS: 2 bảng đứng liền nhau tự cách 16px (anh: các bảng dính sát nhau ở Tổng quan).
 - **06/10 (5)** — Bỏ hẳn "Chăm sóc dài hạn" (anh: đổi thành Tiềm năng, chưa ra đơn): 51 khách trong saleretail_manual đổi sang Tiềm năng, chưa ra đơn (51 dòng nhật ký); app quy giá trị cũ từ sheet Master Sỉ cũ về Tiềm năng; CRM mặc định Lead mới · Tiềm năng (Lẻ 22, Sỉ 105). Bộ lọc Lẻ = Sỉ đúng 7 phân loại + (chưa cập nhật).
 - **06/10 (4)** — **[doi-so] Sửa lỗi MKT tính đơn mua lại** (anh hỏi KL Chị Lan Phương mua từ 11/01 mà đơn 02/10 vẫn tính MKT): khách "tính hết" của Sale (Lẻ Online; Sỉ Online không có đơn Pancake) bị MKT lấy luôn mọi đơn. Giờ MKT chỉ lấy r.kordsMkt = đơn trong 1 tháng đầu / khách còn nhắn Pancake 30 ngày / trước mốc Pancake (rptSlDoanhThuMkt); doanh thu Sale không đổi. Kiểm số code cũ↔mới: Sale khớp hết; MKT tháng 10: doanh số 72.875.000 -> 66.015.000, đơn 4 -> 2 (loại KL Chị Lan Phương KH006444 3,36tr và KB CHỊ DUNG - HÀ NỘI KH006442 3,5tr, đơn đầu 08/09/2025). Lỗi có từ khi có luật Lẻ Online tính hết (22/9) -> số MKT các tháng trước cũng đã bị thổi lên, giờ tự đúng lại.

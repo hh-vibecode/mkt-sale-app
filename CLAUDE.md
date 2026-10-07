@@ -14,6 +14,8 @@ Phiên chạy trên cloud và phiên trên máy KHÔNG đọc được hội tho
 - **Dùng chung Supabase với các app khác**: theo `QUY-UOC-DUNG-CHUNG-SUPABASE.md` (sổ đăng ký tiền tố, ai sở hữu bảng nào, chỉ THÊM trên bảng dùng chung).
 
 ## Cách làm việc
+- **Mốc giờ luôn theo giờ Việt Nam (UTC+7)** (anh chốt 7/10/2026, áp cho mọi app): hiển thị, báo cáo, "hôm nay", lịch job.
+  pg_cron / GitHub Actions chạy UTC → giờ VN − 7, ghi chú giờ VN cạnh lịch; báo giờ cho anh luôn đổi sang giờ VN.
 - **Minh bạch, không giấu** (anh chốt 30/9/2026): anh không trách khi làm sai hay gặp sự cố, nên mỗi lần báo cáo phải kể đủ
   việc làm sai (kể cả đã tự sửa), phần CHƯA kiểm được và rủi ro tiềm tàng (dữ liệu, phân quyền, bảo mật, job, số liệu). Cùng nhau giải quyết.
 - **Tự làm, không giao việc cho anh**: SQL, deploy, cấu hình làm được thì tự làm rồi báo. Lưu kèm `supabase-schema-*.sql`.
