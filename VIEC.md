@@ -118,6 +118,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **07/10 (8)** — Daily Task: ô lọc "Người xử lý" (tích nhiều) cho bảng Việc được giao, danh sách = người đang có việc. Ô lọc tích-nhiều tách thành hàm chung rptSlMsLoc (Master dùng lại).
 - **07/10 (7)** — GIAO VIỆC RIÊNG (anh: mỗi lần giao phải tạo chăm sóc hơi tù): nút Giao việc (admin) cạnh + Chăm sóc trên Master + trong thanh hàng loạt; form 3 ô Người phụ trách · Việc cần làm · Deadline. Lưu dòng salesi_crm hinh_thuc="Giao việc" (không nội dung) — rptSlCsRows mặc định BỎ dòng này nên không tính lượt / CS cuối / lịch sử; chỉ việc được giao đọc cả (rptSlCsRows(r,true)). Sale báo xong vẫn bằng ghi lượt chăm sóc; admin Sửa việc / Huỷ việc ở bảng đỏ. Bong bóng cam cả khi chưa có lượt nào mà đã giao việc.
 - **07/10 (6)** — BỎ phân loại "Mất kết nối": đổi hết sang "Không tiềm năng" (188 hồ sơ, 27 dòng nhập tay Sỉ, 288 lượt chăm sóc; nhật ký 216 dòng; supabase-schema-bo-mat-ket-noi.sql), xoá khỏi danh mục -> còn 6 phân loại. Giá trị cũ trong bản chụp sheet quy đổi lúc dựng. Không tiềm năng giờ cũng thôi nhắc ở Daily Task (như Mất kết nối trước đây). Form chăm sóc: gỡ bắt buộc Phương án tiếp theo + Deadline, chỉ bắt khi giao việc.
 - **07/10 (5)** — Thêm số bản cạnh giờ cập nhật: "v436 · 07/10 17:19" (APP_BAN = số commit đã sửa index.html, tính cả commit đóng dấu). Luật đóng dấu ghi vào CLAUDE.md.

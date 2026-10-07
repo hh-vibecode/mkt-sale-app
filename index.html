@@ -5590,10 +5590,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='07/10 17:34';
+const APP_VERSION='07/10 17:39';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=438;
+const APP_BAN=439;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6368,17 +6368,10 @@ function rptSlApplyF(tab,list){
     (!sp||sp.includes(r.siSpQT||'(chưa rõ)'))&&
     (!br||br.includes(DH_BRAND_LABEL[r.brand]||r.brand||'—')));
 }
-function rptSlFilterBar(tab){
-  // Dựng lựa chọn từ TOÀN BỘ khách, không phải từ phần đang hiển thị -- nếu lấy theo phần đang hiển thị
-  // thì lọc ngày mặc định (hôm qua -> hôm nay) làm dropdown chỉ còn 1-2 mục, không lọc được gì nữa.
-  const full=rptSlBuildMaster();
-  const sales=[...rptSlSaleCuaDoi(rptSlType()),'(chưa gán)'];
-  // Trạng thái lấy danh sách CỐ ĐỊNH, không lấy theo giá trị đang có trong data.
-  const stats=rptSlLocTTDs();
-  const brands=[...new Set(full.map(r=>DH_BRAND_LABEL[r.brand]||r.brand||'—'))].sort();
+// Ô LỌC TÍCH CHỌN NHIỀU dùng chung (bộ lọc Master + Daily Task). Trạng thái lưu theo (loại khách, tab, k) -- rptSlFArr.
+function rptSlMsLoc(tab,k,label,opts){
   const ip='height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  const one=(k,label,opts)=>{
     const key=tab+'|'+k;(window._rptSlOpt=window._rptSlOpt||{})[key]=opts;
     const sel=rptSlFArr(tab,k).filter(x=>opts.includes(x));
     const chu=!sel.length?(tab==='crm'&&k==='status'?'Phân loại: Lead mới · Tiềm năng':label+': tất cả')
@@ -6390,7 +6383,18 @@ function rptSlFilterBar(tab){
       <div onclick="window._rptSlMoLoc='${key}';rptSlSetF('${tab}','${k}',[])" style="padding:5px 8px;font-size:11px;font-weight:800;color:${sel.length?'var(--accent)':'var(--muted)'};cursor:pointer;border-bottom:1px solid var(--border);margin-bottom:4px">${sel.length?'Bỏ chọn ('+sel.length+')':'Đang xem tất cả'}</div>
       ${opts.map((o,i)=>`<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:11.5px;font-weight:600;white-space:nowrap;color:var(--text)"><input type="checkbox" ${sel.includes(o)?'checked':''} onchange="rptSlToggleF('${tab}','${k}',${i},this.checked)" style="accent-color:var(--accent);cursor:pointer">${e(o)}</label>`).join('')}
     </div></details>`;
-  };
+}
+function rptSlFilterBar(tab){
+  // Dựng lựa chọn từ TOÀN BỘ khách, không phải từ phần đang hiển thị -- nếu lấy theo phần đang hiển thị
+  // thì lọc ngày mặc định (hôm qua -> hôm nay) làm dropdown chỉ còn 1-2 mục, không lọc được gì nữa.
+  const full=rptSlBuildMaster();
+  const sales=[...rptSlSaleCuaDoi(rptSlType()),'(chưa gán)'];
+  // Trạng thái lấy danh sách CỐ ĐỊNH, không lấy theo giá trị đang có trong data.
+  const stats=rptSlLocTTDs();
+  const brands=[...new Set(full.map(r=>DH_BRAND_LABEL[r.brand]||r.brand||'—'))].sort();
+  const ip='height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer';
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const one=(k,label,opts)=>rptSlMsLoc(tab,k,label,opts);
   return one('sale','Sales',sales)+one('status','Trạng thái',stats)
     +one('nguon','Nguồn',['Online','Offline'])
     +(rptSlType()==='Sỉ'?one('sp','Sản phẩm',[...new Set(RPT_SI_SPQT_DS),'(chưa rõ)']):'')+one('brand','Brand',brands);
@@ -8887,7 +8891,16 @@ function rptSlInputHtml(){
       ${bam('daNoi','Bấm để xem đơn chốt đã nối / chưa nối',mkKpi(ic('check'),'Đơn chốt đã nối',num(b.all.filter(r=>r.isChot&&r.kh).length)+'/'+num(b.all.filter(r=>r.isChot).length),'nối bằng Mã KH','g-green'))}
       ${bam('chuaTT','Bấm để xem khách chưa cập nhật trạng thái',mkKpi(ic('clock'),'Chưa cập nhật trạng thái',num(b.chuaTT.length),'','g-yellow'))}
     </div>
-    ${rptSlInputSec('sGiao','','Việc được giao','ghi 1 lượt chăm sóc mới là xong việc · việc xong mờ đi ở cuối, admin bấm Xác nhận để clear',b.viecGiao.length+(dashToanQuyen()?b.viecXong.length:0),'var(--red)',rptSlViecGiaoHtml(b.viecGiao,b.viecXong),true)}
+    ${(()=>{
+      // LỌC THEO NGƯỜI XỬ LÝ việc (anh Hải 07/10/2026) -- chỉ áp cho bảng Việc được giao; danh sách = những người đang có việc
+      const ai=v=>String(v&&v.nguoi_xu_ly||'').trim()||'(chưa rõ)';
+      const nguoi=[...new Set(b.viecGiao.map(r=>ai(r.viecGiao)).concat((dashToanQuyen()?b.viecXong:[]).map(x=>ai(x.giao))))].sort((x,y)=>x.localeCompare(y,'vi'));
+      const chon=rptSlFArr('input','nguoi').filter(x=>nguoi.includes(x));
+      const hop=v=>!chon.length||chon.includes(ai(v));
+      const vg=b.viecGiao.filter(r=>hop(r.viecGiao)),vx=b.viecXong.filter(x=>hop(x.giao));
+      const loc=nguoi.length?'<div style="display:flex;justify-content:flex-end;margin:0 0 8px">'+rptSlMsLoc('input','nguoi','Người xử lý',nguoi)+'</div>':'';
+      return loc+rptSlInputSec('sGiao','','Việc được giao'+(chon.length?' · '+chon.join(', '):''),'ghi 1 lượt chăm sóc mới là xong việc · việc xong mờ đi ở cuối, admin bấm Xác nhận để clear',vg.length+(dashToanQuyen()?vx.length:0),'var(--red)',rptSlViecGiaoHtml(vg,vx),true);
+    })()}
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
     ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}
     ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
