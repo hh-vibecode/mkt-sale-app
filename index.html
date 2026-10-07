@@ -5589,10 +5589,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='07/10 17:19';
+const APP_VERSION='07/10 17:28';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=436;
+const APP_BAN=437;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6352,7 +6352,7 @@ function rptSlLocTTDs(){
 }
 function rptSlLocTT(r){
   const v=String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim();
-  return /^chăm sóc dài hạn$/i.test(v)?'Tiềm năng, chưa ra đơn':(v||'(chưa cập nhật)');   // đồng nhất 06/10/2026
+  return /^chăm sóc dài hạn$/i.test(v)?'Tiềm năng, chưa ra đơn':/^mất kết nối$/i.test(v)?'Không tiềm năng':(v||'(chưa cập nhật)');   // đồng nhất 06/10 · bỏ Mất kết nối 07/10/2026
 }
 function rptSlApplyF(tab,list){
   const sale=rptSlF(tab,'sale'),br=rptSlF(tab,'brand'),sp=rptSlType()==='Sỉ'?rptSlF(tab,'sp'):'';
@@ -6891,6 +6891,7 @@ function rptSlBuildMasterRaw(){
     // KHÔNG ghi bảng, không gắn thẻ Pancake -> Sale chọn phân loại khác (vd Chăm sóc dài hạn) là thắng.
     // PHÂN LOẠI ĐỒNG NHẤT (06/10/2026): giá trị cũ "Chăm sóc dài hạn" (sheet Master Sỉ cũ...) quy về "Tiềm năng, chưa ra đơn"
     rows.forEach(r=>{if(/^chăm sóc dài hạn$/i.test(String(r.siPhanLoai||'').trim()))r.siPhanLoai='Tiềm năng, chưa ra đơn';});
+    rows.forEach(r=>{if(/^mất kết nối$/i.test(String(r.siPhanLoai||'').trim()))r.siPhanLoai='Không tiềm năng';});   // bỏ Mất kết nối (07/10/2026)
     rows.forEach(r=>{if(r.isChot&&!String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim()){r.siPhanLoai='Đã ra đơn';r.ttTuDong=true;}});
     if(laLe)rows.forEach(r=>{
       // LẺ CHƯA CÓ PHÂN LOẠI (anh Hải 02/10/2026): có thẻ TIỀM NĂNG -> "Tiềm năng, chưa ra đơn"; đã gửi SĐT mà chưa gắn thẻ
@@ -7016,10 +7017,12 @@ function rptSiPhanLoaiMau(v){const t=String(v||'');const dmm=dmMau('si_phan_loai
 // "Lead mới" (anh Hải 25/9/2026): khách lần đầu tiếp cận, chưa xác định được có tiềm năng hay không.
 // Không gắn thẻ Pancake (xem rptSiTheTuPhanLoai), nhưng vẫn tính là ĐÃ cập nhật trạng thái.
 // Trạng thái Lẻ CŨ -> bộ Phân loại dùng chung với Sỉ (02/10/2026). Giá trị đã thuộc bộ mới thì giữ nguyên.
-const RPT_LE_TT_MAP={'Đang chăm sóc':'Tiềm năng, chưa ra đơn','Mất lead':'Mất kết nối','Chốt đơn':'Đã ra đơn'};
+const RPT_LE_TT_MAP={'Đang chăm sóc':'Tiềm năng, chưa ra đơn','Mất lead':'Không tiềm năng','Mất kết nối':'Không tiềm năng','Chốt đơn':'Đã ra đơn'};
 function rptLeTTMoi(v){const t=String(v||'').trim();return RPT_LE_TT_MAP[t]||t;}
 // ĐỒNG NHẤT Lẻ + Sỉ (anh Hải 06/10/2026): 7 phân loại, bỏ "Chăm sóc dài hạn" (khách cũ đang mang giá trị này vẫn giữ / vẫn hiện)
-const RPT_SI_PHANLOAI_DS=['Lead mới','Lead cũ','Đã ra đơn','Tiềm năng, chưa ra đơn','Chưa liên hệ được','Mất kết nối','Không tiềm năng'];
+// 07/10/2026 BỎ "Mất kết nối" (anh Hải: đổi hết sang "Không tiềm năng" rồi xoá) -> còn 6. Dữ liệu đã đổi (supabase-schema-bo-mat-ket-noi.sql),
+// giá trị cũ còn trong bản chụp sheet (si_sheet) thì quy đổi lúc dựng (rptSlLocTT + bước chuẩn hoá trong rptSlBuildMasterRaw).
+const RPT_SI_PHANLOAI_DS=['Lead mới','Lead cũ','Đã ra đơn','Tiềm năng, chưa ra đơn','Chưa liên hệ được','Không tiềm năng'];
 // LẺ KHÔNG CÓ "Chăm sóc dài hạn" (anh Hải 02/10/2026): khách Lẻ đang chăm để "Tiềm năng, chưa ra đơn" là đủ -- ô này
 // = thẻ TIỀM NĂNG cũ: chọn trong app thì gắn thẻ TIỀM NĂNG lên Pancake, khách có thẻ TIỀM NĂNG mà chưa phân loại thì tự về ô này.
 function rptSlPhanLoaiDs(){return RPT_SI_PHANLOAI_DS;}   // Lẻ + Sỉ chung 1 bộ (06/10/2026)
@@ -7644,7 +7647,7 @@ function rptSlCsFormHtml(r){
     +'<div style="margin-top:12px">'+lb('3. Phản hồi / vướng mắc / nhu cầu khách hàng')
       +'<textarea id="csPhanHoi" rows="2" style="'+ip+';resize:vertical">'+e(cu.phan_hoi||'')+'</textarea></div>'
     +'<div style="margin-top:12px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">'
-      +lb('4. Phương án tiếp theo *').replace('margin-bottom:4px','margin-bottom:0')
+      +lb('4. Phương án tiếp theo').replace('margin-bottom:4px','margin-bottom:0')
       // NHÂN SỰ PHỤ TRÁCH (anh Hải 05/10/2026): CHỈ admin trở lên thấy / chọn -> giao việc; Sale chỉ thấy tên người được giao
       // NGƯỜI PHỤ TRÁCH + LỊCH HẸN / DEADLINE sát nhau, người đứng trước (anh Hải 05/10/2026)
       +'<span style="margin-left:auto;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap">'
@@ -7653,7 +7656,7 @@ function rptSlCsFormHtml(r){
           +'<select id="csNguoi" style="'+ip+';width:190px;cursor:pointer;font-weight:700"><option value="">— không giao —</option>'
           +rptSlSaleOptsHtml(cu.nguoi_xu_ly,cu.nguoi_xu_ly?[cu.nguoi_xu_ly]:[])+'</select>'
         :(cu.nguoi_xu_ly?'<span style="font-size:11.5px;font-weight:800;color:var(--red)">Giao: '+e(cu.nguoi_xu_ly)+'</span>':''))
-      +lb('Lịch hẹn / Deadline *').replace('margin-bottom:4px','margin-bottom:0').replace('<div style="','<div style="margin-left:6px;')
+      +lb('Lịch hẹn / Deadline').replace('margin-bottom:4px','margin-bottom:0').replace('<div style="','<div style="margin-left:6px;')
       +'<input id="csHen" type="date" value="'+e(String(cu.ngay_hen||'').slice(0,10))+'" style="'+ip+';width:160px;flex:0 0 auto"></span>'
       +'</div>'
       +'<textarea id="csViec" rows="2" placeholder="vd gọi lại báo giá, gửi mẫu..." style="'+ip+';resize:vertical">'+e(cu.viec_tiep||'')+'</textarea></div>'
@@ -7705,10 +7708,10 @@ async function rptSlCsLuu(){
   const bao=t=>{if(msg)msg.innerHTML='<span style="color:var(--red)">'+t+'</span>';};
   const ngay=g('csNgay');if(!ngay)return bao('Chưa chọn ngày chăm sóc');
   const nd=g('csNoiDung');if(!nd)return bao('Chưa ghi nội dung trao đổi');
-  // Phương án tiếp theo + Lịch hẹn / Deadline BẮT BUỘC mọi lượt (anh Hải 05/10/2026)
-  if(!g('csViec'))return bao('Chưa ghi Phương án tiếp theo');
-  if(!g('csHen'))return bao('Chưa chọn Lịch hẹn / Deadline');
+  // 07/10/2026 anh Hải gỡ bắt buộc Phương án tiếp theo + Lịch hẹn / Deadline (05/10 từng bắt buộc mọi lượt).
+  // Riêng khi GIAO VIỆC (chọn Nhân sự phụ trách) vẫn phải có cả 2, không thì việc giao không có nội dung / hạn.
   if(g('csNguoi')&&!g('csViec'))return bao('Giao việc thì ghi Phương án tiếp theo (việc cần làm)');
+  if(g('csNguoi')&&!g('csHen'))return bao('Giao việc thì chọn Lịch hẹn / Deadline');
   const tt=g('csTrangThai')||RPT_CS_TRANG_THAI[0];
   let maDon='',don=null;
   if(rptSlCsLaChot(tt)){
@@ -8149,9 +8152,10 @@ function rptSlCoTrangThai(r){
   return !!(sh.phan_loai||sh.nhom_kh||r.siPhanLoai||r.siNhomKH||r.siHoTro);
 }
 // Sỉ đã đánh "Mất kết nối" = coi như mất lead -> thôi nhắc ghi thêm giá trị / nội dung.
+// 07/10/2026 Mất kết nối gộp vào "Không tiềm năng" -> Không tiềm năng cũng thôi nhắc.
 function rptSlMatLeadSi(r){
   const t=String(r.siPhanLoai||(r.sh||{}).phan_loai||'');
-  return /mất kết nối|mat ket noi|không liên hệ|huỷ|hủy/i.test(t);
+  return /mất kết nối|mat ket noi|không tiềm năng|khong tiem nang|không liên hệ|huỷ|hủy/i.test(t);
 }
 // Sỉ phân loại "Lead cũ" (khách kéo từ đơn cũ Shidai) -> không nhắc lịch sử chăm / giá trị dự kiến (anh Hải 28/9/2026).
 // Lẻ: trạng thái "Lead cũ" (thêm 28/9/2026 cho khách Sỉ nói mua dùng gia đình chuyển sang Lẻ).

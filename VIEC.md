@@ -38,6 +38,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **6 phân loại KH Lẻ + Sỉ** (7/10/2026, bỏ Mất kết nối -> Không tiềm năng): Lead mới · Lead cũ · Đã ra đơn · Tiềm năng, chưa ra đơn · Chưa liên hệ được · Không tiềm năng. Lượt chăm sóc: Phương án + Deadline KHÔNG bắt buộc, trừ khi giao việc.
 - **Báo cáo Sale Lẻ / Sỉ = 3 tab: Tổng quan (trái cùng) · Master Data · Daily Task** (7/10/2026): BỎ tab CRM, gộp vào Master (cột Trao đổi gần nhất + nút + Chăm sóc, bỏ chuông từng dòng, chuông lọc trên thanh vẫn giữ; Master mặc định TẤT CẢ khách, không dash). Tổng quan cho quản lý: Doanh thu + khách · Phân loại trong kỳ · Theo từng Sale · Việc & chăm sóc (hiện tại).
 - **Khách đã chốt: Phân loại khoá với Sale, admin vẫn đổi** (7/10/2026, rptSlKhoaChot).
 - **Chuyển khách Lẻ ↔ Sỉ theo Sale** (7/10/2026): quản lý gán khách cho Sale ĐỘI KIA -> LUÔN hỏi xác nhận -> đổi thẻ Pancake KH SỈ↔KH LẺ (giữ thẻ khác), Data nhập tay đổi sale_type, lượt chăm sóc đổi loai, trạng thái giữ nguyên, việc quản lý đã giao chuyển sang Sale mới. Đội của Sale = cột Đội ở Phân quyền (đã chia lại 2 đội; bộ lọc Sales theo đội, dropdown gán Sale đủ 2 đội có nhãn).
@@ -116,6 +117,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **07/10 (6)** — BỎ phân loại "Mất kết nối": đổi hết sang "Không tiềm năng" (188 hồ sơ, 27 dòng nhập tay Sỉ, 288 lượt chăm sóc; nhật ký 216 dòng; supabase-schema-bo-mat-ket-noi.sql), xoá khỏi danh mục -> còn 6 phân loại. Giá trị cũ trong bản chụp sheet quy đổi lúc dựng. Không tiềm năng giờ cũng thôi nhắc ở Daily Task (như Mất kết nối trước đây). Form chăm sóc: gỡ bắt buộc Phương án tiếp theo + Deadline, chỉ bắt khi giao việc.
 - **07/10 (5)** — Thêm số bản cạnh giờ cập nhật: "v436 · 07/10 17:19" (APP_BAN = số commit đã sửa index.html, tính cả commit đóng dấu). Luật đóng dấu ghi vào CLAUDE.md.
 - **07/10 (4)** — Nhãn "chăm sóc" / "mua lại" cạnh Ngày tạo ở Master: rê chuột ra 1 câu giải thích ngắn (khách cũ, tạo ngày nào, vì sao hiện trong kỳ).
 - **07/10 (3)** — Gộp Master + CRM, thêm tab Tổng quan (số khớp Tổng hợp: Lẻ 1–7/10 124.373.000, Sỉ 130.440.500). Khoá Phân loại khách đã chốt với Sale. LỖI em gây ra: đổi Sale sang đội kia rồi bấm Huỷ, ô chọn rơi về "— chưa gán —" với khách đứng tên Sale Kiot (không có option tên đó) -> anh chọn lại "chưa gán" nên M-0620 KB Cô Thảo Đồ đồng bị lưu si_sale='' 17:05. Đã trả si_sale=null (về lại Sale Kiot Lê Thị Hòa), Huỷ giờ trả ô về đúng lựa chọn lúc vẽ. Không có thay đổi Pancake / Lẻ-Sỉ nào cho khách này.
