@@ -21,7 +21,9 @@ Phiên chạy trên cloud và phiên trên máy KHÔNG đọc được hội tho
 - **Tự làm, không giao việc cho anh**: SQL, deploy, cấu hình làm được thì tự làm rồi báo. Lưu kèm `supabase-schema-*.sql`.
 - **Commit**: tự pull → commit → push, không hỏi. TRƯỚC mỗi commit chạy `git diff --cached --stat`, chỉ commit đúng file mình sửa.
   Push bị từ chối (phiên khác vừa đẩy) → `git pull --rebase`; xung đột thì giải TỪNG CHỖ bằng tay (APP_VERSION lấy bản mới hơn, nhật ký VIEC giữ cả 2 dòng), kiểm `grep -n "^<<<<<<< |^>>>>>>> "` = 0 và cú pháp index.html OK rồi mới add / `rebase --continue` / push — mỗi bước 1 lệnh riêng, KHÔNG nối `&&` sau script kiểm (30/9/2026 lọt dấu xung đột lên web, app trắng 1–2 phút). Đẩy xong kiểm trang live và báo anh F5.
-  Sửa `index.html` thì đóng dấu phiên bản (`APP_VERSION`) trước khi commit.
+  Sửa `index.html` thì đóng dấu phiên bản trước khi commit: `APP_VERSION` = giờ VN thật (`date '+%d/%m %H:%M'`) và
+  `APP_BAN` = `git rev-list --count HEAD -- index.html` + 1 (số lần cập nhật app, hiện "v436 · 07/10 17:30" — anh chốt 7/10/2026).
+  Gộp xung đột: APP_BAN lấy số lớn hơn + 1 nếu cả 2 phía cùng sửa index.html.
 - **Đẩy bản mới lên `main` xong: đợi GitHub Pages deploy xong (trang live hiện đúng `APP_VERSION` mới) rồi BÁO ANH F5** (anh chốt 30/9).
 - Đổi logic báo cáo: chạy `node scripts/kiem-so-lieu.js` trước & sau; lệch > 5% mà đúng thì `--luu` chốt mốc mới + ghi lý do vào sổ.
 - Đọc bảng Supabase PHẢI phân trang (`limit/offset` hoặc `sbAll`) — `scripts/check-pagination.js` chạy trong CI sẽ chặn.

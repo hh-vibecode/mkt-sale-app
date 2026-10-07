@@ -5589,9 +5589,12 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='07/10 17:17';
+const APP_VERSION='07/10 17:19';
+// SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
+// Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
+const APP_BAN=436;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
-  if(el)el.textContent='bản '+APP_VERSION;});
+  if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
 // Cứ 5 phút hỏi máy chủ xem index.html có đổi không (so ETag). Có bản mới -> hiện nút "Tải lại".
 async function appKiemBanMoi(){
