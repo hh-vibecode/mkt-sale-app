@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
   if (!PC) return json({ error: 'Chưa cấu hình PANCAKE_SESSION_TOKEN' }, 500);
   if (BAT_BUOC && !(await daDangNhap(req))) return json({ error: 'Cần đăng nhập app' }, 401);
 
-  const { shop_id, order_id, code, status, chot, the, who } = await req.json().catch(() => ({}));
+  const { shop_id, order_id, code, status, chot, the, loai, who } = await req.json().catch(() => ({}));
   if (!shop_id || !order_id) return json({ error: 'Thiếu shop_id / order_id' }, 400);
 
   const base = `https://pos.pages.fm/api/v1/shops/${shop_id}/orders/${order_id}`;
@@ -112,6 +112,39 @@ Deno.serve(async (req) => {
       });
       if (r.ok) { tagMoi = moi; ket.tags = moi; ket.tags_cu = cu; }
       else ket.tag_error = 'Pancake trả lỗi ' + r.status;
+    }
+  }
+
+  // 3b) ĐỔI LOẠI KHÁCH Lẻ <-> Sỉ (anh Hải 07/10/2026): admin đổi Sale phụ trách sang Sale đội kia trong app
+  //     -> bỏ thẻ KH SỈ / KH LẺ cũ, gắn thẻ đội mới. GIỮ NGUYÊN mọi thẻ khác (PUT tags ghi đè cả bộ).
+  //     Thẻ đọc ở customer.shop_customer.tags (customer.tags thường rỗng — 30/9 đọc nhầm làm mất thẻ).
+  if (loai === 'Lẻ' || loai === 'Sỉ') {
+    const theMoi = loai === 'Sỉ' ? 'KH SỈ' : 'KH LẺ';
+    const d3 = await doc();
+    const cid = d3?.customer?.id;
+    const cu: string[] = tagMoi ?? (d3?.customer?.shop_customer?.tags ?? []);
+    const laTheLoai = (t: string) => /^\s*KH\s+(SỈ|LẺ)\s*$/i.test(String(t));
+    // chốt an toàn: Pancake trả thẻ rỗng mà bản sao trong app lại có thẻ -> đang đọc sai chỗ, DỪNG (không PUT)
+    let theDb = '';
+    if (!cu.length && SB_URL && SB_KEY) {
+      const q = await fetch(`${SB_URL}/rest/v1/datahub_orders?select=customer_tags&shop_id=eq.${shop_id}&order_id=eq.${order_id}`,
+        { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }).then((r) => r.json()).catch(() => []);
+      theDb = String(q?.[0]?.customer_tags ?? '').trim();
+    }
+    if (!cid) {
+      ket.loai_skipped = 'Không đọc được khách của đơn';
+    } else if (!cu.length && theDb) {
+      ket.loai_error = 'Pancake trả thẻ rỗng nhưng app đang có thẻ "' + theDb + '" — dừng để không xoá mất thẻ';
+    } else if (cu.some((t) => String(t).toUpperCase().trim() === theMoi) && !cu.some((t) => laTheLoai(t) && String(t).toUpperCase().trim() !== theMoi)) {
+      ket.loai_skipped = 'Khách đã có thẻ ' + theMoi;
+      tagMoi = cu;
+    } else {
+      const moi = [...cu.filter((t) => !laTheLoai(t)), theMoi];
+      const r = await fetch(`https://pos.pages.fm/api/v1/shops/${shop_id}/customers/${cid}?access_token=${PC}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { tags: moi } }),
+      });
+      if (r.ok) { tagMoi = moi; ket.tags = moi; ket.tags_cu = cu; }
+      else ket.loai_error = 'Pancake trả lỗi ' + r.status;
     }
   }
 

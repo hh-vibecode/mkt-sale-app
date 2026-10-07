@@ -2668,7 +2668,7 @@ function dhManualForm(){
       ${fld('Nguồn khách',`<select id="dhmNguon" style="${inp}"><option>Online</option><option>Offline</option></select>`)}
       ${fld('Kênh'+dmBut('kenh_nhap_tay'),`<input id="dhmKenh" list="dhmKenhList" placeholder="VD: Tiktok Chánh Tâm" style="${inp}">
         <datalist id="dhmKenhList">${DH_MANUAL_KENH.map(x=>`<option value="${x}">`).join('')}</datalist>`)}
-      ${fld('Sales phụ trách',`<select id="dhmStaff" style="${inp};cursor:pointer"><option value="">— chọn Sale —</option>${rptSlSaleCuaDoi(dhManualType()).map(x=>`<option value="${x}">${x}</option>`).join('')}</select>`)}
+      ${fld('Sales phụ trách',`<select id="dhmStaff" style="${inp};cursor:pointer"><option value="">— chọn Sale —</option>${rptSlSaleOptsHtml('')}</select>`)}
       ${dhManualType()==='Sỉ'?'':fld('Brand',`<select id="dhmBrand" style="${inp};cursor:pointer"><option value="">— tự suy từ kênh —</option>${
         Object.keys(DH_BRAND_LABEL).filter(b=>b!=='Other').map(b=>'<option value="'+b+'">'+DH_BRAND_LABEL[b]+'</option>').join('')}</select>`)}
       ${fld('Mã KH Kiot',`<input id="dhmKh" placeholder="KH0075xx" style="${inp}">`)}
@@ -2736,7 +2736,7 @@ function dhManualEdit(id){
    +'<div>'+lb('Kênh'+dmBut('kenh_nhap_tay'))+'<input id="dhE_kenh" list="dhE_kenhDS" value="'+e(r.kenh||'')+'" style="'+ip+'">'
    +'<datalist id="dhE_kenhDS">'+DH_MANUAL_KENH.map(function(x){return '<option value="'+e(x)+'">';}).join('')+'</datalist></div>'
    +'<div>'+lb('Sale phụ trách')+'<select id="dhE_staff_name" style="'+ip+';cursor:pointer"><option value="">—</option>'
-     +sale.map(function(x){return '<option'+(r.staff_name===x?' selected':'')+'>'+e(x)+'</option>';}).join('')+'</select></div>'
+     +rptSlSaleOptsHtml(r.staff_name,[r.staff_name])+'</select></div>'   // chia 2 bộ phận (07/10/2026)
    +'</div>'
    +'<div style="padding:0 20px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
    +'<button onclick="dhManualDel('+id+')" class="btn-ghost" style="padding:7px 16px;font-size:12px;font-weight:700;color:var(--red);border:1.5px solid var(--red)">Xoá khách này</button>'
@@ -3032,7 +3032,7 @@ function dhNhanSuHtml(){
     return l;
   };
   const khoi=(doi,mau)=>{
-    const list=ds;   // gộp 2 đội (05/10/2026): 1 bảng chung
+    const list=ds.filter(x=>(x.doi==='Sỉ'?'Sỉ':'Lẻ')===doi);   // CHIA LẠI 2 ĐỘI (anh Hải 07/10/2026)
     const dong=list.map(x=>{
       const ai=aiXem(x.ten);
       return '<tr'+(x.dang_lam===false?' style="opacity:.5"':'')+'>'
@@ -3040,11 +3040,12 @@ function dhNhanSuHtml(){
         +'<td class="num"'+(ai.length?'':' style="color:var(--red)"')+'>'+num(ai.length)+'</td>'
         +'<td style="white-space:nowrap">'+(suaDuoc
           ?('<button onclick="dhNhanSuSua('+x.id+')" class="btn-ghost" style="padding:3px 9px;font-size:11px;color:var(--accent);font-weight:700">Sửa</button>'
+            +(x.dang_lam===false?'':'<button onclick="dhNhanSuDoiDoi('+x.id+')" class="btn-ghost" style="padding:3px 9px;font-size:11px;margin-left:4px">Chuyển sang '+(doi==='Sỉ'?'Lẻ':'Sỉ')+'</button>')
             +'<button onclick="dhNhanSuNghi('+x.id+','+(x.dang_lam===false?'true':'false')+')" class="btn-ghost" style="padding:3px 9px;font-size:11px;margin-left:4px;color:'+(x.dang_lam===false?'var(--green)':'var(--red)')+'">'+(x.dang_lam===false?'Cho làm lại':'Cho nghỉ')+'</button>')
           :'<span style="font-size:11px;color:var(--muted)">chỉ admin sửa được</span>')+'</td></tr>';
     }).join('');
     return '<div class="tbl-card" style="margin:0"><div class="tbl-head" style="border-left:4px solid '+mau+'">'
-      +'<div class="tbl-title">'+doi+'</div><div class="tbl-count">'+num(list.length)+'</div></div>'
+      +'<div class="tbl-title">Sale '+doi+'</div><div class="tbl-count">'+num(list.length)+'</div></div>'
       +'<div class="tbl-scroll"><table><thead><tr><th>Tên nhân sự</th><th>Số TK xem được</th><th></th></tr></thead>'
       +'<tbody>'+(dong||'<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--muted)">chưa có ai</td></tr>')+'</tbody></table></div></div>';
   };
@@ -3054,7 +3055,7 @@ function dhNhanSuHtml(){
   return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
     +'<span style="margin-left:auto">'+nutThem+'</span></div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;align-items:start">'
-    +khoi('Đội Sale','#0091ae')+'</div>';
+    +khoi('Lẻ','#0091ae')+khoi('Sỉ','#7209b7')+'</div>';
 }
 // Bảng Nhân sự Sale đã chuyển sang trang Phân quyền (24/9/2026) nhưng thêm/sửa xong vẫn gọi renderDataHub()
 // -> trang Phân quyền không vẽ lại, người vừa thêm chưa hiện (anh Hải báo 25/9/2026). Vẽ lại đúng trang đang mở.
@@ -3074,19 +3075,21 @@ function dhNhanSuThemForm(){
    +'<div style="padding:16px 20px;display:grid;gap:12px">'
    +'<div><div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Họ tên *</div>'
    +'<input id="nsTen" placeholder="Ghi ĐÚNG tên hiển thị trên Pancake/Kiot" style="'+ip+'"></div>'
+   +'<div><div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Đội</div>'
+   +'<select id="nsDoi" style="'+ip+';cursor:pointer"><option value="Lẻ">Sale Lẻ</option><option value="Sỉ">Sale Sỉ</option></select></div>'
    +'<div id="nsMsg" style="font-size:12px;font-weight:700;color:var(--red)"></div>'
    +'<button onclick="dhNhanSuThem()" class="refresh-btn" style="padding:9px">Thêm</button></div></div></div>';
 }
 async function dhNhanSuThem(){
   const ten=(document.getElementById('nsTen')||{}).value||'';
-  const doi='Lẻ';   // cột doi bắt buộc trong CSDL; đã gộp đội nên giá trị không còn ý nghĩa (05/10/2026)
+  const doi=(document.getElementById('nsDoi')||{}).value==='Sỉ'?'Sỉ':'Lẻ';   // chia lại 2 đội (07/10/2026)
   const msg=document.getElementById('nsMsg');
   if(!ten.trim()){if(msg)msg.textContent='Chưa nhập tên';return;}
   const trung=saleNhanSuDS().find(x=>String(x.ten).trim().toLowerCase()===ten.trim().toLowerCase());
   if(trung){if(msg)msg.textContent='Đã có "'+trung.ten+'"'+(trung.dang_lam===false?' (đang nghỉ — bấm "Cho làm lại" ở bảng)':'');return;}
   try{
     await sbInsert('sale_nhan_su',{ten:ten.trim(),doi,created_by:logWho()});
-    logAct('C','sale_nhan_su',null,ten.trim(),'Nhân sự Sale','','Đội Sale');
+    logAct('C','sale_nhan_su',null,ten.trim(),'Nhân sự Sale','','Sale '+doi);
     await saleNhanSuLoad(true);
     qcCloseModal();dhNhanSuVeLai();
   }catch(e){if(msg)msg.textContent='Chưa thêm được: '+e.message;}
@@ -3111,6 +3114,22 @@ async function dhNhanSuDoiTen(id,moi){
   Object.values(rptSlManual||{}).forEach(m=>{if(m&&m.si_sale===cu)m.si_sale=moi;});
   logAct('U','sale_nhan_su',String(id),cu,'Tên Sale',cu,moi);
   await saleNhanSuLoad(true);window._kiotOrdByCode=null;rptSlXoaCache();
+}
+// CHUYỂN 1 SALE SANG ĐỘI KIA (07/10/2026). Đội quyết định: bộ lọc Sales của báo cáo nào có tên người đó, và đổi khách
+// sang Sale này thì khách có bị chuyển Lẻ <-> Sỉ không (rptSlDoiSale). Không đụng khách đang đứng tên người đó.
+async function dhNhanSuDoiDoi(id){
+  if(!dashToanQuyen())return;
+  const x=saleNhanSuDS().find(y=>y.id===id);if(!x)return;
+  const cu=x.doi==='Sỉ'?'Sỉ':'Lẻ',moi=cu==='Sỉ'?'Lẻ':'Sỉ';
+  if(!confirm('Chuyển "'+x.ten+'" từ Sale '+cu+' sang Sale '+moi+'?\n\nKhách đang đứng tên '+x.ten+' giữ nguyên, không bị chuyển. Từ nay gán khách '+cu+' cho '+x.ten+' sẽ hỏi chuyển khách sang '+moi+'.'))return;
+  try{
+    const r=await fetch(SUPABASE_URL+'/rest/v1/sale_nhan_su?id=eq.'+id,{method:'PATCH',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify({doi:moi})});
+    if(!r.ok)throw new Error('lỗi '+r.status+' '+(await r.text()).slice(0,120));
+    logAct('U','sale_nhan_su','#'+id,x.ten,'Đội','Sale '+cu,'Sale '+moi);
+    await saleNhanSuLoad(true);rptSlXoaCache();dhNhanSuVeLai();
+  }catch(e){alert('Chưa chuyển được: '+e.message);}
 }
 async function dhNhanSuSua(id){
   if(!dashToanQuyen())return;
@@ -4460,14 +4479,14 @@ function rptSlTenKhach(r){
 // -> khách tự thành của Sale đó và tự rời khỏi Gán data, không phải gán lại.
 function rptSlCanGan(r){
   if(!r.staff)return true;
-  return rptSlType()==='Sỉ'&&!rptSlSaleCuaDoi('Sỉ').includes(String(r.staff).trim());
+  return rptSlType()==='Sỉ'&&!rptSlSaleCuaDoi().includes(String(r.staff).trim());
 }
 function rptSlSaleHien(ten){
   const t=String(ten||'').trim();
   const e=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   if(!t)return '<span style="color:var(--muted)">—</span>';
   // Người tạo đơn Kiot không có trong Nhân sự Sale -> hiện ĐỦ "Sale Kiot · tên" (anh Hải 02/10/2026), cả Lẻ lẫn Sỉ
-  if(!rptSlSaleCuaDoi(rptSlType()).includes(t))
+  if(!rptSlSaleCuaDoi().includes(t))
     return '<span title="Người tạo đơn bên Kiot, không có trong danh sách Sale" style="color:var(--text2)">Sale Kiot · '+e(t)+'</span>';
   return e(t);
 }
@@ -4477,19 +4496,102 @@ function rptSlSaleHien(ten){
 function rptSlSaleO(r){
   if(!dashToanQuyen())return '<td>'+rptSlStaffHtml(r)+'</td>';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  const ds=rptSlSaleCuaDoi(rptSlType()),cur=String(r.staff||'').trim(),q=String.fromCharCode(39);
+  const ds=rptSlSaleCuaDoi(),cur=String(r.staff||'').trim(),q=String.fromCharCode(39);
   const la=cur&&ds.indexOf(cur)<0;   // người ngoài danh sách (Sale Kiot)
   const opt='<option value=""'+(cur?'':' selected')+'>— chưa gán —</option>'
     +(la?'<option value="" selected disabled>Sale Kiot · '+e(cur)+'</option>':'')
-    +ds.map(x=>'<option value="'+e(x)+'"'+(x===cur?' selected':'')+'>'+e(x)+'</option>').join('');
+    +rptSlSaleOptsHtml(cur);   // đủ Sale, chia 2 bộ phận + nhãn đội (07/10/2026)
   return '<td onclick="rptSlStop(event)"><select onchange="rptSlDoiSale('+q+r.leadId+q+',this.value,this)" title="Đổi Sale phụ trách"'
     +' style="height:28px;max-width:170px;padding:2px 6px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:700;font-family:var(--font);cursor:pointer">'+opt+'</select></td>';
 }
+// ── CHUYỂN KHÁCH SANG ĐỘI KIA (anh Hải 07/10/2026) ─────────────────────────────────────────────────────────
+// Quản lý đổi Sale phụ trách sang Sale ĐỘI KIA (đội = Phân quyền > Nhân sự Sale) -> LUÔN hỏi xác nhận, đồng ý thì:
+//  1) đổi thẻ khách trên Pancake KH SỈ <-> KH LẺ cho mọi đơn Pancake của khách (Edge Function pancake-note, GIỮ mọi thẻ khác);
+//  2) dòng Data nhập tay của khách đổi sale_type -> khách sang hẳn báo cáo đội kia;
+//  3) trạng thái / phân loại / hồ sơ giữ nguyên (gắn theo Lead ID); các lượt chăm sóc đổi cột loai theo (lịch sử lọc theo
+//     loai, không đổi là mất lịch sử bên đội mới); việc quản lý đã giao còn mở -> chuyển sang Sale mới.
+// Huỷ xác nhận = không đổi gì cả.
+function rptSlCanChuyen(ten){const t=String(ten||'').trim();return !!t&&rptSlSaleCuaDoi().includes(t)&&rptSlDoiCuaSale(t)!==rptSlType();}
+function rptSlHoiChuyen(ten,n,tenKhach){
+  const dich=rptSlDoiCuaSale(ten),tu=rptSlType();
+  return confirm(ten+' thuộc Sale '+dich+'.\n\nĐổi Sale cho '+(n>1?n+' khách':'khách "'+(tenKhach||'')+'"')+' sẽ CHUYỂN '+(n>1?'các khách này':'khách')
+    +' từ Sale '+tu+' sang Sale '+dich+':\n• đổi thẻ Pancake KH '+tu.toUpperCase()+' → KH '+dich.toUpperCase()
+    +'\n• trạng thái, lịch sử chăm sóc giữ nguyên; việc quản lý đã giao chuyển sang '+ten+'\n\nXác nhận chuyển?');
+}
+async function rptSlChuyenLoai(r,ten){
+  const dich=rptSlDoiCuaSale(ten),kq={the:0,loi:[],nhapTay:0,cs:0,viec:0};
+  const hdr={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
+  const nhanTheLoai=t=>/^\s*KH\s+(SỈ|LẺ)\s*$/i.test(String(t));
+  // đọc lịch sử + việc đang giao TRƯỚC khi đổi loại (sau khi đổi, bên đội cũ không còn thấy)
+  const cs=rptSlCsRows(r).filter(x=>(x.loai||'Sỉ')!==dich);
+  const viec=r.viecGiao&&String(r.viecGiao.nguoi_xu_ly||'').trim()!==ten?r.viecGiao:null;
+  // 1) thẻ Pancake: thẻ nằm ở KHÁCH theo từng shop -> mỗi shop / mỗi SĐT gọi 1 lần
+  const daGoi=new Set();
+  for(const o of (r.orders||[])){
+    const k=o.shop_id+'|'+(rptSlLast9(o.phone||'')||o.order_id);
+    if(daGoi.has(k)){o.customer_tags=String(o.customer_tags||'').split(',').map(t=>t.trim()).filter(t=>t&&!nhanTheLoai(t)).concat(['KH '+dich.toUpperCase()]).join(', ');continue;}
+    daGoi.add(k);
+    try{
+      const res=await fetch(SUPABASE_URL+'/functions/v1/pancake-note',{method:'POST',headers:hdr,
+        body:JSON.stringify({shop_id:o.shop_id,order_id:o.order_id,loai:dich,who:logWho()})});
+      const d=await res.json().catch(()=>({}));
+      if(!res.ok||d.error||d.loai_error)throw new Error(d.loai_error||d.error||('lỗi '+res.status));
+      if(d.loai_skipped&&!/đã có thẻ/i.test(d.loai_skipped))throw new Error(d.loai_skipped);
+      const cu=String(o.customer_tags||'');
+      o.customer_tags=(d.tags||cu.split(',').map(t=>t.trim()).filter(t=>t&&!nhanTheLoai(t)).concat(['KH '+dich.toUpperCase()])).join(', ');
+      if(d.tags)logAct('U','datahub_orders','#'+o.system_id,r.name,'Thẻ khách',(d.tags_cu||[]).join(', '),d.tags.join(', '));
+      kq.the++;
+    }catch(e){kq.loi.push('Đơn Pancake #'+o.system_id+': '+e.message);}
+  }
+  if(typeof _dhTheoSdt!=='undefined')_dhTheoSdt=null;
+  // 2) Data nhập tay
+  const ids=new Set(rptSlIdsCua(r));
+  const dm=(dhManual||[]).filter(m=>ids.has(dhManualLeadId(m))&&(m.sale_type||'Lẻ')!==dich);
+  if(dm.length){
+    try{
+      const res=await fetch(SUPABASE_URL+'/rest/v1/datahub_manual?id=in.('+dm.map(m=>Number(m.id)).join(',')+')',{method:'PATCH',
+        headers:Object.assign({Prefer:'return=minimal'},hdr),body:JSON.stringify({sale_type:dich,updated_at:new Date().toISOString()})});
+      if(!res.ok)throw new Error('lỗi '+res.status);
+      dm.forEach(m=>{logAct('U','datahub_manual',dhManualLeadId(m),m.customer_name||r.name,'Loại khách',m.sale_type||'Lẻ',dich);m.sale_type=dich;});
+      kq.nhapTay=dm.length;
+    }catch(e){kq.loi.push('Data nhập tay: '+e.message);}
+  }
+  // 3) lịch sử chăm sóc theo khách sang đội mới
+  if(cs.length){
+    try{
+      const res=await fetch(SUPABASE_URL+'/rest/v1/salesi_crm?id=in.('+cs.map(x=>Number(x.id)).join(',')+')',{method:'PATCH',
+        headers:Object.assign({Prefer:'return=minimal'},hdr),body:JSON.stringify({loai:dich})});
+      if(!res.ok)throw new Error('lỗi '+res.status);
+      cs.forEach(x=>{x.loai=dich;});kq.cs=cs.length;
+    }catch(e){kq.loi.push('Lịch sử chăm sóc: '+e.message);}
+  }
+  // 4) việc quản lý đã giao còn mở -> người nhận mới (giữ nguyên thời điểm giao)
+  if(viec){
+    try{
+      const res=await fetch(SUPABASE_URL+'/rest/v1/salesi_crm?id=eq.'+Number(viec.id),{method:'PATCH',
+        headers:Object.assign({Prefer:'return=minimal'},hdr),body:JSON.stringify({nguoi_xu_ly:ten})});
+      if(!res.ok)throw new Error('lỗi '+res.status);
+      logAct('U','salesi_crm','#'+viec.id,r.name,'Người phụ trách việc',viec.nguoi_xu_ly||'',ten);
+      viec.nguoi_xu_ly=ten;kq.viec=1;
+    }catch(e){kq.loi.push('Việc được giao: '+e.message);}
+  }
+  logAct('U','saleretail_manual',r.leadId,r.name||null,'Chuyển loại khách',rptSlType(),dich);
+  window._kiotOrdByCode=null;rptSlXoaCache();
+  return kq;
+}
+function rptSlBaoChuyen(ds,dich){
+  const loi=ds.flatMap(k=>k.loi);
+  if(loi.length)alert('Đã chuyển sang Sale '+dich+' nhưng còn '+loi.length+' chỗ chưa xong:\n'+loi.slice(0,8).join('\n')
+    +(loi.length>8?'\n…':'')+'\n\nKhách có thể nằm lơ lửng giữa 2 bên — báo Monsieur Claude để xử.');
+}
 async function rptSlDoiSale(leadId,ten,el){
+  const r=rptSlBuildMaster().find(x=>x.leadId===leadId)||{};
+  const chuyen=rptSlCanChuyen(ten);
+  if(chuyen&&!rptSlHoiChuyen(ten,1,r.name)){if(el)el.value=String(r.staff||'').trim();return;}
   try{if(el)el.disabled=true;
-    const r=rptSlBuildMaster().find(x=>x.leadId===leadId)||{};
     await rptSlSaveManual(leadId,{si_sale:ten});
     logAct('U','saleretail_manual',leadId,r.name||null,'Sale phụ trách',r.staff||'',ten||'(để trống)');
+    if(chuyen&&r.leadId)rptSlBaoChuyen([await rptSlChuyenLoai(r,ten)],rptSlDoiCuaSale(ten));
     window._kiotOrdByCode=null;rptSlXoaCache();rptSlRender();
   }catch(e){if(el)el.disabled=false;alert('Chưa đổi được Sale: '+e.message);}
 }
@@ -4509,11 +4611,26 @@ function rptSlStaffHtml(r){
 // GỘP 2 ĐỘI SALE (anh Hải 05/10/2026: "sale gộp hết, Sỉ / Lẻ t phân quyền cho thoải mái"): mọi dropdown Sale ở cả Lẻ lẫn Sỉ
 // hiện TẤT CẢ Sale đang làm; tài khoản xem Lẻ hay Sỉ do Phân quyền (Loại khách) quyết. Cột sale_nhan_su.doi giữ lại trong
 // CSDL (bắt buộc có giá trị) nhưng app không dùng nữa. Tham số loai giữ để chỗ gọi cũ không phải sửa.
+// 07/10/2026 CHIA LẠI 2 ĐỘI (anh Hải: "chia lại sale lẻ vs sỉ ở phân quyền như cũ", "filter sỉ lẻ cũng chia chuẩn theo sale,
+// chỉ có phần dropdown sale cho quản lý chọn là có đầy đủ sale"):
+//   rptSlSaleCuaDoi('Lẻ'|'Sỉ') = Sale của ĐỘI đó (cột sale_nhan_su.doi) -> bộ lọc Sales, phạm vi xem;
+//   rptSlSaleCuaDoi()          = TẤT CẢ Sale đang làm -> dropdown quản lý GÁN Sale (kèm nhãn đội, rptSlTenKemDoi).
 function rptSlSaleCuaDoi(loai){
   const ds=saleNhanSuDS();
-  const goc=ds.length?ds.filter(x=>x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>String(x.ten).trim())
-    :RPT_SL_SALE_DROPDOWN_MAC_DINH;
+  const doi=loai==='Sỉ'||loai==='Lẻ'?loai:'';
+  const goc=ds.length?ds.filter(x=>x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI&&(!doi||(x.doi==='Sỉ'?'Sỉ':'Lẻ')===doi)).map(x=>String(x.ten).trim())
+    :(doi==='Sỉ'?RPT_SL_SALE_DOI_SI:doi==='Lẻ'?RPT_SL_SALE_LE:RPT_SL_SALE_DROPDOWN_MAC_DINH);
   return [...new Set(goc)].sort((a,b)=>a.localeCompare(b,'vi'));
+}
+// Tên Sale kèm đội cho dropdown gán Sale: "Phạm Thị Lệ (Lẻ)" (anh Hải 07/10/2026). Giá trị lưu vẫn là tên trơn.
+function rptSlTenKemDoi(ten){const t=String(ten||'').trim();return t?t+' ('+rptSlDoiCuaSale(t)+')':t;}
+// <option> của dropdown GÁN Sale, CHIA 2 BỘ PHẬN (optgroup Sale Lẻ / Sale Sỉ, anh Hải 07/10/2026). them = tên ngoài danh sách cần giữ.
+function rptSlSaleOptsHtml(cur,them){
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  cur=String(cur||'').trim();
+  const nhom=d=>{const ds=rptSlSaleCuaDoi(d).concat((them||[]).filter(x=>x&&rptSlDoiCuaSale(x)===d&&rptSlSaleCuaDoi().indexOf(x)<0));
+    return ds.length?'<optgroup label="Sale '+d+'">'+[...new Set(ds)].map(x=>'<option value="'+e(x)+'"'+(x===cur?' selected':'')+'>'+e(rptSlTenKemDoi(x))+'</option>').join('')+'</optgroup>':'';};
+  return nhom('Lẻ')+nhom('Sỉ');
 }
 function rptSlSalesList(){
   // Cả 2 đội (dùng cho ô tick phạm vi xem ở Phân quyền). Nguồn: bảng Nhân sự Sale.
@@ -4680,7 +4797,7 @@ function rptSlThanhHangLoat(){
       +rptSlPhanLoaiDs().filter(x=>x!=='Đã ra đơn').map(x=>'<option>'+e(x)+'</option>').join('')+'</select>'
       +'<button onclick="rptSlHangLoat(\'pl\',this)" class="refresh-btn" style="margin:0;padding:5px 12px;font-size:11.5px">Áp dụng</button></span>'
     +(dashToanQuyen()?'<span style="display:inline-flex;gap:6px;align-items:center"><select id="hlSale" style="'+ip+'"><option value="__">Đổi Sale phụ trách…</option><option value="">— để trống —</option>'
-      +rptSlSaleCuaDoi().map(x=>'<option>'+e(x)+'</option>').join('')+'</select>'
+      +rptSlSaleOptsHtml('')+'</select>'
       +'<button onclick="rptSlHangLoat(\'sale\',this)" class="refresh-btn" style="margin:0;padding:5px 12px;font-size:11.5px">Áp dụng</button></span>':'')
     +'<button onclick="rptSlBoChon()" class="btn-ghost" style="margin:0 0 0 auto;padding:5px 12px;font-size:11.5px">Bỏ chọn</button></div>';
 }
@@ -4689,7 +4806,11 @@ async function rptSlHangLoat(loai,el){
   let cot,v,nhan;
   if(loai==='pl'){v=(document.getElementById('hlPhanLoai')||{}).value||'';if(!v)return alert('Chọn Phân loại KH cần đổi');cot='si_phan_loai';nhan='Phân loại KH';}
   else{if(!dashToanQuyen())return;v=(document.getElementById('hlSale')||{}).value;if(v==='__'||v===undefined)return alert('Chọn Sale phụ trách');cot='si_sale';nhan='Sale phụ trách';}
-  if(!confirm('Đổi '+nhan+' của '+ids.length+' khách thành "'+(v||'(để trống)')+'"?'))return;
+  // Sale ĐỘI KIA -> hỏi chuyển khách 1 lần cho cả lô (07/10/2026)
+  const chuyen=cot==='si_sale'&&rptSlCanChuyen(v);
+  const dongChuyen=chuyen?rptSlBuildMaster().filter(r=>ids.includes(r.leadId)):[];
+  if(chuyen){if(!rptSlHoiChuyen(v,ids.length,(dongChuyen[0]||{}).name))return;}
+  else if(!confirm('Đổi '+nhan+' của '+ids.length+' khách thành "'+(v||'(để trống)')+'"?'))return;
   if(el){el.disabled=true;el.textContent='Đang lưu…';}
   try{
     const ai=localStorage.getItem('dashUser')||localStorage.getItem('dashRole')||'app',luc=new Date().toISOString();
@@ -4704,6 +4825,9 @@ async function rptSlHangLoat(loai,el){
     const nk=ids.map(id=>({who:logWho(),act:'U',tbl:'saleretail_manual',ref:id,label:null,fld:nhan+' (hàng loạt)',old_v:(rptSlManual[id]||{})[cot]==null?null:String((rptSlManual[id]||{})[cot]),new_v:v||null}));
     fetch(SUPABASE_URL+'/rest/v1/activity_log',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(nk)}).catch(()=>{});
     ids.forEach(id=>{rptSlManual[id]=Object.assign({lead_id:id},rptSlManual[id]||{},{[cot]:v,updated_at:luc,updated_by:ai});});
+    if(chuyen){const kq=[];let i=0;
+      for(const r of dongChuyen){i++;if(el)el.textContent='Chuyển '+i+'/'+dongChuyen.length+'…';kq.push(await rptSlChuyenLoai(r,v));}
+      rptSlBaoChuyen(kq,rptSlDoiCuaSale(v));}
     rptSlChonDs().clear();window._kiotOrdByCode=null;rptSlXoaCache();rptSlRender();
   }catch(err){if(el){el.disabled=false;el.textContent='Áp dụng';}rptBaoLoi('Đổi hàng loạt',err);}
 }
@@ -4736,7 +4860,8 @@ async function dmLoad(force){
 }
 function dmDs(loai){
   const ns=DM_LOAI[loai]&&DM_LOAI[loai].nhanSu;
-  if(ns)return saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>({id:x.id,gia_tri:x.ten,mau:'#0091ae',he_thong:false,ns:true}));
+  // chia lại 2 đội (07/10/2026)
+  if(ns)return saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI&&(x.doi==='Sỉ'?'Sỉ':'Lẻ')===ns).map(x=>({id:x.id,gia_tri:x.ten,mau:'#0091ae',he_thong:false,ns:true}));
   return _dm.filter(x=>x.loai===loai);
 }
 function dmMau(loai,v){const x=_dm.find(y=>y.loai===loai&&y.gia_tri===v);return (x&&x.mau)||'';}
@@ -4998,7 +5123,7 @@ function rptSiThemKhachForm(){
    +'<div>'+lb('Kênh'+dmBut('kenh_nhap_tay'),1)+'<input id="siT_kenh" list="siT_kenhDS" placeholder="VD: Sales trực tiếp" style="'+ip+'">'
    +'<datalist id="siT_kenhDS">'+(typeof DH_MANUAL_KENH!=='undefined'?DH_MANUAL_KENH:[]).map(x=>'<option value="'+e(x)+'">').join('')+'</datalist></div>'
    +'<div>'+lb('Sale phụ trách'+dmBut(T==='Sỉ'?'sale_si':'sale_le'),1)+'<select id="siT_sale" style="'+ip+';cursor:pointer"><option value="">— chọn Sale —</option>'
-     +sale.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select></div>'
+     +rptSlSaleOptsHtml('')+'</select></div>'
    +'<div>'+lb('Phân loại KH'+dmBut('si_phan_loai'),1)+'<select id="siT_phanloai" style="'+ip+';cursor:pointer"><option value="">— chọn —</option>'
      +rptSlPhanLoaiDs().map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select></div>'
    +o
@@ -5084,7 +5209,7 @@ function rptSiOSua(r){
   }
   if(dashToanQuyen()){
     const ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);   // gộp 2 đội (05/10/2026)
-    o.sale={kieu:'chon',ds,gt:r.staff||'',noi:'mn',cot:'si_sale'};
+    o.sale={kieu:'chon',ds,gt:r.staff||'',noi:'mn',cot:'si_sale',optsHtml:rptSlSaleOptsHtml(r.staff,r.staff?[r.staff]:[])};
   }
   o.si_phan_loai={kieu:'chon',ds:RPT_SI_PHANLOAI_DS,gt:r.siPhanLoai||'',noi:'pl'};
   o.si_nguoi_dai_dien={kieu:'text',gt:r.siNguoiDaiDien||'',noi:'mn',cot:'si_nguoi_dai_dien'};
@@ -5125,7 +5250,7 @@ function rptLeOSua(r){
   }
   if(dashToanQuyen()){
     const ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);   // gộp 2 đội (05/10/2026)
-    o.sale={kieu:'chon',ds,gt:r.staff||'',noi:'mn',cot:'si_sale'};
+    o.sale={kieu:'chon',ds,gt:r.staff||'',noi:'mn',cot:'si_sale',optsHtml:rptSlSaleOptsHtml(r.staff,r.staff?[r.staff]:[])};
   }
   o.si_tinh={kieu:'chon',ds:RPT_TINH_34,gt:mn.si_tinh||'',noi:'mn',cot:'si_tinh',rong:'— (để app tự suy)'};
   o.dia_chi={kieu:'text',gt:mn.si_dia_chi||r.diaChi||'',noi:'mn',cot:'si_dia_chi'};
@@ -5143,6 +5268,8 @@ function rptSiONhap(k,o){
   const ip='width:100%;box-sizing:border-box;height:32px;padding:4px 9px;border:1.5px solid var(--accent);border-radius:8px;background:var(--accent-l);color:var(--text);font-size:12.5px;font-weight:600;font-family:var(--font);outline:none';
   const phim='onkeydown="if(event.key===\'Escape\')rptSiHuyO();else if(event.key===\'Enter\''
     +(o.kieu==='dai'?'&&(event.ctrlKey||event.metaKey)':'')+'){event.preventDefault();rptSiLuuTatCa();}"';
+  if(o.kieu==='chon'&&o.optsHtml)
+    return '<select id="siO_'+k+'" '+phim+' style="'+ip+';cursor:pointer"><option value="">'+(o.rong||'—')+'</option>'+o.optsHtml+'</select>';
   if(o.kieu==='chon'){
     const ds=o.gt&&o.ds.indexOf(o.gt)<0?[o.gt].concat(o.ds):o.ds;   // giữ cả giá trị cũ lạ nếu có
     return '<select id="siO_'+k+'" '+phim+' style="'+ip+';cursor:pointer"><option value="">'+(o.rong||'—')+'</option>'
@@ -5183,6 +5310,9 @@ async function rptSiLuuTatCa(){
     mn[o.cot]=gt;
     if(o.cot==='si_sp_quan_tam'){mn.si_sp_qt_nguon=gt?'Tay':null;mn.si_sp_qt_ly=gt?'Sale chọn tay':null;}
   }
+  // Sale ĐỘI KIA -> hỏi chuyển khách (07/10/2026); huỷ thì không lưu gì
+  const chuyenSang=mn.si_sale!==undefined&&String(mn.si_sale||'')!==String(r.staff||'')&&rptSlCanChuyen(mn.si_sale)?mn.si_sale:'';
+  if(chuyenSang&&!rptSlHoiChuyen(chuyenSang,1,r.name))return;
   // 2) ghi
   if(msg)msg.innerHTML='<span style="color:var(--muted)">Đang lưu…</span>';if(nut)nut.disabled=true;
   try{
@@ -5196,6 +5326,7 @@ async function rptSiLuuTatCa(){
       await dhLoadManual(true);
     }
     if(Object.keys(mn).length)await rptSlSaveManual(r.leadId,mn);
+    if(chuyenSang){rptSlBaoChuyen([await rptSlChuyenLoai(r,chuyenSang)],rptSlDoiCuaSale(chuyenSang));qcCloseModal();rptSlRender();return;}
     window._kiotOrdByCode=null;rptSlXoaCache();
     // Phân loại: đi đúng hàm của ô chọn trên bảng (gắn thẻ Pancake; chọn "Đã ra đơn" thì vào luồng chốt, hỏi Mã KH)
     const vaoChot=pl!==null&&rptSiTheTuPhanLoai(pl)==='CHỐT ĐƠN'&&!r.isChot;
@@ -5447,7 +5578,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='06/10 16:07';
+const APP_VERSION='07/10 16:45';
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='bản '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5660,7 +5791,7 @@ function rptSlOverviewHtml(){
 
   const bySale={};
   master.forEach(r=>{const s=r.staff||'(chưa gán)';bySale[s]=bySale[s]||{data:0,chot:0,rev:0,noi:0};bySale[s].data++;if(r.isChot)bySale[s].chot++;if(r.kh)bySale[s].noi++;bySale[s].rev+=tien(r);});
-  const saleRows=Object.entries(bySale).filter(([s])=>rptSlSaleCuaDoi(rptSlType()).includes(s)||s==='(chưa gán)').sort((a,b)=>b[1].rev-a[1].rev||b[1].chot-a[1].chot);
+  const saleRows=Object.entries(bySale).filter(([s])=>rptSlSaleCuaDoi().includes(s)||s==='(chưa gán)').sort((a,b)=>b[1].rev-a[1].rev||b[1].chot-a[1].chot);
 
   const byKenh={};master.forEach(r=>{const k=rptKenhChuan(r.kenh,r.nguon);byKenh[k]=byKenh[k]||{n:0,chot:0,rev:0,goc:new Set(),ds:[]};byKenh[k].n++;byKenh[k].ds.push(r);if(r.isChot)byKenh[k].chot++;byKenh[k].rev+=tien(r);byKenh[k].goc.add(r.kenh||'(trống)');});
   const kenhRows=Object.entries(byKenh).sort((a,b)=>b[1].n-a[1].n);
@@ -7406,7 +7537,7 @@ function rptSlCsFormHtml(r){
       +(dashToanQuyen()
         ?lb('Nhân sự phụ trách').replace('margin-bottom:4px','margin-bottom:0')
           +'<select id="csNguoi" style="'+ip+';width:190px;cursor:pointer;font-weight:700"><option value="">— không giao —</option>'
-          +[...new Set(rptSlSaleCuaDoi().concat(cu.nguoi_xu_ly?[cu.nguoi_xu_ly]:[]))].map(x=>'<option'+(cu.nguoi_xu_ly===x?' selected':'')+'>'+e(x)+'</option>').join('')+'</select>'
+          +rptSlSaleOptsHtml(cu.nguoi_xu_ly,cu.nguoi_xu_ly?[cu.nguoi_xu_ly]:[])+'</select>'
         :(cu.nguoi_xu_ly?'<span style="font-size:11.5px;font-weight:800;color:var(--red)">Giao: '+e(cu.nguoi_xu_ly)+'</span>':''))
       +lb('Lịch hẹn / Deadline *').replace('margin-bottom:4px','margin-bottom:0').replace('<div style="','<div style="margin-left:6px;')
       +'<input id="csHen" type="date" value="'+e(String(cu.ngay_hen||'').slice(0,10))+'" style="'+ip+';width:160px;flex:0 0 auto"></span>'
@@ -7571,7 +7702,7 @@ function rptSlShowCustomer(key,sua){
     fld('Mã KH Kiot',r.kh?rptSlKiotLink(r.kh,'<code>'+esc(r.kh)+'</code> ↗'):'','','ma_kh'),
     ...(laSi||suaSi?[
       fld('Ngày tạo',esc(dmy(rptSlNgayTao(r))),'','ngay_tao'),
-      fld('Sales phụ trách',rptSlSaleHien(r.staff)+(rptSlType()==='Sỉ'&&r.staff&&!rptSlSaleCuaDoi('Sỉ').includes(r.staff)?' <span style="color:var(--muted);font-weight:600;font-size:11px">('+esc(r.staff)+')</span>':''),'','sale'),
+      fld('Sales phụ trách',rptSlSaleHien(r.staff)+(rptSlType()==='Sỉ'&&r.staff&&!rptSlSaleCuaDoi().includes(r.staff)?' <span style="color:var(--muted);font-weight:600;font-size:11px">('+esc(r.staff)+')</span>':''),'','sale'),
     ]:[]),
     ...(laSi?[]:[fld('Nối bằng',linkTxt)]),   // Sỉ bỏ Nối bằng · Số đơn Pancake · Hội thoại (anh Hải 25/9/2026)
     fld('Trạng thái',esc(r.status),RPT_SL_STATUS_COLOR[r.status],'trang_thai'),
@@ -8303,7 +8434,7 @@ function rptSiGanHtml(){
     +'<div id="siGanBar" hidden style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap;background:var(--accent-l);border-bottom:1.5px solid var(--accent)">'
     +'<span id="siGanDem" style="font-size:12.5px;font-weight:800;color:var(--accent)">Đã chọn 0 khách</span>'
     +'<select id="siGanSale" onchange="siGanNut()" style="height:32px;min-width:200px;padding:3px 10px;border:1.5px solid var(--accent);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer">'
-    +'<option value="">Chọn Sale phụ trách…</option>'+sale.map(x=>'<option value="'+e(x)+'">'+e(x)+'</option>').join('')+'</select>'
+    +'<option value="">Chọn Sale phụ trách…</option>'+rptSlSaleOptsHtml('')+'</select>'
     +'<button id="siGanOk" onclick="siGanChay()" disabled style="margin:0;height:32px;padding:0 20px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:800;font-family:var(--font);opacity:.4;cursor:not-allowed">Xác nhận</button>'
     +'<button onclick="siGanTickHet(false)" class="btn-ghost" style="margin:0;height:32px;padding:0 14px;font-size:12px">Bỏ chọn</button>'
     +'</div>'
@@ -8967,7 +9098,9 @@ function crmScopeFields(sales,types,viTri){
     <input type="checkbox" name="${nm}" value="${String(v).replace(/"/g,'&quot;')}"${on?' checked':''}${xemHet?' disabled':''} style="flex:0 0 auto">
     <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v}</span></label>`;
   const ds=[...new Set([...rptSlSalesList(),...(sales||[])])].sort((a,b)=>a.localeCompare(b,'vi'));
-  const nhom=[['Đội Sale',ds,'crmScopeSaleAll']];   // gộp 2 đội (05/10/2026): 1 khung chung, Lẻ / Sỉ chọn ở "Loại khách"
+  // CHIA LẠI 2 ĐỘI (anh Hải 07/10/2026): Sale Lẻ và Sale Sỉ, mỗi đội 1 khung + nút Tích hết riêng (như trước 05/10).
+  const nhom=[['Sale Lẻ',ds.filter(x=>rptSlDoiCuaSale(x)==='Lẻ'),'crmScopeLe'],
+              ['Sale Sỉ',ds.filter(x=>rptSlDoiCuaSale(x)==='Sỉ'),'crmScopeSi']];
   return saonlField(`Phạm vi dữ liệu <span class="crmScopeHet" style="${xemHet?'':'display:none;'}margin-left:6px;font-size:10.5px;font-weight:800;padding:1px 8px;border-radius:10px;background:var(--green-l);color:var(--green);text-transform:none">Admin xem tất cả</span>`,`
     <div class="crmScopeBox" style="${xemHet?'opacity:.45':''}">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap">

@@ -47,7 +47,7 @@ Phiên chạy trên cloud và phiên trên máy KHÔNG đọc được hội tho
 - **Gộp tên Sale**: chỉ khi tên ngắn nằm trọn trong tên dài (Kim Oanh ~ Nguyễn Kim Oanh).
 - **Phạm vi xem**: lọc theo Sale ĐÃ CHỐT (gán tay > người bán trên phiếu đặt / hoá đơn Kiot đã nối > không có mới lấy Pancake — anh chốt 3/10), lọc SAU khi xác định Sale; admin / supreme xem hết.
   Sửa phân quyền phải giả lập view từng tài khoản Sale, sót 0 mới xong.
-- **Lead cũ** (khách trước T9) không tính vào Nhập Liệu. ĐÃ GỘP 2 ĐỘI SALE (5/10/2026): mọi dropdown Sale hiện hết Sale đang làm, Lẻ/Sỉ do Phân quyền (Loại khách) quyết; BỎ luật chuyển đội, thay bằng: khách đứng tên Sale đã nghỉ có người nhận bàn giao -> thuộc người nhận.
+- **Lead cũ** (khách trước T9) không tính vào Nhập Liệu. 2 ĐỘI SALE (chia lại 7/10/2026, đội = cột Đội ở Phân quyền > Nhân sự Sale): bộ lọc Sales mỗi báo cáo chỉ có Sale đội đó; dropdown quản lý GÁN Sale có đủ 2 đội (chia nhóm + nhãn (Lẻ)/(Sỉ)). Gán khách cho Sale đội kia -> hỏi xác nhận rồi chuyển khách (thẻ Pancake KH SỈ↔KH LẺ, sale_type nhập tay, loai lượt chăm sóc, việc đang giao sang Sale mới). Khách đứng tên Sale đã nghỉ có người nhận bàn giao -> thuộc người nhận.
 - Tab Nhập Liệu (tên hiển thị "Daily Task" từ 5/10/2026) chỉ so Pancake (lỗi Sale); lỗi liên quan hoá đơn Kiot để dành cho Đối soát. Mục đỏ / vàng = việc cần làm, tính vào badge.
 - Lọc đúng bộ lọc nghiệp vụ rồi mới trình số; thiếu dữ liệu KHÔNG phải là khớp; bảng cũ giữ có chủ đích — kiểm trước khi nói "mất dữ liệu".
 - Tự tạo đơn Pancake từ hội thoại: kiểm hội thoại đã có đơn, đọc nội dung bỏ rác / xin việc / người rao bán, 1 khách 1 đơn, lấy SĐT gửi sau cùng.
