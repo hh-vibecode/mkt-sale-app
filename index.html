@@ -4524,7 +4524,7 @@ async function rptSlChuyenLoai(r,ten){
   const hdr={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
   const nhanTheLoai=t=>/^\s*KH\s+(SỈ|LẺ)\s*$/i.test(String(t));
   // đọc lịch sử + việc đang giao TRƯỚC khi đổi loại (sau khi đổi, bên đội cũ không còn thấy)
-  const cs=rptSlCsRows(r).filter(x=>(x.loai||'Sỉ')!==dich);
+  const cs=rptSlCsRows(r,true).filter(x=>(x.loai||'Sỉ')!==dich);
   const viec=r.viecGiao&&String(r.viecGiao.nguoi_xu_ly||'').trim()!==ten?r.viecGiao:null;
   // 1) thẻ Pancake: thẻ nằm ở KHÁCH theo từng shop -> mỗi shop / mỗi SĐT gọi 1 lần
   const daGoi=new Set();
@@ -4804,6 +4804,7 @@ function rptSlThanhHangLoat(){
     +(dashToanQuyen()?'<span style="display:inline-flex;gap:6px;align-items:center"><select id="hlSale" style="'+ip+'"><option value="__">Đổi Sale phụ trách…</option><option value="">— để trống —</option>'
       +rptSlSaleOptsHtml('')+'</select>'
       +'<button onclick="rptSlHangLoat(\'sale\',this)" class="refresh-btn" style="margin:0;padding:5px 12px;font-size:11.5px">Áp dụng</button></span>':'')
+    +(dashToanQuyen()?'<button onclick="rptSlGiaoViecForm([...rptSlChonDs()])" style="margin:0;padding:5px 12px;font-size:11.5px;border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;font-weight:800;cursor:pointer;font-family:var(--font)">Giao việc</button>':'')
     +'<button onclick="rptSlBoChon()" class="btn-ghost" style="margin:0 0 0 auto;padding:5px 12px;font-size:11.5px">Bỏ chọn</button></div>';
 }
 async function rptSlHangLoat(loai,el){
@@ -5589,10 +5590,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='07/10 17:28';
+const APP_VERSION='07/10 17:34';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=437;
+const APP_BAN=438;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6840,17 +6841,18 @@ function rptSlBuildMasterRaw(){
         .forEach(f=>{if(RPT_SI_GIU_CHO.test(String(r[f]||'').trim()))r[f]='';});
       // DÙNG CHUNG 1 cách tìm với tab "Lịch sử chăm sóc" (Lead ID · Mã KH · tên) -- trước đây Master chỉ tìm
       // theo Lead ID + Mã KH nên ~100 khách mở hồ sơ thấy lịch sử mà cột "CS cuối" vẫn trống (25/9/2026).
-      const ds=rptSlCsRows(r);
+      const dsCa=rptSlCsRows(r,true),ds=dsCa.filter(x=>!rptSlLaGiaoViec(x));   // dsCa = kèm dòng Giao việc riêng (07/10/2026)
       r.siLuot=ds.length;
       // VIỆC ĐƯỢC GIAO (05/10/2026): lượt GHI SAU CÙNG (id lớn nhất, không theo ngày chăm để Sale chọn lùi ngày vẫn clear được)
       // có Nhân sự phụ trách + phương án -> việc đang mở. Ghi lượt mới là lượt giao không còn mới nhất -> tự xong.
-      {const moi=ds.reduce((a,x)=>!a||Number(x.id||0)>Number(a.id||0)?x:a,null);
+      {const moi=dsCa.reduce((a,x)=>!a||Number(x.id||0)>Number(a.id||0)?x:a,null);
        r.viecGiao=moi&&String(moi.nguoi_xu_ly||'').trim()&&String(moi.viec_tiep||'').trim()?moi:null;
        // VIỆC VỪA XONG CHỜ KIỂM (05/10/2026): lượt giao việc có lượt ghi SAU nó (id lớn hơn) = Sale đã làm; chưa kiem_luc -> chờ
        // quản lý kiểm. Kết quả = lượt ghi ngay sau lượt giao.
-       const tang=ds.slice().sort((a,b)=>Number(a.id||0)-Number(b.id||0));
+       const tang=dsCa.slice().sort((a,b)=>Number(a.id||0)-Number(b.id||0));
+       // kết quả = LƯỢT CHĂM SÓC đầu tiên ghi sau lượt giao (dòng Giao việc riêng không phải kết quả)
        r.viecXong=tang.filter(x=>String(x.nguoi_xu_ly||'').trim()&&String(x.viec_tiep||'').trim()&&!x.kiem_luc)
-         .map(x=>({giao:x,kq:tang.find(y=>Number(y.id||0)>Number(x.id||0))})).filter(v=>v.kq);}
+         .map(x=>({giao:x,kq:tang.find(y=>Number(y.id||0)>Number(x.id||0)&&!rptSlLaGiaoViec(y))})).filter(v=>v.kq);}
       // trạng thái + ngày lượt chăm sóc gần nhất (bỏ qua Chốt đơn) -- bong bóng màu + CRM khách chốt phát sinh lại (02/10/2026)
       {const mo=ds.find(y=>!rptSlCsLaChotLuot(y));r.siCsTT=mo?rptSlCsTTCua(mo):'';r.siCsTTNgay=mo?String(mo.ngay_cham||'').slice(0,10):'';}
       if(ds.length){
@@ -7158,6 +7160,7 @@ function rptSlMasterRowSi(r){
     // bỏ chuông từng dòng, chuông lọc trên thanh công cụ vẫn giữ; thêm nút + Chăm sóc (gộp Master + CRM, anh Hải 07/10/2026)
     +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
       +'<button onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\');rptSlCsMoForm()" title="Ghi lượt chăm sóc mới" style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700;font-family:var(--font)">+ Chăm sóc</button>'
+      +(dashToanQuyen()?'<button onclick="rptSlGiaoViecForm([\''+String(r.leadId||'').replace(/'/g,"\\'")+'\'])" title="Giao việc cho Sale, không cần ghi lượt chăm sóc" style="margin-left:6px;border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700;font-family:var(--font)">Giao việc</button>':'')
       +'</td></tr>';
 }
 // ── TRAO ĐỔI GẦN NHẤT (Master Sỉ, anh Hải 01/10/2026): bong bóng chat, bấm ra lượt chăm sóc gần nhất (3 mục) để khỏi mở
@@ -7170,8 +7173,12 @@ function rptSiTraoDoiO(r){
   const x=rptSiLuotGanNhat(r);
   const q=String.fromCharCode(39);
   // chưa có lượt chăm sóc nào -> bong bóng TRẮNG, bấm mở thẳng tab Lịch sử chăm sóc để ghi lượt đầu
-  if(!x)return '<button onclick="rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+');rptSlCusTab('+q+'cs'+q+')" title="Chưa có thông tin chăm sóc — bấm để ghi"'
-    +' style="display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;width:32px;height:28px;border:1.5px solid var(--border);border-radius:14px;background:var(--surface);color:var(--muted);cursor:pointer">'
+  // chưa có lượt chăm sóc nhưng ĐÃ GIAO VIỆC riêng (07/10/2026) -> vẫn CAM để biết khách đang có việc
+  const gv=!x&&r.viecGiao;
+  if(!x)return '<button onclick="rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+');rptSlCusTab('+q+'cs'+q+')" title="'
+    +(gv?'Đã giao: '+String(gv.nguoi_xu_ly).replace(/"/g,'')+(gv.ngay_hen?' · hạn '+dmy(String(gv.ngay_hen).slice(0,10)):'')+' · '+String(gv.viec_tiep||'').replace(/"/g,'')+' — chưa có lượt chăm sóc':'Chưa có thông tin chăm sóc — bấm để ghi')+'"'
+    +' style="display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;width:32px;height:28px;border-radius:14px;cursor:pointer;'
+    +(gv?'border:1.5px solid var(--orange);background:color-mix(in srgb,var(--orange) 13%,transparent);color:var(--orange)':'border:1.5px solid var(--border);background:var(--surface);color:var(--muted)')+'">'
     +'<span style="width:16px;height:16px;display:inline-flex">'+ic('chat')+'</span></button>';
   const giao=r.viecGiao;   // lượt chăm sóc gần nhất có giao Nhân sự phụ trách -> bong bóng CAM (anh Hải 05/10/2026)
   return '<button onclick="rptSiXemTraoDoi('+q+String(r.key).replace(/'/g,'')+q+')" title="Trao đổi ngày '+dmy(String(x.ngay_cham||'').slice(0,10))
@@ -7600,7 +7607,12 @@ function rptSlCsIdx(){
     them(idx.ten,String(x.customer_name||'').trim().toLowerCase(),x);});
   return window._rptSlCsIdx=idx;
 }
-function rptSlCsRows(r){
+// GIAO VIỆC RIÊNG (anh Hải 07/10/2026: "mỗi lần giao việc phải tạo chăm sóc hơi tù"): admin giao việc KHÔNG cần ghi lượt chăm sóc.
+// Lưu 1 dòng salesi_crm hinh_thuc='Giao việc' (không nội dung) -> KHÔNG phải lượt chăm sóc: không vào lịch sử, CS cuối, số lượt,
+// "chưa có lịch sử"... Chỉ dùng cho việc được giao (r.viecGiao / r.viecXong) -- Sale vẫn báo xong bằng cách GHI LƯỢT CHĂM SÓC.
+function rptSlLaGiaoViec(x){return String(x&&x.hinh_thuc||'')==='Giao việc';}
+function rptSlCsRows(r,caViec){
+  if(!caViec)return rptSlCsRows(r,true).filter(x=>!rptSlLaGiaoViec(x));
   const ma=String(r.kh||'').toUpperCase();
   const ten=String(r.name||'').trim().toLowerCase();
   const so=rptSlSoCua(r),ids=rptSlIdsCua(r);
@@ -8632,6 +8644,86 @@ function rptSlNlDashDs(k){
 }
 // BẢNG VIỆC ĐƯỢC GIAO (anh Hải 05/10/2026): Lịch hẹn / Deadline · người phụ trách · khách · việc cần làm · ai giao.
 // Bấm dòng hoặc "Cập nhật chăm sóc" -> mở hồ sơ, form lượt chăm sóc mới; lưu lượt mới là việc biến khỏi bảng.
+// FORM GIAO VIỆC (admin): leadIds = khách được giao (1 hoặc nhiều -- giao hàng loạt), id = sửa 1 việc đã giao riêng.
+function rptSlGiaoViecForm(leadIds,id){
+  if(!dashToanQuyen())return;
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  let cu=null,dsKh;
+  if(id){for(const r of rptSlBuildMaster()){const x=rptSlCsRows(r,true).find(y=>Number(y.id)===Number(id));if(x){cu=x;dsKh=[r];break;}}
+    if(!cu)return alert('Không tìm thấy việc #'+id);}
+  else{const ids=new Set(leadIds||[]);dsKh=rptSlBuildMaster().filter(r=>ids.has(r.leadId));if(!dsKh.length)return alert('Chưa chọn khách');}
+  window._rptSlGvKh=dsKh.map(r=>r.key);window._rptSlGvId=id||null;
+  const ip='width:100%;box-sizing:border-box;height:36px;padding:6px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--font);outline:none';
+  const lb=t=>'<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">'+t+' <span style="color:var(--red)">*</span></div>';
+  const ten=dsKh.length===1?e(dsKh[0].name)+' <span style="color:var(--muted);font-size:11px">'+e(dsKh[0].kh||dsKh[0].leadId)+'</span>':num(dsKh.length)+' khách đã chọn';
+  let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
+  m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
+   +'<div style="background:var(--surface);border-radius:16px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
+   +'<div style="display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border)">'
+   +'<div><div style="font-size:15px;font-weight:800">'+(id?'Sửa việc đã giao':'Giao việc')+'</div><div style="font-size:12px;font-weight:600;margin-top:2px">'+ten+'</div></div>'
+   +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
+   +'<div style="padding:16px 20px;display:grid;gap:12px">'
+   +'<div style="display:grid;grid-template-columns:1fr 160px;gap:12px">'
+     +'<div>'+lb('Nhân sự phụ trách')+'<select id="gvNguoi" style="'+ip+';cursor:pointer"><option value="">— chọn —</option>'
+       +rptSlSaleOptsHtml(cu?cu.nguoi_xu_ly:(dsKh.length===1?dsKh[0].staff:''),cu&&cu.nguoi_xu_ly?[cu.nguoi_xu_ly]:[])+'</select></div>'
+     +'<div>'+lb('Deadline')+'<input id="gvHen" type="date" value="'+e(cu?String(cu.ngay_hen||'').slice(0,10):'')+'" style="'+ip+'"></div></div>'
+   +'<div>'+lb('Việc cần làm')+'<textarea id="gvViec" rows="3" placeholder="vd gọi lại báo giá, gửi mẫu…" style="'+ip+';height:auto;line-height:1.5;resize:vertical">'+e(cu?cu.viec_tiep:'')+'</textarea></div>'
+   +'<div id="gvMsg" style="font-size:12px;font-weight:700;color:var(--red)"></div>'
+   +'<div style="display:flex;gap:10px">'+(id?'<button onclick="rptSlGiaoViecHuy()" class="btn-ghost" style="margin:0;padding:9px 14px;color:var(--red)">Huỷ việc này</button>':'')
+     +'<button id="gvLuu" onclick="rptSlGiaoViecLuu()" class="refresh-btn" style="margin:0 0 0 auto;padding:9px 22px">'+(id?'Lưu':'Giao việc')+'</button></div>'
+   +'</div></div></div>';
+  setTimeout(()=>{const o=document.getElementById('gvViec');if(o)o.focus();},50);
+}
+async function rptSlGiaoViecLuu(){
+  if(!dashToanQuyen())return;
+  const g=x=>{const el=document.getElementById(x);return el?String(el.value||'').trim():'';};
+  const msg=document.getElementById('gvMsg'),nut=document.getElementById('gvLuu');
+  const nguoi=g('gvNguoi'),hen=g('gvHen'),viec=g('gvViec');
+  if(!nguoi)return msg.textContent='Chưa chọn Nhân sự phụ trách';
+  if(!viec)return msg.textContent='Chưa ghi Việc cần làm';
+  if(!hen)return msg.textContent='Chưa chọn Deadline';
+  const keys=new Set(window._rptSlGvKh||[]),id=window._rptSlGvId;
+  const ds=rptSlBuildMaster().filter(r=>keys.has(r.key));
+  const hdr={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'};
+  if(nut){nut.disabled=true;nut.textContent='Đang lưu…';}
+  try{
+    if(id){
+      const cu=ds.length?rptSlCsRows(ds[0],true).find(y=>Number(y.id)===Number(id)):null;
+      const res=await fetch(SUPABASE_URL+'/rest/v1/salesi_crm?id=eq.'+Number(id),{method:'PATCH',headers:hdr,
+        body:JSON.stringify({nguoi_xu_ly:nguoi,viec_tiep:viec,ngay_hen:hen,updated_at:new Date().toISOString(),
+          giao_luc:cu&&cu.nguoi_xu_ly===nguoi&&cu.giao_luc?cu.giao_luc:new Date().toISOString()})});
+      if(!res.ok)throw new Error('lỗi '+res.status);
+      logAct('U','salesi_crm','#'+id,ds[0]?ds[0].name:null,'Việc được giao',cu?(cu.nguoi_xu_ly+' · '+cu.viec_tiep):'',nguoi+' · '+viec);
+    }else{
+      if(!ds.length)throw new Error('không thấy khách');
+      if(ds.length>1&&!confirm('Giao "'+viec+'" cho '+nguoi+' với '+ds.length+' khách, deadline '+dmy(hen)+'?')){if(nut){nut.disabled=false;nut.textContent='Giao việc';}return;}
+      const luc=new Date().toISOString(),ngay=todayISO(),ai=logWho();
+      const rows=ds.map(r=>({lead_id:r.leadId||null,kiot_code:r.kh||null,customer_name:r.name,
+        phone:((r.phones||[])[0]||{}).so||r.phone||null,ngay_cham:ngay,nguon:r.nguon||null,kenh:r.kenh||null,sales:r.staff||null,
+        hinh_thuc:'Giao việc',noi_dung:null,viec_tiep:viec,ngay_hen:hen,nguoi_xu_ly:nguoi,giao_luc:luc,loai:rptSlType(),created_by:ai}));
+      for(let i=0;i<rows.length;i+=300){
+        const res=await fetch(SUPABASE_URL+'/rest/v1/salesi_crm',{method:'POST',headers:hdr,body:JSON.stringify(rows.slice(i,i+300))});
+        if(!res.ok)throw new Error('lỗi '+res.status+': '+(await res.text()).slice(0,150));
+      }
+      const nk=ds.map(r=>({who:ai,act:'C',tbl:'salesi_crm',ref:r.leadId,label:r.name,fld:'Giao việc',old_v:null,new_v:nguoi+' · hạn '+hen+' · '+viec.slice(0,80)}));
+      fetch(SUPABASE_URL+'/rest/v1/activity_log',{method:'POST',headers:hdr,body:JSON.stringify(nk)}).catch(()=>{});
+      if(ds.length>1)rptSlChonDs().clear();
+    }
+    await siCrmLoad(true);
+    window._kiotOrdByCode=null;rptSlXoaCache();qcCloseModal();rptSlRender();
+  }catch(err){if(nut){nut.disabled=false;nut.textContent=id?'Lưu':'Giao việc';}msg.textContent='Chưa lưu được: '+err.message;}
+}
+async function rptSlGiaoViecHuy(){
+  const id=window._rptSlGvId;if(!id||!dashToanQuyen())return;
+  if(!confirm('Huỷ việc đã giao này?'))return;
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/salesi_crm?id=eq.'+Number(id)+'&hinh_thuc=eq.'+encodeURIComponent('Giao việc'),{method:'DELETE',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,Prefer:'return=minimal'}});
+    if(!res.ok)throw new Error('lỗi '+res.status);
+    logAct('D','salesi_crm','#'+id,null,'Huỷ việc được giao','','');
+    await siCrmLoad(true);window._kiotOrdByCode=null;rptSlXoaCache();qcCloseModal();rptSlRender();
+  }catch(err){const m=document.getElementById('gvMsg');if(m)m.textContent='Chưa huỷ được: '+err.message;}
+}
 function rptSlViecGiaoHtml(ds,xong){
   xong=xong||[];
   if(!ds.length&&!xong.length)return '<div style="padding:14px 18px;font-size:12.5px;color:var(--muted)">Không có việc nào đang giao</div>';
@@ -8652,7 +8744,9 @@ function rptSlViecGiaoHtml(ds,xong){
       +'<td style="white-space:normal;min-width:220px;max-width:380px;font-size:12px;line-height:1.45" title="'+e(v.noi_dung||'')+'">'+e(v.viec_tiep)+'</td>'
       +'<td style="white-space:nowrap;font-size:11px;color:var(--text2)">'+giaoLuc(v)
         +'<div style="color:var(--muted)">bởi Admin</div>'+'</td>'
-      +'<td onclick="rptSlStop(event)"><button onclick="'+mo+'" style="border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:28px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:800;white-space:nowrap;font-family:var(--font)">Cập nhật chăm sóc</button></td>'
+      +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
+        +(dashToanQuyen()&&rptSlLaGiaoViec(v)?'<button onclick="rptSlGiaoViecForm([],'+Number(v.id)+')" title="Sửa / huỷ việc đã giao" style="margin-right:8px;border:1.5px solid var(--border2);background:var(--surface);color:var(--text);border-radius:7px;height:28px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:800;font-family:var(--font)">Sửa việc</button>':'')
+        +'<button onclick="'+mo+'" style="border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:28px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:800;white-space:nowrap;font-family:var(--font)">Cập nhật chăm sóc</button></td>'
       +'</tr>';}).join('');
   // VIỆC ĐÃ XONG (Sale đã ghi lượt mới): mờ đi, xuống cuối. Sale chỉ có nút Sửa (sửa lượt vừa ghi); admin trở lên có thêm
   // "Đã xong" -> clear (ghi kiem_luc / kiem_boi vào lượt giao việc).

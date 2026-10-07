@@ -38,6 +38,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **Giao việc riêng** (7/10/2026): admin giao việc không cần ghi lượt chăm sóc (nút Giao việc / hàng loạt). Dòng hinh_thuc="Giao việc" KHÔNG phải lượt chăm sóc — mọi chỗ đếm chăm sóc dùng rptSlCsRows(r) (mặc định bỏ dòng này). Sale xong việc = ghi lượt chăm sóc.
 - **6 phân loại KH Lẻ + Sỉ** (7/10/2026, bỏ Mất kết nối -> Không tiềm năng): Lead mới · Lead cũ · Đã ra đơn · Tiềm năng, chưa ra đơn · Chưa liên hệ được · Không tiềm năng. Lượt chăm sóc: Phương án + Deadline KHÔNG bắt buộc, trừ khi giao việc.
 - **Báo cáo Sale Lẻ / Sỉ = 3 tab: Tổng quan (trái cùng) · Master Data · Daily Task** (7/10/2026): BỎ tab CRM, gộp vào Master (cột Trao đổi gần nhất + nút + Chăm sóc, bỏ chuông từng dòng, chuông lọc trên thanh vẫn giữ; Master mặc định TẤT CẢ khách, không dash). Tổng quan cho quản lý: Doanh thu + khách · Phân loại trong kỳ · Theo từng Sale · Việc & chăm sóc (hiện tại).
 - **Khách đã chốt: Phân loại khoá với Sale, admin vẫn đổi** (7/10/2026, rptSlKhoaChot).
@@ -117,6 +118,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **07/10 (7)** — GIAO VIỆC RIÊNG (anh: mỗi lần giao phải tạo chăm sóc hơi tù): nút Giao việc (admin) cạnh + Chăm sóc trên Master + trong thanh hàng loạt; form 3 ô Người phụ trách · Việc cần làm · Deadline. Lưu dòng salesi_crm hinh_thuc="Giao việc" (không nội dung) — rptSlCsRows mặc định BỎ dòng này nên không tính lượt / CS cuối / lịch sử; chỉ việc được giao đọc cả (rptSlCsRows(r,true)). Sale báo xong vẫn bằng ghi lượt chăm sóc; admin Sửa việc / Huỷ việc ở bảng đỏ. Bong bóng cam cả khi chưa có lượt nào mà đã giao việc.
 - **07/10 (6)** — BỎ phân loại "Mất kết nối": đổi hết sang "Không tiềm năng" (188 hồ sơ, 27 dòng nhập tay Sỉ, 288 lượt chăm sóc; nhật ký 216 dòng; supabase-schema-bo-mat-ket-noi.sql), xoá khỏi danh mục -> còn 6 phân loại. Giá trị cũ trong bản chụp sheet quy đổi lúc dựng. Không tiềm năng giờ cũng thôi nhắc ở Daily Task (như Mất kết nối trước đây). Form chăm sóc: gỡ bắt buộc Phương án tiếp theo + Deadline, chỉ bắt khi giao việc.
 - **07/10 (5)** — Thêm số bản cạnh giờ cập nhật: "v436 · 07/10 17:19" (APP_BAN = số commit đã sửa index.html, tính cả commit đóng dấu). Luật đóng dấu ghi vào CLAUDE.md.
 - **07/10 (4)** — Nhãn "chăm sóc" / "mua lại" cạnh Ngày tạo ở Master: rê chuột ra 1 câu giải thích ngắn (khách cũ, tạo ngày nào, vì sao hiện trong kỳ).
