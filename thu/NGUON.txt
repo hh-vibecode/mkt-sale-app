@@ -1,4 +1,0 @@
-Biểu tượng con vật cho mục "Ai đang xem" (thanh trên cùng app MKT/Sale).
-Nguồn: OpenMoji — the open-source emoji and icon project. License: CC BY-SA 4.0
-https://openmoji.org  ·  https://creativecommons.org/licenses/by-sa/4.0/
-Tải nguyên bản (không chỉnh sửa) từ npm openmoji@15.0.0/color/svg ngày 08/10/2026 — Monsieur Claude.

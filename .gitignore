@@ -14,3 +14,6 @@ t_*.mjs
 
 # mọi file khoá / biến môi trường cục bộ
 *.local.txt
+
+# ảnh gốc anh Hải gửi để cắt icon con vật (đã cắt vào thu/)
+icon/
