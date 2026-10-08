@@ -3050,6 +3050,43 @@ function dbDungLuongHtml(){
   </div>`;
 }
 async function dbLamMoi(){try{await dbTaiDungLuong(true);renderDataHub();}catch(e){rptBaoLoi('Dung lượng kho dữ liệu',e);}}
+// DATA NHẬP TAY trong Tổng Quan Data Hub -- CHỈ XEM, thống kê (anh Hải 08/10/2026: không cho điền ở Data Hub nữa; thêm / sửa khách
+// làm ở báo cáo Sale Lẻ / Sỉ). Lẻ + Sỉ chung 1 bảng có cột Loại, chỉ dòng tạo từ 1/6/2026 (dòng cũ vẫn tính trong báo cáo).
+function dhMtTrang(p){window._dhMtPage=p;renderDataHub();}
+function dhManualTkHtml(canLe,canSi){
+  const loai=[canLe?'Lẻ':'',canSi?'Sỉ':''].filter(Boolean);if(!loai.length)return '';
+  const inv=dhManualRev(),byCode=kiotCustByCode(),e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const lo=r=>r.sale_type==='Sỉ'?'Sỉ':'Lẻ',tien=r=>((inv[lo(r)]||{})[r.kiot_code])||0;
+  const tatCa=dhManual.filter(r=>loai.includes(lo(r))&&dashSeeSale(rptSlSaleCuaNhapTay(r),lo(r))&&dashSeeType(lo(r)));
+  const ds=tatCa.filter(r=>String(r.created_date||'')>=DH_MANUAL_MOC)
+    .sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0));
+  const an=tatCa.length-ds.length;
+  const k=t=>{const a=ds.filter(r=>lo(r)===t);return {n:a.length,ma:a.filter(r=>r.kiot_code).length,dt:a.reduce((s,r)=>s+tien(r),0),kiot:a.filter(r=>/^Tự tạo từ đơn Kiot/i.test(r.note||'')).length};};
+  const L=k('Lẻ'),S=k('Sỉ');
+  const kpi=loai.map(t=>{const x=t==='Lẻ'?L:S;
+    return mkKpi(ic('clipboard'),'Data nhập tay '+t,num(x.n),num(x.kiot)+' tự tạo từ đơn Kiot · '+num(x.n-x.kiot)+' Sale thêm','g-blue')
+      +mkKpi(ic('check'),'Đã có Mã KH · '+t,num(x.ma),x.n?(x.ma/x.n*100).toFixed(1)+'%':'','g-green')
+      +mkKpi(ic('cash'),'Doanh thu · '+t,vnd(x.dt),'theo Mã KH','g-teal');}).join('');
+  const P=50,tong=Math.max(1,Math.ceil(ds.length/P));if((window._dhMtPage||1)>tong)window._dhMtPage=1;const pg=window._dhMtPage||1;
+  const dong=ds.slice((pg-1)*P,pg*P).map(r=>{const kc=r.kiot_code?byCode[r.kiot_code]:null,v=tien(r);
+    return '<tr><td>'+(dmy(r.created_date)||'—')+'</td><td>'+lo(r)+'</td>'
+      +'<td class="name">'+e(r.customer_name)+'<div style="font-size:10.5px;font-weight:700;color:var(--muted);margin-top:1px">'+(r.kiot_code?'<span style="color:var(--accent)">'+e(r.kiot_code)+'</span>':'M-'+String(r.id).padStart(4,'0'))+'</div></td>'
+      +'<td>'+(e(r.phone)||'<span style="color:var(--muted)">—</span>')+'</td><td style="font-size:11px">'+e(r.nguon||'—')+'</td><td style="font-size:11px">'+e(r.kenh||'—')+'</td>'
+      +'<td>'+e(r.staff_name||'—')+'</td><td style="font-size:11px">'+(kc?e(kc.name):'<span style="color:var(--muted)">—</span>')+'</td>'
+      +'<td class="num" style="font-weight:800;color:'+(v?'var(--green)':'inherit')+'">'+(v?vnd(v):'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--muted)">'+(/^Tự tạo từ đơn Kiot/i.test(r.note||'')?'Tự tạo từ Kiot':e(rptTenHien(r.created_by)||'—'))+'</td></tr>';}).join('');
+  return '<div class="tbl-card" style="margin-bottom:16px">'
+    +'<div class="tbl-head"><div class="tbl-title">Data nhập tay</div><div class="tbl-count">'+num(ds.length)+'</div>'
+    +'<span style="margin-left:auto;font-size:11px;color:var(--muted)">chỉ xem'+(an?' · ẩn '+num(an)+' dòng tạo trước '+dmy(DH_MANUAL_MOC):'')+'</span></div>'
+    +'<div style="padding:14px 16px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">'+kpi+'</div>'
+    +'<div class="tbl-scroll"><table><thead><tr><th>Ngày tạo</th><th>Loại</th><th>Họ tên khách</th><th>SĐT</th><th>Nguồn khách</th><th>Kênh</th><th>Sales phụ trách</th><th>Tên bên Kiot</th><th>Doanh thu</th><th>Người tạo</th></tr></thead>'
+    +'<tbody>'+(dong||'<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted)">Chưa có dòng nào</td></tr>')+'</tbody></table></div>'
+    +(tong>1?'<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">'
+      +'<button class="refresh-btn" '+(pg<=1?'disabled':'')+' onclick="dhMtTrang('+(pg-1)+')">‹ Trước</button>'
+      +'<span style="font-size:12px;font-weight:700;color:var(--muted)">Trang '+pg+'/'+tong+'</span>'
+      +'<button class="refresh-btn" '+(pg>=tong?'disabled':'')+' onclick="dhMtTrang('+(pg+1)+')">Sau ›</button></div>':'')
+    +'</div>';
+}
 function dhManualHtml(){
   const T=dhManualType();
   const byCode=kiotCustByCode(),inv=dhManualRev();
@@ -3457,14 +3494,13 @@ async function renderDataHub(){
   // Chỉ có quyền 'datahub-manual' -> bị khoá cứng ở tab Nhập tay (đổi localStorage cũng không vào được).
   const canRaw=dashCan('datahub'),canLe=canRaw||dashCan('datahub-manual'),canSi=canRaw||dashCan('datahub-manual-si');
   let mode=dhViewMode();
-  if(mode==='overview'&&!canRaw)mode=canLe?'manual':'manual-si';
-  if(mode==='manual'&&!canLe)mode=canSi?'manual-si':(canRaw?'overview':'manual');
-  if(mode==='manual-si'&&!canSi)mode=canLe?'manual':(canRaw?'overview':'manual-si');
-  if(mode==='kenh'&&!canRaw)mode=canLe?'manual':'manual-si';
-  if(mode==='doisoat'&&!(canRaw&&dashToanQuyen()))mode=canRaw?'overview':(canLe?'manual':'manual-si');
-  if(mode==='kho'&&!canRaw)mode=canLe?'manual':'manual-si';
-  if(mode==='nhansu')mode=canRaw?'overview':(canLe?'manual':'manual-si');   // tab Nhân sự Sale đã chuyển hẳn sang trang Phân quyền (24/9/2026)
-  if(mode==='overview')await dhLoadOrders();
+  // 08/10/2026 anh Hải: Data Hub = chỗ THỐNG KÊ data thô, không cho điền -> bỏ 2 tab Nhập tay Lẻ / Sỉ, gộp (chỉ xem) vào Tổng Quan.
+  if(mode==='manual'||mode==='manual-si')mode='overview';
+  if(mode==='kenh'&&!canRaw)mode='overview';
+  if(mode==='doisoat'&&!(canRaw&&dashToanQuyen()))mode='overview';
+  if(mode==='kho'&&!canRaw)mode='overview';
+  if(mode==='nhansu')mode='overview';   // tab Nhân sự Sale đã chuyển hẳn sang trang Phân quyền (24/9/2026)   // tab Nhân sự Sale đã chuyển hẳn sang trang Phân quyền (24/9/2026)
+  if(mode==='overview'&&canRaw)await dhLoadOrders();
   const dhConfirmed=dhOrders.filter(dhIsOrder);
   const dhNew=dhOrders.filter(o=>o.customer_status==='Mới').length;
   const dhOld=dhOrders.filter(o=>o.customer_status==='Cũ').length;
@@ -3511,9 +3547,7 @@ async function renderDataHub(){
   window._dhManualType=(mode==='manual-si'?'Sỉ':'Lẻ');
   const tabBtn=(m,label)=>`<button onclick="dhSetViewMode('${m}')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode===m?'var(--accent)':'var(--surface)'};color:${mode===m?'#fff':'var(--text2)'}">${label}</button>`;
   const tabs=`<span style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">`
-    +`${canRaw?tabBtn('overview','Tổng Quan'):''}`
-    +`${canLe?tabBtn('manual','Nhập tay Lẻ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')!=='Sỉ').length+')'):''}`
-    +`${canSi?tabBtn('manual-si','Nhập tay Sỉ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')==='Sỉ').length+')'):''}`
+    +`${tabBtn('overview','Tổng Quan')}`
     +`${canRaw?tabBtn('kenh','Kiot raw data'):''}`
     +`${canRaw&&dashToanQuyen()?tabBtn('doisoat','Đối soát'):''}`
     +`${canRaw?tabBtn('kho','Kho lưu trữ'):''}`+'</span>';
@@ -3521,13 +3555,14 @@ async function renderDataHub(){
   // Kho dữ liệu: TAB RIÊNG "Kho lưu trữ" (anh Hải 08/10/2026: "sao tab nào Data Hub cũng có cái này") -- tab khác không hiện
   if(mode==='kho'){await dbTaiDungLuong().catch(()=>null);el.innerHTML=header+dbDungLuongHtml();tblAlign(el);return;}
   const kho='';
-  if(mode==='manual'||mode==='manual-si'){el.innerHTML=header+kho+dhManualHtml();tblAlign(el);return;}
+
   if(mode==='kenh'){el.innerHTML=header+kho+dhKenhHtml();tblAlign(el);return;}
   if(mode==='doisoat'){   // đối soát Kiot ↔ app: cần đủ dữ liệu dựng Master Lẻ + Sỉ
     await Promise.all([dhLoadOrders(),siCrmLoad()]);
     el.innerHTML=header+kho+dhDoiSoatHtml();tblAlign(el);return;}
-  el.innerHTML=header+kho+pancakeOrdersHtml+dhExcludedHtml();
-  dhRenderTable();
+  el.innerHTML=header+(canRaw?pancakeOrdersHtml:'')+dhManualTkHtml(canLe,canSi)+(canRaw?dhExcludedHtml():'');
+  if(canRaw)dhRenderTable();
+  tblAlign(el);
 }
 
 // ── Sales Workspace: "Hôm nay tôi phải xử lý khách nào?" -- màn hình chính của Sale, thay vì mở bảng
@@ -5699,10 +5734,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='08/10 14:54';
+const APP_VERSION='08/10 14:56';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=444;
+const APP_BAN=445;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
