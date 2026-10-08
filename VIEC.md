@@ -123,6 +123,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **08/10 (13)** — Popup Ai đang xem: bỏ dòng ghi nguồn OpenMoji (anh bảo), ghi nguồn giữ ở thu/NGUON.txt. Xoá dòng sync_log chạy thử đối soát (lệch 1 do HĐ vừa tạo) để tab không báo sai trước CN; máy không có gh CLI nên chưa chạy thử workflow doi-soat.yml trên GitHub — lần chạy thật đầu: CN 12/10 23:00.
 - **08/10 (12)** — Đối soát: chỉ hiện cột lý do lệch / cột Khác khi CÓ số (anh: toàn — thì liệt kê làm gì).
 - **08/10 (11)** — Ai đang xem: tên tài khoản admin / supreme hiện "Admin"; hình con vật đổi sang bộ OpenMoji (viền đen màu phẳng, CC BY-SA 4.0, lưu ở thư mục thu/ + thu/NGUON.txt, ghi nguồn cuối popup). ĐỐI SOÁT TUẦN: workflow doi-soat.yml (GitHub cron CN 16:00 UTC = 23:00 VN, chạy tay được): kéo lại toàn bộ HĐ từ 1/1 + đơn đặt hàng rồi scripts/doi-soat-kiot.js so từng mã Kiot API vs CSDL (thiếu / thừa / khác tiền, trạng thái, mã khách, mã đơn), ghi sync_log "Đối soát Kiot (tuần)", tab Đối soát hiện kết quả. Không tự xoá. Chạy thử tay 08/10: đơn 3.140 = 3.140, HĐ thiếu 1 (HĐ vừa tạo, chưa tới lượt kéo).
 - **08/10 (10)** — Thanh trên: AI ĐANG XEM (con vật ngẫu nhiên như dashboard cũ / Google Docs), tính theo TRÌNH DUYỆT (1 trình duyệt nhiều tab = 1, 2 trình duyệt = 2), hiện cả nick anh, rê chuột ra tên + trang đang mở. Bảng mới dang_xem (supabase-schema-dang-xem.sql, RLS authenticated), báo danh 30s, quá 90s = thoát, cron dang-xem-don 02:25 VN dọn dòng > 1 ngày. Không dùng dash_presence (của Dashboard-Meta).
