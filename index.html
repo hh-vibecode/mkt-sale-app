@@ -2979,14 +2979,16 @@ function dhDoiSoatHtml(){
   const tien=v=>Math.round(v)?vnd(Math.round(v)):'<span style="color:var(--muted)">—</span>';
   const o=(m,k,v,mau)=>'<td class="num"'+(Math.round(v)?' style="cursor:pointer;color:'+mau+';font-weight:700;text-decoration:underline dotted" onclick="dhDoiSoatXem('+q+m+q+','+q+k+q+')" title="Bấm xem từng phiếu"':'')+'>'+(k==='trung'&&Math.round(v)?'−':'')+tien(v)+'</td>';
   const canTinh=t=>t.kiot-t.luat,khop=t=>canTinh(t)?(t.app/canTinh(t)*100):100;
-  const LECH=DH_DS_LYDO.filter(x=>x[0]!=='luat');
+  const LECH=DH_DS_LYDO.filter(x=>x[0]!=='luat'&&Math.round(tong[x[0]]||0)!==0);
+  const duCua=t=>(t.kiot-t.luat-t.app)-(t.vl+t.kl+t.chuaCo+t.coMa-t.trung);
+  const coKhac=thg.some(m=>Math.abs(duCua(d.thang[m]))>=1);
   const dong=(m,t,dam)=>{const lech=canTinh(t)-t.app,du=lech-(t.vl+t.kl+t.chuaCo+t.coMa-t.trung),kp=khop(t);
     return '<tr'+(dam?' style="font-weight:800;background:var(--bg2)"':'')+'><td style="white-space:nowrap">'+(m==='*'?'Tổng 2026':'Tháng '+Number(m.slice(5))+'/'+m.slice(0,4))+'</td>'
       +'<td class="num" style="font-weight:800">'+tien(canTinh(t))+'</td><td class="num" style="font-weight:800">'+tien(t.app)+'</td>'
       +'<td class="num" style="font-weight:800">'+tien(lech)+'</td>'
       +'<td class="num" style="font-weight:800;color:'+(kp>=99.95?'var(--green)':kp>=95?'var(--yellow)':'var(--red)')+'">'+kp.toFixed(1)+'%</td>'
       +LECH.map(x=>o(m,x[0],t[x[0]]||0,x[3])).join('')
-      +'<td class="num" style="color:'+(Math.abs(du)>=1?'var(--red)':'var(--muted)')+'"'+(Math.abs(du)>=1&&m!=='*'?' onclick="dhDoiSoatXem('+q+m+q+','+q+'ngoai'+q+')" style="cursor:pointer"':'')+'>'+(Math.abs(du)>=1?vnd(Math.round(du)):'—')+'</td>'
+      +(coKhac?'<td class="num" style="color:'+(Math.abs(du)>=1?'var(--red)':'var(--muted)')+'"'+(Math.abs(du)>=1&&m!=='*'?' onclick="dhDoiSoatXem('+q+m+q+','+q+'ngoai'+q+')" style="cursor:pointer"':'')+'>'+(Math.abs(du)>=1?vnd(Math.round(du)):'—')+'</td>':'')
       +o(m,'luat',t.luat,'var(--muted)')+'</tr>';};
   const canXu=tong.vl+tong.kl+tong.chuaCo+tong.coMa+tong.trung;
   return '<div class="tbl-card" style="margin-bottom:16px">'
@@ -3010,7 +3012,7 @@ function dhDoiSoatHtml(){
       +'<div onclick="dhDoiSoatXem('+q+'*'+q+','+q+'luat'+q+')" style="cursor:pointer">'+mkKpi(ic('clipboard'),'Phiếu tạm chưa tiền',vnd(tong.luat),'chỉ để biết — báo giá, không tính','g-yellow')+'</div>'
     +'</div>'
     +'<div class="tbl-scroll"><table><thead><tr><th>Tháng</th><th title="Doanh thu THẬT: đơn có tiền + HĐ bán thẳng, KHÔNG gồm phiếu tạm chưa tiền">Doanh thu Kiot</th><th>App</th><th>Lệch</th><th>Khớp</th>'
-    +LECH.map(x=>'<th title="'+x[2].replace(/"/g,'&quot;')+'">'+x[1]+'</th>').join('')+'<th title="Phần lệch chưa giải thích được">Khác</th><th title="Phiếu tạm không cọc / chưa có dấu vết tiền = báo giá. Chỉ để biết, KHÔNG tính doanh thu, không tính khớp">Phiếu tạm chưa tiền (chỉ để biết)</th></tr></thead>'
+    +LECH.map(x=>'<th title="'+x[2].replace(/"/g,'&quot;')+'">'+x[1]+'</th>').join('')+(coKhac?'<th title="Phần lệch chưa giải thích được">Khác</th>':'')+'<th title="Phiếu tạm không cọc / chưa có dấu vết tiền = báo giá. Chỉ để biết, KHÔNG tính doanh thu, không tính khớp">Phiếu tạm chưa tiền (chỉ để biết)</th></tr></thead>'
     +'<tbody>'+thg.map(m=>dong(m,d.thang[m])).join('')+dong('*',tong,true)+'</tbody></table></div>'
     +'</div>';
 }
@@ -5751,10 +5753,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='08/10 15:17';
+const APP_VERSION='08/10 15:18';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=449;
+const APP_BAN=450;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
