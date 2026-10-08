@@ -17,7 +17,6 @@
 |---|---|---|
 | 1 | **Kéo full hoá đơn Kiot về hub** — 23/09 anh bảo **TẠM ĐỂ ĐÓ**, khi nào cần thì làm. Xem mục 6 bên dưới trước khi bắt tay | khi nào cần thì anh gọi |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 08/10 anh: CHƯA CẦN. 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
-| 30 | **Khách vãng lai 6,54 tỷ (2026)** — hoá đơn / đơn KHÔNG gắn mã khách (chủ yếu cửa hàng bán thẳng), app tính theo khách nên không có chỗ. Xem ở Data Hub > Đối soát | có thêm dòng "Khách vãng lai" vào báo cáo để tổng khớp Kiot không |
 | 12 | M-0197 (Sỉ "Ngoquoc Duy") và M-0021 (Lẻ "KL ANH DUY") chung SĐT …349764439 — KHÔNG gộp vì khác Lẻ/Sỉ | chỉ để anh biết |
 
 ## 2. CLAUDE ĐANG NỢ (tự làm, không cần hỏi)
@@ -38,6 +37,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **Khách vãng lai** (8/10/2026): phiếu Kiot không mã khách / mã chung "khách lẻ" có dấu vết tiền -> 1 dòng "Khách vãng lai" mỗi báo cáo (theo chi nhánh), Offline · Kiot. **Master mặc định ẩn Offline · Kiot** (Lẻ + Sỉ), chọn ở ô Nguồn để xem.
 - **Mess MKT = Tổng số người liên hệ nhắn tin (Ads Manager)** (8/10/2026). **Nguồn / Kênh khách: chỉ Admin sửa**, Sale chỉ chọn khi tạo mới (8/10/2026).
 - **Không tiềm năng = thôi nhắc ở Daily Task** (8/10/2026, như Mất kết nối cũ). Logo màn hình đăng nhập GIỮ. Không cần bổ sung nhật ký cho 2 khách chuyển tay sang Lẻ 7/10.
 - **Daily Task Sỉ "Chưa có lịch sử chăm sóc"** (8/10/2026): chỉ khách tạo từ 1/6/2026 và nguồn Online.
@@ -121,6 +121,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **08/10 (5)** — [doi-so] KHÁCH VÃNG LAI (anh: thêm): 1 dòng "Khách vãng lai" / báo cáo (Lẻ / Sỉ theo chi nhánh) gom phiếu Kiot 2026 không gắn mã khách / mã chung "khách lẻ" có dấu vết tiền (HĐ bán thẳng, đã trả trên phiếu, hoặc có HĐ hoàn thành nối theo mã đơn). Lẻ: 1.392 phiếu ~307tr (chủ yếu HĐ bán thẳng Hiền Thủy); Sỉ: không có (121 phiếu tạm kho sỉ không khách 5,72 tỷ = báo giá). Không vào Daily Task / MKT. Đối soát: App 19,81 tỷ / Kiot 33,68 tỷ, lệch 13,87 tỷ = toàn bộ đúng luật (phiếu tạm chưa tiền); cần xử 0. Lần đo trước xếp nhầm 5,72 tỷ phiếu tạm không khách vào "vãng lai". NGUỒN ghi rõ Online/Offline · Pancake/Kiot/Nhập tay (Lẻ + Sỉ), bộ lọc Nguồn theo nhãn này, Master mặc định ẩn Offline · Kiot. Thanh trên: "Data làm mới HH:MM" (giờ VN, rê ra từng nguồn).
 - **08/10 (4)** — Data Hub > tab ĐỐI SOÁT (chỉ admin): từng tháng 2026 Kiot (ĐH chưa huỷ + HĐ bán thẳng) vs App (Lẻ + Sỉ), lệch tách 6 lý do (vãng lai · mã chung khách lẻ · đúng luật · khách chưa có · khách có chưa tính · tính 2 lần) + cột Khác, bấm số ra từng phiếu. Kết quả: Kiot 33,67 tỷ · App 19,50 tỷ (57,9%) · Đúng luật 7,61 tỷ (32 phiếu "khách chưa có" 2,12 tỷ lần đo 2/10 thực ra đều là phiếu tạm không cọc) · Vãng lai + mã chung 6,56 tỷ · Cần xử lý 0 · Khác 0. Soát nguồn: hoá đơn Kiot = app từng tháng; đơn đặt hàng 3.139 = 3.139 từng mã, 0 lệch tiền / trạng thái. Xoá mục nợ #26.
 - **08/10 (3)** — [doi-so] Cột Mess MKT = "Tổng số người liên hệ nhắn tin" của Ads Manager (onsite_conversion.total_messaging_connection, anh chốt), job Meta đổi + kéo lại 716 dòng mkt_spend từ 1/6 (T6 2.079->2.292, T7 2.594->3.023, T8 2.473->2.927, T9 1.778->2.012, T10 300->365; khớp tuyệt đối Meta; bản sao số cũ scratchpad/mess-cu-0810.json). Khoá Nguồn / Kênh: chỉ Admin sửa (hồ sơ + form sửa nhập tay), Sale chọn lúc tạo khách mới. Kho dữ liệu: gói Pro 8 GB (trước ghi Free 500 MB), giờ đo theo giờ VN (trước in giờ UTC 07:14 nên trông như số cũ). 17 hẹn cũ: GIỮ. kiem-so-lieu: mốc cũ lệch 8 chỉ số từ trước (Lẻ/Sỉ tất cả...), CHƯA --luu — cần soát riêng.
 - **08/10 (2)** — Anh chốt 3 câu treo: Không tiềm năng giữ thôi nhắc · không bổ sung nhật ký 2 khách chuyển tay · giữ logo màn hình đăng nhập. Xoá mục 27 khỏi Chờ anh quyết.

@@ -306,6 +306,7 @@ thead th,.grp-table th{color:var(--text2)}
     <span class="top-logo-text">APP <span>MKT/SALE</span></span>
   </div>
   <div class="topbar-right">
+  <span id="dataMoi" title="" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.72);white-space:nowrap"></span>
   <span id="viewAsBox" style="display:none;align-items:center;gap:7px"></span>
   <button class="theme-toggle" onclick="toggleTheme()">
     <div class="toggle-track"><div class="toggle-thumb"></div></div>
@@ -889,6 +890,7 @@ function switchPage(p){
 // APP MKT/SALE -- bản tách riêng, CHỈ đọc Supabase (MKT + Sale Online Lẻ), không còn đụng Google Sheets/Sỉ/Kiot/QC/Đánh Giá.
 // Bản đầy đủ (Dashboard, giữ Sheets) nằm ở repo Dashboard-Meta riêng.
 async function loadData(){
+  try{dataMoiTai();}catch(e){}   // dòng 'Data làm mới' trên thanh trên (08/10/2026)
   showLoading();
   document.getElementById('btnLoad').disabled=true;
   try{
@@ -2944,7 +2946,7 @@ function dhDoiSoatData(){
     T(m).kiot+=t;
     if(a){T(m).app+=t*a.n;if(a.n>1)ghi(m,'trung',Object.assign({},x,{_loai:a.loai.join(' + ')}),t*(a.n-1));return;}
     const ma=String(x.customer_code||'').toUpperCase();
-    if(!ma)return ghi(m,'vl',x,t);
+    if(!ma)return ghi(m,rptSlVLCoTien(x)?'vl':'luat',x,t);
     if(/^\s*khách lẻ\s*$/i.test((kc[ma]||{}).name||x.customer_name||''))return ghi(m,'kl',x,t);
     if(!x.direct&&rptSlDonKhongTinh(x))return ghi(m,'luat',x,t);
     ghi(m,khApp.has(ma)?'coMa':'chuaCo',x,t);
@@ -5693,10 +5695,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='08/10 14:24';
+const APP_VERSION='08/10 14:51';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=442;
+const APP_BAN=443;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5726,6 +5728,24 @@ async function appKiemBanMoi(){
   }catch(e){}
 }
 setInterval(appKiemBanMoi,2*60*1000);setTimeout(appKiemBanMoi,4000);
+// DATA LÀM MỚI LÚC MẤY GIỜ (anh Hải 08/10/2026, thanh trên cùng, viết gọn): lấy lần chạy THÀNH CÔNG gần nhất của các job đồng bộ
+// (bảng sync_log), hiện giờ VN. Rê chuột ra từng nguồn. Hỏi lại mỗi 5 phút + khi quay lại tab.
+const DATA_MOI_NGUON=[['Data Hub - Pancake POS','Pancake'],['KiotViet - Đơn đặt hàng','Kiot đơn'],['KiotViet - Hoá đơn','Kiot HĐ'],['MKT - Meta Ads','Meta']];
+async function dataMoiTai(){
+  const el=document.getElementById('dataMoi');if(!el)return;
+  try{
+    const ds=await sbFetchAll('sync_log','select=source,finished_at&status=eq.success&order=finished_at.desc&limit=80');
+    const gan={};ds.forEach(x=>{if(x.finished_at&&!gan[x.source])gan[x.source]=x.finished_at;});
+    const vn=t=>{const d=new Date(new Date(t).getTime()+7*3600e3).toISOString();const hom=new Date(Date.now()+7*3600e3).toISOString().slice(0,10);
+      return d.slice(11,16)+(d.slice(0,10)===hom?'':' '+d.slice(8,10)+'/'+d.slice(5,7));};
+    const co=DATA_MOI_NGUON.filter(([s])=>gan[s]);if(!co.length){el.textContent='';return;}
+    const moi=co.filter(([s])=>s!=='MKT - Meta Ads').map(([s])=>gan[s]).sort().pop()||gan[co[0][0]];
+    el.textContent='Data làm mới '+vn(moi);
+    el.title=co.map(([s,n])=>n+': '+vn(gan[s])).join('\n');
+  }catch(e){}
+}
+setInterval(dataMoiTai,5*60*1000);setTimeout(dataMoiTai,3000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)dataMoiTai();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)appKiemBanMoi();});   // quay lại tab app là hỏi ngay
 function rptBaoLoi(nguon,e){
   const msg=String((e&&(e.stack||e.message))||e||'').slice(0,600);
@@ -6460,13 +6480,15 @@ function rptSlLocTT(r){
 }
 function rptSlApplyF(tab,list){
   const sale=rptSlF(tab,'sale'),br=rptSlF(tab,'brand'),sp=rptSlType()==='Sỉ'?rptSlF(tab,'sp'):'';
-  const ng=rptSlF(tab,'nguon');   // lọc Nguồn Online / Offline -- Lẻ + Sỉ (anh Hải 02/10/2026)
+  // lọc Nguồn theo NHÃN RÕ (08/10/2026); giá trị lọc cũ "Online" / "Offline" không còn trong danh sách -> bỏ, đừng lọc ngầm ra 0
+  let ng=rptSlF(tab,'nguon');if(ng){ng=ng.filter(x=>RPT_SL_NGUON_DS.includes(x));if(!ng.length)ng='';}
+  const anOffKiot=tab==='master'&&!ng;   // MASTER chưa chọn Nguồn -> tự ẩn "Offline · Kiot" (anh Hải 08/10/2026)
   const nguonCua=r=>/offline/i.test(r.nguon||'')?'Offline':(/online/i.test(r.nguon||'')||rptSlType()!=='Sỉ')?'Online':'Chưa rõ nguồn';
   let st=rptSlF(tab,'status');
   if(st){st=st.filter(x=>rptSlLocTTDs().includes(x));if(!st.length)st='';}   // giá trị lọc cũ không còn trong danh sách -> bỏ, đừng lọc ngầm ra 0
   return list.filter(r=>
     (!sale||sale.includes(r.staff||'(chưa gán)'))&&
-    (!ng||ng.includes(nguonCua(r)))&&
+    (ng?ng.includes(rptSlNguonNhan(r)):!(anOffKiot&&rptSlNguonNhan(r)==='Offline · Kiot'))&&
     (!st||st.includes(rptSlLocTT(r)))&&
     (!sp||sp.includes(r.siSpQT||'(chưa rõ)'))&&
     (!br||br.includes(DH_BRAND_LABEL[r.brand]||r.brand||'—')));
@@ -6477,7 +6499,7 @@ function rptSlMsLoc(tab,k,label,opts){
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
     const key=tab+'|'+k;(window._rptSlOpt=window._rptSlOpt||{})[key]=opts;
     const sel=rptSlFArr(tab,k).filter(x=>opts.includes(x));
-    const chu=!sel.length?(tab==='crm'&&k==='status'?'Phân loại: Lead mới · Tiềm năng':label+': tất cả')
+    const chu=!sel.length?(tab==='crm'&&k==='status'?'Phân loại: Lead mới · Tiềm năng':tab==='master'&&k==='nguon'?'Nguồn: ẩn Offline · Kiot':label+': tất cả')
       :sel.length===1?label+': '+sel[0]:label+': '+sel.length+' mục';
     return `<details class="rpt-ms" ${window._rptSlMoLoc===key?'open':''} ontoggle="rptSlMsToggle(this,'${key}')" style="position:relative">
     <summary title="${e(sel.join(', '))}" style="${ip};display:flex;align-items:center;gap:6px;user-select:none;${sel.length?'border-color:var(--accent);color:var(--accent)':''}">${e(chu)}
@@ -6499,7 +6521,7 @@ function rptSlFilterBar(tab){
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const one=(k,label,opts)=>rptSlMsLoc(tab,k,label,opts);
   return one('sale','Sales',sales)+one('status','Trạng thái',stats)
-    +one('nguon','Nguồn',['Online','Offline'])
+    +one('nguon','Nguồn',RPT_SL_NGUON_DS.filter(x=>full.some(r=>rptSlNguonNhan(r)===x)))
     +(rptSlType()==='Sỉ'?one('sp','Sản phẩm',[...new Set(RPT_SI_SPQT_DS),'(chưa rõ)']):'')+one('brand','Brand',brands);
 }
 // Dựng Master khá nặng (gộp đơn Pancake + Kiot + nhập tay). Một lần render gọi lại 3-8 lần với CÙNG
@@ -7105,8 +7127,47 @@ function rptSlBuildMasterRaw(){
   if(window._rptSlSaleMaTam)rows.forEach(r=>rptSlIdsCua(r).forEach(id=>{window._rptSlSaleMaTam[id]=r.staff||'';}));
   (window._rptSlViecGiao=window._rptSlViecGiao||{})[rptSlType()]=rows.filter(r=>r.viecGiao);
   (window._rptSlViecXong=window._rptSlViecXong||{})[rptSlType()]=rows.filter(r=>(r.viecXong||[]).length);
+  {const vl=rptSlVangLaiDong(rows);if(vl)rows.push(vl);}
   rows=rows.filter(r=>dashSeeSale(r.staff,rptSlType())&&dashSeeType(r.saleType||'Lẻ'));
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
+}
+// KHÁCH VÃNG LAI (anh Hải 08/10/2026: "thêm đi" -- để tổng khớp Kiot): phiếu Kiot từ 2026 KHÔNG gắn mã khách (chủ yếu cửa hàng
+// bán thẳng, Offline · Kiot) hoặc gắn mã chung tên "khách lẻ" -> trước đây app tính theo khách nên không có chỗ. Gom thành ĐÚNG 1
+// dòng "Khách vãng lai" mỗi báo cáo, chia Lẻ / Sỉ theo chi nhánh (Tổng kho sỉ = Sỉ). Đúng luật dấu vết tiền như mọi đơn
+// (phiếu tạm không cọc không tính). Không có Sale phụ trách, không vào Daily Task, không vào MKT (Offline).
+// Phiếu không gắn khách thì không xét được cọc / hoá đơn theo khách -> dấu vết tiền = HĐ bán thẳng, hoặc đã trả tiền trên phiếu,
+// hoặc có hoá đơn hoàn thành NỐI THEO MÃ ĐƠN (đơn Hoàn thành ở cửa hàng thường trả tiền ở hoá đơn, phiếu ghi 0đ đã trả).
+function rptSlVLCoTien(o){
+  if(o.direct)return true;
+  if(o.status===4)return false;
+  if(Number(o.total_payment||0)>0)return true;
+  const m=window._rptSlHdTheoDon&&window._rptSlHdTheoDon.n===kiotInvoices.length?window._rptSlHdTheoDon.m
+    :(window._rptSlHdTheoDon={n:kiotInvoices.length,m:kiotInvoices.reduce((a,i)=>{if(i.order_code&&i.status===1)a[i.order_code]=true;return a;},{})}).m;
+  return !!m[o.code];
+}
+function rptSlVangLaiDong(rows){
+  const T=rptSlType(),MOC='2026-01-01',kc=kiotCustByCode();
+  const coTrongApp=new Set();rows.forEach(r=>{(r.kiotCusts||[]).forEach(c=>{if(c&&c.code)coTrongApp.add(String(c.code).toUpperCase());});if(r.kh)coTrongApp.add(String(r.kh).toUpperCase());});
+  const laVL=x=>{const ma=String(x.customer_code||'').toUpperCase();
+    if(!ma)return true;
+    return /^\s*khách lẻ\s*$/i.test((kc[ma]||{}).name||x.customer_name||'')&&!coTrongApp.has(ma);};
+  const dungLoai=x=>(KIOT_CN_SI.test(x.branch_name||'')?'Sỉ':'Lẻ')===T;
+  const sau=x=>String(x.purchase_date||'').slice(0,10)>=MOC&&Number(x.total||0)>0;
+  const ds=kiotOrders.filter(o=>o.status!==4&&sau(o)&&dungLoai(o)&&laVL(o))
+    .concat(kiotInvoices.filter(i=>i.status===1&&!i.order_code&&sau(i)&&dungLoai(i)&&laVL(i)).map(i=>Object.assign({},i,{direct:true,status_value:'HĐ bán thẳng'})))
+    .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
+  if(!ds.length)return null;
+  const kords=ds.filter(rptSlVLCoTien),treo=ds.filter(o=>!rptSlVLCoTien(o));
+  if(!kords.length)return null;
+  const d0=String(kords[0].purchase_date).slice(0,10),d1=String(kords[kords.length-1].purchase_date).slice(0,10);
+  return {key:'VL-'+T,leadId:'VL-'+(T==='Sỉ'?'SI':'LE'),vangLai:true,name:'Khách vãng lai',kiotName:'Khách vãng lai',
+    kh:null,manualKH:null,noteKH:null,kiotCusts:[],suggest:[],orders:[],kords,staleOrds:treo,repeatOrds:[],repeatRevenue:0,
+    revenue:kords.reduce((s,o)=>s+Number(o.total||0),0),linkBy:'',phones:[],phone:'',phoneFromKiot:false,
+    created:d0,closeDate:d0,lastKiotDate:d1,lastTouch:d1,daysIdle:Math.floor((new Date()-new Date(d1))/86400000),
+    isChot:true,status:'Chốt đơn',manualStatus:'',siPhanLoai:'Đã ra đơn',ttTuDong:true,tagStatus:'',
+    nguon:'Offline',kenh:'Kiot',brand:'',shop:'',source:'',adId:'',staff:'',staffRaw:'',saleType:T,diaChi:'',
+    careDate:'',content:'',note:'Phiếu Kiot không gắn mã khách / mã chung "khách lẻ"',potential:0,siLuot:0,nguonLienHe:[],mergedRows:[],mergedFrom:[],
+    sh:{},tinh:{},isManual:false};
 }
 // 1 dòng Master SỈ -- khung hồ sơ đại lý, khác hẳn Lẻ.
 // Màu cho "Phân loại KH" của Sỉ -- 6 giá trị Sale đang dùng thật (đếm trên dữ liệu 23/9/2026).
@@ -7225,16 +7286,25 @@ function rptSiNguoiTaoTip(r){
     +' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'):'';
   return 'Người tạo: '+ai+(ai==='Monsieur Claude'?' (tự tạo / nạp từ dữ liệu cũ)':'')+luc;
 }
+// NGUỒN GHI RÕ (anh Hải 08/10/2026, Lẻ + Sỉ): "<Online|Offline> · <Pancake|Kiot|Nhập tay>". Pancake = khách có đơn Pancake;
+// Kiot = dòng tự tạo từ đơn Kiot / dòng có Mã KH Kiot / Khách vãng lai; Nhập tay = Sale tự thêm, chưa nối Kiot.
+// Dùng CHUNG cho chip ở bảng và bộ lọc Nguồn (Master mặc định ẩn "Offline · Kiot").
+const RPT_SL_NGUON_DS=['Online · Pancake','Online · Kiot','Online · Nhập tay','Offline · Kiot','Offline · Nhập tay','Offline · Pancake','Chưa rõ nguồn'];
+function rptSlNguonNhan(r){
+  const n=rptSiNguonCua(r),coPc=(r.orders||[]).length>0;
+  const cach=coPc?'Pancake':r.vangLai?'Kiot':(r.cachVao||'Nhập tay');
+  if(n==='Chưa rõ nguồn')return (r.isManual||coPc)&&rptSlType()!=='Sỉ'?'Online · '+cach:'Chưa rõ nguồn';
+  return n+' · '+cach;
+}
 function rptSiNguonChip(r){
   const n=rptSiNguonCua(r);
   const tip=rptSiNguoiTaoTip(r).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const chip=(t,nen,chu)=>'<span title="'+tip+'" style="display:inline-block;padding:2px 8px;border-radius:20px;background:'+nen+';color:'+chu+';font-size:10.5px;font-weight:800;white-space:nowrap;cursor:help">'+t+'</span>';
   // khách gộp từ dòng nhập tay + đơn Pancake: có đơn Pancake là ra 'Pancake' (VIEC #18, máy Mac ghi 27/9)
-  const coPc=(r.orders||[]).length>0,tay=r.isManual&&!coPc;
-  const cach=coPc?'Pancake':(r.cachVao||'Nhập tay');
-  if(n==='Offline')return chip(r.isManual||coPc?'Offline · '+cach:'Offline','rgba(245,158,11,.15)','#b45309');
-  if(n==='Online')return tay&&cach!=='Pancake'?chip('Online · '+cach,'rgba(249,115,22,.14)','#c2410c'):chip('Online · Pancake','var(--accent-l)','var(--accent)');
-  return r.isManual?chip(cach,'var(--bg2)','var(--text2)'):'<span style="color:var(--muted)">—</span>';
+  const nh=rptSlNguonNhan(r);
+  if(nh==='Chưa rõ nguồn')return r.isManual?chip(r.cachVao||'Nhập tay','var(--bg2)','var(--text2)'):'<span style="color:var(--muted)">—</span>';
+  if(n==='Offline')return chip(nh,'rgba(245,158,11,.15)','#b45309');
+  return nh==='Online · Pancake'?chip(nh,'var(--accent-l)','var(--accent)'):chip(nh,'rgba(249,115,22,.14)','#c2410c');
 }
 function rptSlMasterRowSi(r){
   const e=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
@@ -8283,7 +8353,7 @@ function rptSlLeadCu(r){
   return !r.isChot&&/^lead cũ$/i.test(String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim());   // đã chốt thì phải hiện lại (còn Mã KH…)
 }
 function rptSlTodoBuckets(){
-  const all=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao)
+  const all=rptSlSortNew(rptSlBuildMaster().filter(r=>!r.vangLai),rptSlNgayTao)   // Khách vãng lai không có việc (08/10/2026)
     .filter(r=>!RPT_SL_DANG_LUU.has(r.leadId))   // dòng vừa điền mã: giấu đi trong lúc chạy ngầm
     .filter(r=>!rptSlLeadCu(r));                  // khách Lead cũ không vào Nhập Liệu (anh Hải 28/9/2026)
   return{
