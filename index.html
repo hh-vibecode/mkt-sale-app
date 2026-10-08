@@ -5762,10 +5762,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='08/10 17:21';
+const APP_VERSION='08/10 17:30';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=453;
+const APP_BAN=454;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5892,8 +5892,12 @@ async function tbTinh(){
 }
 // chưa mở chuông lần nào -> coi như đã xem tới 24 giờ trước (số đỏ không nhảy cả trăm tin cũ lần đầu)
 function tbDaXem(){try{const v=localStorage.getItem('tbDaXem');if(v)return Number(v);const m=Date.now()-86400000;localStorage.setItem('tbDaXem',String(m));return m;}catch(e){return Date.now()-86400000;}}
+// SỐ ĐỎ = VIỆC CHƯA XỬ LÝ XONG, không phải "tin chưa đọc" (anh Hải 08/10/2026: "đọc 1 lần là mất à, chưa clear thì F5 vẫn phải báo"):
+//   admin  = việc nhân sự đã xong CHỜ XÁC NHẬN + việc QUÁ HẠN  -> giảm khi bấm Xác nhận / nhân sự làm xong
+//   nhân sự = việc được giao CHƯA LÀM                         -> giảm khi ghi lượt chăm sóc
+// Mở chuông chỉ bỏ tô xanh "tin mới", không làm mất số.
 function tbVeSo(){const el=document.getElementById('tbSo');if(!el)return;
-  const m=tbDaXem(),n=(_tb.ds||[]).filter(x=>new Date(x.luc).getTime()>m).length;
+  const n=(_tb.ds||[]).filter(x=>_tb.admin?(x.kieu==='xong'||x.kieu==='qua'):x.kieu==='giao').length;
   el.style.display=n?'block':'none';el.textContent=n>99?'99+':String(n);}
 function tbVe(){
   const h=document.getElementById('tbHop');if(!h)return;
