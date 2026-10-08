@@ -5769,10 +5769,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='08/10 17:33';
+const APP_VERSION='08/10 17:40';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=455;
+const APP_BAN=456;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5946,11 +5946,12 @@ function tbBam(ev){if(ev)ev.stopPropagation();
 function tbCaiDatBam(ev){if(ev)ev.stopPropagation();const mn=document.getElementById('tbMenu'),h=document.getElementById('tbHop');if(h)h.style.display='none';
   mn.style.display=mn.style.display==='block'?'none':'block';}
 document.addEventListener('click',ev=>{['tbHop','tbMenu'].forEach(id=>{const el=document.getElementById(id);if(el&&el.style.display==='block'&&!el.contains(ev.target))el.style.display='none';});});
-// BẤM TIN -> chuyển thẳng tới Daily Task của báo cáo đó; có khách thì mở luôn hồ sơ tab Lịch sử chăm sóc (sau khi trang vẽ xong)
+// BẤM TIN -> CHUYỂN TRANG tới Daily Task của báo cáo đó, cuộn tới bảng "Việc được giao" (tin Daily Task: lên đầu trang).
+// Không mở hồ sơ khách (anh Hải 08/10/2026: "chuyển hẳn sang trang có phần đấy, không phải mở ra việc").
 function tbMo(loai,key){
   const h=document.getElementById('tbHop');if(h)h.style.display='none';
   try{localStorage.setItem('rptSlViewMode_'+loai,'input');}catch(e){}
-  window._tbMoKhach=key?{loai,key}:null;
+  window._tbMoKhach={loai,cuon:!!key};
   const p=loai==='Sỉ'?'report-salesi':'report-saleretail';
   if(window._trangHienTai===p){window._rptSlType=loai;rptSlRender();}else switchPage(p);
 }
@@ -6078,8 +6079,10 @@ async function rptSlRenderPage(type){
   }
   try{if(typeof tblAlign==='function')tblAlign();}catch(e){}
   // đến từ chuông thông báo -> mở hồ sơ khách, tab Lịch sử chăm sóc (08/10/2026)
-  if(window._tbMoKhach&&window._tbMoKhach.loai===rptSlType()){const k=window._tbMoKhach.key;window._tbMoKhach=null;
-    try{window._rptSlChiInfo=false;rptSlShowCustomer(k);rptSlCusTab('cs');}catch(e){}}
+  if(window._tbMoKhach&&window._tbMoKhach.loai===rptSlType()){const cuon=window._tbMoKhach.cuon;window._tbMoKhach=null;
+    try{const bang=cuon&&el.querySelector('[data-sec="sGiao"]');
+      if(bang){bang.scrollIntoView({behavior:'smooth',block:'start'});bang.style.transition='box-shadow .3s';bang.style.boxShadow='0 0 0 3px var(--red)';setTimeout(()=>{bang.style.boxShadow='';},1800);}
+      else window.scrollTo({top:0,behavior:'smooth'});}catch(e){}}
 }
 // ── TỔNG QUAN: dựng HOÀN TOÀN trên Pancake (datahub_orders) + KiotViet (kiot_orders = đơn đặt hàng).
 // KHÔNG còn đọc bảng nào migrate từ Google Sheet (crmLeads/crmOrders/crmCustomers/saonl_*).
@@ -8873,7 +8876,7 @@ async function rptSlTachRa(id){
 function rptSlInputSec(id,icon,title,desc,count,color,body,luonMo){
   const mo=luonMo||rptSlSecOpen(id);
   const than=count?body:'<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không còn việc nào</div>';
-  return `<div class="tbl-card" style="margin-bottom:${mo?16:8}px">
+  return `<div class="tbl-card" data-sec="${id}" style="margin-bottom:${mo?16:8}px">
     <div class="tbl-head" style="border-left:4px solid ${color}${luonMo?'':';cursor:pointer'}"${luonMo?'':' onclick="rptSlSecToggle(\''+id+'\')"'}>
       ${luonMo?'':'<span style="color:var(--muted);font-size:10px;margin-right:4px">'+(mo?'▼':'▶')+'</span>'}
       <div class="tbl-title">${title}</div><div class="tbl-count" style="background:${color};color:#fff">${num(count)}</div>

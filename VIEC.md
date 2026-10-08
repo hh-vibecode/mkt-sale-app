@@ -37,7 +37,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
-- **Chuông thông báo** (8/10/2026): admin = việc nhân sự xong / còn nợ; nhân sự = việc đang dở; bấm tin chuyển thẳng tới chỗ đó. SỐ ĐỎ = việc chưa xử lý xong (không phải tin chưa đọc) — đọc / F5 không mất.
+- **Chuông thông báo** (8/10/2026): admin = việc nhân sự xong / còn nợ; nhân sự = việc đang dở; bấm tin = chuyển trang tới Daily Task, cuộn tới bảng Việc được giao (không mở hồ sơ). SỐ ĐỎ = việc chưa xử lý xong (không phải tin chưa đọc) — đọc / F5 không mất.
 - **Đối soát Kiot ↔ app tự soát từng mã mỗi Chủ nhật 23:00 VN** (8/10/2026, .github/workflows/doi-soat.yml).
 - **Data Hub chỉ để thống kê data thô, KHÔNG cho điền** (8/10/2026): tab Tổng Quan · Kiot raw data · Đối soát · Kho lưu trữ. Thêm / sửa khách ở báo cáo Sale Lẻ / Sỉ.
 - **Khách vãng lai** (8/10/2026): phiếu Kiot không mã khách / mã chung "khách lẻ" có dấu vết tiền -> 1 dòng "Khách vãng lai" mỗi báo cáo (theo chi nhánh), Offline · Kiot. **Master mặc định ẩn Offline · Kiot** (Lẻ + Sỉ), chọn ở ô Nguồn để xem.
@@ -124,6 +124,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **08/10 (19)** — Chuông: bấm tin = CHUYỂN TRANG tới Daily Task báo cáo đó + cuộn tới bảng Việc được giao (viền đỏ nháy), không mở hồ sơ khách nữa (anh bảo).
 - **08/10 (18)** — XEM NHƯ tài khoản: chuông + bảng Việc được giao (Daily Task) + tổng việc giờ theo quyền người đang xem như (hàm dashToanQuyenXem; quyền SỬA vẫn theo tài khoản thật). Trước đó xem như nhân sự vẫn thấy việc như admin (lỗi sẵn có). Đổi Xem như -> chuông tính lại. Lỗi em gây ra vừa sửa: số đỏ đếm sau khi cắt danh sách 60 tin -> Kim Oanh 37 việc chỉ báo 23; giờ đếm đủ.
 - **08/10 (17)** — Chuông: số đỏ = việc CHƯA XỬ LÝ (admin: xong chờ Xác nhận + quá hạn; nhân sự: việc được giao chưa làm), mở chuông / F5 không mất, chỉ giảm khi việc được giải quyết (anh: đọc 1 lần mất là sai). Tô xanh tin mới vẫn theo lần mở chuông.
 - **08/10 (16)** — Thanh trên: bỏ nút Tải lại dữ liệu; Sáng/Tối + Đăng xuất gộp vào nút Cài đặt (bánh răng). CHUÔNG THÔNG BÁO kiểu Facebook: admin thấy từng nhân sự xong / còn / quá hạn + tin "X đã xong việc", "hết hạn hôm nay", "quá hạn"; nhân sự thấy việc được giao đang dở (tin Admin giao việc / hết hạn / quá hạn) + số Daily Task. Nguồn = đúng bảng đỏ Daily Task. Số đỏ = tin mới sau lần mở chuông (lần đầu tính 24h). Bấm tin -> chuyển Daily Task báo cáo đó + mở hồ sơ khách tab Lịch sử chăm sóc. Tính lại 5 phút/lần (cần nạp dữ liệu Sale Lẻ + Sỉ — tài khoản không vào báo cáo Sale thì bỏ qua).
