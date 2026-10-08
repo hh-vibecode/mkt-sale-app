@@ -3451,7 +3451,7 @@ async function renderDataHub(){
   // CHỈ TẢI THỨ TAB ĐANG XEM CẦN. Tab Nhập tay và tab Kênh bán không đụng tới data thô Pancake
   // (datahub_orders ~1,9 MB) -> bỏ hẳn lượt tải đó, mở trang nhanh hơn hẳn cho tài khoản Sale.
   await Promise.all([dhLoadManual(),kiotLoadInvoices(),rptSlLoadManual(),
-    dbTaiDungLuong().catch(()=>null),saleNhanSuLoad().catch(()=>null),
+    saleNhanSuLoad().catch(()=>null),
     (typeof rptSlLoadAccs==='function'&&!window._rptSlAccs?rptSlLoadAccs():Promise.resolve())]);
   // Quyền từng tab: 'datahub' = data thô Pancake · 'datahub-manual' = nhập tay LẺ · 'datahub-manual-si' = nhập tay SỈ.
   // Chỉ có quyền 'datahub-manual' -> bị khoá cứng ở tab Nhập tay (đổi localStorage cũng không vào được).
@@ -3462,6 +3462,7 @@ async function renderDataHub(){
   if(mode==='manual-si'&&!canSi)mode=canLe?'manual':(canRaw?'overview':'manual-si');
   if(mode==='kenh'&&!canRaw)mode=canLe?'manual':'manual-si';
   if(mode==='doisoat'&&!(canRaw&&dashToanQuyen()))mode=canRaw?'overview':(canLe?'manual':'manual-si');
+  if(mode==='kho'&&!canRaw)mode=canLe?'manual':'manual-si';
   if(mode==='nhansu')mode=canRaw?'overview':(canLe?'manual':'manual-si');   // tab Nhân sự Sale đã chuyển hẳn sang trang Phân quyền (24/9/2026)
   if(mode==='overview')await dhLoadOrders();
   const dhConfirmed=dhOrders.filter(dhIsOrder);
@@ -3514,9 +3515,12 @@ async function renderDataHub(){
     +`${canLe?tabBtn('manual','Nhập tay Lẻ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')!=='Sỉ').length+')'):''}`
     +`${canSi?tabBtn('manual-si','Nhập tay Sỉ ('+dhManual.filter(r=>(r.sale_type||'Lẻ')==='Sỉ').length+')'):''}`
     +`${canRaw?tabBtn('kenh','Kiot raw data'):''}`
-    +`${canRaw&&dashToanQuyen()?tabBtn('doisoat','Đối soát'):''}`+'</span>';
+    +`${canRaw&&dashToanQuyen()?tabBtn('doisoat','Đối soát'):''}`
+    +`${canRaw?tabBtn('kho','Kho lưu trữ'):''}`+'</span>';
   const header=modHeader('Data Hub','','datahub','renderDataHub',tabs);
-  const kho=dbDungLuongHtml();   // dung lượng kho dữ liệu -- hiện ở đầu MỌI tab của Data Hub
+  // Kho dữ liệu: TAB RIÊNG "Kho lưu trữ" (anh Hải 08/10/2026: "sao tab nào Data Hub cũng có cái này") -- tab khác không hiện
+  if(mode==='kho'){await dbTaiDungLuong().catch(()=>null);el.innerHTML=header+dbDungLuongHtml();tblAlign(el);return;}
+  const kho='';
   if(mode==='manual'||mode==='manual-si'){el.innerHTML=header+kho+dhManualHtml();tblAlign(el);return;}
   if(mode==='kenh'){el.innerHTML=header+kho+dhKenhHtml();tblAlign(el);return;}
   if(mode==='doisoat'){   // đối soát Kiot ↔ app: cần đủ dữ liệu dựng Master Lẻ + Sỉ
@@ -5695,10 +5699,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='08/10 14:51';
+const APP_VERSION='08/10 14:54';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=443;
+const APP_BAN=444;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
