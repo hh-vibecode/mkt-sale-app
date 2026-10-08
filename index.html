@@ -306,6 +306,7 @@ thead th,.grp-table th{color:var(--text2)}
     <span class="top-logo-text">APP <span>MKT/SALE</span></span>
   </div>
   <div class="topbar-right">
+  <span id="dangXem" style="display:flex;align-items:center"></span>
   <span id="dataMoi" title="" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.72);white-space:nowrap"></span>
   <span id="viewAsBox" style="display:none;align-items:center;gap:7px"></span>
   <button class="theme-toggle" onclick="toggleTheme()">
@@ -667,7 +668,7 @@ function applyRole(){
   if(allowed&&allowed.length)switchPage(allowed[0]);
   else if(allowed)document.body.innerHTML='<div style="padding:40px;font:600 14px var(--font)">Tài khoản chưa được cấp quyền xem trang nào. Liên hệ admin.</div>';
 }
-function logout(){['dashDataSales','dashDataTypes','dashViewAs','sbPhien'].forEach(k=>localStorage.removeItem(k));localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
+function logout(){try{dxXoa();const d=document.getElementById('dangXem');if(d)d.innerHTML='';}catch(e){}['dashDataSales','dashDataTypes','dashViewAs','sbPhien'].forEach(k=>localStorage.removeItem(k));localStorage.removeItem('dashRole');localStorage.removeItem('dashUser');localStorage.removeItem('dashUserId');localStorage.removeItem('dashPermissions');localStorage.removeItem('dashPosition');document.getElementById('loginGate').style.display='flex';}
 function canReassign(){return['supreme','admin','manager'].includes(localStorage.getItem('dashPosition')||'admin');}
 // Tài khoản vị trí "Sales" chỉ được xem khách được gán cho mình (chuẩn CRM: Sale không thấy data cả công ty).
 // Admin/Manager xem tất cả. 4 tài khoản cũ (admin/admin2/ngoc.onl/mkt) không có user_id thật trong bảng
@@ -890,7 +891,7 @@ function switchPage(p){
 // APP MKT/SALE -- bản tách riêng, CHỈ đọc Supabase (MKT + Sale Online Lẻ), không còn đụng Google Sheets/Sỉ/Kiot/QC/Đánh Giá.
 // Bản đầy đủ (Dashboard, giữ Sheets) nằm ở repo Dashboard-Meta riêng.
 async function loadData(){
-  try{dataMoiTai();}catch(e){}   // dòng 'Data làm mới' trên thanh trên (08/10/2026)
+  try{dataMoiTai();dxChay();dxBaoDanh().then(dxXem);}catch(e){}   // dòng 'Data làm mới' trên thanh trên (08/10/2026)
   showLoading();
   document.getElementById('btnLoad').disabled=true;
   try{
@@ -5738,10 +5739,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='08/10 15:05';
+const APP_VERSION='08/10 15:10';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=447;
+const APP_BAN=448;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5791,6 +5792,49 @@ function dataMoiVe(){const el=document.getElementById('dataMoi'),d=window._dataM
   el.textContent='Data làm mới '+dataMoiTruoc(d.moi);
   el.title=d.ds.map(([n,t])=>n+': '+dataMoiTruoc(t)).join('\n');}
 setInterval(dataMoiTai,5*60*1000);setTimeout(dataMoiTai,3000);setInterval(dataMoiVe,60*1000);
+// ── AI ĐANG XEM APP (anh Hải 08/10/2026, như dashboard cũ: con vật ngẫu nhiên kiểu Google Docs) ──────────────────────
+// Tính theo TRÌNH DUYỆT (anh dặn): 1 trình duyệt mở nhiều tab = 1; cùng 1 người đăng nhập 2 trình duyệt = 2. Mã trình duyệt lưu
+// localStorage. Cứ 30 giây báo danh vào bảng dang_xem (bảng riêng app này), quá 90 giây không báo = đã thoát. Hiện cả nick anh Hải.
+// Con vật + màu chọn ngẫu nhiên MỖI LẦN mở app, gửi lên cùng dòng báo danh để ai xem cũng thấy đúng con đó.
+const DX_TTL=90000,DX_PING=30000;
+const DX_CON=['🦊','🐼','🦉','🐻','🐨','🐯','🦁','🐸','🐧','🦄','🐙','🦋','🐬','🦅','🐝','🦈','🐢','🦒','🦔','🐳'];
+const DX_MAU=['#0091ae','#16a34a','#7c3aed','#f59e0b','#e11d48','#0891b2','#ec4899','#64748b'];
+const dxCon=Math.floor(Math.random()*DX_CON.length),dxMau=Math.floor(Math.random()*DX_MAU.length);
+function dxMa(){let id='';try{id=localStorage.getItem('dxTrinhDuyet')||'';if(!id){id=Date.now().toString(36)+Math.random().toString(36).slice(2,9);localStorage.setItem('dxTrinhDuyet',id);}}catch(e){id='tam-'+dxCon+dxMau;}return id;}
+function dxTrang(){const a=document.querySelector('.nav-item.active .nav-label')||document.querySelector('.nav-item.active');return a?String(a.textContent||'').replace(/\s+/g,' ').trim().slice(0,40):'';}
+const dxH=()=>({apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'});
+async function dxBaoDanh(){
+  const u=localStorage.getItem('dashUser');if(!u||document.hidden)return;
+  try{await fetch(SUPABASE_URL+'/rest/v1/dang_xem?on_conflict=session_id',{method:'POST',headers:Object.assign({Prefer:'resolution=merge-duplicates,return=minimal'},dxH()),
+    body:JSON.stringify({session_id:dxMa(),ten:u,trang:dxTrang(),avatar_idx:dxCon,color_idx:dxMau,last_seen:new Date().toISOString()})});}catch(e){}
+}
+async function dxXem(){
+  const el=document.getElementById('dangXem');if(!el)return;
+  if(!localStorage.getItem('dashUser')){el.innerHTML='';return;}
+  let ds=[];
+  try{const r=await fetch(SUPABASE_URL+'/rest/v1/dang_xem?select=session_id,ten,trang,avatar_idx,color_idx,last_seen&last_seen=gte.'+new Date(Date.now()-DX_TTL).toISOString()+'&order=last_seen.desc&limit=50',{headers:dxH()});
+    ds=await r.json();}catch(e){return;}
+  if(!Array.isArray(ds))return;
+  const toi=dxMa(),e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  ds.sort((a,b)=>(a.session_id===toi?-1:b.session_id===toi?1:String(a.ten).localeCompare(String(b.ten),'vi')));
+  const av=(x,z)=>'<div title="'+e(x.ten)+'" style="width:'+z+'px;height:'+z+'px;border-radius:50%;background:'+DX_MAU[(x.color_idx||0)%DX_MAU.length]
+    +';display:flex;align-items:center;justify-content:center;font-size:'+Math.round(z*.55)+'px;border:2px solid #213343;margin-left:-7px;flex-shrink:0">'+DX_CON[(x.avatar_idx||0)%DX_CON.length]+'</div>';
+  const hien=ds.slice(0,4),them=ds.length-hien.length;
+  el.innerHTML='<div style="display:flex;align-items:center;position:relative;padding-left:7px;cursor:default"'
+    +' onmouseenter="document.getElementById(\'dxPop\').style.display=\'block\'" onmouseleave="document.getElementById(\'dxPop\').style.display=\'none\'">'
+    +hien.map(x=>av(x,28)).join('')
+    +(them>0?'<div style="min-width:28px;height:28px;padding:0 5px;box-sizing:border-box;border-radius:14px;background:rgba(255,255,255,.18);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:2px solid #213343;margin-left:-7px">+'+them+'</div>':'')
+    +'<div id="dxPop" style="display:none;position:absolute;top:36px;right:0;z-index:600;background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.25);padding:10px 12px;min-width:230px">'
+      +'<div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">Đang xem ('+ds.length+')</div>'
+      +ds.map(x=>'<div style="display:flex;align-items:center;gap:9px;padding:4px 0"><div style="margin-left:7px">'+av(x,24)+'</div>'
+        +'<div style="min-width:0"><div style="font-size:12.5px;font-weight:700;white-space:nowrap">'+e(x.ten)+(x.session_id===toi?' <span style="font-weight:500;color:var(--muted)">(bạn)</span>':'')+'</div>'
+        +(x.trang?'<div style="font-size:11px;color:var(--muted);white-space:nowrap">'+e(x.trang)+'</div>':'')+'</div></div>').join('')
+    +'</div></div>';
+}
+function dxChay(){if(window._dxTimer)return;dxBaoDanh().then(dxXem);window._dxTimer=setInterval(()=>{dxBaoDanh().then(dxXem);},DX_PING);}
+async function dxXoa(){try{await fetch(SUPABASE_URL+'/rest/v1/dang_xem?session_id=eq.'+encodeURIComponent(dxMa()),{method:'DELETE',headers:dxH(),keepalive:true});}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){dxBaoDanh().then(dxXem);}});
+setTimeout(dxChay,2500);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)dataMoiTai();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)appKiemBanMoi();});   // quay lại tab app là hỏi ngay
 function rptBaoLoi(nguon,e){

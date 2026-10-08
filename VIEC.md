@@ -122,6 +122,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **08/10 (10)** — Thanh trên: AI ĐANG XEM (con vật ngẫu nhiên như dashboard cũ / Google Docs), tính theo TRÌNH DUYỆT (1 trình duyệt nhiều tab = 1, 2 trình duyệt = 2), hiện cả nick anh, rê chuột ra tên + trang đang mở. Bảng mới dang_xem (supabase-schema-dang-xem.sql, RLS authenticated), báo danh 30s, quá 90s = thoát, cron dang-xem-don 02:25 VN dọn dòng > 1 ngày. Không dùng dash_presence (của Dashboard-Meta).
 - **08/10 (9)** — Đối soát gọn lại (anh: đừng kê phiếu tạm như số thật): ô / cột "Doanh thu Kiot" = SỐ THẬT (không gồm phiếu tạm chưa tiền) so với App, khớp 100%; bỏ ô "Tổng phiếu Kiot"; phiếu tạm chưa tiền 13,87 tỷ để cột cuối "chỉ để biết". Bỏ ô chọn ngày ở tab Đối soát + Kho lưu trữ. Thanh trên: "Data làm mới X phút trước" (đếm lại mỗi phút).
 - **08/10 (8)** — Đối soát: so App với KIOT CẦN TÍNH = tổng phiếu Kiot − phiếu tạm chưa tiền (anh: đúng luật rồi thì phải khớp 100%). Kết quả 19.808.442.366 = 19.808.442.366, khớp 100% cả 10 tháng. Lỗi trình bày của em: trước so với tổng Kiot (gồm báo giá) nên hiện 57-59%.
 - **08/10 (7)** — Data Hub = chỗ thống kê data thô (anh chốt): bỏ 2 tab Nhập tay Lẻ / Sỉ, gộp vào Tổng Quan thành bảng CHỈ XEM (Lẻ + Sỉ, cột Loại, số tổng, phân trang 50), không còn form thêm / nút Sửa / ô điền Mã KH. Tài khoản chỉ có quyền nhập tay vẫn vào Tổng Quan, chỉ thấy phần nhập tay. Thêm / sửa khách làm ở báo cáo Sale.
