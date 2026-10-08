@@ -122,6 +122,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **08/10 (8)** — Đối soát: so App với KIOT CẦN TÍNH = tổng phiếu Kiot − phiếu tạm chưa tiền (anh: đúng luật rồi thì phải khớp 100%). Kết quả 19.808.442.366 = 19.808.442.366, khớp 100% cả 10 tháng. Lỗi trình bày của em: trước so với tổng Kiot (gồm báo giá) nên hiện 57-59%.
 - **08/10 (7)** — Data Hub = chỗ thống kê data thô (anh chốt): bỏ 2 tab Nhập tay Lẻ / Sỉ, gộp vào Tổng Quan thành bảng CHỈ XEM (Lẻ + Sỉ, cột Loại, số tổng, phân trang 50), không còn form thêm / nút Sửa / ô điền Mã KH. Tài khoản chỉ có quyền nhập tay vẫn vào Tổng Quan, chỉ thấy phần nhập tay. Thêm / sửa khách làm ở báo cáo Sale.
 - **08/10 (6)** — Data Hub: khung Kho dữ liệu tách thành tab riêng "Kho lưu trữ" (trước hiện ở đầu mọi tab), chỉ đo dung lượng khi mở tab đó.
 - **08/10 (5)** — [doi-so] KHÁCH VÃNG LAI (anh: thêm): 1 dòng "Khách vãng lai" / báo cáo (Lẻ / Sỉ theo chi nhánh) gom phiếu Kiot 2026 không gắn mã khách / mã chung "khách lẻ" có dấu vết tiền (HĐ bán thẳng, đã trả trên phiếu, hoặc có HĐ hoàn thành nối theo mã đơn). Lẻ: 1.392 phiếu ~307tr (chủ yếu HĐ bán thẳng Hiền Thủy); Sỉ: không có (121 phiếu tạm kho sỉ không khách 5,72 tỷ = báo giá). Không vào Daily Task / MKT. Đối soát: App 19,81 tỷ / Kiot 33,68 tỷ, lệch 13,87 tỷ = toàn bộ đúng luật (phiếu tạm chưa tiền); cần xử 0. Lần đo trước xếp nhầm 5,72 tỷ phiếu tạm không khách vào "vãng lai". NGUỒN ghi rõ Online/Offline · Pancake/Kiot/Nhập tay (Lẻ + Sỉ), bộ lọc Nguồn theo nhãn này, Master mặc định ẩn Offline · Kiot. Thanh trên: "Data làm mới HH:MM" (giờ VN, rê ra từng nguồn).

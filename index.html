@@ -2967,37 +2967,41 @@ function dhDoiSoatXem(m,k){
       o.customer_code?rptSlKiotLink(o.customer_code,e(o.customer_code))+' · '+e(((kc[o.customer_code]||{}).name||o.customer_name||'').slice(0,40)):'<span style="color:var(--muted)">không mã</span>',
       e(o.sold_by_name||''),vnd(Number(o.total||0))])});
 }
+// 08/10/2026 anh Hải: "phiếu tạm không tính là đúng luật rồi thì phải khớp 100%" -> so App với KIOT CẦN TÍNH = Kiot − phiếu tạm
+// chưa có tiền (báo giá). Cột "Phiếu tạm chưa tiền" để riêng cho biết, KHÔNG tính vào phần lệch.
 function dhDoiSoatHtml(){
   if(!dashToanQuyen())return '<div class="tbl-card" style="padding:16px 18px;color:var(--muted)">Chỉ Admin xem được đối soát</div>';
   const d=dhDoiSoatData(),q=String.fromCharCode(39);
   const thg=Object.keys(d.thang).sort();
   const tong={kiot:0,app:0};DH_DS_LYDO.forEach(x=>{tong[x[0]]=0;});
   thg.forEach(m=>{const t=d.thang[m];Object.keys(tong).forEach(k=>{tong[k]+=t[k]||0;});});
-  const tien=v=>v?vnd(Math.round(v)):'<span style="color:var(--muted)">—</span>';
-  const o=(m,k,v,mau)=>'<td class="num"'+(v?' style="cursor:pointer;color:'+mau+';font-weight:700;text-decoration:underline dotted" onclick="dhDoiSoatXem('+q+m+q+','+q+k+q+')" title="Bấm xem từng phiếu"':'')+'>'+(k==='trung'&&v?'−':'')+tien(v)+'</td>';
-  const khop=t=>t.kiot?(t.app/t.kiot*100):0;
-  const dong=(m,t,dam)=>{const lech=t.kiot-t.app,du=lech-(t.vl+t.kl+t.luat+t.chuaCo+t.coMa-t.trung);
+  const tien=v=>Math.round(v)?vnd(Math.round(v)):'<span style="color:var(--muted)">—</span>';
+  const o=(m,k,v,mau)=>'<td class="num"'+(Math.round(v)?' style="cursor:pointer;color:'+mau+';font-weight:700;text-decoration:underline dotted" onclick="dhDoiSoatXem('+q+m+q+','+q+k+q+')" title="Bấm xem từng phiếu"':'')+'>'+(k==='trung'&&Math.round(v)?'−':'')+tien(v)+'</td>';
+  const canTinh=t=>t.kiot-t.luat,khop=t=>canTinh(t)?(t.app/canTinh(t)*100):100;
+  const LECH=DH_DS_LYDO.filter(x=>x[0]!=='luat');
+  const dong=(m,t,dam)=>{const lech=canTinh(t)-t.app,du=lech-(t.vl+t.kl+t.chuaCo+t.coMa-t.trung),kp=khop(t);
     return '<tr'+(dam?' style="font-weight:800;background:var(--bg2)"':'')+'><td style="white-space:nowrap">'+(m==='*'?'Tổng 2026':'Tháng '+Number(m.slice(5))+'/'+m.slice(0,4))+'</td>'
-      +'<td class="num">'+tien(t.kiot)+'</td><td class="num">'+tien(t.app)+'</td>'
+      +'<td class="num" style="color:var(--muted)">'+tien(t.kiot)+'</td>'+o(m,'luat',t.luat,'var(--muted)')
+      +'<td class="num" style="font-weight:800">'+tien(canTinh(t))+'</td><td class="num" style="font-weight:800">'+tien(t.app)+'</td>'
       +'<td class="num" style="font-weight:800">'+tien(lech)+'</td>'
-      +'<td class="num" style="font-weight:800;color:'+(khop(t)>=95?'var(--green)':khop(t)>=80?'var(--yellow)':'var(--red)')+'">'+khop(t).toFixed(1)+'%</td>'
-      +DH_DS_LYDO.map(x=>o(m,x[0],t[x[0]]||0,x[3])).join('')
+      +'<td class="num" style="font-weight:800;color:'+(kp>=99.95?'var(--green)':kp>=95?'var(--yellow)':'var(--red)')+'">'+kp.toFixed(1)+'%</td>'
+      +LECH.map(x=>o(m,x[0],t[x[0]]||0,x[3])).join('')
       +'<td class="num" style="color:'+(Math.abs(du)>=1?'var(--red)':'var(--muted)')+'"'+(Math.abs(du)>=1&&m!=='*'?' onclick="dhDoiSoatXem('+q+m+q+','+q+'ngoai'+q+')" style="cursor:pointer"':'')+'>'+(Math.abs(du)>=1?vnd(Math.round(du)):'—')+'</td></tr>';};
-  const canXu=tong.chuaCo+tong.coMa+tong.trung,vl=tong.vl+tong.kl;
+  const canXu=tong.vl+tong.kl+tong.chuaCo+tong.coMa+tong.trung;
   return '<div class="tbl-card" style="margin-bottom:16px">'
     +'<div class="tbl-head"><div class="tbl-title">Đối soát doanh thu Kiot ↔ App</div><div class="tbl-count">từ 1/1/2026</div>'
     +'<button class="refresh-btn" onclick="window._dhDsCache=null;renderDataHub()" style="margin-left:auto;padding:4px 12px;font-size:11px">↺ Tính lại</button></div>'
     +'<div style="padding:14px 16px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">'
-      +mkKpi(ic('cash'),'Doanh thu Kiot',vnd(tong.kiot),'đơn đặt hàng + HĐ bán thẳng','g-blue')
+      +mkKpi(ic('cash'),'Kiot cần tính',vnd(canTinh(tong)),'đã trừ phiếu tạm chưa tiền','g-blue')
       +mkKpi(ic('chart'),'App đang tính',vnd(tong.app),'Sale Lẻ + Sale Sỉ','g-teal')
-      +mkKpi(ic('target'),'Khớp',(tong.kiot?(tong.app/tong.kiot*100).toFixed(1):'0')+'%','lệch '+vnd(tong.kiot-tong.app),'g-purple')
+      +mkKpi(ic('target'),'Khớp',khop(tong).toFixed(1)+'%',Math.round(canTinh(tong)-tong.app)?'lệch '+vnd(Math.round(canTinh(tong)-tong.app)):'không lệch','g-green')
     +'</div><div style="padding:0 16px 14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">'
-      +'<div onclick="dhDoiSoatXem('+q+'*'+q+','+q+'luat'+q+')" style="cursor:pointer">'+mkKpi(ic('check'),'Đúng luật không tính',vnd(tong.luat),'phiếu tạm / chưa dấu vết tiền','g-green')+'</div>'
-      +'<div onclick="dhDoiSoatXem('+q+'*'+q+','+q+'vl'+q+')" style="cursor:pointer">'+mkKpi(ic('users'),'Vãng lai + mã chung',vnd(vl),'không gắn được khách','g-yellow')+'</div>'
-      +mkKpi(ic('alert'),'Cần xử lý',vnd(canXu),'khách chưa có / chưa tính / tính 2 lần','g-red')
+      +mkKpi(ic('box'),'Tổng phiếu Kiot',vnd(tong.kiot),'đơn đặt hàng + HĐ bán thẳng','g-purple')
+      +'<div onclick="dhDoiSoatXem('+q+'*'+q+','+q+'luat'+q+')" style="cursor:pointer">'+mkKpi(ic('clipboard'),'Phiếu tạm chưa tiền',vnd(tong.luat),'báo giá — luật không tính','g-yellow')+'</div>'
+      +mkKpi(ic('alert'),'Cần xử lý',vnd(canXu),canXu?'bấm số đỏ trong bảng để xem phiếu':'không còn phiếu lệch','g-red')
     +'</div>'
-    +'<div class="tbl-scroll"><table><thead><tr><th>Tháng</th><th>Kiot</th><th>App</th><th>Lệch</th><th>Khớp</th>'
-    +DH_DS_LYDO.map(x=>'<th title="'+x[2].replace(/"/g,'&quot;')+'">'+x[1]+'</th>').join('')+'<th title="Phần lệch chưa giải thích được">Khác</th></tr></thead>'
+    +'<div class="tbl-scroll"><table><thead><tr><th>Tháng</th><th>Tổng phiếu Kiot</th><th title="Phiếu tạm không cọc / chưa có dấu vết tiền = báo giá, luật không tính">Phiếu tạm chưa tiền</th><th>Kiot cần tính</th><th>App</th><th>Lệch</th><th>Khớp</th>'
+    +LECH.map(x=>'<th title="'+x[2].replace(/"/g,'&quot;')+'">'+x[1]+'</th>').join('')+'<th title="Phần lệch chưa giải thích được">Khác</th></tr></thead>'
     +'<tbody>'+thg.map(m=>dong(m,d.thang[m])).join('')+dong('*',tong,true)+'</tbody></table></div>'
     +'</div>';
 }
@@ -5734,10 +5738,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='08/10 14:56';
+const APP_VERSION='08/10 15:03';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=445;
+const APP_BAN=446;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
