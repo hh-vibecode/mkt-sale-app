@@ -37,6 +37,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **Đối soát Kiot ↔ app tự soát từng mã mỗi Chủ nhật 23:00 VN** (8/10/2026, .github/workflows/doi-soat.yml).
 - **Data Hub chỉ để thống kê data thô, KHÔNG cho điền** (8/10/2026): tab Tổng Quan · Kiot raw data · Đối soát · Kho lưu trữ. Thêm / sửa khách ở báo cáo Sale Lẻ / Sỉ.
 - **Khách vãng lai** (8/10/2026): phiếu Kiot không mã khách / mã chung "khách lẻ" có dấu vết tiền -> 1 dòng "Khách vãng lai" mỗi báo cáo (theo chi nhánh), Offline · Kiot. **Master mặc định ẩn Offline · Kiot** (Lẻ + Sỉ), chọn ở ô Nguồn để xem.
 - **Mess MKT = Tổng số người liên hệ nhắn tin (Ads Manager)** (8/10/2026). **Nguồn / Kênh khách: chỉ Admin sửa**, Sale chỉ chọn khi tạo mới (8/10/2026).
@@ -122,6 +123,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **08/10 (11)** — Ai đang xem: tên tài khoản admin / supreme hiện "Admin"; hình con vật đổi sang bộ OpenMoji (viền đen màu phẳng, CC BY-SA 4.0, lưu ở thư mục thu/ + thu/NGUON.txt, ghi nguồn cuối popup). ĐỐI SOÁT TUẦN: workflow doi-soat.yml (GitHub cron CN 16:00 UTC = 23:00 VN, chạy tay được): kéo lại toàn bộ HĐ từ 1/1 + đơn đặt hàng rồi scripts/doi-soat-kiot.js so từng mã Kiot API vs CSDL (thiếu / thừa / khác tiền, trạng thái, mã khách, mã đơn), ghi sync_log "Đối soát Kiot (tuần)", tab Đối soát hiện kết quả. Không tự xoá. Chạy thử tay 08/10: đơn 3.140 = 3.140, HĐ thiếu 1 (HĐ vừa tạo, chưa tới lượt kéo).
 - **08/10 (10)** — Thanh trên: AI ĐANG XEM (con vật ngẫu nhiên như dashboard cũ / Google Docs), tính theo TRÌNH DUYỆT (1 trình duyệt nhiều tab = 1, 2 trình duyệt = 2), hiện cả nick anh, rê chuột ra tên + trang đang mở. Bảng mới dang_xem (supabase-schema-dang-xem.sql, RLS authenticated), báo danh 30s, quá 90s = thoát, cron dang-xem-don 02:25 VN dọn dòng > 1 ngày. Không dùng dash_presence (của Dashboard-Meta).
 - **08/10 (9)** — Đối soát gọn lại (anh: đừng kê phiếu tạm như số thật): ô / cột "Doanh thu Kiot" = SỐ THẬT (không gồm phiếu tạm chưa tiền) so với App, khớp 100%; bỏ ô "Tổng phiếu Kiot"; phiếu tạm chưa tiền 13,87 tỷ để cột cuối "chỉ để biết". Bỏ ô chọn ngày ở tab Đối soát + Kho lưu trữ. Thanh trên: "Data làm mới X phút trước" (đếm lại mỗi phút).
 - **08/10 (8)** — Đối soát: so App với KIOT CẦN TÍNH = tổng phiếu Kiot − phiếu tạm chưa tiền (anh: đúng luật rồi thì phải khớp 100%). Kết quả 19.808.442.366 = 19.808.442.366, khớp 100% cả 10 tháng. Lỗi trình bày của em: trước so với tổng Kiot (gồm báo giá) nên hiện 57-59%.

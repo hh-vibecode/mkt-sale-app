@@ -2991,6 +2991,15 @@ function dhDoiSoatHtml(){
   const canXu=tong.vl+tong.kl+tong.chuaCo+tong.coMa+tong.trung;
   return '<div class="tbl-card" style="margin-bottom:16px">'
     +'<div class="tbl-head"><div class="tbl-title">Đối soát doanh thu Kiot ↔ App</div><div class="tbl-count">từ 1/1/2026</div>'
+    +(()=>{const t=window._dhDsTuan;   // kết quả soát từng mã hằng tuần (Chủ nhật 23:00 VN)
+      if(!t)return '<span style="margin-left:12px;font-size:11px;color:var(--muted)">Soát từng mã với Kiot: chạy tự động 23:00 Chủ nhật</span>';
+      const luc=t.finished_at||t.started_at,d=new Date(new Date(luc).getTime()+7*3600e3).toISOString();
+      const khi=d.slice(11,16)+' '+d.slice(8,10)+'/'+d.slice(5,7);
+      const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+      if(t.status!=='success')return '<span style="margin-left:12px;font-size:11px;font-weight:700;color:var(--red)" title="'+e(t.error_message)+'">Soát với Kiot '+khi+': '+(t.status==='running'?'đang chạy…':'lỗi')+'</span>';
+      return Number(t.records_updated||0)
+        ?'<span style="margin-left:12px;font-size:11px;font-weight:800;color:var(--red)" title="'+e(t.error_message)+'">Soát với Kiot '+khi+': lệch '+num(t.records_updated)+' mã (rê chuột xem)</span>'
+        :'<span style="margin-left:12px;font-size:11px;font-weight:700;color:var(--green)">Soát với Kiot '+khi+': khớp từng mã ('+num(t.records_created)+' phiếu)</span>';})()
     +'<button class="refresh-btn" onclick="window._dhDsCache=null;renderDataHub()" style="margin-left:auto;padding:4px 12px;font-size:11px">↺ Tính lại</button></div>'
     +'<div style="padding:14px 16px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">'
       +mkKpi(ic('cash'),'Doanh thu Kiot',vnd(canTinh(tong)),'số thật — không gồm phiếu tạm chưa tiền','g-blue')
@@ -3563,7 +3572,10 @@ async function renderDataHub(){
 
   if(mode==='kenh'){el.innerHTML=header+kho+dhKenhHtml();tblAlign(el);return;}
   if(mode==='doisoat'){   // đối soát Kiot ↔ app: cần đủ dữ liệu dựng Master Lẻ + Sỉ
-    await Promise.all([dhLoadOrders(),siCrmLoad()]);
+    await Promise.all([dhLoadOrders(),siCrmLoad(),
+      // lần SOÁT TỪNG MÃ với Kiot gần nhất (job doi-soat.yml, Chủ nhật 23:00 VN)
+      sbFetchAll('sync_log','select=started_at,finished_at,status,records_created,records_updated,error_message&source=eq.'+encodeURIComponent('Đối soát Kiot (tuần)')+'&order=started_at.desc&limit=1')
+        .then(d=>{window._dhDsTuan=d[0]||null;}).catch(()=>null)]);
     el.innerHTML=header+kho+dhDoiSoatHtml();tblAlign(el);return;}
   el.innerHTML=header+(canRaw?pancakeOrdersHtml:'')+dhManualTkHtml(canLe,canSi)+(canRaw?dhExcludedHtml():'');
   if(canRaw)dhRenderTable();
@@ -5739,10 +5751,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='08/10 15:10';
+const APP_VERSION='08/10 15:17';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=448;
+const APP_BAN=449;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5797,8 +5809,10 @@ setInterval(dataMoiTai,5*60*1000);setTimeout(dataMoiTai,3000);setInterval(dataMo
 // localStorage. Cứ 30 giây báo danh vào bảng dang_xem (bảng riêng app này), quá 90 giây không báo = đã thoát. Hiện cả nick anh Hải.
 // Con vật + màu chọn ngẫu nhiên MỖI LẦN mở app, gửi lên cùng dòng báo danh để ai xem cũng thấy đúng con đó.
 const DX_TTL=90000,DX_PING=30000;
-const DX_CON=['🦊','🐼','🦉','🐻','🐨','🐯','🦁','🐸','🐧','🦄','🐙','🦋','🐬','🦅','🐝','🦈','🐢','🦒','🦔','🐳'];
-const DX_MAU=['#0091ae','#16a34a','#7c3aed','#f59e0b','#e11d48','#0891b2','#ec4899','#64748b'];
+// Hình con vật: bộ OpenMoji (viền đen, màu phẳng -- kiểu bộ icon anh gửi), CC BY-SA 4.0, lưu sẵn ở thư mục thu/ (xem thu/NGUON.txt).
+// Nền tròn màu nhạt để nét viền nổi. Đổi bộ hình: thay file trong thu/ + mảng dưới.
+const DX_CON=['1F98A','1F43C','1F989','1F43B','1F428','1F42F','1F981','1F438','1F427','1F984','1F419','1F98B','1F42C','1F422','1F992','1F994','1F433','1F418','1F98C','1F43F'];
+const DX_MAU=['#e0f2fe','#dcfce7','#ede9fe','#fef3c7','#ffe4e6','#cffafe','#fce7f3','#f1f5f9'];
 const dxCon=Math.floor(Math.random()*DX_CON.length),dxMau=Math.floor(Math.random()*DX_MAU.length);
 function dxMa(){let id='';try{id=localStorage.getItem('dxTrinhDuyet')||'';if(!id){id=Date.now().toString(36)+Math.random().toString(36).slice(2,9);localStorage.setItem('dxTrinhDuyet',id);}}catch(e){id='tam-'+dxCon+dxMau;}return id;}
 function dxTrang(){const a=document.querySelector('.nav-item.active .nav-label')||document.querySelector('.nav-item.active');return a?String(a.textContent||'').replace(/\s+/g,' ').trim().slice(0,40):'';}
@@ -5816,9 +5830,10 @@ async function dxXem(){
     ds=await r.json();}catch(e){return;}
   if(!Array.isArray(ds))return;
   const toi=dxMa(),e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  ds.sort((a,b)=>(a.session_id===toi?-1:b.session_id===toi?1:String(a.ten).localeCompare(String(b.ten),'vi')));
-  const av=(x,z)=>'<div title="'+e(x.ten)+'" style="width:'+z+'px;height:'+z+'px;border-radius:50%;background:'+DX_MAU[(x.color_idx||0)%DX_MAU.length]
-    +';display:flex;align-items:center;justify-content:center;font-size:'+Math.round(z*.55)+'px;border:2px solid #213343;margin-left:-7px;flex-shrink:0">'+DX_CON[(x.avatar_idx||0)%DX_CON.length]+'</div>';
+  ds.sort((a,b)=>(a.session_id===toi?-1:b.session_id===toi?1:String(dxTen(a.ten)).localeCompare(String(dxTen(b.ten)),'vi')));
+  const av=(x,z)=>'<div title="'+e(dxTen(x.ten))+'" style="width:'+z+'px;height:'+z+'px;border-radius:50%;background:'+DX_MAU[(x.color_idx||0)%DX_MAU.length]
+    +';display:flex;align-items:center;justify-content:center;border:2px solid #213343;margin-left:-7px;flex-shrink:0;overflow:hidden">'
+    +'<img src="thu/'+DX_CON[(x.avatar_idx||0)%DX_CON.length]+'.svg" alt="" style="width:'+Math.round(z*.86)+'px;height:'+Math.round(z*.86)+'px;display:block"></div>';
   const hien=ds.slice(0,4),them=ds.length-hien.length;
   el.innerHTML='<div style="display:flex;align-items:center;position:relative;padding-left:7px;cursor:default"'
     +' onmouseenter="document.getElementById(\'dxPop\').style.display=\'block\'" onmouseleave="document.getElementById(\'dxPop\').style.display=\'none\'">'
@@ -5827,10 +5842,12 @@ async function dxXem(){
     +'<div id="dxPop" style="display:none;position:absolute;top:36px;right:0;z-index:600;background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.25);padding:10px 12px;min-width:230px">'
       +'<div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">Đang xem ('+ds.length+')</div>'
       +ds.map(x=>'<div style="display:flex;align-items:center;gap:9px;padding:4px 0"><div style="margin-left:7px">'+av(x,24)+'</div>'
-        +'<div style="min-width:0"><div style="font-size:12.5px;font-weight:700;white-space:nowrap">'+e(x.ten)+(x.session_id===toi?' <span style="font-weight:500;color:var(--muted)">(bạn)</span>':'')+'</div>'
+        +'<div style="min-width:0"><div style="font-size:12.5px;font-weight:700;white-space:nowrap">'+e(dxTen(x.ten))+(x.session_id===toi?' <span style="font-weight:500;color:var(--muted)">(bạn)</span>':'')+'</div>'
         +(x.trang?'<div style="font-size:11px;color:var(--muted);white-space:nowrap">'+e(x.trang)+'</div>':'')+'</div></div>').join('')
+      +'<div style="margin-top:7px;padding-top:6px;border-top:1px solid var(--border);font-size:9.5px;color:var(--muted)">Hình: OpenMoji · CC BY-SA 4.0</div>'
     +'</div></div>';
 }
+function dxTen(t){try{return typeof rptTenHien==='function'?(rptTenHien(t)||t):t;}catch(e){return t;}}
 function dxChay(){if(window._dxTimer)return;dxBaoDanh().then(dxXem);window._dxTimer=setInterval(()=>{dxBaoDanh().then(dxXem);},DX_PING);}
 async function dxXoa(){try{await fetch(SUPABASE_URL+'/rest/v1/dang_xem?session_id=eq.'+encodeURIComponent(dxMa()),{method:'DELETE',headers:dxH(),keepalive:true});}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){dxBaoDanh().then(dxXem);}});

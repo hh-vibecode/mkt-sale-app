@@ -1,0 +1,38 @@
+name: Đối soát Kiot (tuần)
+
+# ĐỐI SOÁT HẰNG TUẦN (anh Hải 08/10/2026: "đêm cuối tuần cà lại 1 lần"): Chủ nhật 23:00 giờ VN (= 16:00 UTC).
+# 1) kéo lại TOÀN BỘ hoá đơn từ 1/1/2026 + đơn đặt hàng  2) so từng mã Kiot API vs CSDL app -> ghi sync_log
+#    (source 'Đối soát Kiot (tuần)'), tab Data Hub > Đối soát hiện kết quả. Không tự xoá gì.
+on:
+  schedule:
+    - cron: '0 16 * * 0'
+  workflow_dispatch:
+
+jobs:
+  doi-soat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - name: Kéo lại toàn bộ hoá đơn Kiot từ 1/1/2026
+        env:
+          KIOT_CLIENT_ID: ${{ secrets.KIOT_CLIENT_ID }}
+          KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BACKFILL: '1'
+        run: node scripts/sync-kiot-invoices.js
+      - name: Kéo lại đơn đặt hàng Kiot
+        if: always()
+        env:
+          KIOT_CLIENT_ID: ${{ secrets.KIOT_CLIENT_ID }}
+          KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/sync-kiot-orders.js
+      - name: So từng mã Kiot ↔ app
+        if: always()
+        env:
+          KIOT_CLIENT_ID: ${{ secrets.KIOT_CLIENT_ID }}
+          KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/doi-soat-kiot.js
