@@ -8,6 +8,7 @@ test_*.mjs
 t_*.mjs
 *.png
 !logo.png
+!thu/*.png
 
 # cài đặt quyền Claude Code riêng máy này
 .claude/settings.local.json
