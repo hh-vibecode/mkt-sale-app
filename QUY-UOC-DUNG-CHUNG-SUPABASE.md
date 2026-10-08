@@ -12,7 +12,7 @@ Soạn 29/9/2026 bởi Monsieur Claude.
 | MKT / Sale | hh-vibecode/mkt-sale-app | *(không tiền tố — các bảng có từ trước)* | Chủ các bảng lõi ở mục 2 |
 | QC CSKH | hh-vibecode/qc-cskh | `qc_` / `qc-` | Chủ `sale_response_review`, `sale_review_report` và mọi thứ `qc_*` |
 | Kế toán (tài chính) | hh-vibecode/ke-toan | `kt_` / `kt-` | Đăng ký 1/10/2026. Vào app bằng mã truy cập riêng (như QC), không dùng `dang-nhap` |
-| Dashboard-Meta (cũ) | hh-vibecode/Dashboard-Meta | — | CHỈ ĐỌC, không sửa repo đó |
+| Dashboard-Meta (cũ) | hh-vibecode/Dashboard-Meta | — | CHỈ ĐỌC. 8/10/2026 đã KHOÁ: repo private, web tắt |
 | *(app mới)* | … | `xx_` / `xx-` | tiền tố 2–4 chữ, không trùng |
 
 ## 2. Ai sở hữu bảng nào

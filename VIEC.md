@@ -123,6 +123,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **08/10 (15)** — KHOÁ DASHBOARD CŨ (anh bảo): repo hh-vibecode/Dashboard-Meta chuyển PRIVATE + tắt GitHub Pages -> link hh-vibecode.github.io/Dashboard-Meta trả 404, repo không còn công khai. Đảo ngược được (Settings > Change visibility > Public, bật lại Pages). Bản clone trên máy C:/Users/HP/Desktop/1.Dashboard-Meta vẫn còn để tra cứu. Bảng dash_presence / product_faq… của app cũ trong Supabase giữ nguyên.
 - **08/10 (14)** — Ai đang xem: đổi hình sang 30 con vật 3D anh gửi (icon/, ảnh gốc không đưa lên repo), em cắt tròn 160x160 -> thu/a01..a30.png bằng PowerShell System.Drawing (dò khung từng con trong lưới 5x3). Bỏ bộ OpenMoji.
 - **08/10 (13)** — Popup Ai đang xem: bỏ dòng ghi nguồn OpenMoji (anh bảo), ghi nguồn giữ ở thu/NGUON.txt. Xoá dòng sync_log chạy thử đối soát (lệch 1 do HĐ vừa tạo) để tab không báo sai trước CN; máy không có gh CLI nên chưa chạy thử workflow doi-soat.yml trên GitHub — lần chạy thật đầu: CN 12/10 23:00.
 - **08/10 (12)** — Đối soát: chỉ hiện cột lý do lệch / cột Khác khi CÓ số (anh: toàn — thì liệt kê làm gì).
