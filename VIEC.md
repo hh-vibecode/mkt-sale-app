@@ -37,6 +37,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **Chuông thông báo** (8/10/2026): admin = việc nhân sự xong / còn nợ; nhân sự = việc đang dở; bấm tin chuyển thẳng tới chỗ đó.
 - **Đối soát Kiot ↔ app tự soát từng mã mỗi Chủ nhật 23:00 VN** (8/10/2026, .github/workflows/doi-soat.yml).
 - **Data Hub chỉ để thống kê data thô, KHÔNG cho điền** (8/10/2026): tab Tổng Quan · Kiot raw data · Đối soát · Kho lưu trữ. Thêm / sửa khách ở báo cáo Sale Lẻ / Sỉ.
 - **Khách vãng lai** (8/10/2026): phiếu Kiot không mã khách / mã chung "khách lẻ" có dấu vết tiền -> 1 dòng "Khách vãng lai" mỗi báo cáo (theo chi nhánh), Offline · Kiot. **Master mặc định ẩn Offline · Kiot** (Lẻ + Sỉ), chọn ở ô Nguồn để xem.
@@ -123,6 +124,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **08/10 (16)** — Thanh trên: bỏ nút Tải lại dữ liệu; Sáng/Tối + Đăng xuất gộp vào nút Cài đặt (bánh răng). CHUÔNG THÔNG BÁO kiểu Facebook: admin thấy từng nhân sự xong / còn / quá hạn + tin "X đã xong việc", "hết hạn hôm nay", "quá hạn"; nhân sự thấy việc được giao đang dở (tin Admin giao việc / hết hạn / quá hạn) + số Daily Task. Nguồn = đúng bảng đỏ Daily Task. Số đỏ = tin mới sau lần mở chuông (lần đầu tính 24h). Bấm tin -> chuyển Daily Task báo cáo đó + mở hồ sơ khách tab Lịch sử chăm sóc. Tính lại 5 phút/lần (cần nạp dữ liệu Sale Lẻ + Sỉ — tài khoản không vào báo cáo Sale thì bỏ qua).
 - **08/10 (15)** — KHOÁ DASHBOARD CŨ (anh bảo): repo hh-vibecode/Dashboard-Meta chuyển PRIVATE + tắt GitHub Pages -> link hh-vibecode.github.io/Dashboard-Meta trả 404, repo không còn công khai. Đảo ngược được (Settings > Change visibility > Public, bật lại Pages). Bản clone trên máy C:/Users/HP/Desktop/1.Dashboard-Meta vẫn còn để tra cứu. Bảng dash_presence / product_faq… của app cũ trong Supabase giữ nguyên.
 - **08/10 (14)** — Ai đang xem: đổi hình sang 30 con vật 3D anh gửi (icon/, ảnh gốc không đưa lên repo), em cắt tròn 160x160 -> thu/a01..a30.png bằng PowerShell System.Drawing (dò khung từng con trong lưới 5x3). Bỏ bộ OpenMoji.
 - **08/10 (13)** — Popup Ai đang xem: bỏ dòng ghi nguồn OpenMoji (anh bảo), ghi nguồn giữ ở thu/NGUON.txt. Xoá dòng sync_log chạy thử đối soát (lệch 1 do HĐ vừa tạo) để tab không báo sai trước CN; máy không có gh CLI nên chưa chạy thử workflow doi-soat.yml trên GitHub — lần chạy thật đầu: CN 12/10 23:00.

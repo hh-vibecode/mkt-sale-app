@@ -309,12 +309,21 @@ thead th,.grp-table th{color:var(--text2)}
   <span id="dangXem" style="display:flex;align-items:center"></span>
   <span id="dataMoi" title="" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.72);white-space:nowrap"></span>
   <span id="viewAsBox" style="display:none;align-items:center;gap:7px"></span>
-  <button class="theme-toggle" onclick="toggleTheme()">
-    <div class="toggle-track"><div class="toggle-thumb"></div></div>
-    <span id="themeLabel">Tối</span>
-  </button>
-  <button class="settings-btn" id="settingsBtn" onclick="loadData()" title="Tải lại dữ liệu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M4.5 9a8 8 0 0 1 14.1-3.4M19.5 15a8 8 0 0 1-14.1 3.4"/></svg></button>
-  <button class="settings-btn" onclick="logout()" title="Đăng xuất"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
+  <!-- CHUÔNG THÔNG BÁO kiểu Facebook + nút CÀI ĐẶT (Sáng/Tối, Đăng xuất) -- anh Hải 08/10/2026; bỏ nút "Tải lại dữ liệu" -->
+  <span style="position:relative">
+    <button class="settings-btn" id="tbChuong" onclick="tbBam(event)" title="Thông báo" style="position:relative"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="tbSo" style="display:none;position:absolute;top:-5px;right:-6px;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:#e11d48;color:#fff;font-size:10.5px;font-weight:800;line-height:18px;text-align:center;border:2px solid #213343"></span></button>
+    <div id="tbHop" style="display:none;position:absolute;top:42px;right:0;z-index:700;width:380px;max-width:calc(100vw - 24px);max-height:72vh;overflow:auto;background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.3)"></div>
+  </span>
+  <span style="position:relative">
+    <button class="settings-btn" id="tbCaiDat" onclick="tbCaiDatBam(event)" title="Cài đặt"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+    <div id="tbMenu" style="display:none;position:absolute;top:42px;right:0;z-index:700;min-width:190px;background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 14px 36px rgba(0,0,0,.28);padding:6px">
+      <div onclick="toggleTheme()" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+        <div class="theme-toggle" style="pointer-events:none;padding:0;border:none;background:none"><div class="toggle-track"><div class="toggle-thumb"></div></div></div>
+        Giao diện <span id="themeLabel" style="margin-left:auto;color:var(--muted);font-weight:600">Tối</span></div>
+      <div onclick="logout()" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--red)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Đăng xuất</div>
+    </div>
+  </span>
   </div>
 </div>
 <button id="btnLoad" style="display:none"></button>
@@ -394,12 +403,12 @@ let allRows=[],crmHubRows=[],onlineRows=[],saleSiRows=[],saleOnlRows=[],saleOnlC
 (function(){
   const s=localStorage.getItem('theme')||'light';
   document.documentElement.setAttribute('data-theme',s);
-  window.addEventListener('DOMContentLoaded',()=>{document.getElementById('themeLabel').textContent=s==='dark'?'Sáng':'Tối';});
+  window.addEventListener('DOMContentLoaded',()=>{const l=document.getElementById('themeLabel');if(l)l.textContent=s==='dark'?'Tối':'Sáng';});
 })();
 function toggleTheme(){
   const h=document.documentElement,dark=h.getAttribute('data-theme')==='dark';
   h.setAttribute('data-theme',dark?'light':'dark');
-  document.getElementById('themeLabel').textContent=dark?'Tối':'Sáng';
+  {const l=document.getElementById('themeLabel');if(l)l.textContent=dark?'Sáng':'Tối';}
   localStorage.setItem('theme',dark?'light':'dark');
 }
 
@@ -891,7 +900,7 @@ function switchPage(p){
 // APP MKT/SALE -- bản tách riêng, CHỈ đọc Supabase (MKT + Sale Online Lẻ), không còn đụng Google Sheets/Sỉ/Kiot/QC/Đánh Giá.
 // Bản đầy đủ (Dashboard, giữ Sheets) nằm ở repo Dashboard-Meta riêng.
 async function loadData(){
-  try{dataMoiTai();dxChay();dxBaoDanh().then(dxXem);}catch(e){}   // dòng 'Data làm mới' trên thanh trên (08/10/2026)
+  try{dataMoiTai();dxChay();dxBaoDanh().then(dxXem);setTimeout(tbTinh,4000);}catch(e){}   // dòng 'Data làm mới' trên thanh trên (08/10/2026)
   showLoading();
   document.getElementById('btnLoad').disabled=true;
   try{
@@ -5753,10 +5762,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='08/10 15:34';
+const APP_VERSION='08/10 17:21';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=452;
+const APP_BAN=453;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5848,6 +5857,91 @@ async function dxXem(){
         +(x.trang?'<div style="font-size:11px;color:var(--muted);white-space:nowrap">'+e(x.trang)+'</div>':'')+'</div></div>').join('')
     +'</div></div>';
 }
+// ── THÔNG BÁO kiểu Facebook (anh Hải 08/10/2026) ─────────────────────────────────────────────────────────────────────
+// ADMIN (toàn quyền): từng nhân sự XONG bao nhiêu việc (chờ Xác nhận) / CÒN NỢ bao nhiêu (quá hạn) + tin "X vừa xong việc…".
+// NHÂN SỰ: việc được giao đang dở (tin "Admin giao việc…", "hôm nay hết hạn", "quá hạn") + số việc Daily Task còn lại.
+// Nguồn = đúng danh sách bảng đỏ Daily Task (rptSlViecGiaoDs / rptSlViecXongDs, đã lọc phạm vi xem). Số đỏ = tin MỚI sau lần mở
+// chuông gần nhất (localStorage tbDaXem). Bấm 1 tin -> chuyển thẳng tới Daily Task của báo cáo đó + mở hồ sơ khách.
+let _tb={ds:[],tom:[],luc:0,dangTinh:false};
+function tbGioVN(t){return new Date(new Date(t).getTime()+7*3600e3).toISOString().slice(0,10);}
+async function tbTinh(){
+  if(_tb.dangTinh||!localStorage.getItem('dashUser'))return;
+  if(!dashCan('report-saleretail')&&!dashCan('report-salesi'))return;
+  _tb.dangTinh=true;
+  try{
+    await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null)]);
+    const admin=dashToanQuyen(),hom=tbGioVN(Date.now()),ds=[],nguoi={},todo={};
+    const cu=window._rptSlType,cuK=window._kiotOrdByCode;
+    try{['Lẻ','Sỉ'].forEach(t=>{
+      if(!dashSeeType(t)||!dashCan(t==='Sỉ'?'report-salesi':'report-saleretail'))return;
+      window._rptSlType=t;window._kiotOrdByCode=null;rptSlXoaCache();
+      rptSlViecGiaoDs().forEach(r=>{const v=r.viecGiao,ng=String(v.nguoi_xu_ly||'').trim(),han=String(v.ngay_hen||'').slice(0,10);
+        const x=nguoi[ng]=nguoi[ng]||{con:0,qh:0,xong:0};x.con++;if(han&&han<hom)x.qh++;
+        if(!admin)ds.push({loai:t,key:r.key,luc:v.giao_luc||v.created_at||'',kieu:'giao',ten:r.name,viec:v.viec_tiep,han,nguoi:ng});
+        if(han&&han<=hom)ds.push({loai:t,key:r.key,luc:han+'T00:00:00+07:00',kieu:han<hom?'qua':'nay',ten:r.name,viec:v.viec_tiep,han,nguoi:ng});});
+      if(admin)rptSlViecXongDs().forEach(x=>{const ng=String(x.giao.nguoi_xu_ly||'').trim();(nguoi[ng]=nguoi[ng]||{con:0,qh:0,xong:0}).xong++;
+        ds.push({loai:t,key:x.r.key,luc:x.kq.created_at||(String(x.kq.ngay_cham||'').slice(0,10)+'T12:00:00+07:00'),kieu:'xong',ten:x.r.name,viec:x.giao.viec_tiep,nguoi:ng});});
+      todo[t]=rptSlTodoCount();
+    });}
+    finally{window._rptSlType=cu;window._kiotOrdByCode=cuK;rptSlXoaCache();}
+    ds.sort((a,b)=>String(b.luc).localeCompare(String(a.luc)));
+    _tb={ds:ds.slice(0,60),nguoi,todo,admin,luc:Date.now(),dangTinh:false};
+    tbVeSo();
+    const h=document.getElementById('tbHop');if(h&&h.style.display==='block')tbVe();
+  }catch(e){_tb.dangTinh=false;console.warn('[Thông báo]',e.message);}
+}
+// chưa mở chuông lần nào -> coi như đã xem tới 24 giờ trước (số đỏ không nhảy cả trăm tin cũ lần đầu)
+function tbDaXem(){try{const v=localStorage.getItem('tbDaXem');if(v)return Number(v);const m=Date.now()-86400000;localStorage.setItem('tbDaXem',String(m));return m;}catch(e){return Date.now()-86400000;}}
+function tbVeSo(){const el=document.getElementById('tbSo');if(!el)return;
+  const m=tbDaXem(),n=(_tb.ds||[]).filter(x=>new Date(x.luc).getTime()>m).length;
+  el.style.display=n?'block':'none';el.textContent=n>99?'99+':String(n);}
+function tbVe(){
+  const h=document.getElementById('tbHop');if(!h)return;
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'),q=String.fromCharCode(39);
+  if(!_tb.luc){h.innerHTML='<div style="padding:22px;text-align:center;color:var(--muted);font-size:12.5px">Đang tải thông báo…</div>';return;}
+  const m=Number(h.dataset.moc||0);
+  const tom=Object.entries(_tb.nguoi||{}).filter(([n])=>n).sort((a,b)=>b[1].qh-a[1].qh||b[1].con-a[1].con);
+  const khung=(nd)=>'<div style="padding:10px 14px;border-bottom:1px solid var(--border)">'+nd+'</div>';
+  let tren='';
+  if(_tb.admin&&tom.length)tren=khung('<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Việc giao theo nhân sự</div>'
+    +tom.map(([n,x])=>'<div style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12.5px"><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e(n)+'</b>'
+      +(x.xong?'<span style="color:var(--green);font-weight:800">xong '+x.xong+'</span>':'')
+      +'<span style="color:var(--text2);font-weight:700">còn '+x.con+'</span>'+(x.qh?'<span style="color:var(--red);font-weight:800">quá hạn '+x.qh+'</span>':'')+'</div>').join(''));
+  const dt=Object.entries(_tb.todo||{}).filter(([t,n])=>n>0);
+  if(dt.length)tren+=khung(dt.map(([t,n])=>'<div onclick="tbMo('+q+t+q+','+q+q+')" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px;cursor:pointer"><span style="flex:1">Daily Task Sale '+t+'</span><b style="color:var(--red)">'+n+' việc cần làm</b></div>').join(''));
+  const icon={xong:['#16a34a','✓'],giao:['#0091ae','▶'],nay:['#f59e0b','!'],qua:['#e11d48','!']};
+  const cau=x=>x.kieu==='xong'?'<b>'+e(dxTen(x.nguoi))+'</b> đã xong việc “'+e(x.viec)+'” · '+e(x.ten)
+    :x.kieu==='giao'?'<b>Admin</b> giao việc: “'+e(x.viec)+'” · '+e(x.ten)+(x.han?' · hạn '+dmy(x.han):'')
+    :x.kieu==='nay'?'<b>Hôm nay hết hạn</b>: “'+e(x.viec)+'” · '+e(x.ten)+(_tb.admin?' · '+e(dxTen(x.nguoi)):'')
+    :'<b style="color:var(--red)">Quá hạn</b> '+Math.round((new Date(tbGioVN(Date.now()))-new Date(x.han))/86400000)+' ngày: “'+e(x.viec)+'” · '+e(x.ten)+(_tb.admin?' · '+e(dxTen(x.nguoi)):'');
+  const dong=(_tb.ds||[]).map(x=>{const moi=new Date(x.luc).getTime()>m,ic=icon[x.kieu];
+    return '<div onclick="tbMo('+q+x.loai+q+','+q+String(x.key).replace(/'/g,'')+q+')" style="display:flex;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);'+(moi?'background:var(--accent-l)':'')+'" onmouseover="this.style.filter=\'brightness(.97)\'" onmouseout="this.style.filter=\'\'">'
+      +'<div style="flex:0 0 30px;height:30px;border-radius:50%;background:'+ic[0]+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">'+ic[1]+'</div>'
+      +'<div style="min-width:0;flex:1"><div style="font-size:12.5px;line-height:1.45">'+cau(x)+'</div>'
+      +'<div style="font-size:11px;color:'+(moi?'var(--accent)':'var(--muted)')+';font-weight:700;margin-top:2px">Sale '+x.loai+' · '+(x.kieu==='nay'?'hạn hôm nay':x.kieu==='qua'?'hạn '+dmy(x.han):dataMoiTruoc(x.luc))+'</div></div>'
+      +(moi?'<span style="flex:0 0 9px;height:9px;border-radius:50%;background:var(--accent);margin-top:11px"></span>':'')+'</div>';}).join('');
+  h.innerHTML='<div style="display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)"><b style="font-size:15px">Thông báo</b>'
+    +'<span style="margin-left:auto;font-size:11px;color:var(--muted)">cập nhật '+dataMoiTruoc(_tb.luc)+'</span></div>'
+    +tren+(dong||'<div style="padding:22px;text-align:center;color:var(--muted);font-size:12.5px">Không có thông báo nào</div>');
+}
+function tbBam(ev){if(ev)ev.stopPropagation();
+  const h=document.getElementById('tbHop'),mn=document.getElementById('tbMenu');if(mn)mn.style.display='none';
+  if(h.style.display==='block'){h.style.display='none';return;}
+  h.dataset.moc=String(tbDaXem());h.style.display='block';tbVe();
+  try{localStorage.setItem('tbDaXem',String(Date.now()));}catch(e){}
+  tbVeSo();if(!_tb.luc||Date.now()-_tb.luc>60000)tbTinh();}
+function tbCaiDatBam(ev){if(ev)ev.stopPropagation();const mn=document.getElementById('tbMenu'),h=document.getElementById('tbHop');if(h)h.style.display='none';
+  mn.style.display=mn.style.display==='block'?'none':'block';}
+document.addEventListener('click',ev=>{['tbHop','tbMenu'].forEach(id=>{const el=document.getElementById(id);if(el&&el.style.display==='block'&&!el.contains(ev.target))el.style.display='none';});});
+// BẤM TIN -> chuyển thẳng tới Daily Task của báo cáo đó; có khách thì mở luôn hồ sơ tab Lịch sử chăm sóc (sau khi trang vẽ xong)
+function tbMo(loai,key){
+  const h=document.getElementById('tbHop');if(h)h.style.display='none';
+  try{localStorage.setItem('rptSlViewMode_'+loai,'input');}catch(e){}
+  window._tbMoKhach=key?{loai,key}:null;
+  const p=loai==='Sỉ'?'report-salesi':'report-saleretail';
+  if(window._trangHienTai===p){window._rptSlType=loai;rptSlRender();}else switchPage(p);
+}
+setInterval(()=>{if(!document.hidden)tbTinh();},5*60*1000);setTimeout(tbTinh,6000);
 function dxTen(t){try{return typeof rptTenHien==='function'?(rptTenHien(t)||t):t;}catch(e){return t;}}
 function dxChay(){if(window._dxTimer)return;dxBaoDanh().then(dxXem);window._dxTimer=setInterval(()=>{dxBaoDanh().then(dxXem);},DX_PING);}
 async function dxXoa(){try{await fetch(SUPABASE_URL+'/rest/v1/dang_xem?session_id=eq.'+encodeURIComponent(dxMa()),{method:'DELETE',headers:dxH(),keepalive:true});}catch(e){}}
@@ -5970,6 +6064,9 @@ async function rptSlRenderPage(type){
       +'<button onclick="'+cfg.render+'()" style="border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:8px;height:30px;padding:0 14px;cursor:pointer;font-size:12px;font-weight:700;font-family:var(--font)">Thử lại</button></div>';
   }
   try{if(typeof tblAlign==='function')tblAlign();}catch(e){}
+  // đến từ chuông thông báo -> mở hồ sơ khách, tab Lịch sử chăm sóc (08/10/2026)
+  if(window._tbMoKhach&&window._tbMoKhach.loai===rptSlType()){const k=window._tbMoKhach.key;window._tbMoKhach=null;
+    try{window._rptSlChiInfo=false;rptSlShowCustomer(k);rptSlCusTab('cs');}catch(e){}}
 }
 // ── TỔNG QUAN: dựng HOÀN TOÀN trên Pancake (datahub_orders) + KiotViet (kiot_orders = đơn đặt hàng).
 // KHÔNG còn đọc bảng nào migrate từ Google Sheet (crmLeads/crmOrders/crmCustomers/saonl_*).
