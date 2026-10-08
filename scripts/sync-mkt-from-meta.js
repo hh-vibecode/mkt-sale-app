@@ -188,7 +188,9 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
         reach: Math.round(Number(r.reach) || 0),
         impressions: Math.round(Number(r.impressions) || 0),
         spend: Number(r.spend) || 0,
-        messages: Math.round(actionValue(r.actions, ['onsite_conversion.messaging_conversation_started_7d', 'messaging_conversation_started_7d'])),
+        // MESS = "Tổng số người liên hệ nhắn tin" của Ads Manager (anh Hải chốt 08/10/2026), trước đó lấy "Lượt bắt đầu
+        // cuộc trò chuyện" (messaging_conversation_started_7d) nên lệch Ads Manager. Đo 08/10: cộng theo ngày = số cả kỳ.
+        messages: Math.round(actionValue(r.actions, ['onsite_conversion.total_messaging_connection'])),
         ctr: Number(r.ctr) || 0,
         cpc: Number(r.cpc) || 0,
         comments: Math.round(actionValue(r.actions, ['comment', 'post_comment'])),

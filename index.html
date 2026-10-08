@@ -2731,9 +2731,9 @@ function dhManualEdit(id){
    +'<div style="font-size:15px;font-weight:800">Sửa data nhập tay · '+e(r.customer_name||'')+'</div>'
    +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
    +'<div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">'+o
-   +'<div>'+lb('Nguồn khách')+'<select id="dhE_nguon" style="'+ip+';cursor:pointer">'
+   +'<div>'+lb('Nguồn khách')+'<select id="dhE_nguon"'+(dashToanQuyen()?'':' disabled title="Chỉ Admin đổi được Nguồn khách"')+' style="'+ip+';cursor:pointer">'
      +['Online','Offline'].map(function(x){return '<option'+(String(r.nguon||'')===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div>'
-   +'<div>'+lb('Kênh'+dmBut('kenh_nhap_tay'))+'<input id="dhE_kenh" list="dhE_kenhDS" value="'+e(r.kenh||'')+'" style="'+ip+'">'
+   +'<div>'+lb('Kênh'+dmBut('kenh_nhap_tay'))+'<input id="dhE_kenh" list="dhE_kenhDS" value="'+e(r.kenh||'')+'"'+(dashToanQuyen()?'':' disabled title="Chỉ Admin đổi được Kênh"')+' style="'+ip+'">'
    +'<datalist id="dhE_kenhDS">'+DH_MANUAL_KENH.map(function(x){return '<option value="'+e(x)+'">';}).join('')+'</datalist></div>'
    +'<div>'+lb('Sale phụ trách')+'<select id="dhE_staff_name" style="'+ip+';cursor:pointer"><option value="">—</option>'
      +rptSlSaleOptsHtml(r.staff_name,[r.staff_name])+'</select></div>'   // chia 2 bộ phận (07/10/2026)
@@ -2906,10 +2906,10 @@ function dhManualType(){return window._dhManualType==='Sỉ'?'Sỉ':'Lẻ';}
 const DH_MANUAL_MOC='2026-06-01';   // mốc hiển thị của tab Data nhập tay
 
 // ── DUNG LƯỢNG KHO DỮ LIỆU ─────────────────────────────────────────────────────────────────────
-// Gói Supabase Free cho 500 MB. Hết dung lượng là job đồng bộ ghi lỗi, báo cáo đứng số mà không
-// ai biết vì sao -- nên để ngay đầu Data Hub cho thấy trước khi chạm trần.
+// 29/9/2026 anh Hải lên gói PRO: 8 GB dung lượng CSDL có sẵn trong gói (trước là Free 500 MB). Vượt 8 GB Supabase tự nới và
+// tính thêm tiền, nên vẫn để ngay đầu Data Hub cho thấy trước khi chạm mức.
 // Số lấy từ hàm db_dung_luong() bên Postgres (đọc pg_database_size + kích thước từng bảng).
-const DB_GIOI_HAN=500*1024*1024;
+const DB_GIOI_HAN=8*1024*1024*1024,DB_GOI='gói Pro';
 let dbDungLuong=null;
 async function dbTaiDungLuong(force){
   if(dbDungLuong&&!force)return dbDungLuong;
@@ -2919,6 +2919,7 @@ async function dbTaiDungLuong(force){
   return dbDungLuong=await r.json();
 }
 function dbCo(b){const n=Number(b||0);
+  if(n>=1073741824)return (n/1073741824).toFixed(n%1073741824?1:0)+' GB';
   return n>=1048576?(n/1048576).toFixed(n>=10485760?0:1)+' MB':Math.round(n/1024)+' kB';}
 function dbDungLuongHtml(){
   const d=dbDungLuong;
@@ -2932,10 +2933,10 @@ function dbDungLuongHtml(){
     <td class="num" style="color:var(--muted)">${(x.bytes/tong*100).toFixed(1)}%</td></tr>`).join('');
   return `<div class="tbl-card" style="margin-bottom:14px">
     <div class="tbl-head"><div class="tbl-title">Kho dữ liệu</div>
-      <span style="margin-left:auto;font-size:11px;color:var(--muted)">${bang.length} bảng · ${num(tongDong)} dòng · đo lúc ${String(d.luc||'').slice(11,16)}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--muted)">${bang.length} bảng · ${num(tongDong)} dòng · đo lúc ${(()=>{const t=new Date(d.luc);return isNaN(t)?'—':new Date(t.getTime()+7*3600e3).toISOString().slice(11,16)+' '+dmy(new Date(t.getTime()+7*3600e3).toISOString().slice(0,10));})()}</span>
       <button class="refresh-btn" onclick="dbLamMoi()" style="margin-left:10px;padding:4px 12px;font-size:11px">↺ Đo lại</button></div>
     <div style="padding:14px 16px 6px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
-      ${mkKpi(ic('box'),'Đang dùng',dbCo(tong),'trên '+dbCo(DB_GIOI_HAN)+' của gói Free','g-blue')}
+      ${mkKpi(ic('box'),'Đang dùng',dbCo(tong),'trên '+dbCo(DB_GIOI_HAN)+' của '+DB_GOI,'g-blue')}
       ${mkKpi(ic('clipboard'),'Tổng số dòng',num(tongDong),bang.length+' bảng','g-purple')}
       ${mkKpi(ic('box'),'Bảng nặng nhất',bang.length?bang[0].ten:'—',bang.length?dbCo(bang[0].bytes):'','g-teal')}
       ${mkKpi(ic('clock'),'Còn trống',dbCo(Math.max(0,DB_GIOI_HAN-tong)),(100-pct1).toFixed(1)+'% dung lượng','g-green')}
@@ -5205,8 +5206,8 @@ function rptSiOSua(r){
     // Khách thêm tay: tên / ngày tạo / nguồn / kênh / SĐT / Mã KH đều là dữ liệu của app -> sửa được hết.
     o.ten={kieu:'text',gt:dhm.customer_name||'',noi:'dhm',cot:'customer_name'};
     o.ngay_tao={kieu:'date',gt:String(dhm.created_date||'').slice(0,10),noi:'dhm',cot:'created_date'};
-    o.nguon={kieu:'chon',ds:['Online','Offline'],gt:dhm.nguon||'',noi:'dhm',cot:'nguon'};
-    o.kenh={kieu:'chon',ds:DH_MANUAL_KENH,gt:dhm.kenh||'',noi:'dhm',cot:'kenh'};
+    if(dashToanQuyen()){o.nguon={kieu:'chon',ds:['Online','Offline'],gt:dhm.nguon||'',noi:'dhm',cot:'nguon'};
+    o.kenh={kieu:'chon',ds:DH_MANUAL_KENH,gt:dhm.kenh||'',noi:'dhm',cot:'kenh'};}   // KHOÁ Nguồn / Kênh: chỉ Admin sửa (anh Hải 08/10/2026); Sale chỉ chọn lúc TẠO khách mới
     o.sdt={kieu:'text',gt:dhm.phone||'',noi:'dhm',cot:'phone'};
     o.ma_kh={kieu:'text',gt:dhm.kiot_code||'',noi:'dhm',cot:'kiot_code'};
   }else{
@@ -5215,8 +5216,8 @@ function rptSiOSua(r){
     o.ten={kieu:'text',gt:r.name||'',noi:'mn',cot:'ten_sua'};   // để trống = quay về tên bên Pancake
     o.sdt={kieu:'text',gt:mn.si_sdt||'',noi:'mn',cot:'si_sdt'};
     // Kênh: chọn tay (danh sách kênh Kiot) ghi vào hồ sơ, đè kênh Pancake; chọn "—" = quay về kênh Pancake (30/9/2026)
-    o.kenh={kieu:'chon',ds:DH_MANUAL_KENH,gt:r.kenh||sh.kenh||'',noi:'mn',cot:'kenh_sua',rong:'— (theo Pancake)'};
-    o.nguon={kieu:'chon',ds:['Online','Offline'],gt:r.nguon||sh.nguon||'',noi:'mn',cot:'nguon_sua',rong:'— (theo Pancake)'};
+    if(dashToanQuyen()){o.kenh={kieu:'chon',ds:DH_MANUAL_KENH,gt:r.kenh||sh.kenh||'',noi:'mn',cot:'kenh_sua',rong:'— (theo Pancake)'};
+    o.nguon={kieu:'chon',ds:['Online','Offline'],gt:r.nguon||sh.nguon||'',noi:'mn',cot:'nguon_sua',rong:'— (theo Pancake)'};}   // KHOÁ Nguồn / Kênh: chỉ Admin sửa (anh Hải 08/10/2026); Sale chỉ chọn lúc TẠO khách mới
     if(!r.kh)o.ma_kh={kieu:'text',gt:'',noi:'kh'};
   }
   if(dashToanQuyen()){
@@ -5249,15 +5250,15 @@ function rptLeOSua(r){
   if(tay){
     o.ten={kieu:'text',gt:dhm.customer_name||'',noi:'dhm',cot:'customer_name'};
     o.ngay_tao={kieu:'date',gt:String(dhm.created_date||'').slice(0,10),noi:'dhm',cot:'created_date'};
-    o.nguon={kieu:'chon',ds:['Online','Offline'],gt:dhm.nguon||'',noi:'dhm',cot:'nguon'};
-    o.kenh={kieu:'chon',ds:DH_MANUAL_KENH,gt:dhm.kenh||'',noi:'dhm',cot:'kenh'};
+    if(dashToanQuyen()){o.nguon={kieu:'chon',ds:['Online','Offline'],gt:dhm.nguon||'',noi:'dhm',cot:'nguon'};
+    o.kenh={kieu:'chon',ds:DH_MANUAL_KENH,gt:dhm.kenh||'',noi:'dhm',cot:'kenh'};}   // KHOÁ Nguồn / Kênh: chỉ Admin sửa (anh Hải 08/10/2026); Sale chỉ chọn lúc TẠO khách mới
     o.sdt={kieu:'text',gt:dhm.phone||'',noi:'dhm',cot:'phone'};
     o.ma_kh={kieu:'text',gt:dhm.kiot_code||'',noi:'dhm',cot:'kiot_code'};
   }else{
     o.ten={kieu:'text',gt:r.name||'',noi:'mn',cot:'ten_sua'};
     o.sdt={kieu:'text',gt:mn.si_sdt||'',noi:'mn',cot:'si_sdt'};
-    o.kenh={kieu:'chon',ds:DH_MANUAL_KENH,gt:r.kenh||'',noi:'mn',cot:'kenh_sua',rong:'— (theo Pancake)'};
-    o.nguon={kieu:'chon',ds:['Online','Offline'],gt:r.nguon||'',noi:'mn',cot:'nguon_sua',rong:'— (theo Pancake)'};
+    if(dashToanQuyen()){o.kenh={kieu:'chon',ds:DH_MANUAL_KENH,gt:r.kenh||'',noi:'mn',cot:'kenh_sua',rong:'— (theo Pancake)'};
+    o.nguon={kieu:'chon',ds:['Online','Offline'],gt:r.nguon||'',noi:'mn',cot:'nguon_sua',rong:'— (theo Pancake)'};}   // KHOÁ Nguồn / Kênh: chỉ Admin sửa (anh Hải 08/10/2026); Sale chỉ chọn lúc TẠO khách mới
     if(!r.kh)o.ma_kh={kieu:'text',gt:'',noi:'kh'};
   }
   if(dashToanQuyen()){
@@ -5590,10 +5591,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='08/10 14:11';
+const APP_VERSION='08/10 14:18';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=440;
+const APP_BAN=441;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
