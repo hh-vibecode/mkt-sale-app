@@ -5590,10 +5590,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='07/10 17:39';
+const APP_VERSION='08/10 14:11';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=439;
+const APP_BAN=440;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8216,7 +8216,9 @@ function rptSlTodoBuckets(){
     thieuND:true
       // LẺ (anh Hải 05/10/2026): chỉ khách tạo TỪ 1/9/2026, CHƯA chốt, Phân loại Lead mới / Tiềm năng, chưa ra đơn
       ?all.filter(r=>!rptSlMatLeadSi(r)&&!rptSlLeadCu(r)&&!(r.siLuot>0)
-        &&(rptSlType()==='Sỉ'||(!r.isChot&&String(rptSlNgayTao(r)).slice(0,10)>='2026-09-01'&&['Lead mới','Tiềm năng, chưa ra đơn'].includes(rptSlLocTT(r)))))
+        // SỈ (anh Hải 08/10/2026): chỉ khách tạo TỪ 1/6/2026 và nguồn ONLINE (trước đây đếm mọi khách Sỉ -> 265)
+        &&(rptSlType()==='Sỉ'?(String(rptSlNgayTao(r)).slice(0,10)>='2026-06-01'&&rptSiNguonCua(r)==='Online')
+          :(!r.isChot&&String(rptSlNgayTao(r)).slice(0,10)>='2026-09-01'&&['Lead mới','Tiềm năng, chưa ra đơn'].includes(rptSlLocTT(r)))))
       :all.filter(r=>!r.isChot&&r.status!=='Mất lead'
         &&!String(r.content||'').trim()&&!String(r.siNDCuoi||'').trim()&&!String((r.sh||{}).nd_cham_cuoi||'').trim()),
   };
