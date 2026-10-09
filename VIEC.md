@@ -124,6 +124,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **09/10 (1)** — Daily Task bảng Việc được giao: admin tích nhiều việc đã xong + "Chọn tất cả việc đã xong" + nút "Xác nhận đã chọn (N)" -> 1 lệnh PATCH kiem_luc + nhật ký từng việc, chuông tính lại.
 - **08/10 (19)** — Chuông: bấm tin = CHUYỂN TRANG tới Daily Task báo cáo đó + cuộn tới bảng Việc được giao (viền đỏ nháy), không mở hồ sơ khách nữa (anh bảo).
 - **08/10 (18)** — XEM NHƯ tài khoản: chuông + bảng Việc được giao (Daily Task) + tổng việc giờ theo quyền người đang xem như (hàm dashToanQuyenXem; quyền SỬA vẫn theo tài khoản thật). Trước đó xem như nhân sự vẫn thấy việc như admin (lỗi sẵn có). Đổi Xem như -> chuông tính lại. Lỗi em gây ra vừa sửa: số đỏ đếm sau khi cắt danh sách 60 tin -> Kim Oanh 37 việc chỉ báo 23; giờ đếm đủ.
 - **08/10 (17)** — Chuông: số đỏ = việc CHƯA XỬ LÝ (admin: xong chờ Xác nhận + quá hạn; nhân sự: việc được giao chưa làm), mở chuông / F5 không mất, chỉ giảm khi việc được giải quyết (anh: đọc 1 lần mất là sai). Tô xanh tin mới vẫn theo lần mở chuông.

@@ -5769,10 +5769,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='08/10 17:40';
+const APP_VERSION='09/10 13:50';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=456;
+const APP_BAN=457;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -9165,12 +9165,42 @@ function rptSlViecGiaoHtml(ds,xong){
         +'<div style="margin-top:3px;color:var(--text2)">KQ: '+e(kq.noi_dung||'—')+(kq.phan_hoi?' · '+e(kq.phan_hoi):'')+'</div></td>'
       +'<td style="white-space:nowrap;font-size:11px;color:var(--text2)">'+giaoLuc(giao)+'<div style="color:var(--muted)">bởi Admin</div>'+'</td>'
       +'<td onclick="rptSlStop(event)"><div style="display:flex;gap:8px;align-items:center">'
+        +(dashToanQuyen()?'<input type="checkbox" class="kvChon" '+(rptSlKvChon().has(Number(giao.id))?'checked ':'')+'onclick="rptSlKvTich('+Number(giao.id)+',this.checked)" title="Chọn để xác nhận nhiều việc một lần" style="width:17px;height:17px;accent-color:var(--accent);cursor:pointer">':'')
         +(dashToanQuyen()?'<button onclick="rptSlKiemViec('+giao.id+','+q+'Xác nhận'+q+',null,this)" class="refresh-btn" style="margin:0;padding:5px 12px;font-size:11px;white-space:nowrap">✓ Xác nhận</button>':'')
         +'<button onclick="'+sua+'" style="'+nutSua+'">Sửa</button></div></td>'
       +'</tr>';}).join('');
-  return '<div class="tbl-scroll"><table><thead><tr><th>Người phụ trách</th><th>Lịch hẹn / Deadline</th><th>Khách hàng</th><th>Việc cần làm</th><th>Giao lúc</th><th></th></tr></thead><tbody>'+dong+dongXong+'</tbody></table></div>';
+  // XÁC NHẬN NHIỀU VIỆC MỘT LẦN (anh Hải 09/10/2026: "cho tích nhiều, clear cho nhanh") -- chỉ admin, chỉ việc đã xong
+  const idXong=xong.map(x=>Number(x.giao.id)),kv=rptSlKvChon();[...kv].forEach(id=>{if(!idXong.includes(id))kv.delete(id);});
+  window._rptSlKvDs=idXong;
+  const thanh=dashToanQuyen()&&xong.length?'<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg2)">'
+    +'<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" '+(kv.size&&kv.size===idXong.length?'checked ':'')
+    +'onclick="rptSlKvTatCa(this.checked)" style="width:17px;height:17px;accent-color:var(--accent);cursor:pointer">Chọn tất cả việc đã xong ('+idXong.length+')</label>'
+    +'<button id="kvNut" onclick="rptSlKiemViecNhieu(this)" class="refresh-btn" '+(kv.size?'':'disabled ')+'style="margin:0 0 0 auto;padding:6px 16px;font-size:12px">✓ Xác nhận đã chọn ('+kv.size+')</button></div>':'';
+  return thanh+'<div class="tbl-scroll"><table><thead><tr><th>Người phụ trách</th><th>Lịch hẹn / Deadline</th><th>Khách hàng</th><th>Việc cần làm</th><th>Giao lúc</th><th></th></tr></thead><tbody>'+dong+dongXong+'</tbody></table></div>';
 }
 // Quản lý kiểm 1 việc: ghi kiem_luc / kiem_boi vào CHÍNH lượt giao việc. "Giao lại" -> mở form lượt mới của khách để giao tiếp.
+function rptSlKvChon(){return window._rptSlKv||(window._rptSlKv=new Set());}
+function rptSlKvTich(id,on){const kv=rptSlKvChon();if(on)kv.add(id);else kv.delete(id);rptSlKvNut();}
+function rptSlKvTatCa(on){const kv=rptSlKvChon();kv.clear();if(on)(window._rptSlKvDs||[]).forEach(id=>kv.add(id));
+  document.querySelectorAll('.kvChon').forEach(c=>{c.checked=on;});rptSlKvNut();}
+function rptSlKvNut(){const b=document.getElementById('kvNut'),n=rptSlKvChon().size;if(b){b.disabled=!n;b.textContent='✓ Xác nhận đã chọn ('+n+')';}}
+async function rptSlKiemViecNhieu(el){
+  if(!dashToanQuyen())return;
+  const ids=[...rptSlKvChon()];if(!ids.length)return;
+  if(!confirm('Xác nhận '+ids.length+' việc đã xong?'))return;
+  if(el){el.disabled=true;el.textContent='Đang lưu…';}
+  try{
+    const H={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'};
+    const res=await fetch(SUPABASE_URL+'/rest/v1/salesi_crm?id=in.('+ids.join(',')+')',{method:'PATCH',headers:H,
+      body:JSON.stringify({kiem_luc:new Date().toISOString(),kiem_boi:logWho()+' · Xác nhận'})});
+    if(!res.ok)throw new Error('lỗi '+res.status);
+    fetch(SUPABASE_URL+'/rest/v1/activity_log',{method:'POST',headers:H,body:JSON.stringify(ids.map(id=>({who:logWho(),act:'U',tbl:'salesi_crm',ref:'#'+id,label:null,fld:'Kiểm việc đã giao (hàng loạt)',old_v:'chờ kiểm',new_v:'Xác nhận'})))}).catch(()=>{});
+    rptSlKvChon().clear();
+    await siCrmLoad(true);
+    window._kiotOrdByCode=null;rptSlXoaCache();rptSlRender();
+    try{tbTinh();}catch(e){}
+  }catch(e){if(el){el.disabled=false;el.textContent='✓ Xác nhận đã chọn ('+ids.length+')';}rptBaoLoi('Xác nhận nhiều việc',e);}
+}
 async function rptSlKiemViec(id,ketLuan,key,el){
   if(!dashToanQuyen())return;
   if(el)el.disabled=true;
