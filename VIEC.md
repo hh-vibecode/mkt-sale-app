@@ -37,6 +37,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **Kênh quyết định nguồn** (9/10/2026): kênh online (Facebook / TikTok / Shopee / Zalo / Web…) = Online, không quan tâm phiếu là hoá đơn bán thẳng hay đơn đặt hàng; kênh lấy theo Kiot hiện tại.
 - **Chuông thông báo** (8/10/2026): admin = việc nhân sự xong / còn nợ; nhân sự = việc đang dở; bấm tin = chuyển trang tới Daily Task, cuộn tới bảng Việc được giao (không mở hồ sơ). SỐ ĐỎ = việc chưa xử lý xong (không phải tin chưa đọc) — đọc / F5 không mất.
 - **Đối soát Kiot ↔ app tự soát từng mã mỗi Chủ nhật 23:00 VN** (8/10/2026, .github/workflows/doi-soat.yml).
 - **Data Hub chỉ để thống kê data thô, KHÔNG cho điền** (8/10/2026): tab Tổng Quan · Kiot raw data · Đối soát · Kho lưu trữ. Thêm / sửa khách ở báo cáo Sale Lẻ / Sỉ.
@@ -124,6 +125,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **09/10 (2)** — [doi-so] KÊNH QUYẾT ĐỊNH NGUỒN (anh: kênh FB là Online, kệ hoá đơn bán thẳng): (1) khách tự tạo từ Kiot mà kênh hiện tại trên Kiot (phiếu đầu) là online -> theo kênh đó + Online (Kiot sửa kênh sau vẫn theo; KH007712 KL Chị Linh tạo 8/10 lúc HĐ còn Bán trực tiếp, 9/10 Kiot sửa Facebook Hiền Thuỷ); (2) mọi khách kênh online -> nguồn Online. Không hạ xuống Offline; admin chọn tay giữ nguyên; tính lúc dựng, không ghi bảng. App nạp thêm sale_channel của hoá đơn. Đo: Sale Lẻ / Sỉ KHÔNG đổi; MKT từ 1/6 Lẻ 1.219,0 -> 1.246,2 tr (+27,2 tr, 11 khách), Sỉ +3 tr (1 khách). Ca 6 khách anh hỏi 9/10: đều có trong app; MKT T10 chỉ thấy Ngọc Thảo vì Chị Hiền / Cô Đông / Hoang Ngan là đơn tạo T9, Tran Le Thuy là mua lại (đúng luật).
 - **09/10 (1)** — Daily Task bảng Việc được giao: admin tích nhiều việc đã xong + "Chọn tất cả việc đã xong" + nút "Xác nhận đã chọn (N)" -> 1 lệnh PATCH kiem_luc + nhật ký từng việc, chuông tính lại.
 - **08/10 (19)** — Chuông: bấm tin = CHUYỂN TRANG tới Daily Task báo cáo đó + cuộn tới bảng Việc được giao (viền đỏ nháy), không mở hồ sơ khách nữa (anh bảo).
 - **08/10 (18)** — XEM NHƯ tài khoản: chuông + bảng Việc được giao (Daily Task) + tổng việc giờ theo quyền người đang xem như (hàm dashToanQuyenXem; quyền SỬA vẫn theo tài khoản thật). Trước đó xem như nhân sự vẫn thấy việc như admin (lỗi sẵn có). Đổi Xem như -> chuông tính lại. Lỗi em gây ra vừa sửa: số đỏ đếm sau khi cắt danh sách 60 tin -> Kim Oanh 37 việc chỉ báo 23; giờ đếm đủ.

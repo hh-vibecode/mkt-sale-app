@@ -2374,7 +2374,7 @@ async function kiotLoadInvoices(force){
   if(kiotLoaded&&!force)return;
   [kiotInvoices,kiotOrders,kiotCustomers]=await Promise.all([
     // Bỏ cột items khỏi hoá đơn: nặng gấp 3,7 lần phần còn lại mà chỉ dùng lúc xem chi tiết 1 hoá đơn.
-    sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,order_code,total,status'),
+    sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,order_code,total,status,sale_channel'),
     // items (danh sách mặt hàng) chiếm 3/4 dung lượng mà chỉ cần lúc mở chi tiết 1 khách -> tải riêng
     sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,total_payment,status,status_value,sale_channel,giao_dia_chi,giao_khu_vuc'),
     sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name,address,debt'),
@@ -5769,10 +5769,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='09/10 13:50';
+const APP_VERSION='09/10 15:06';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=457;
+const APP_BAN=458;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7119,6 +7119,21 @@ function rptSlBuildMasterRaw(){
   // NGUỒN KHÁCH chọn tay (saleretail_manual.nguon_sua: Online / Offline) đè nguồn Pancake -- đặt TRƯỚC bước
   // tách mua lại (khongCat) vì nguồn quyết định đơn nào còn tính cho Sale (30/9/2026)
   rows.forEach(r=>{const ng=String((rptSlManual[r.leadId]||{}).nguon_sua||'').trim();if(ng)r.nguon=ng;});
+  // KÊNH QUYẾT ĐỊNH NGUỒN (anh Hải 09/10/2026: "hoá đơn bán thẳng hay gì thì kệ, việc của m là check kênh, kênh FB là online"):
+  //  (1) khách app TỰ TẠO từ đơn Kiot mà kênh HIỆN TẠI trên Kiot (phiếu đầu tiên) là kênh ONLINE -> theo kênh đó (Kiot sửa kênh sau
+  //      thì app theo, vd KH007712 KL Chị Linh: tạo 8/10 lúc HĐ còn "Bán trực tiếp", 9/10 Kiot sửa thành Facebook Hiền Thuỷ).
+  //      Kênh Kiot KHÔNG online ("Khác", tên chi nhánh...) thì giữ kênh đang có -- không hạ Online xuống Offline (vd đơn Shopee
+  //      Kiot ghi tên chi nhánh, job đã tự nhận là Shopee);
+  //  (2) MỌI khách: kênh online (Facebook / TikTok / Shopee / Zalo / Web…) -> nguồn Online. Kênh không phải online thì giữ nguồn.
+  // Admin đã chọn tay Kênh / Nguồn trong hồ sơ (kenh_sua / nguon_sua) thì giữ nguyên. Tính lúc dựng, KHÔNG ghi bảng.
+  rows.forEach(r=>{
+    const mn=rptSlManual[r.leadId]||{},kTay=String(mn.kenh_sua||'').trim(),nTay=String(mn.nguon_sua||'').trim();
+    if(r.tuKiotTao&&!kTay){const d=(r.kords||[]).concat(r.repeatOrds||[]).filter(o=>o&&o.sale_channel)
+        .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)))[0];
+      if(d&&d.sale_channel!==r.kenh&&RPT_KENH_ONLINE.test(d.sale_channel)){r.kenhKiot=d.sale_channel;r.kenh=rptSlKenhNorm(d.sale_channel)||d.sale_channel;
+        if(!nTay&&!/online/i.test(r.nguon||''))r.nguonTheoKenh=r.nguon||'(trống)';if(!nTay)r.nguon='Online';}}
+    if(!nTay&&RPT_KENH_ONLINE.test(r.kenh||'')&&!/online/i.test(r.nguon||''))r.nguonTheoKenh=r.nguon||'(trống)',r.nguon='Online';
+  });
   // LẺ: SĐT / địa chỉ Sale ghi ở chế độ sửa hồ sơ (cùng cột si_sdt / si_dia_chi với Sỉ, 30/9/2026)
   if(rptSlType()!=='Sỉ')rows.forEach(r=>{const mn=rptSlManual[r.leadId]||{};
     if(mn.si_sdt){const k9=rptSlLast9(mn.si_sdt);
@@ -7366,6 +7381,7 @@ function rptSlVLCoTien(o){
     :(window._rptSlHdTheoDon={n:kiotInvoices.length,m:kiotInvoices.reduce((a,i)=>{if(i.order_code&&i.status===1)a[i.order_code]=true;return a;},{})}).m;
   return !!m[o.code];
 }
+const RPT_KENH_ONLINE=/facebook|tiktok|tik tok|website|web|instagram|shopee|google|haravan|zalo|lazada|tiki/i;
 function rptSlVangLaiDong(rows){
   const T=rptSlType(),MOC='2026-01-01',kc=kiotCustByCode();
   const coTrongApp=new Set();rows.forEach(r=>{(r.kiotCusts||[]).forEach(c=>{if(c&&c.code)coTrongApp.add(String(c.code).toUpperCase());});if(r.kh)coTrongApp.add(String(r.kh).toUpperCase());});
