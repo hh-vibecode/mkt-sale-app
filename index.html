@@ -139,6 +139,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
 [hidden]{display:none!important}
 .va-item:hover{background:var(--bg2)}   /* phần tử đánh dấu hidden luôn ẩn, kể cả khi có display inline */
+.tq-o{display:flex}.tq-o>.kpi{flex:1;min-width:0}
 .kpi{border-radius:16px;padding:20px;background:var(--surface);border:1.5px solid var(--border);position:relative;overflow:hidden;transition:box-shadow .2s,transform .2s}
 .kpi:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .kpi::after{content:none}
@@ -5769,10 +5770,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/10 08:37';
+const APP_VERSION='12/10 08:44';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=460;
+const APP_BAN=461;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7747,14 +7748,26 @@ function rptSlTongQuanHtml(){
   const moiChot=moi.filter(r=>r.isChot);
   const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px';
   const tieuDe=x=>'<div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px 2px">'+x+'</div>';
+  // DOANH THU chia ONLINE / OFFLINE (anh Hải 12/10/2026: bấm ô Doanh thu ra phần chia) + ô nào cũng có dòng số phụ, cao bằng nhau
+  const onl=r=>!/offline/i.test(r.nguon||''),dtOn=coDt.filter(onl).reduce((s,r)=>s+tien(r),0),dtOff=dt-dtOn;
+  const donMuaLai=P.reduce((s,r)=>s+(r.repeatOrds||[]).length,0);
+  const dtMoi=moiChot.reduce((s,r)=>s+tienKy(r),0);
+  window._rptSlLists=window._rptSlLists||{};
+  {const nhom={};coDt.forEach(r=>{const k=rptSlNguonNhan(r);const x=nhom[k]=nhom[k]||{dt:0,kh:0,don:0};x.dt+=tien(r);x.kh++;x.don+=soDon(r);});
+   const dong=(ten,x,dam)=>[dam?'<b>'+e(ten)+'</b>':'<span style="padding-left:16px;color:var(--text2)">· '+e(ten.replace(/^[ ·]+/,''))+'</span>',(dam?'<b>':'')+vnd(x.dt)+(dam?'</b>':''),dt?pct(x.dt/dt*100):'—',num(x.kh),num(x.don)];
+   const tong=on=>coDt.filter(r=>onl(r)===on).reduce((a,r)=>({dt:a.dt+tien(r),kh:a.kh+1,don:a.don+soDon(r)}),{dt:0,kh:0,don:0});
+   const rows=[dong('Online',tong(true),true)].concat(Object.entries(nhom).filter(([k])=>!/^offline/i.test(k)).sort((a,b)=>b[1].dt-a[1].dt).map(([k,x])=>dong('   · '+k,x)))
+     .concat([dong('Offline',tong(false),true)]).concat(Object.entries(nhom).filter(([k])=>/^offline/i.test(k)).sort((a,b)=>b[1].dt-a[1].dt).map(([k,x])=>dong('   · '+k,x)));
+   window._rptSlLists.tqDtNguon={title:'Doanh thu theo nguồn · '+vnd(dt),cols:['Nguồn','Doanh thu','% tổng','Khách','Đơn'],rows};}
+  const o=(attr,html)=>'<div '+attr+' class="tq-o">'+html+'</div>';
   const k1='<div style="'+g3+';margin-bottom:16px">'
-    +'<div '+L('tqDt','Khách có doanh thu',coDt)+'>'+mkKpi(ic('cash'),'Doanh thu',vnd(dt),num(coDt.length)+' khách có doanh thu','g-green')+'</div>'
-    +mkKpi(ic('box'),'Số đơn',num(don),'','g-teal')
-    +mkKpi(ic('chart'),'Giá trị TB / đơn',don?vnd(Math.round(dt/don)):'—','','g-blue')+'</div>'
+    +o('onclick="rptSlShow('+q+'tqDtNguon'+q+')" style="cursor:pointer" title="Bấm xem chia Online / Offline"',mkKpi(ic('cash'),'Doanh thu',vnd(dt),'Online '+vnd(dtOn)+' · Offline '+vnd(dtOff),'g-green'))
+    +o(L('tqDt','Khách có doanh thu',coDt),mkKpi(ic('box'),'Số đơn',num(don),num(coDt.length)+' khách · '+num(donMuaLai)+' đơn mua lại','g-teal'))
+    +o('',mkKpi(ic('chart'),'Giá trị TB / đơn',don?vnd(Math.round(dt/don)):'—',coDt.length?'TB '+vnd(Math.round(dt/coDt.length))+' / khách':'—','g-blue'))+'</div>'
     +'<div style="'+g3+'">'
-    +'<div '+L('tqMoi','Khách mới trong kỳ',moi)+'>'+mkKpi(ic('users'),'Khách mới',num(moi.length),'tạo trong kỳ','g-purple')+'</div>'
-    +'<div '+L('tqMoiChot','Khách mới đã ra đơn',moiChot)+'>'+mkKpi(ic('check'),'Khách mới đã ra đơn',num(moiChot.length),'','g-orange')+'</div>'
-    +mkKpi(ic('target'),'Tỉ lệ chốt khách mới',moi.length?pct(moiChot.length/moi.length*100):'—',num(moiChot.length)+' / '+num(moi.length),'g-yellow')+'</div>';
+    +o(L('tqMoi','Khách mới trong kỳ',moi),mkKpi(ic('users'),'Khách mới',num(moi.length),'tạo trong kỳ · '+num(moi.filter(onl).length)+' online','g-purple'))
+    +o(L('tqMoiChot','Khách mới đã ra đơn',moiChot),mkKpi(ic('check'),'Khách mới đã ra đơn',num(moiChot.length),'doanh thu '+vnd(dtMoi),'g-orange'))
+    +o('',mkKpi(ic('target'),'Tỉ lệ chốt khách mới',moi.length?pct(moiChot.length/moi.length*100):'—',num(moiChot.length)+' / '+num(moi.length)+' khách','g-yellow'))+'</div>';
   // 2) PHỄU THEO PHÂN LOẠI (khách trong kỳ)
   const dsPL=[...rptSlPhanLoaiDs(),'(chưa cập nhật)'];
   const theoPL={};P.forEach(r=>{const v=rptSlLocTT(r);(theoPL[v]=theoPL[v]||[]).push(r);});
@@ -7798,9 +7811,9 @@ function rptSlTongQuanHtml(){
   window._rptSlLists.tqQuaHan=Object.assign({},window._rptSlLists.tqViec,{title:'Việc quá hạn · '+num(quaHan.length),
     rows:window._rptSlLists.tqViec.rows.filter((x,i)=>quaHan.includes(viec[i])),keys:quaHan.map(r=>r.key),loais:quaHan.map(()=>T)});
   const k4='<div style="'+g3+'">'
-    +'<div onclick="rptSlShow('+q+'tqViec'+q+')" style="cursor:pointer">'+mkKpi(ic('clipboard'),'Việc đang giao',num(viec.length),num(quaHan.length)+' quá hạn','g-blue')+'</div>'
-    +'<div '+L('tqLau','Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',lau)+'>'+mkKpi(ic('clock'),'Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',num(lau.length),'trên '+num(canCham.length)+' khách đang chăm','g-red')+'</div>'
-    +'<div '+L('tqChuaCS','Chưa có lịch sử chăm sóc',chuaCS)+'>'+mkKpi(ic('chat'),'Chưa có lịch sử chăm sóc',num(chuaCS.length),'','g-purple')+'</div></div>';
+    +o('onclick="rptSlShow('+q+'tqViec'+q+')" style="cursor:pointer"',mkKpi(ic('clipboard'),'Việc đang giao',num(viec.length),num(quaHan.length)+' quá hạn','g-blue'))
+    +o(L('tqLau','Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',lau),mkKpi(ic('clock'),'Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',num(lau.length),'trên '+num(canCham.length)+' khách đang chăm','g-red'))
+    +o(L('tqChuaCS','Chưa có lịch sử chăm sóc',chuaCS),mkKpi(ic('chat'),'Chưa có lịch sử chăm sóc',num(chuaCS.length),'cần ghi lượt chăm sóc đầu','g-purple'))+'</div>';
   return '<div style="display:flex;flex-direction:column;gap:28px;max-width:1280px">'
     +'<section>'+tieuDe('Doanh thu & khách')+k1+'</section>'
     +'<section>'+k2+'</section>'
