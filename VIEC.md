@@ -127,6 +127,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **12/10 (9)** — Sửa khung xổ ô lọc (Sales, Trạng thái…) bị khuất sau menu trái: mặc định mở sang phải, sát mép phải màn hình mới tự mở sang trái (rptSlMsCanh).
 - **12/10 (8)** — Nút Daily Task thành DROPDOWN (anh: kiểu dropdown): bấm xổ Daily Task (kèm số việc) / Đã hoàn thành, nút hiện tên mục đang xem + ▾. Bỏ nút nối bản 12/10 (7).
 - **12/10 (7)** — Nút "Đã hoàn thành" lên thanh tab, nối ngay sau Daily Task (hiện khi đang ở Daily Task); bỏ thanh 2 nút riêng trong trang.
 - **12/10 (6)** — Sửa run fail: bước "Tự gắn Mã KH" (sync-kiot) lỗi 08:35 + 08:50 vì em quên đăng ký job tu-gan-ma-kh trong hàm CSDL job_dau_van ("không biết job") -> thêm nhánh (supabase-schema-dau-van-tu-gan.sql), đã chạy + thử. Lỗi lẻ tẻ khác 100 lượt gần nhất: Pancake sync 9/10, 7/10, 4/10 = máy chủ Pancake "Server internal error" 1 shop (job tự bỏ qua lượt, lượt sau OK). Bài học: thêm job dùng gianhKhiDoi thì phải thêm nhánh job_dau_van.
