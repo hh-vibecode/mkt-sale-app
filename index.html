@@ -5770,10 +5770,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/10 08:51';
+const APP_VERSION='12/10 09:14';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=463;
+const APP_BAN=464;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6060,7 +6060,8 @@ async function rptSlRenderPage(type){
           return '<button onclick="rptSlSetViewMode('+String.fromCharCode(39)+'gan'+String.fromCharCode(39)+')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:'
             +(mode==='gan'?'var(--accent)':'var(--surface)')+';color:'+(mode==='gan'?'#fff':'var(--text2)')+'">Gán data'
             +(n?' <span style="background:var(--yellow);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+num(n)+'</span>':'')+'</button>';})()}
-        <button onclick="rptSlSetViewMode('input')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='input'?'var(--accent)':'var(--surface)'};color:${mode==='input'?'#fff':'var(--text2)'}">Daily Task${(()=>{const n=rptSlTodoCount();return n?' <span style="background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+n+'</span>':'';})()}</button>
+        <button onclick="try{localStorage.setItem('rptSlDtTab_'+rptSlType(),'viec')}catch(e){};rptSlSetViewMode('input')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='input'&&rptSlDtTab()!=='xong'?'var(--accent)':'var(--surface)'};color:${mode==='input'&&rptSlDtTab()!=='xong'?'#fff':'var(--text2)'}">Daily Task${(()=>{const n=rptSlTodoCount();return n?' <span style="background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+n+'</span>':'';})()}</button>
+        ${mode==='input'?`<button onclick="rptSlDtSetTab('xong')" style="border:none;border-left:1.5px solid var(--border);padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${rptSlDtTab()==='xong'?'var(--accent)':'var(--surface)'};color:${rptSlDtTab()==='xong'?'#fff':'var(--text2)'}">Đã hoàn thành</button>`:''}
       </span>`)}
     <div class="rptSlBody"></div>`;
   // Dựng phần thân trong try/catch: trước đây một hàm con lỗi là #rptSlBody rỗng -> người dùng thấy
@@ -9356,7 +9357,7 @@ async function rptSlTraLaiViec(id,el){
   }catch(e){if(el){el.disabled=false;el.textContent='↺ Trả lại';}rptBaoLoi('Trả lại việc',e);}
 }
 function rptSlInputHtml(){
-  if(rptSlDtTab()==='xong'){let n=0;try{n=rptSlTongViec(rptSlTodoBuckets());}catch(e){}return rptSlDtTabsHtml(n)+rptSlDaXongHtml();}
+  if(rptSlDtTab()==='xong')return rptSlDaXongHtml();   // nút "Đã hoàn thành" nằm trên thanh tab, nối sau Daily Task (12/10/2026)
   const b=rptSlTodoBuckets();
   const info=r=>`<td>${dmy(r.created)||'—'}</td>
     <td>${rptSlSrcBadge(r)}</td>
@@ -9452,7 +9453,7 @@ function rptSlInputHtml(){
   window._rptSlNlNghi=nghi;
   window._rptSlNlDash=b;
   const bam=(k,tip,the)=>'<div onclick="rptSlNlDashDs(\''+k+'\')" style="cursor:pointer" title="'+tip+'">'+the+'</div>';
-  return rptSlDtTabsHtml(tong)+`
+  return `
     <div class="kpi-grid" style="margin-bottom:14px">
       ${bam('tong','Bấm để xem từng việc cần làm',mkKpi(ic('clipboard'),'Tổng việc cần làm',num(tong),'','g-purple'))}
       ${bam('thieuMa','Bấm để xem các đơn chốt chưa có Mã KH',mkKpi(ic('cash'),'Đơn chốt chưa có Mã KH',num(b.thieuMa.length),'','g-red'))}

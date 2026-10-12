@@ -127,6 +127,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **12/10 (7)** — Nút "Đã hoàn thành" lên thanh tab, nối ngay sau Daily Task (hiện khi đang ở Daily Task); bỏ thanh 2 nút riêng trong trang.
 - **12/10 (6)** — Sửa run fail: bước "Tự gắn Mã KH" (sync-kiot) lỗi 08:35 + 08:50 vì em quên đăng ký job tu-gan-ma-kh trong hàm CSDL job_dau_van ("không biết job") -> thêm nhánh (supabase-schema-dau-van-tu-gan.sql), đã chạy + thử. Lỗi lẻ tẻ khác 100 lượt gần nhất: Pancake sync 9/10, 7/10, 4/10 = máy chủ Pancake "Server internal error" 1 shop (job tự bỏ qua lượt, lượt sau OK). Bài học: thêm job dùng gianhKhiDoi thì phải thêm nhánh job_dau_van.
 - **12/10 (5)** — Tổng quan: bấm ô Doanh thu -> 2 ô dashboard nhỏ Online / Offline (doanh thu, %, khách, đơn) -> bấm ô nhỏ ra danh sách khách (bấm mở hồ sơ). Lỗi của em: bản trước đổ ra bảng số, sai cách chia dashboard anh đã quen.
 - **12/10 (4)** — Tổng quan Sale: bỏ giới hạn bề ngang 1280px, trải hết trang (anh: cụm lại 1 bên).
