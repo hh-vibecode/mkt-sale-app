@@ -5770,10 +5770,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/10 09:14';
+const APP_VERSION='12/10 09:15';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=464;
+const APP_BAN=465;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6060,8 +6060,7 @@ async function rptSlRenderPage(type){
           return '<button onclick="rptSlSetViewMode('+String.fromCharCode(39)+'gan'+String.fromCharCode(39)+')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:'
             +(mode==='gan'?'var(--accent)':'var(--surface)')+';color:'+(mode==='gan'?'#fff':'var(--text2)')+'">Gán data'
             +(n?' <span style="background:var(--yellow);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+num(n)+'</span>':'')+'</button>';})()}
-        <button onclick="try{localStorage.setItem('rptSlDtTab_'+rptSlType(),'viec')}catch(e){};rptSlSetViewMode('input')" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='input'&&rptSlDtTab()!=='xong'?'var(--accent)':'var(--surface)'};color:${mode==='input'&&rptSlDtTab()!=='xong'?'#fff':'var(--text2)'}">Daily Task${(()=>{const n=rptSlTodoCount();return n?' <span style="background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+n+'</span>':'';})()}</button>
-        ${mode==='input'?`<button onclick="rptSlDtSetTab('xong')" style="border:none;border-left:1.5px solid var(--border);padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${rptSlDtTab()==='xong'?'var(--accent)':'var(--surface)'};color:${rptSlDtTab()==='xong'?'#fff':'var(--text2)'}">Đã hoàn thành</button>`:''}
+        <button onclick="rptSlDtMenu(event,this)" style="border:none;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:var(--font);background:${mode==='input'?'var(--accent)':'var(--surface)'};color:${mode==='input'?'#fff':'var(--text2)'}">${mode==='input'&&rptSlDtTab()==='xong'?'Đã hoàn thành':'Daily Task'}${(()=>{const n=rptSlTodoCount();return n?' <span style="background:var(--red);color:#fff;border-radius:10px;padding:1px 6px;font-size:10px">'+n+'</span>':'';})()} <span style="font-size:9px;opacity:.8">▾</span></button>
       </span>`)}
     <div class="rptSlBody"></div>`;
   // Dựng phần thân trong try/catch: trước đây một hàm con lỗi là #rptSlBody rỗng -> người dùng thấy
@@ -9266,6 +9265,20 @@ async function rptSlKiemViec(id,ketLuan,key,el){
 // DAILY TASK CHIA 2 TAB (anh Hải 12/10/2026): "Daily Task" (việc cần làm) · "Đã hoàn thành" (lịch sử việc được giao đã làm xong).
 // Phân quyền như Daily Task: tài khoản Sale chỉ thấy việc của người mình được xem; admin thấy hết (theo Xem như nếu đang bật).
 function rptSlDtTab(){try{return localStorage.getItem('rptSlDtTab_'+rptSlType())==='xong'?'xong':'viec';}catch(e){return 'viec';}}
+// menu xổ của nút Daily Task (đặt cố định theo vị trí nút -> không bị khung tab cắt mất)
+function rptSlDtMenu(ev,btn){
+  if(ev)ev.stopPropagation();
+  let m=document.getElementById('dtMenu');
+  if(m&&m.style.display==='block'){m.style.display='none';return;}
+  if(!m){m=document.createElement('div');m.id='dtMenu';document.body.appendChild(m);
+    document.addEventListener('click',e=>{const x=document.getElementById('dtMenu');if(x&&!x.contains(e.target))x.style.display='none';});}
+  const r=btn.getBoundingClientRect(),cur=rptSlViewMode()==='input'?rptSlDtTab():'',n=(()=>{try{return rptSlTodoCount();}catch(e){return 0;}})();
+  const dong=(k,ten,phu)=>'<div onclick="document.getElementById(\'dtMenu\').style.display=\'none\';rptSlDtChon(\''+k+'\')" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:700;'
+    +(cur===k?'background:var(--accent-l);color:var(--accent)':'')+'" onmouseover="this.style.filter=\'brightness(.96)\'" onmouseout="this.style.filter=\'\'">'+ten+(phu?'<span style="margin-left:auto">'+phu+'</span>':'')+'</div>';
+  m.style.cssText='display:block;position:fixed;z-index:800;top:'+(r.bottom+6)+'px;left:'+r.left+'px;min-width:'+Math.max(200,r.width)+'px;background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.22);padding:5px';
+  m.innerHTML=dong('viec','Daily Task',n?'<span style="background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:10px">'+n+'</span>':'')+dong('xong','Đã hoàn thành','');
+}
+function rptSlDtChon(t){try{localStorage.setItem('rptSlDtTab_'+rptSlType(),t);}catch(e){}window._rptSlDxPage=1;rptSlSetViewMode('input');}
 function rptSlDtSetTab(t){try{localStorage.setItem('rptSlDtTab_'+rptSlType(),t);}catch(e){}window._rptSlDxPage=1;rptSlRender();}
 function rptSlNgayHT(kq){const t=kq&&(kq.created_at||'');const d=new Date(t);
   return isNaN(d)?String(kq&&kq.ngay_cham||'').slice(0,10):new Date(d.getTime()+7*3600e3).toISOString().slice(0,10);}
