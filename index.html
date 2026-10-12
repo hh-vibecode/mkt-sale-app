@@ -5769,10 +5769,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='09/10 15:06';
+const APP_VERSION='12/10 08:33';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=458;
+const APP_BAN=459;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -9152,9 +9152,10 @@ function rptSlViecGiaoHtml(ds,xong){
     // màu deadline (anh Hải 05/10/2026): quá hạn / hôm nay / còn 1 ngày = đỏ · còn 2–3 ngày = xám · trên 3 ngày = xanh lá
     const nhan=n<0?'quá '+(-n)+' ngày':n===0?'hôm nay':'còn '+n+' ngày',mau=n<=1?'var(--red)':n<=3?'var(--muted)':'var(--green)';
     return '<b style="color:'+mau+'">'+dmy(d)+'</b><div style="font-size:10.5px;font-weight:800;color:'+mau+'">'+nhan+'</div>';};
+  const coTich=dashToanQuyen()&&xong.length>0;   // cột ô tích ĐẦU BẢNG khi có việc đã xong chờ xác nhận (admin)
   const dong=ds.map(r=>{const v=r.viecGiao,k=String(r.key).replace(/'/g,'');
     const mo='rptSlShowCustomer('+q+k+q+');rptSlCsMoForm()';
-    return '<tr style="cursor:pointer" onclick="'+mo+'">'
+    return '<tr style="cursor:pointer" onclick="'+mo+'">'+(coTich?'<td></td>':'')
       +'<td style="white-space:nowrap;font-weight:700">'+e(v.nguoi_xu_ly)+'</td>'
       +'<td style="white-space:nowrap">'+han(String(v.ngay_hen||'').slice(0,10))+'</td>'
       +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+rptSlSdtDuoiTen(r)+'</td>'
@@ -9174,6 +9175,7 @@ function rptSlViecGiaoHtml(ds,xong){
     const nhan=tre==null?'':tre<=0?'<span style="color:var(--green);font-weight:800">đúng hạn</span>':'<span style="color:var(--red);font-weight:800">trễ '+tre+' ngày</span>';
     const sua='rptSlShowCustomer('+q+k+q+');rptSlCsMoForm('+Number(kq.id)+')';
     return '<tr style="opacity:.5;cursor:pointer" onclick="rptSlShowCustomer('+q+k+q+');rptSlCusTab('+q+'cs'+q+')" title="Đã xong — chờ admin xác nhận">'
+      +(coTich?'<td onclick="rptSlStop(event)"><input type="checkbox" class="kvChon" '+(rptSlKvChon().has(Number(giao.id))?'checked ':'')+'onclick="rptSlKvTich('+Number(giao.id)+',this.checked)" title="Chọn để xác nhận nhiều việc một lần" style="width:17px;height:17px;accent-color:var(--accent);cursor:pointer"></td>':'')
       +'<td style="white-space:nowrap;font-weight:700">'+e(giao.nguoi_xu_ly)+'</td>'
       +'<td style="white-space:nowrap;font-size:11.5px">hạn '+(dmy(hanD)||'—')+'<br>xong '+(dmy(xongD)||'—')+'<div style="font-size:10.5px">'+nhan+'</div></td>'
       +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+rptSlSdtDuoiTen(r)+'</td>'
@@ -9181,7 +9183,6 @@ function rptSlViecGiaoHtml(ds,xong){
         +'<div style="margin-top:3px;color:var(--text2)">KQ: '+e(kq.noi_dung||'—')+(kq.phan_hoi?' · '+e(kq.phan_hoi):'')+'</div></td>'
       +'<td style="white-space:nowrap;font-size:11px;color:var(--text2)">'+giaoLuc(giao)+'<div style="color:var(--muted)">bởi Admin</div>'+'</td>'
       +'<td onclick="rptSlStop(event)"><div style="display:flex;gap:8px;align-items:center">'
-        +(dashToanQuyen()?'<input type="checkbox" class="kvChon" '+(rptSlKvChon().has(Number(giao.id))?'checked ':'')+'onclick="rptSlKvTich('+Number(giao.id)+',this.checked)" title="Chọn để xác nhận nhiều việc một lần" style="width:17px;height:17px;accent-color:var(--accent);cursor:pointer">':'')
         +(dashToanQuyen()?'<button onclick="rptSlKiemViec('+giao.id+','+q+'Xác nhận'+q+',null,this)" class="refresh-btn" style="margin:0;padding:5px 12px;font-size:11px;white-space:nowrap">✓ Xác nhận</button>':'')
         +'<button onclick="'+sua+'" style="'+nutSua+'">Sửa</button></div></td>'
       +'</tr>';}).join('');
@@ -9189,10 +9190,10 @@ function rptSlViecGiaoHtml(ds,xong){
   const idXong=xong.map(x=>Number(x.giao.id)),kv=rptSlKvChon();[...kv].forEach(id=>{if(!idXong.includes(id))kv.delete(id);});
   window._rptSlKvDs=idXong;
   const thanh=dashToanQuyen()&&xong.length?'<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg2)">'
-    +'<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;cursor:pointer"><input type="checkbox" '+(kv.size&&kv.size===idXong.length?'checked ':'')
-    +'onclick="rptSlKvTatCa(this.checked)" style="width:17px;height:17px;accent-color:var(--accent);cursor:pointer">Chọn tất cả việc đã xong ('+idXong.length+')</label>'
+    +'<span style="font-size:12.5px;font-weight:700">'+idXong.length+' việc đã xong chờ xác nhận — tích ô đầu dòng (ô trên tiêu đề = chọn tất cả)</span>'
     +'<button id="kvNut" onclick="rptSlKiemViecNhieu(this)" class="refresh-btn" '+(kv.size?'':'disabled ')+'style="margin:0 0 0 auto;padding:6px 16px;font-size:12px">✓ Xác nhận đã chọn ('+kv.size+')</button></div>':'';
-  return thanh+'<div class="tbl-scroll"><table><thead><tr><th>Người phụ trách</th><th>Lịch hẹn / Deadline</th><th>Khách hàng</th><th>Việc cần làm</th><th>Giao lúc</th><th></th></tr></thead><tbody>'+dong+dongXong+'</tbody></table></div>';
+  const thTich=coTich?'<th style="width:34px"><input type="checkbox" '+(kv.size&&kv.size===idXong.length?'checked ':'')+'onclick="rptSlKvTatCa(this.checked)" title="Chọn tất cả việc đã xong" style="width:17px;height:17px;accent-color:var(--accent);cursor:pointer"></th>':'';
+  return thanh+'<div class="tbl-scroll"><table><thead><tr>'+thTich+'<th>Người phụ trách</th><th>Lịch hẹn / Deadline</th><th>Khách hàng</th><th>Việc cần làm</th><th>Giao lúc</th><th></th></tr></thead><tbody>'+dong+dongXong+'</tbody></table></div>';
 }
 // Quản lý kiểm 1 việc: ghi kiem_luc / kiem_boi vào CHÍNH lượt giao việc. "Giao lại" -> mở form lượt mới của khách để giao tiếp.
 function rptSlKvChon(){return window._rptSlKv||(window._rptSlKv=new Set());}
@@ -9342,7 +9343,7 @@ function rptSlInputHtml(){
       const hop=v=>!chon.length||chon.includes(ai(v));
       const vg=b.viecGiao.filter(r=>hop(r.viecGiao)),vx=b.viecXong.filter(x=>hop(x.giao));
       const loc=nguoi.length?'<div style="display:flex;justify-content:flex-end;margin:0 0 8px">'+rptSlMsLoc('input','nguoi','Người xử lý',nguoi)+'</div>':'';
-      return loc+rptSlInputSec('sGiao','','Việc được giao'+(chon.length?' · '+chon.join(', '):''),'ghi 1 lượt chăm sóc mới là xong việc · việc xong mờ đi ở cuối, admin bấm Xác nhận để clear',vg.length+(dashToanQuyenXem()?vx.length:0),'var(--red)',rptSlViecGiaoHtml(vg,vx),true);
+      return loc+rptSlInputSec('sGiao','','Việc được giao'+(chon.length?' · '+chon.join(', '):''),'ghi 1 lượt chăm sóc mới là xong việc · việc xong mờ đi ở cuối, admin bấm Xác nhận để clear',vg.length+(dashToanQuyenXem()?vx.length:0),'var(--red)',rptSlViecGiaoHtml(vg,dashToanQuyenXem()?vx:[]),true);
     })()}
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
     ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}

@@ -47,6 +47,14 @@ jobs:
 
       # Đơn đặt hàng Sỉ đủ điều kiện (có dấu vết tiền) -> tự có 1 dòng "Chốt đơn" trong Lịch sử chăm sóc,
       # ngày = ngày tạo phiếu. Đồng thời gắn mã đơn cho dòng chốt cũ nhập từ sheet (anh Hải 25/9/2026).
+      # Khách ĐÃ CHỐT chưa có Mã KH: SĐT khớp đúng 1 khách Kiot, mã chưa thuộc ai, khách có đơn từ lúc nhắn -> tự gắn mã
+      # (ghi trong app, không sửa Pancake). Ca không chắc để lại Daily Task cho Sale (anh Hải 12/10/2026).
+      - name: Tự gắn Mã KH cho khách đã chốt
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/tu-gan-ma-kh.js
+
       - name: Tự tạo dòng Chốt đơn Sỉ trong lịch sử chăm sóc
         if: always()
         env:
