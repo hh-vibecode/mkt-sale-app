@@ -5770,10 +5770,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/10 09:55';
+const APP_VERSION='12/10 11:01';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=466;
+const APP_BAN=467;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -9195,7 +9195,7 @@ function rptSlViecGiaoHtml(ds,xong){
       +'<td style="white-space:nowrap;font-size:11px;color:var(--text2)">'+giaoLuc(v)
         +'<div style="color:var(--muted)">bởi Admin</div>'+'</td>'
       +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
-        +(dashToanQuyen()&&rptSlLaGiaoViec(v)?'<button onclick="rptSlGiaoViecForm([],'+Number(v.id)+')" title="Sửa / huỷ việc đã giao" style="margin-right:8px;border:1.5px solid var(--border2);background:var(--surface);color:var(--text);border-radius:7px;height:28px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:800;font-family:var(--font)">Sửa việc</button>':'')
+        +(dashToanQuyen()?'<button onclick="'+(rptSlLaGiaoViec(v)?'rptSlGiaoViecForm([],'+Number(v.id)+')':'window._rptSlChiInfo=false;rptSlShowCustomer('+q+k+q+');rptSlCsMoForm('+Number(v.id)+')')+'" title="Sửa / huỷ việc đã giao" style="margin-right:8px;border:1.5px solid var(--border2);background:var(--surface);color:var(--text);border-radius:7px;height:28px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:800;font-family:var(--font)">Sửa việc</button>':'')
         +'<button onclick="'+mo+'" style="border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:28px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:800;white-space:nowrap;font-family:var(--font)">Cập nhật chăm sóc</button></td>'
       +'</tr>';}).join('');
   // VIỆC ĐÃ XONG (Sale đã ghi lượt mới): mờ đi, xuống cuối. Sale chỉ có nút Sửa (sửa lượt vừa ghi); admin trở lên có thêm

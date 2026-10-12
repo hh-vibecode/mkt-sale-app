@@ -127,6 +127,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **12/10 (10)** — Nút Sửa việc cho MỌI việc đang giao (admin): việc giao riêng -> form Giao việc; việc giao trong form chăm sóc -> mở lượt chăm sóc đó để sửa. Soát: Kim Oanh bỏ sót L-SD-1650 Hồng Nguyễn Thị Vân (lô giao 7/10), và có lượt lưu trùng 2–3 lần (Dao Thi Nhu, viết Nhân, ឌី សុផល) do bấm Lưu nhiều lần — chờ anh duyệt khoá nút Lưu + xoá trùng.
 - **12/10 (9)** — Sửa khung xổ ô lọc (Sales, Trạng thái…) bị khuất sau menu trái: mặc định mở sang phải, sát mép phải màn hình mới tự mở sang trái (rptSlMsCanh).
 - **12/10 (8)** — Nút Daily Task thành DROPDOWN (anh: kiểu dropdown): bấm xổ Daily Task (kèm số việc) / Đã hoàn thành, nút hiện tên mục đang xem + ▾. Bỏ nút nối bản 12/10 (7).
 - **12/10 (7)** — Nút "Đã hoàn thành" lên thanh tab, nối ngay sau Daily Task (hiện khi đang ở Daily Task); bỏ thanh 2 nút riêng trong trang.
