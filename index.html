@@ -5770,10 +5770,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/10 08:44';
+const APP_VERSION='12/10 08:45';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=461;
+const APP_BAN=462;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7814,7 +7814,7 @@ function rptSlTongQuanHtml(){
     +o('onclick="rptSlShow('+q+'tqViec'+q+')" style="cursor:pointer"',mkKpi(ic('clipboard'),'Việc đang giao',num(viec.length),num(quaHan.length)+' quá hạn','g-blue'))
     +o(L('tqLau','Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',lau),mkKpi(ic('clock'),'Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',num(lau.length),'trên '+num(canCham.length)+' khách đang chăm','g-red'))
     +o(L('tqChuaCS','Chưa có lịch sử chăm sóc',chuaCS),mkKpi(ic('chat'),'Chưa có lịch sử chăm sóc',num(chuaCS.length),'cần ghi lượt chăm sóc đầu','g-purple'))+'</div>';
-  return '<div style="display:flex;flex-direction:column;gap:28px;max-width:1280px">'
+  return '<div style="display:flex;flex-direction:column;gap:28px">'   // trải hết trang (anh Hải 12/10/2026)
     +'<section>'+tieuDe('Doanh thu & khách')+k1+'</section>'
     +'<section>'+k2+'</section>'
     +'<section>'+k3+'</section>'
