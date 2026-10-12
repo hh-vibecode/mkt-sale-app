@@ -5770,10 +5770,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/10 08:45';
+const APP_VERSION='12/10 08:51';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=462;
+const APP_BAN=463;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7753,12 +7753,24 @@ function rptSlTongQuanHtml(){
   const donMuaLai=P.reduce((s,r)=>s+(r.repeatOrds||[]).length,0);
   const dtMoi=moiChot.reduce((s,r)=>s+tienKy(r),0);
   window._rptSlLists=window._rptSlLists||{};
-  {const nhom={};coDt.forEach(r=>{const k=rptSlNguonNhan(r);const x=nhom[k]=nhom[k]||{dt:0,kh:0,don:0};x.dt+=tien(r);x.kh++;x.don+=soDon(r);});
-   const dong=(ten,x,dam)=>[dam?'<b>'+e(ten)+'</b>':'<span style="padding-left:16px;color:var(--text2)">· '+e(ten.replace(/^[ ·]+/,''))+'</span>',(dam?'<b>':'')+vnd(x.dt)+(dam?'</b>':''),dt?pct(x.dt/dt*100):'—',num(x.kh),num(x.don)];
-   const tong=on=>coDt.filter(r=>onl(r)===on).reduce((a,r)=>({dt:a.dt+tien(r),kh:a.kh+1,don:a.don+soDon(r)}),{dt:0,kh:0,don:0});
-   const rows=[dong('Online',tong(true),true)].concat(Object.entries(nhom).filter(([k])=>!/^offline/i.test(k)).sort((a,b)=>b[1].dt-a[1].dt).map(([k,x])=>dong('   · '+k,x)))
-     .concat([dong('Offline',tong(false),true)]).concat(Object.entries(nhom).filter(([k])=>/^offline/i.test(k)).sort((a,b)=>b[1].dt-a[1].dt).map(([k,x])=>dong('   · '+k,x)));
-   window._rptSlLists.tqDtNguon={title:'Doanh thu theo nguồn · '+vnd(dt),cols:['Nguồn','Doanh thu','% tổng','Khách','Đơn'],rows};}
+  // CÁCH CHIA DASHBOARD (anh Hải 12/10/2026 -- nhớ cho mọi ô): bấm ô -> ra 2 Ô DASHBOARD NHỎ (Online / Offline),
+  // bấm ô nhỏ -> ra DANH SÁCH CHI TIẾT (bấm khách mở hồ sơ). KHÔNG đổ thẳng ra bảng số.
+  {const nhomOn=coDt.filter(onl),nhomOff=coDt.filter(r=>!onl(r));
+   const tom=ds=>({dt:ds.reduce((x,r)=>x+tien(r),0),kh:ds.length,don:ds.reduce((x,r)=>x+soDon(r),0)});
+   const aOn=L('tqDtOn','Khách Online có doanh thu',nhomOn),aOff=L('tqDtOff','Khách Offline có doanh thu',nhomOff);
+   const tOn=tom(nhomOn),tOff=tom(nhomOff);
+   window._rptSlLists.tqDtNguon={lam:()=>{
+     let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
+     const o2=(attr,html)=>'<div '+attr.replace('rptSlShow(','qcCloseModal();rptSlShow(')+' class="tq-o">'+html+'</div>';
+     m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
+       +'<div style="background:var(--bg);border-radius:16px;max-width:760px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
+       +'<div style="display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border);background:var(--surface);border-radius:16px 16px 0 0">'
+       +'<div style="font-size:15px;font-weight:800">Doanh thu · '+vnd(dt)+'</div>'
+       +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
+       +'<div style="padding:18px 20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">'
+       +o2(aOn,mkKpi(ic('globe'),'Online',vnd(tOn.dt),(dt?pct(tOn.dt/dt*100):'—')+' · '+num(tOn.kh)+' khách · '+num(tOn.don)+' đơn','g-blue'))
+       +o2(aOff,mkKpi(ic('store'),'Offline',vnd(tOff.dt),(dt?pct(tOff.dt/dt*100):'—')+' · '+num(tOff.kh)+' khách · '+num(tOff.don)+' đơn','g-orange'))
+       +'</div></div></div>';}};}
   const o=(attr,html)=>'<div '+attr+' class="tq-o">'+html+'</div>';
   const k1='<div style="'+g3+';margin-bottom:16px">'
     +o('onclick="rptSlShow('+q+'tqDtNguon'+q+')" style="cursor:pointer" title="Bấm xem chia Online / Offline"',mkKpi(ic('cash'),'Doanh thu',vnd(dt),'Online '+vnd(dtOn)+' · Offline '+vnd(dtOff),'g-green'))

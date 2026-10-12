@@ -37,6 +37,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **CÁCH CHIA DASHBOARD** (12/10/2026): bấm 1 ô để chia -> ra các Ô DASHBOARD NHỎ (vd Online / Offline) -> bấm ô nhỏ mới ra DANH SÁCH chi tiết. Không đổ thẳng ra bảng số.
 - **Tự gắn Mã KH** (12/10/2026) khi chắc chắn (SĐT khớp đúng 1 khách Kiot, mã chưa thuộc ai, có đơn từ lúc nhắn, đúng Lẻ/Sỉ); ca không chắc mới để Daily Task. **Không còn bước Xác nhận (12/10): việc xong sang tab Đã hoàn thành, admin Trả lại được.**
 - **Kênh quyết định nguồn** (9/10/2026): kênh online (Facebook / TikTok / Shopee / Zalo / Web…) = Online, không quan tâm phiếu là hoá đơn bán thẳng hay đơn đặt hàng; kênh lấy theo Kiot hiện tại.
 - **Chuông thông báo** (8/10/2026): admin = việc nhân sự xong / còn nợ; nhân sự = việc đang dở; bấm tin = chuyển trang tới Daily Task, cuộn tới bảng Việc được giao (không mở hồ sơ). SỐ ĐỎ = việc chưa xử lý xong (không phải tin chưa đọc) — đọc / F5 không mất.
@@ -126,6 +127,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **12/10 (5)** — Tổng quan: bấm ô Doanh thu -> 2 ô dashboard nhỏ Online / Offline (doanh thu, %, khách, đơn) -> bấm ô nhỏ ra danh sách khách (bấm mở hồ sơ). Lỗi của em: bản trước đổ ra bảng số, sai cách chia dashboard anh đã quen.
 - **12/10 (4)** — Tổng quan Sale: bỏ giới hạn bề ngang 1280px, trải hết trang (anh: cụm lại 1 bên).
 - **12/10 (3)** — Tổng quan Sale Lẻ / Sỉ: bấm ô Doanh thu ra bảng chia Online / Offline (và từng nguồn Pancake / Kiot / Nhập tay: doanh thu, % tổng, khách, đơn); ô nào cũng có dòng số phụ + ô bọc kéo giãn (CSS .tq-o) -> các thẻ cao bằng nhau, hết thò thụt.
 - **12/10 (2)** — DAILY TASK 2 TAB: "Daily Task" (việc cần làm) · "Đã hoàn thành" (lịch sử MỌI việc được giao đã làm xong, đọc từ lịch sử chăm sóc, phân quyền như Daily Task). BỎ BƯỚC XÁC NHẬN (anh bảo): việc xong sang thẳng tab Đã hoàn thành; admin có nút ↺ Trả lại (tạo lại việc giữ nội dung + hạn cũ, việc cũ ghi "Đã trả lại"). Cột Ngày hoàn thành = lúc Sale BẤM LƯU lượt cập nhật (created_at, giờ VN, không lấy ngày Sale chọn), lọc ngày hoàn thành (mặc định tháng này) + lọc người phụ trách, đúng hạn / trễ tính theo ngày này. Chuông admin: số đỏ = việc quá hạn; tin xong 7 ngày gần nhất.
