@@ -5813,10 +5813,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/10 09:58';
+const APP_VERSION='13/10 13:57';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=467;
+const APP_BAN=474;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5934,10 +5934,16 @@ async function tbTinh(){
       if(admin)rptSlViecDaXongDs().filter(x=>new Date(x.kq.created_at||x.kq.ngay_cham||0).getTime()>Date.now()-7*86400000).forEach(x=>{const ng=String(x.giao.nguoi_xu_ly||'').trim();(nguoi[ng]=nguoi[ng]||{con:0,qh:0,xong:0}).xong++;
         ds.push({loai:t,key:x.r.key,luc:x.kq.created_at||(String(x.kq.ngay_cham||'').slice(0,10)+'T12:00:00+07:00'),kieu:'xong',ten:x.r.name,viec:x.giao.viec_tiep,nguoi:ng});});
       todo[t]=rptSlTodoCount();
+      if(admin){const kc=kiotCustByCode();
+        kiotOrders.filter(o=>o.customer_code&&String(o.purchase_date||'')>='2026-01-01'&&rptSlTTVQuaHan(o)&&(KIOT_CN_SI.test(o.branch_name||'')?'Sỉ':'Lẻ')===t)
+          .forEach(o=>{const d=new Date(String(o.purchase_date).slice(0,10));d.setDate(d.getDate()+RPT_TTV_HAN_NGAY+1);
+            ds.push({loai:t,key:'',luc:d.toISOString().slice(0,10)+'T08:00:00+07:00',kieu:'tam',ten:(kc[o.customer_code]||{}).name||o.customer_name||o.customer_code,
+              viec:o.code+' · '+vnd(Number(o.total||0)),han:String(o.purchase_date).slice(0,10),nguoi:o.sold_by_name||''});});}
     });}
     finally{window._rptSlType=cu;window._kiotOrdByCode=cuK;rptSlXoaCache();}
     ds.sort((a,b)=>String(b.luc).localeCompare(String(a.luc)));
-    const so=ds.filter(x=>admin?x.kieu==='qua':x.kieu==='giao').length;   // 12/10/2026 bỏ bước Xác nhận -> admin chỉ đếm việc quá hạn
+    // admin: việc quá hạn + phiếu tạm TTV mới bị gỡ trong 7 ngày gần nhất (cũ hơn vẫn nằm trong danh sách, không đếm)
+    const so=ds.filter(x=>admin?(x.kieu==='qua'||(x.kieu==='tam'&&Date.now()-new Date(x.luc).getTime()<7*86400000)):x.kieu==='giao').length;   // 12/10/2026 bỏ bước Xác nhận -> admin chỉ đếm việc quá hạn
     const lai=_tb.lai;_tb={ds:ds.slice(0,80),so,nguoi,todo,admin,luc:Date.now(),dangTinh:false};if(lai)setTimeout(tbTinh,50);
     tbVeSo();
     const h=document.getElementById('tbHop');if(h&&h.style.display==='block')tbVe();
@@ -5966,16 +5972,17 @@ function tbVe(){
       +'<span style="color:var(--text2);font-weight:700">còn '+x.con+'</span>'+(x.qh?'<span style="color:var(--red);font-weight:800">quá hạn '+x.qh+'</span>':'')+'</div>').join(''));
   const dt=Object.entries(_tb.todo||{}).filter(([t,n])=>n>0);
   if(dt.length)tren+=khung(dt.map(([t,n])=>'<div onclick="tbMo('+q+t+q+','+q+q+')" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px;cursor:pointer"><span style="flex:1">Daily Task Sale '+t+'</span><b style="color:var(--red)">'+n+' việc cần làm</b></div>').join(''));
-  const icon={xong:['#16a34a','✓'],giao:['#0091ae','▶'],nay:['#f59e0b','!'],qua:['#e11d48','!']};
+  const icon={xong:['#16a34a','✓'],giao:['#0091ae','▶'],nay:['#f59e0b','!'],qua:['#e11d48','!'],tam:['#7c3aed','!']};
   const cau=x=>x.kieu==='xong'?'<b>'+e(dxTen(x.nguoi))+'</b> đã xong việc “'+e(x.viec)+'” · '+e(x.ten)
     :x.kieu==='giao'?'<b>Admin</b> giao việc: “'+e(x.viec)+'” · '+e(x.ten)+(x.han?' · hạn '+dmy(x.han):'')
+    :x.kieu==='tam'?'<b>Phiếu tạm Tự Tại Viên quá '+RPT_TTV_HAN_NGAY+' ngày chưa ra hoá đơn</b> — đã gỡ doanh thu: '+e(x.viec)+' · '+e(x.ten)+(x.nguoi?' · '+e(x.nguoi):'')
     :x.kieu==='nay'?'<b>Hôm nay hết hạn</b>: “'+e(x.viec)+'” · '+e(x.ten)+(_tb.admin?' · '+e(dxTen(x.nguoi)):'')
     :'<b style="color:var(--red)">Quá hạn</b> '+Math.round((new Date(tbGioVN(Date.now()))-new Date(x.han))/86400000)+' ngày: “'+e(x.viec)+'” · '+e(x.ten)+(_tb.admin?' · '+e(dxTen(x.nguoi)):'');
   const dong=(_tb.ds||[]).map(x=>{const moi=new Date(x.luc).getTime()>m,ic=icon[x.kieu];
     return '<div onclick="tbMo('+q+x.loai+q+','+q+String(x.key).replace(/'/g,'')+q+')" style="display:flex;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);'+(moi?'background:var(--accent-l)':'')+'" onmouseover="this.style.filter=\'brightness(.97)\'" onmouseout="this.style.filter=\'\'">'
       +'<div style="flex:0 0 30px;height:30px;border-radius:50%;background:'+ic[0]+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">'+ic[1]+'</div>'
       +'<div style="min-width:0;flex:1"><div style="font-size:12.5px;line-height:1.45">'+cau(x)+'</div>'
-      +'<div style="font-size:11px;color:'+(moi?'var(--accent)':'var(--muted)')+';font-weight:700;margin-top:2px">Sale '+x.loai+' · '+(x.kieu==='nay'?'hạn hôm nay':x.kieu==='qua'?'hạn '+dmy(x.han):dataMoiTruoc(x.luc))+'</div></div>'
+      +'<div style="font-size:11px;color:'+(moi?'var(--accent)':'var(--muted)')+';font-weight:700;margin-top:2px">Sale '+x.loai+' · '+(x.kieu==='nay'?'hạn hôm nay':x.kieu==='qua'?'hạn '+dmy(x.han):x.kieu==='tam'?'tạo '+dmy(x.han):dataMoiTruoc(x.luc))+'</div></div>'
       +(moi?'<span style="flex:0 0 9px;height:9px;border-radius:50%;background:var(--accent);margin-top:11px"></span>':'')+'</div>';}).join('');
   h.innerHTML='<div style="display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)"><b style="font-size:15px">Thông báo</b>'
     +'<span style="margin-left:auto;font-size:11px;color:var(--muted)">cập nhật '+dataMoiTruoc(_tb.luc)+'</span></div>'
@@ -6859,8 +6866,22 @@ function rptSlCoDauVetTien(o){
   return rptSlKhachCoCoc(o.customer_code);
 }
 // Đơn KHÔNG được tính doanh thu: huỷ · phiếu báo giá · (từ 1/6/2026) không có dấu vết tiền nào.
+// NGOẠI LỆ NẾN BƠ / TỰ TẠI VIÊN (anh Hải 13/10/2026): đơn nến giá trị nhỏ, thường không bắt cọc -> có đơn (khớp được khách) là TÍNH, kể cả phiếu tạm chưa tiền.
+const RPT_KENH_NEN_TTV=/nến bơ|nen bo|tự tại viên|tu tai vien|\bttv\b/i;
+function rptSlLaNenTTV(o){return !!o&&RPT_KENH_NEN_TTV.test(o.sale_channel||'');}
+// TỰ TẠI VIÊN (gồm Nến Bơ): phiếu tạm TÍNH NGAY lúc tạo, kể cả khách không cọc; quá 14 NGÀY mà vẫn là phiếu tạm (chưa ra hoá đơn)
+// -> TỰ GỠ doanh thu, quay về luật dấu vết tiền như mọi đơn (anh Hải 13/10/2026). Chuông báo admin các phiếu bị gỡ.
+const RPT_TTV_HAN_NGAY=14;
+function rptSlTTVQuaHan(o){
+  if(!rptSlLaNenTTV(o)||o.status!==1)return false;
+  const d=String(o.purchase_date||'').slice(0,10);if(!d)return false;
+  const hom=new Date(Date.now()+7*3600e3).toISOString().slice(0,10);
+  return (new Date(hom)-new Date(d))/86400000>RPT_TTV_HAN_NGAY;
+}
+function rptSlTTVConTinh(o){return rptSlLaNenTTV(o)&&!rptSlTTVQuaHan(o);}
 function rptSlDonKhongTinh(o){
   if(!o||o.status===4)return true;
+  if(rptSlTTVConTinh(o))return false;   // Tự Tại Viên: phiếu tạm tính trong 14 ngày đầu (13/10/2026)
   if(rptSlPhieuTreo(o))return true;
   if(String(o.purchase_date||'').slice(0,10)>=RPT_MOC_HOADON&&!rptSlCoDauVetTien(o))return true;
   return false;
@@ -6871,6 +6892,7 @@ function rptSlKhachCoCoc(code){
 }
 function rptSlPhieuTreo(o){
   if(!o||o.status!==1||o.direct)return false;     // chỉ xét đơn đang ở trạng thái Phiếu tạm
+  if(rptSlTTVConTinh(o))return false;             // Tự Tại Viên: phiếu tạm tính trong 14 ngày đầu (13/10/2026)
   if(Number(o.total_payment||0)>0)return false;   // case 1: đã trả tiền trên phiếu
   if(rptSlGiuTinh(o))return false;                  // từng được tính nhờ cọc -> giữ, không loại khi công nợ đổi
   if(rptSlKhachCoCoc(o.customer_code))return false; // case 2: khách có cọc (nợ cần thu âm)

@@ -88,7 +88,10 @@ async function ghiLog(body, id) {
       const b = cn[c.code];
       return b && (b.si || b.le) ? (b.si > b.le ? 'Sỉ' : 'Lẻ') : 'Lẻ'; };
     const coCoc = c => { const x = byCode[c]; return !!(x && Number(x.debt || 0) < 0); };
-    const phieuBaoGia = o => o.status === 1 && Number(o.total_payment || 0) <= 0 && !coCoc(o.customer_code);
+    // NGOẠI LỆ NẾN BƠ / TỰ TẠI VIÊN (anh Hải 13/10/2026): đơn nến giá trị nhỏ, thường không bắt cọc -> có đơn (khớp được khách) là TÍNH, kể cả phiếu tạm chưa tiền.
+    // Tự Tại Viên: phiếu tạm tính trong 14 ngày đầu, quá 14 ngày chưa ra hoá đơn thì thôi (13/10/2026)
+    const laNenTTV = o => /nến bơ|nen bo|tự tại viên|tu tai vien|\bttv\b/i.test(o.sale_channel || '') && (o.status !== 1 || (Date.now() + 7 * 3600e3 - new Date(String(o.purchase_date).slice(0, 10)).getTime()) / 86400000 <= 14);
+    const phieuBaoGia = o => o.status === 1 && Number(o.total_payment || 0) <= 0 && !coCoc(o.customer_code) && !laNenTTV(o);
     const daCo = new Set([...dm.map(r => r.kiot_code), ...dh.map(o => maKH(o.internal_note))].filter(Boolean));
 
     // HOÁ ĐƠN BÁN THẲNG (anh Hải 2/10/2026): khách đến cửa hàng thường được xuất HOÁ ĐƠN luôn, không qua phiếu tạm /

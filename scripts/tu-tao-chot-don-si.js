@@ -107,6 +107,8 @@ async function ghiLog(body, id) {
     const duDK = o => {
       if (o.status === 4 || !(Number(o.total || 0) > 0)) return false;   // huỷ / đơn 0 đồng (tách, điều chỉnh)
       if (giuTinh.has(String(o.code).toUpperCase())) return true;          // từng tính nhờ cọc -> giữ
+      // NGOẠI LỆ NẾN BƠ / TỰ TẠI VIÊN (anh Hải 13/10/2026): đơn nến giá trị nhỏ, thường không bắt cọc -> có đơn (khớp được khách) là TÍNH, kể cả phiếu tạm chưa tiền.
+      if (/nến bơ|nen bo|tự tại viên|tu tai vien|\bttv\b/i.test(o.sale_channel || '') && (o.status !== 1 || (Date.now() + 7 * 3600e3 - new Date(String(o.purchase_date).slice(0, 10)).getTime()) / 86400000 <= 14)) return true;   // 14 ngày đầu
       if (o.status === 1 && Number(o.total_payment || 0) <= 0 && !coCoc(o.customer_code)) return false;   // phiếu báo giá
       if (ngay(o.purchase_date) >= MOC && !(Number(o.total_payment || 0) > 0 || coHD[o.customer_code] || coCoc(o.customer_code))) return false;
       return true;

@@ -41,7 +41,7 @@ Phiên chạy trên cloud và phiên trên máy KHÔNG đọc được hội tho
 
 ## Nghiệp vụ đã chốt (tóm tắt — chi tiết ở VIEC.md mục 3)
 - **Doanh thu Sale = ĐƠN ĐẶT HÀNG Kiot**, không phải hoá đơn. Ngày chốt = ngày tạo đơn. Nối Pancake ↔ Kiot CHỈ bằng Mã KH trong ghi chú Pancake.
-- **Dấu vết tiền** (từ 1/6/2026): đơn phải có tiền trả / hoá đơn hoàn thành / khách có cọc mới tính; phiếu tạm không dấu vết = báo giá.
+- **Dấu vết tiền** (từ 1/6/2026): đơn phải có tiền trả / hoá đơn hoàn thành / khách có cọc mới tính; phiếu tạm không dấu vết = báo giá. NGOẠI LỆ Tự Tại Viên / Nến Bơ (13/10/2026): phiếu tạm gắn khách tính ngay, quá 14 ngày chưa ra hoá đơn thì tự gỡ + báo anh.
 - **Sỉ / Lẻ** theo chi nhánh Kiot (Tổng kho sỉ Shidai = Sỉ); thẻ Pancake KH SỈ / KH LẺ; khách nói mua dùng gia đình = KH LẺ.
 - **Sỉ lấy full lịch sử**; Lẻ từ 1/6/2026. **MKT chỉ từ 1/6/2026** (chi phí ads chỉ có từ T6), MKT chỉ lấy Online.
 - **MKT**: Sỉ Online chỉ tính tháng đầu, trừ khi khách còn nhắn Pancake; đơn **mua lại** không tính MKT nhưng VẪN là doanh thu Sale.
