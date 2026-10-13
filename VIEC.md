@@ -128,6 +128,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **13/10 (2)** — Trùng SĐT Sỉ – Lẻ: tên khách BÊN KIA bấm được -> hồ sơ chỉ tab Thông tin (rptSlMoKhachKia); khách ngoài phạm vi xem thì báo rõ.
 - **13/10 (1)** — [doi-so] NGOẠI LỆ TỰ TẠI VIÊN (gồm kênh Facebook Nến Bơ, Shopee Tự Tại Viên): phiếu tạm TÍNH NGAY lúc tạo kể cả khách không cọc (phải gắn được khách, vãng lai không tính); quá 14 ngày vẫn là phiếu tạm (chưa ra hoá đơn) -> TỰ GỠ doanh thu + chuông admin báo. Áp app (rptSlTTVConTinh) + tu-tao-nhap-tay + tu-tao-chot-don-si. Đo từ 1/1: Sale Lẻ 8.908,99 -> 8.915,89 tr (+6,9 tr), MKT Lẻ +1,17 tr, Sỉ không đổi. Lỗi em suýt mắc: bản đầu áp cả phần vãng lai (DH002529 21,6 tr, DH001701 5,6 tr không gắn khách bị cộng) -> đã bỏ, anh dặn phải khớp khách.
 - **13/10** — Làm nợ: #29 Nến Bơ / Tự Tại → TTV trong `tu-tao-nhap-tay.js` (luật nằm sau `//` nên không chạy; thêm "Thời Đại" → Shidai cho khớp app) + sửa M-1354 "Shopee Tự Tại Viên" brand CT → TTV. #28 job `tu-tao-chot-don-si` ghi `loai` theo khách trong app (dòng nhập tay > thẻ Pancake > Sỉ); sửa lượt cũ #6110 KH005025 "KL Đơn Shopee (HT)" → Lẻ (178 lượt tự tạo khác đúng Sỉ). #22b xoá hằng số tên ghi cứng. `kiem-so-lieu --so-code` (bản trước 13/10 vs nay): 26/26 chỉ số giữ nguyên.
 

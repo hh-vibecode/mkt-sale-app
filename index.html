@@ -5813,10 +5813,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/10 13:57';
+const APP_VERSION='13/10 14:02';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=474;
+const APP_BAN=475;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8857,6 +8857,12 @@ function rptSlTrungSdt(all){
   return kq;
 }
 function rptSlTrungSdtDem(t){return t.A.length+t.B.length+t.C.length;}
+// mở hồ sơ khách BÊN KIA (Sỉ <-> Lẻ) chỉ xem Thông tin; khách ngoài phạm vi xem của tài khoản thì báo rõ thay vì im lặng
+function rptSlMoKhachKia(loai,key){
+  rptMoKhachLoai(loai,key);
+  const m=document.getElementById('qcModal');
+  if(!m||m.innerHTML.indexOf(key)<0&&!/Thông tin khách hàng/.test(m.innerHTML))alert('Khách bên '+loai+' này nằm ngoài phạm vi xem của tài khoản — nhờ Admin xem giúp.');
+}
 function rptSlTrungSdtHtml(t){
   window._rptSlTrungSdt=t;
   // BẢNG, mỗi ca 1 dòng (anh Hải 13/10/2026: dạng thẻ "khó nhìn quá")
@@ -8870,7 +8876,8 @@ function rptSlTrungSdtHtml(t){
   const tieuDe=(mau,txt,n)=>'<div style="padding:10px 16px 6px;font-size:11.5px;font-weight:800;color:'+mau+'">'+txt+' · '+n+'</div>';
   const bang=(cot,dong)=>'<div class="tbl-scroll"><table style="width:100%"><thead><tr>'+cot.map(c=>'<th>'+c+'</th>').join('')+'</tr></thead><tbody>'+dong+'</tbody></table></div>';
   const loai=rptSlType(),kiaL=loai==='Sỉ'?'Lẻ':'Sỉ';
-  const khach=(r,moDuoc)=>(moDuoc?mo(r):'<b>'+e(r.name)+'</b>')+phu(ma(r)+' · tạo '+(dmy(r.created)||'—'));
+  const moKia=r=>'<span onclick="rptSlMoKhachKia('+q+kiaL+q+','+q+String(r.key).replace(/'/g,'')+q+')" title="Xem thông tin khách bên '+kiaL+'" style="cursor:pointer;font-weight:800;border-bottom:1px dashed var(--accent)">'+e(r.name)+'</span>';
+  const khach=(r,moDuoc)=>(moDuoc?mo(r):moKia(r))+phu(ma(r)+' · tạo '+(dmy(r.created)||'—'));
   const khachTien=(r,moDuoc)=>khach(r,moDuoc)+phu(tien(r)?'<span style="color:var(--green);font-weight:800">'+vnd(tien(r))+'</span>':'chưa có doanh thu');
   const A=t.A.length?tieuDe('var(--red)','Cùng SĐT, 1 khách bên Sỉ – 1 khách bên Lẻ',t.A.length)+bang(
       ['SĐT','Khách bên '+loai,'Sale','Khách bên '+kiaL,'Sale',''],
