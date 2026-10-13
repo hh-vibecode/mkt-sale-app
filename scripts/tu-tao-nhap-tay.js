@@ -31,8 +31,9 @@ const NHOM_LE = /khách lẻ|khach le/i;
 const vn = n => Math.round(n || 0).toLocaleString('vi');
 const maKH = s => { const m = /KH\s*0*(\d{3,7})/i.exec(s || ''); return m ? 'KH' + m[1].padStart(6, '0') : ''; };
 const brand = k => /chánh tâm|chanh tam|ming ying|hoàng dương/i.test(k) ? 'CT'
-  : /hiền th[uủ]|hien thu/i.test(k) ? 'HT'   // chi nhánh Kiot viết "Hiền Thủy", kênh viết "Hiền Thuỷ" : /nến bơ|nen bo|tự tại|tu tai/i.test(k) ? 'TTV'
-  : /shidai/i.test(k) ? 'Shidai' : null;
+  : /hiền th[uủ]|hien thu/i.test(k) ? 'HT'   // chi nhánh Kiot viết "Hiền Thủy", kênh viết "Hiền Thuỷ"
+  : /nến bơ|nen bo|tự tại|tu tai/i.test(k) ? 'TTV'   // 13/10/2026: trước nằm SAU dấu // ở dòng trên nên không chạy (VIEC #29)
+  : /shidai|thời đại|thoi dai/i.test(k) ? 'Shidai' : null;   // cùng luật dhManualBrand trong app
 
 async function doc(bang, cot) {
   let ra = [], tu = 0;

@@ -25,7 +25,7 @@ Phiên chạy trên cloud và phiên trên máy KHÔNG đọc được hội tho
   `APP_BAN` = `git rev-list --count HEAD -- index.html` + 1 (số lần cập nhật app, hiện "v436 · 07/10 17:30" — anh chốt 7/10/2026).
   Gộp xung đột: APP_BAN lấy số lớn hơn + 1 nếu cả 2 phía cùng sửa index.html.
 - **Đẩy bản mới lên `main` xong: đợi GitHub Pages deploy xong (trang live hiện đúng `APP_VERSION` mới) rồi BÁO ANH F5** (anh chốt 30/9).
-- Đổi logic báo cáo: chạy `node scripts/kiem-so-lieu.js` trước & sau; lệch > 5% mà đúng thì `--luu` chốt mốc mới + ghi lý do vào sổ.
+- Đổi logic báo cáo: so code cũ / mới trên CÙNG dữ liệu: `git show <commit-cũ>:index.html > cu.html` rồi `node scripts/kiem-so-lieu.js --so-code cu.html` (workflow `moc-so-lieu.yml` tự chạy khi đẩy index.html; mốc JSON không dùng từ 2/10). Đổi số CÓ CHỦ ĐÍCH: ghi lý do vào sổ + chữ `[doi-so]` trong commit.
 - Đọc bảng Supabase PHẢI phân trang (`limit/offset` hoặc `sbAll`) — `scripts/check-pagination.js` chạy trong CI sẽ chặn.
 - Job nặng: chỉ chạy khi dữ liệu đổi (`scripts/lib/gianh-moc.js` → `gianhKhiDoi`, hàm CSDL `job_dau_van`) hoặc theo khung giờ;
   ghi hàng loạt dùng `return=minimal` / gộp 1 lệnh. (Egress đã từng vượt quota gói free, 29/9/2026 anh mua Pro.)

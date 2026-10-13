@@ -64,7 +64,7 @@ async function ghiLog(body, id) {
       doc('kiot_customers', 'code,name,phone,debt,customer_group'),
       doc('kiot_invoices', 'customer_code,status'),
       doc('datahub_manual', 'kiot_code,sale_type'),
-      doc('datahub_orders', 'internal_note'),
+      doc('datahub_orders', 'internal_note,customer_tags'),
       doc('salesi_crm', 'id,kiot_code,ma_don,ngay_chot,gia_tri_chot,trang_thai'),
       doc('kiot_don_giu_tinh', 'code'),
     ]);
@@ -82,6 +82,15 @@ async function ghiLog(body, id) {
     dm.forEach(x => { if (x.kiot_code) trongApp.add(String(x.kiot_code).toUpperCase()); });
     dh.forEach(x => { const m = maKH(x.internal_note); if (m) trongApp.add(m); });
     cs.forEach(x => { if (x.kiot_code) trongApp.add(String(x.kiot_code).toUpperCase()); });
+    // LOẠI KHÁCH TRONG APP (13/10/2026, VIEC #28): khách đã chuyển sang Lẻ (đổi thẻ / dòng nhập tay sale_type Lẻ) mà vẫn mua ở
+    // kho sỉ -> lượt Chốt đơn phải ghi loai = 'Lẻ', không thì app coi là Sỉ (loai trống) và lượt không hiện bên Lẻ.
+    // Ưu tiên dòng nhập tay (có Sỉ thì Sỉ), rồi thẻ KH SỈ / KH LẺ trên đơn Pancake ghi Mã KH, không có gì thì Sỉ.
+    const loaiDm = {}, loaiPc = {};
+    dm.forEach(x => { const m = String(x.kiot_code || '').toUpperCase(); if (!m) return;
+      if ((x.sale_type || 'Lẻ') === 'Sỉ') loaiDm[m] = 'Sỉ'; else if (!loaiDm[m]) loaiDm[m] = 'Lẻ'; });
+    dh.forEach(x => { const m = maKH(x.internal_note); if (!m) return; const t = String(x.customer_tags || '').toUpperCase();
+      if (t.includes('KH SỈ')) loaiPc[m] = 'Sỉ'; else if (t.includes('KH LẺ') && !loaiPc[m]) loaiPc[m] = 'Lẻ'; });
+    const loaiCua = m => loaiDm[m] || loaiPc[m] || 'Sỉ';
     // dấu vết tiền -- cùng luật với app (rptSlDonKhongTinh)
     const coHD = {}; hd.forEach(i => { if (i.customer_code && i.status === 1) coHD[i.customer_code] = true; });
     const coCoc = m => Number((byCode[m] || {}).debt || 0) < 0;
@@ -148,7 +157,7 @@ async function ghiLog(body, id) {
     console.log(`Rà lại: ${sua.length} dòng chốt cũ gắn được mã đơn`);
     sua.forEach(x => console.log(`   #${x.id} ${x.m} -> ${x.o.code} ${ngay(x.o.purchase_date)} ${vn(x.o.total)}`));
     console.log(`Tạo mới: ${moi.length} dòng Chốt đơn`);
-    moi.forEach(x => console.log(`   ${x.m} ${String((byCode[x.m] || {}).name || x.o.customer_name).slice(0, 30)} · ${x.o.code} ${ngay(x.o.purchase_date)} ${vn(x.o.total)} · ${x.o.sold_by_name || ''}`));
+    moi.forEach(x => console.log(`   ${x.m} ${String((byCode[x.m] || {}).name || x.o.customer_name).slice(0, 30)} · ${x.o.code} ${ngay(x.o.purchase_date)} ${vn(x.o.total)} · ${x.o.sold_by_name || ''} · ${loaiCua(x.m)}`));
     if (CHI_XEM) { console.log('(KHO=1 -> chỉ xem trước, không ghi)'); return; }
 
     let okSua = 0, okMoi = 0;
@@ -161,7 +170,7 @@ async function ghiLog(body, id) {
       return { kiot_code: m, customer_name: c.name || o.customer_name || null, phone: c.phone || null,
         ngay_cham: ngay(o.purchase_date), sales: o.sold_by_name || null,
         trang_thai: 'Chốt đơn', ma_don: o.code, ngay_chot: ngay(o.purchase_date), gia_tri_chot: Number(o.total || 0),
-        phan_loai: 'Đã ra đơn', created_by: 'Monsieur Claude' };
+        phan_loai: 'Đã ra đơn', loai: loaiCua(m), created_by: 'Monsieur Claude' };
     });
     for (let i = 0; i < rows.length; i += 200) {
       const r = await fetch(`${SUPABASE_URL}/rest/v1/salesi_crm`, { method: 'POST', headers: { ...H, Prefer: 'return=minimal' }, body: JSON.stringify(rows.slice(i, i + 200)) });

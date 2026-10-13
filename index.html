@@ -4491,11 +4491,7 @@ const RPT_SL_BOT_SI='botsale sỉ';   // tên CŨ của 'chưa có Sale' -- từ
 // Chữ GIỮ CHỖ trong sheet Master Sỉ cũ -- không phải dữ liệu thật, hiện ra chỉ làm chật bảng (anh Hải 25/9/2026).
 // Chỉ khớp NGUYÊN Ô, nên các giá trị thật có chữ "chưa" như "Chưa liên hệ được" không bị đụng tới.
 const RPT_SI_GIU_CHO=/^(chưa khai thác|chua khai thac|chưa có( thông tin)?|chưa rõ|không rõ|chưa cập nhật|chưa xác định|n\/a|#n\/a|-+|\.+|x)$/i;
-// KHÁCH CHUYỂN ĐỘI (đổi thẻ KH SỈ <-> KH LẺ) mà đang gán cho Sale của ĐỘI KIA (anh Hải 28/9/2026):
-//   khách tạo từ 1/9/2026 -> để TRỐNG (rơi vào Gán data của đội mới);
-//   khách tạo trước 1/9    -> tự gán: sang Sỉ = Nguyễn Hữu Toàn, sang Lẻ = Nguyễn Thảo Ngọc.
-// Không ghi DB: dữ liệu gán cũ vẫn giữ, khách đổi thẻ lại thì về đúng Sale cũ. r.staffDoiKhac = tên Sale đội kia.
-const RPT_SL_MAC_DINH_CHUYEN={'Sỉ':'Nguyễn Hữu Toàn','Lẻ':'Nguyễn Thảo Ngọc'};
+// (Luật "khách chuyển đội tự gán Toàn / Thảo Ngọc" 28/9 đã BỎ từ 05/10/2026 khi gộp 2 đội Sale -- xoá hằng số tên ghi cứng 13/10.)
 function rptSlChuyenDoi(r){
   // 05/10/2026 GỘP 2 ĐỘI SALE -> bỏ luật chuyển đội (1 Sale chăm được cả Lẻ lẫn Sỉ). Thay bằng luật BÀN GIAO TIẾP:
   // khách đang đứng tên Sale ĐÃ NGHỈ mà Sale đó có người nhận bàn giao (sale_nhan_su.ban_giao_cho) -> thuộc người nhận.
@@ -5817,7 +5813,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/10 09:50';
+const APP_VERSION='13/10 09:56';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
 const APP_BAN=467;
