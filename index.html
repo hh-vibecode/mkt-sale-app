@@ -5813,10 +5813,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/10 14:02';
+const APP_VERSION='13/10 14:05';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=475;
+const APP_BAN=476;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7160,11 +7160,13 @@ function rptSlBuildMasterRaw(){
   //    Và chỉ khi trong nhóm có TỐI ĐA 1 khách có SĐT (anh Hải 28/9/2026: trùng SĐT mới là 1 người, tên không
   //    tính). 2 khách cùng tên mà mỗi người 1 số khác nhau (vd "Phương Thảo" L-SD-1904 / L-SD-1729) = 2 người.
   //    Vẫn gộp dòng KHÔNG có số vào dòng cùng tên có số (ca Mỹ Hằng L-HT-0394 -> L-CT-0892, anh xác nhận 28/9).
-  lyDoGop='Trùng tên (dòng không có SĐT)';
+  // ĐÃ TẮT (anh Hải 13/10/2026: "trường hợp DUY NHẤT được tự gộp là khách trùng SĐT, tên thì kệ, trùng tên là chuyện bình thường")
+  // -- gộp nhầm L-CT2-0064 Hiền Nguyễn (TikTok Chánh Tâm) với L-TTV-0390 Hien Nguyen (Facebook Tự Tại Viên). KHÔNG bật lại.
+  if(false){lyDoGop='Trùng tên (dòng không có SĐT)';
   nhomTheo(r=>boDau(r.name)).filter(g=>{
     const ma=[...new Set(g.map(r=>r.kh).filter(Boolean))];
     return ma.length<=1&&g.filter(r=>(r.phones||[]).length||r.phone).length<=1;
-  }).forEach(gopNhom);
+  }).forEach(gopNhom);}
   // 4) GỘP TAY (25/9/2026): Sale bấm Hợp nhất ở Nhập Liệu > Nghi trùng khách -> dòng phụ có gop_vao = Lead ID
   //    dòng chính. Lead ID của 1 dòng lấy từ nguonLienHe (đủ qua mọi bước gộp), không từ mergedFrom.
   lyDoGop='Sale hợp nhất tay';

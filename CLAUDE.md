@@ -45,7 +45,7 @@ Phiên chạy trên cloud và phiên trên máy KHÔNG đọc được hội tho
 - **Sỉ / Lẻ** theo chi nhánh Kiot (Tổng kho sỉ Shidai = Sỉ); thẻ Pancake KH SỈ / KH LẺ; khách nói mua dùng gia đình = KH LẺ.
 - **Sỉ lấy full lịch sử**; Lẻ từ 1/6/2026. **MKT chỉ từ 1/6/2026** (chi phí ads chỉ có từ T6), MKT chỉ lấy Online.
 - **MKT**: Sỉ Online chỉ tính tháng đầu, trừ khi khách còn nhắn Pancake; đơn **mua lại** không tính MKT nhưng VẪN là doanh thu Sale.
-- **Trùng SĐT = 1 người, tự gộp**; tên không dùng để nghi trùng; gộp theo tên chỉ khi nhóm có tối đa 1 khách có SĐT.
+- **Trùng SĐT = 1 người, tự gộp. ĐÂY LÀ TRƯỜNG HỢP DUY NHẤT ĐƯỢC TỰ GỘP** (anh chốt 13/10/2026): KHÔNG gộp theo tên dưới bất kỳ hình thức nào — trùng tên là chuyện bình thường.
 - **Gộp tên Sale**: chỉ khi tên ngắn nằm trọn trong tên dài (Kim Oanh ~ Nguyễn Kim Oanh).
 - **Phạm vi xem**: lọc theo Sale ĐÃ CHỐT (gán tay > người bán trên phiếu đặt / hoá đơn Kiot đã nối > không có mới lấy Pancake — anh chốt 3/10), lọc SAU khi xác định Sale; admin / supreme xem hết.
   Sửa phân quyền phải giả lập view từng tài khoản Sale, sót 0 mới xong.
