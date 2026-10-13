@@ -37,6 +37,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **TÌM KHÁCH** (anh chốt 13/10, thay luật 25/9 "tìm trong bộ lọc"): SĐT nào còn trong app đều phải tìm ra. Ô tìm Master / CRM tìm trên TOÀN BỘ khách tài khoản được xem, bỏ qua bộ lọc ngày / Sale / trạng thái; dò mọi tên + mọi SĐT của các dòng đã gộp (đơn Pancake, nhập tay, khách Kiot), SĐT so bỏ 0 / 84 đầu (`rptSlTimKhop`). Khớp khách đã gỡ thì báo kèm chỗ khôi phục.
 - **CÁCH CHIA DASHBOARD** (12/10/2026): bấm 1 ô để chia -> ra các Ô DASHBOARD NHỎ (vd Online / Offline) -> bấm ô nhỏ mới ra DANH SÁCH chi tiết. Không đổ thẳng ra bảng số.
 - **Tự gắn Mã KH** (12/10/2026) khi chắc chắn (SĐT khớp đúng 1 khách Kiot, mã chưa thuộc ai, có đơn từ lúc nhắn, đúng Lẻ/Sỉ); ca không chắc mới để Daily Task. **Không còn bước Xác nhận (12/10): việc xong sang tab Đã hoàn thành, admin Trả lại được.**
 - **Kênh quyết định nguồn** (9/10/2026): kênh online (Facebook / TikTok / Shopee / Zalo / Web…) = Online, không quan tâm phiếu là hoá đơn bán thẳng hay đơn đặt hàng; kênh lấy theo Kiot hiện tại.
@@ -126,6 +127,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **13/10** — Sale Khánh Nguyên báo "Ngo Linh" 0764395145 không có trên app: thật ra có — dòng thêm tay M-2166 (12/10) bị gộp theo SĐT vào L-SD-0198 "Luom Ngo" (Pancake Shidai 23/04/2025 + 2 đơn TTV 10/10), Sale Minh Oanh, Lead cũ. Không tìm ra vì (1) ô tìm chỉ dò tên đang hiện, (2) tìm kẹp trong bộ lọc ngày mà "Tất cả" từ 1/1/2026 (RPT_TU_NAM) -> khách tạo 2025 không bao giờ ra. Sửa: luật TÌM KHÁCH mới (mục 3). Rà mọi SĐT nguồn: 3.475/3.482 tìm được; 49 SĐT còn lại đều là đơn Pancake đã xoá (status 7, lô 28/9) hoặc khách đã gỡ khỏi báo cáo. CHỜ ANH: (c) Sale của L-SD-0198 giữ Minh Oanh hay chuyển Khánh Nguyên; form Thêm khách chưa báo trùng SĐT; anh muốn mục "Đề xuất gộp" ở Nhập Liệu cho các bên trùng SĐT (đang đề xuất cách làm).
 
 - **12/10 (10)** — Nút Sửa việc cho MỌI việc đang giao (admin): việc giao riêng -> form Giao việc; việc giao trong form chăm sóc -> mở lượt chăm sóc đó để sửa. Soát: Kim Oanh bỏ sót L-SD-1650 Hồng Nguyễn Thị Vân (lô giao 7/10), và có lượt lưu trùng 2–3 lần (Dao Thi Nhu, viết Nhân, ឌី សុផល) do bấm Lưu nhiều lần — chờ anh duyệt khoá nút Lưu + xoá trùng.
 - **12/10 (9)** — Sửa khung xổ ô lọc (Sales, Trạng thái…) bị khuất sau menu trái: mặc định mở sang phải, sát mép phải màn hình mới tự mở sang trái (rptSlMsCanh).

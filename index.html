@@ -5770,7 +5770,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/10 11:01';
+const APP_VERSION='13/10 09:20';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
 const APP_BAN=467;
@@ -7896,6 +7896,47 @@ function rptSiDashHtml(all,daCham){
     +o('chuaTT',mkKpi(ic('clipboard'),'Chưa cập nhật trạng thái',num(dem('chuaTT')),L==='chuaTT'?'đang lọc bảng':'','g-purple'))
     +'</div>';
 }
+// TÌM KHÁCH (anh Hải 13/10/2026: "SĐT nào miễn tồn tại trong app đều phải tìm được"). Dùng chung Master / CRM / Gán data.
+// Lỗi gốc: khách gộp theo SĐT hiện tên của dòng chính (vd Sale thêm "Ngo Linh" M-2166 -> gộp vào L-SD-0198 "Luom Ngo"), ô
+// tìm chỉ dò tên đang hiện; và tìm bị kẹp trong bộ lọc ngày -- "Tất cả" tính từ 1/1/2026 nên khách tạo 2025 không bao giờ ra.
+// Giờ: dò MỌI tên + MỌI SĐT của mọi dòng đã gộp (đơn Pancake, dòng nhập tay, khách Kiot); SĐT so theo số bỏ 0 / 84 đầu.
+// Có chữ trong ô tìm thì Master / CRM tìm trên TOÀN BỘ khách tài khoản được xem, bỏ qua bộ lọc ngày / Sale / trạng thái.
+function rptSlSoTim(x){let d=String(x||'').replace(/\D/g,'');if(d.length>=11&&d.startsWith('84'))d=d.slice(2);return d.replace(/^0+/,'');}
+let _rptSlTimIdx={khoa:'',m:null};
+function rptSlTimIdx(){
+  const khoa=(dhOrders||[]).length+'|'+(typeof dhManual!=='undefined'?dhManual.length:0);
+  if(_rptSlTimIdx.khoa===khoa&&_rptSlTimIdx.m)return _rptSlTimIdx.m;
+  const m=new Map(),them=(id,ten,so)=>{let x=m.get(id);if(!x){x={ten:[],so:[]};m.set(id,x);}if(ten)x.ten.push(ten);if(so)x.so.push(so);};
+  (dhOrders||[]).forEach(o=>{if(o&&o.system_id)them('L-'+rptSlShopCode(o)+'-'+String(o.system_id).padStart(4,'0'),o.customer_name,o.phone);});
+  (typeof dhManual!=='undefined'?dhManual:[]).forEach(r=>them(dhManualLeadId(r),r.customer_name,r.phone));
+  _rptSlTimIdx={khoa,m};return m;
+}
+function rptSlTimKhop(r,q,them){
+  q=String(q||'').trim();if(!q)return true;
+  const qb=rptSlBoDau(q).replace(/\s+/g,' ').trim(),laSo=/^[\d\s.+()-]+$/.test(q),qs=laSo?rptSlSoTim(q):'';
+  const idx=rptSlTimIdx(),ids=(()=>{try{return rptSlIdsCua(r);}catch(e){return [r.leadId];}})();
+  const ten=[r.name,r.kiotName,r.kh,r.leadId].concat(them||[]),so=[r.phone].concat((r.phones||[]).map(p=>p.so));
+  ids.forEach(id=>{const x=idx.get(id);if(x){ten.push(...x.ten);so.push(...x.so);}ten.push(id);});
+  const kc=r.kh&&kiotCustByCode()[r.kh];if(kc){ten.push(kc.name);so.push(kc.phone);}
+  if(laSo&&qs.length>=3)return so.some(x=>rptSlSoTim(x).includes(qs))||ten.some(x=>String(x||'').toUpperCase().includes(q.toUpperCase()));
+  return ten.some(x=>rptSlBoDau(x).includes(qb));
+}
+// Tìm không ra mà SĐT / tên thuộc khách ĐÃ GỠ khỏi báo cáo -> nói rõ, kèm nơi khôi phục (13/10/2026).
+function rptSlTimRong(q){
+  return '<div style="padding:22px;text-align:center;font-size:12.5px;font-weight:700;color:var(--text2)">Không có khách nào khớp "'
+    +String(q).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'" trong toàn bộ dữ liệu bạn được xem</div>';
+}
+function rptSlTimDaGo(q){
+  q=String(q||'').trim();if(!q)return '';
+  const idx=rptSlTimIdx(),laSo=/^[\d\s.+()-]+$/.test(q),qs=laSo?rptSlSoTim(q):'',qb=rptSlBoDau(q);
+  const go=Object.keys(rptSlManual||{}).filter(k=>rptSlManual[k].excluded&&idx.get(k)).filter(k=>{const x=idx.get(k);
+    return laSo&&qs.length>=3?x.so.some(v=>rptSlSoTim(v).includes(qs)):x.ten.some(v=>rptSlBoDau(v).includes(qb));});
+  if(!go.length)return '';
+  const e=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  return '<div style="margin-top:8px;font-size:12px;font-weight:700;color:#b45309">Khớp '+go.length+' khách ĐÃ GỠ khỏi báo cáo: '
+    +go.slice(0,5).map(k=>e(idx.get(k).ten[0]||'')+' ('+k+(rptSlManual[k].excluded_reason?' · '+e(rptSlManual[k].excluded_reason):'')+')').join(', ')
+    +' — khôi phục ở mục "Đã gỡ khỏi báo cáo" cuối tab Nhập Liệu</div>';
+}
 function rptSiNguonCua(r){return /offline/i.test(r.nguon||'')?'Offline':(/online/i.test(r.nguon||'')?'Online':'Chưa rõ nguồn');}
 function rptSlMasterHtmlRaw(){
   const allRaw=rptSlPeriod();
@@ -7912,14 +7953,9 @@ function rptSlMasterHtmlRaw(){
   if(!laSi||['Online','Offline','Chưa rõ nguồn'].includes(window._rptSiLoc))window._rptSiLoc='';
   window._rptSiLoc='';const goc=all;   // Master không còn ô dash lọc bảng (02/10/2026) -- lọc theo ô làm ở CRM
   let list=goc;
-  // Ô TÌM KIẾM chỉ tìm TRONG bộ lọc đang đặt (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026 chốt: muốn tìm
-  // rộng hơn thì tự tháo bộ lọc. Gõ có dấu hay không dấu đều ra; gõ toàn số thì so SĐT.
-  if(q){
-    const qb=rptSlBoDau(q).replace(/\s+/g,' ').trim(),qs=/^[\d\s.+-]+$/.test(q)?q.replace(/\D/g,''):'';   // chỉ so SĐT khi gõ toàn số
-    const khop=r=>[r.name,r.kiotName,r.kh,r.leadId].some(x=>rptSlBoDau(x).includes(qb))
-      ||(qs.length>=3&&((r.phones||[]).some(p=>String(p.so||'').replace(/\D/g,'').includes(qs))||String(r.phone||'').replace(/\D/g,'').includes(qs)));
-    list=goc.filter(khop);
-  }
+  // Ô TÌM KIẾM: tìm trên TOÀN BỘ khách tài khoản được xem, bỏ qua bộ lọc (anh Hải 13/10/2026, thay luật 25/9 "tìm trong
+  // bộ lọc") -- khách còn trong app là phải tìm ra. Xem rptSlTimKhop.
+  if(q)list=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao).filter(r=>rptSlTimKhop(r,q));
   window._rptSlKeysDangXem=list.map(r=>String(r.leadId||'').replace(/'/g,'')).filter(Boolean);   // cho ô chọn tất cả
   const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   if((window._rptSlMasterPage||1)>totalPages)window._rptSlMasterPage=1;
@@ -7942,7 +7978,7 @@ function rptSlMasterHtmlRaw(){
         <span style="margin-left:auto;font-size:11px;color:var(--muted)">Doanh thu trong bộ lọc: <b style="color:var(--green)">${vnd(rev)}</b></span></div>
       <div class="tbl-scroll"><table>
         <thead><tr>${RPT_SL_MASTER_HEAD}</tr></thead>
-        <tbody>${rows||'<tr><td colspan="12">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
+        <tbody>${rows||'<tr><td colspan="12">'+(q?rptSlTimRong(q):rptSlEmptyHtml(false))+rptSlTimDaGo(q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetMasterPage(${page-1})">‹ Trước</button>
@@ -8989,8 +9025,7 @@ function rptSlSetViewAs(id){
 function rptSiGanHtml(){
   const ds=rptSlSortNew(rptSlBuildMaster().filter(rptSlCanGan),rptSlNgayTao);
   const q=(window._siGanQ||'').trim().toLowerCase();
-  const list=q?ds.filter(r=>(r.name||'').toLowerCase().includes(q)
-      ||(r.phones||[]).some(p=>p.so.includes(q))||(r.kh||'').toLowerCase().includes(q)):ds;
+  const list=q?ds.filter(r=>rptSlTimKhop(r,q)):ds;   // dò mọi tên / SĐT đã gộp (13/10/2026)
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const loai=rptSlType()==='Sỉ'?'Sỉ':'Lẻ';
   const sale=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);   // gộp 2 đội (05/10/2026)
@@ -9533,9 +9568,8 @@ function rptSlCrmHtmlRaw(){
   const goc=locDs(CL);
   const q=(window._rptSlCrmQ||'').trim();
   let list=goc;
-  if(q){const qb=rptSlBoDau(q),qs=/^[\d\s.+-]+$/.test(q)?q.replace(/\D/g,''):'';
-    list=goc.filter(r=>[r.name,r.kiotName,r.kh,r.leadId,r.siNDCuoi].some(x=>rptSlBoDau(x).includes(qb))
-      ||(qs.length>=3&&((r.phones||[]).some(p=>String(p.so||'').replace(/\D/g,'').includes(qs))||String(r.phone||'').replace(/\D/g,'').includes(qs))));}
+  // tìm trên TOÀN BỘ khách tài khoản được xem, bỏ qua bộ lọc / ô dash (anh Hải 13/10/2026) -- xem rptSlTimKhop
+  if(q)list=rptSlBuildMaster().filter(r=>rptSlTimKhop(r,q,[r.siNDCuoi]));
   window._rptSlKeysDangXem=list.map(r=>String(r.leadId||'').replace(/'/g,'')).filter(Boolean);   // cho ô chọn tất cả
   const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   if((window._rptSlCrmPage||1)>totalPages)window._rptSlCrmPage=1;
@@ -9584,7 +9618,7 @@ function rptSlCrmHtmlRaw(){
       <div class="tbl-head"><div class="tbl-title">CRM — khách cần chăm sóc</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
         <thead><tr>${rptSlChonHetTh()}<th>CS cuối</th><th>Nguồn</th><th>Sales phụ trách</th><th>${rptSlType()==='Sỉ'?'Tên cửa hàng':'Họ tên khách'}</th><th>Phân loại KH${dmBut('si_phan_loai')}</th><th>Trao đổi gần nhất</th><th>Hẹn tiếp theo</th><th></th></tr></thead>
-        <tbody>${rows||'<tr><td colspan="9">'+rptSlEmptyHtml(!!q)+'</td></tr>'}</tbody>
+        <tbody>${rows||'<tr><td colspan="9">'+(q?rptSlTimRong(q):rptSlEmptyHtml(false))+rptSlTimDaGo(q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
         <button class="refresh-btn" ${page<=1?'disabled':''} onclick="rptSlSetCrmPage(${page-1})">‹ Trước</button>
