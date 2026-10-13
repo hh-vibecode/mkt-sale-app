@@ -37,6 +37,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
+- **TRÙNG SĐT** (anh chốt 13/10, ai cũng xử được): mục "Trùng SĐT" ở tab Nhập Liệu (đỏ, tính vào việc cần làm): A. cùng SĐT 1 bên Sỉ 1 bên Lẻ -> Chuyển khách Sỉ sang Lẻ (`rptSlChuyenLoai` ép đích Lẻ) / Giữ riêng; B. đã gộp mà các dòng gán Sale khác nhau -> chọn 1 Sale; C. đã gộp theo SĐT mà khác tên -> Đúng 1 người / Tách dòng (khac_nguoi). Ca đã soát lưu `saleretail_manual.trung_ok`. Form Thêm khách: SĐT đã có (cả Sỉ lẫn Lẻ, cả khách đã gỡ) thì KHÔNG tạo, báo khách đó + nút mở hồ sơ.
 - **TÌM KHÁCH** (anh chốt 13/10, thay luật 25/9 "tìm trong bộ lọc"): SĐT nào còn trong app đều phải tìm ra. Ô tìm Master / CRM tìm trên TOÀN BỘ khách tài khoản được xem, bỏ qua bộ lọc ngày / Sale / trạng thái; dò mọi tên + mọi SĐT của các dòng đã gộp (đơn Pancake, nhập tay, khách Kiot), SĐT so bỏ 0 / 84 đầu (`rptSlTimKhop`). Khớp khách đã gỡ thì báo kèm chỗ khôi phục.
 - **CÁCH CHIA DASHBOARD** (12/10/2026): bấm 1 ô để chia -> ra các Ô DASHBOARD NHỎ (vd Online / Offline) -> bấm ô nhỏ mới ra DANH SÁCH chi tiết. Không đổ thẳng ra bảng số.
 - **Tự gắn Mã KH** (12/10/2026) khi chắc chắn (SĐT khớp đúng 1 khách Kiot, mã chưa thuộc ai, có đơn từ lúc nhắn, đúng Lẻ/Sỉ); ca không chắc mới để Daily Task. **Không còn bước Xác nhận (12/10): việc xong sang tab Đã hoàn thành, admin Trả lại được.**
@@ -127,6 +128,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **13/10** — Mục **Trùng SĐT** ở Nhập Liệu + chặn trùng SĐT ở form Thêm khách (luật mục 3). Thêm cột `saleretail_manual.trung_ok` (supabase-schema-trung-sdt.sql, đã chạy). Khách Ngo Linh L-SD-0198 chuyển Sale Minh Oanh -> **Nguyễn Khánh Nguyên** (anh chốt, đã ghi activity_log). Lúc làm: Sỉ A 20 · C 29; Lẻ A 20 · C 16; B 0. Chưa kiểm được: bấm thật các nút (đổi thẻ Pancake) — mới chạy hàm dựng danh sách; tài khoản chỉ xem 1 loại (Sỉ) không thấy ca A vì không được xem khách Lẻ.
 
 - **13/10** — Sale Khánh Nguyên báo "Ngo Linh" 0764395145 không có trên app: thật ra có — dòng thêm tay M-2166 (12/10) bị gộp theo SĐT vào L-SD-0198 "Luom Ngo" (Pancake Shidai 23/04/2025 + 2 đơn TTV 10/10), Sale Minh Oanh, Lead cũ. Không tìm ra vì (1) ô tìm chỉ dò tên đang hiện, (2) tìm kẹp trong bộ lọc ngày mà "Tất cả" từ 1/1/2026 (RPT_TU_NAM) -> khách tạo 2025 không bao giờ ra. Sửa: luật TÌM KHÁCH mới (mục 3). Rà mọi SĐT nguồn: 3.475/3.482 tìm được; 49 SĐT còn lại đều là đơn Pancake đã xoá (status 7, lô 28/9) hoặc khách đã gỡ khỏi báo cáo. CHỜ ANH: (c) Sale của L-SD-0198 giữ Minh Oanh hay chuyển Khánh Nguyên; form Thêm khách chưa báo trùng SĐT; anh muốn mục "Đề xuất gộp" ở Nhập Liệu cho các bên trùng SĐT (đang đề xuất cách làm).
 

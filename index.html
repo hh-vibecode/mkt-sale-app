@@ -4699,8 +4699,8 @@ function rptSlHoiChuyen(ten,n,tenKhach){
     +' từ Sale '+tu+' sang Sale '+dich+':\n• đổi thẻ Pancake KH '+tu.toUpperCase()+' → KH '+dich.toUpperCase()
     +'\n• trạng thái, lịch sử chăm sóc giữ nguyên; việc quản lý đã giao chuyển sang '+ten+'\n\nXác nhận chuyển?');
 }
-async function rptSlChuyenLoai(r,ten){
-  const dich=rptSlDoiCuaSale(ten),kq={the:0,loi:[],nhapTay:0,cs:0,viec:0};
+async function rptSlChuyenLoai(r,ten,dichEp){   // dichEp: ép loại đích (mục Trùng SĐT chuyển Sỉ -> Lẻ, 13/10/2026)
+  const dich=dichEp||rptSlDoiCuaSale(ten),kq={the:0,loi:[],nhapTay:0,cs:0,viec:0};
   const hdr={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
   const nhanTheLoai=t=>/^\s*KH\s+(SỈ|LẺ)\s*$/i.test(String(t));
   // đọc lịch sử + việc đang giao TRƯỚC khi đổi loại (sau khi đổi, bên đội cũ không còn thấy)
@@ -5336,6 +5336,15 @@ async function rptSiThemKhach(){
   if(thieu.length){if(msg)msg.innerHTML='<span style="color:var(--red)">Còn thiếu: '+thieu.map(id=>RPT_SI_THEM_BB_TEN[id]).join(', ')+'</span>';return;}
   const ma=g('siT_ma').toUpperCase();
   if(ma&&!kiotCustByCode()[ma]){if(msg)msg.innerHTML='<span style="color:var(--red)">Bên Kiot không có mã '+ma+'</span>';return;}
+  // SĐT ĐÃ CÓ -> không tạo dòng mới (anh Hải 13/10/2026, ca Ngo Linh: thêm xong khách chìm vào khách cũ cùng số, khác tên khác Sale)
+  {const so=g('siT_sdt');
+   if(so&&rptSlSoTim(so).length>=8){
+     const co=rptSlBuildMaster().concat(rptSlMasterLoaiKia()).filter(r=>rptSlTimKhop(r,so));
+     if(co.length){const r=co[0],q=String.fromCharCode(39),e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+       if(msg)msg.innerHTML='<span style="color:var(--red)">SĐT đã có ở khách <b>'+e(r.name)+'</b> ('+e(r.kh||r.leadId)+') · Sale '+e(r.staff||'—')+' · tạo '+(dmy(r.created)||'—')+'</span> '
+         +'<button onclick="qcCloseModal();rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+')" class="btn-ghost" style="padding:3px 10px;font-size:11px">Mở hồ sơ khách đó</button>';
+       return;}
+     const go=rptSlTimDaGo(so);if(go){if(msg)msg.innerHTML=go;return;}}}
   try{
     if(msg)msg.textContent='Đang lưu…';
     const kenh=g('siT_kenh');
@@ -5770,7 +5779,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/10 09:20';
+const APP_VERSION='13/10 09:30';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
 const APP_BAN=467;
@@ -8730,7 +8739,7 @@ function rptSlViecXongDs(){
   return ds.sort((a,b)=>Number(b.kq.id||0)-Number(a.kq.id||0));
 }
 function rptSlTongViec(b,nghi){
-  const n=(nghi||rptSlNghiTrung(b.all)).length+(b.trungMa||[]).length;
+  const n=(nghi||rptSlNghiTrung(b.all)).length+(b.trungMa||[]).length+rptSlTrungSdtDem(b.trungSdt||rptSlTrungSdt(b.all));
   return (b.viecGiao||[]).length+b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length+n;
 }
 // 3 mục QUAN TRỌNG NHẤT luôn mở sẵn data lỗi; các mục còn lại gập lại, bấm tiêu đề mới bung ra.
@@ -8738,6 +8747,128 @@ function rptSlSecOpen(id){return !!(window._rptSlSecOpen||{})[id];}
 function rptSlSecToggle(id){
   const o=window._rptSlSecOpen=window._rptSlSecOpen||{};
   o[id]=!rptSlSecOpen(id);rptSlRender();
+}
+// ── TRÙNG SĐT (anh Hải 13/10/2026: "đề xuất gộp bên Nhập Liệu cho các bên có SĐT trùng" · ai cũng xử được) ──────────────
+//  A. Cùng SĐT nhưng 1 khách bên Sỉ, 1 khách bên Lẻ (app KHÔNG tự gộp khác loại): Chuyển khách Sỉ sang Lẻ (dùng rptSlChuyenLoai:
+//     đổi thẻ Pancake, dòng nhập tay, lịch sử chăm sóc) hoặc Giữ riêng 2 khách.            -> ĐỎ, tính vào việc cần làm
+//  B. Đã tự gộp theo SĐT nhưng các dòng đang gán Sale KHÁC nhau (vd Ngo Linh M-2166 vào L-SD-0198): chọn 1 Sale cho cả khách. -> ĐỎ
+//  C. Đã tự gộp theo SĐT, các dòng KHÁC TÊN: Đúng 1 người / Tách dòng ra (ghi khac_nguoi, như nút "Không phải cùng 1 người"). -> VÀNG
+//  Ca đã soát lưu ở saleretail_manual.trung_ok (Lead ID cách dấu phẩy) -- chạy supabase-schema-trung-sdt.sql.
+function rptSlTrungOkCua(r){const s=new Set();rptSlIdsCua(r).forEach(id=>String((rptSlManual[id]||{}).trung_ok||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(x=>s.add(x)));return s;}
+let _rptSlLoaiKia={khoa:'',rows:[]};
+function rptSlMasterLoaiKia(){   // Master của loại KIA (vẫn theo phạm vi tài khoản), nhớ theo dữ liệu
+  const kia=rptSlType()==='Sỉ'?'Lẻ':'Sỉ';
+  const khoa=[kia,window._rptSlVer||0,dhOrders.length,dhManual.length,kiotOrders.length,Object.keys(rptSlManual).length,dashSales().join(','),dashTypes().join(',')].join('|');
+  if(_rptSlLoaiKia.khoa===khoa)return _rptSlLoaiKia.rows;
+  const cu=window._rptSlType,cuK=window._kiotOrdByCode;let rows=[];
+  try{window._rptSlType=kia;window._kiotOrdByCode=null;rows=rptSlBuildMasterRaw();}catch(e){console.warn('rptSlMasterLoaiKia',e);}
+  window._rptSlType=cu;window._kiotOrdByCode=cuK;
+  _rptSlLoaiKia={khoa,rows};return rows;
+}
+function rptSlSoCuaDong(r){return [...new Set([r.phone].concat((r.phones||[]).map(p=>p.so)).map(rptSlLast9).filter(k=>k&&k.length===9))];}
+function rptSlTrungSdt(all){
+  const kq={A:[],B:[],C:[]},idx=rptSlTimIdx();
+  // A: khác loại
+  const kia=rptSlMasterLoaiKia(),theoSo={};
+  kia.forEach(o=>rptSlSoCuaDong(o).forEach(k=>(theoSo[k]=theoSo[k]||[]).push(o)));
+  all.forEach(r=>{const ok=rptSlTrungOkCua(r),daCo=new Set();
+    rptSlSoCuaDong(r).forEach(k=>(theoSo[k]||[]).forEach(o=>{if(daCo.has(o.key))return;daCo.add(o.key);
+      if(rptSlIdsCua(o).some(id=>ok.has(id))||rptSlIdsCua(r).some(id=>rptSlTrungOkCua(o).has(id)))return;
+      kq.A.push({r,o,so:k});}));});
+  // B, C: trong 1 khách đã gộp
+  all.forEach(r=>{const ids=rptSlIdsCua(r);if(ids.length<2)return;
+    const sale=[...new Set(ids.map(id=>rptSlSaleGanTay(id)).filter(Boolean))];
+    if(sale.length>1){kq.B.push({r,sale});return;}
+    const ten=ids.map(id=>({id,ten:(idx.get(id)||{ten:[]}).ten[0]||''})).filter(x=>x.ten);
+    const khac=new Set(ten.map(x=>rptSlChuTen(x.ten).map(rptSlBoDau).join(' ')).filter(Boolean));
+    if(khac.size<2)return;
+    const ok=rptSlTrungOkCua(r);if(ten.every(x=>ok.has(x.id)))return;
+    kq.C.push({r,ten});});
+  return kq;
+}
+function rptSlTrungSdtDem(t){return t.A.length+t.B.length+t.C.length;}
+function rptSlTrungSdtHtml(t){
+  window._rptSlTrungSdt=t;
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const tien=r=>Number(r.revenue||0)+Number(r.repeatRevenue||0),q=String.fromCharCode(39);
+  const nut=(f,i,txt,mau)=>'<button onclick="'+f+'('+i+',this)" style="margin-left:6px;height:28px;padding:0 12px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:800;font-family:var(--font);'
+    +(mau?'border:none;background:'+mau+';color:#fff':'border:1.5px solid var(--border);background:var(--surface);color:var(--text2)')+'">'+txt+'</button>';
+  const the=(r,loai)=>'<div style="flex:1;min-width:240px;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);cursor:pointer" onclick="rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+')">'
+    +'<div style="font-size:10.5px;font-weight:800;color:var(--muted)">'+loai+' · tạo '+(dmy(r.created)||'—')+'</div>'
+    +'<div style="font-size:12.5px;font-weight:800">'+e(r.name)+'</div>'+rptSlMaDuoiTen(r)
+    +'<div style="font-size:11px;margin-top:3px">Sale: <b>'+e(r.staff||'—')+'</b> · '+e(r.siPhanLoai||r.status||'—')+' · '+(tien(r)?'<b style="color:var(--green)">'+vnd(tien(r))+'</b>':'chưa có doanh thu')+'</div></div>';
+  const hop=(mau,tieuDe,noiDung)=>'<div style="border-top:1px solid var(--border);padding:10px 16px">'
+    +'<div style="font-size:11px;font-weight:800;color:'+mau+';text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px">'+tieuDe+'</div>'+noiDung+'</div>';
+  const loai=rptSlType(),kiaL=loai==='Sỉ'?'Lẻ':'Sỉ';
+  const A=t.A.length?hop('var(--red)','Cùng SĐT nhưng 1 bên Sỉ, 1 bên Lẻ · '+t.A.length,t.A.map((x,i)=>'<div style="padding:8px 0;border-bottom:1px dashed var(--border)">'
+      +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px"><span style="font-size:12px;font-weight:800">SĐT …'+e(x.so.slice(-6))+'</span>'
+      +'<span style="margin-left:auto">'+nut('rptSlTrungChuyen',i,'Chuyển khách Sỉ sang Lẻ','var(--accent)')+nut('rptSlTrungGiu',i,'Giữ riêng 2 khách')+'</span></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+the(x.r,loai)+the(x.o,kiaL)+'</div></div>').join('')):'';
+  const B=t.B.length?hop('var(--red)','Đã gộp 1 khách nhưng đang gán nhiều Sale · '+t.B.length,t.B.map((x,i)=>'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:6px 0;border-bottom:1px dashed var(--border)">'
+      +'<span style="cursor:pointer;font-size:12.5px;font-weight:800" onclick="rptSlShowCustomer('+q+String(x.r.key).replace(/'/g,'')+q+')">'+e(x.r.name)+'</span>'+rptSlMaDuoiTen(x.r)
+      +'<span style="font-size:11.5px">các dòng đang gán: <b>'+x.sale.map(e).join(' · ')+'</b> (đang tính '+e(x.r.staff||'—')+')</span>'
+      +'<span style="margin-left:auto;display:flex;align-items:center;gap:6px"><select id="trungSale'+i+'" style="height:28px;padding:2px 8px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:700;font-family:var(--font)">'
+      +rptSlSaleOptsHtml(x.r.staff)+'</select>'+nut('rptSlTrungChonSale',i,'Chốt Sale','var(--accent)')+'</span></div>').join('')):'';
+  const C=t.C.length?hop('#b45309','Đã gộp theo SĐT nhưng khác tên — soát lại · '+t.C.length,t.C.map((x,i)=>'<div style="padding:6px 0;border-bottom:1px dashed var(--border)">'
+      +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px"><span style="cursor:pointer;font-size:12.5px;font-weight:800" onclick="rptSlShowCustomer('+q+String(x.r.key).replace(/'/g,'')+q+')">'+e(x.r.name)+'</span>'+rptSlMaDuoiTen(x.r)
+      +'<span style="font-size:11px;color:var(--muted)">SĐT '+e(rptSlSoCuaDong(x.r).map(k=>'…'+k.slice(-6)).join(', '))+' · Sale '+e(x.r.staff||'—')+'</span>'
+      +'<span style="margin-left:auto">'+nut('rptSlTrungDung',i,'Đúng 1 người','var(--green)')+'</span></div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:5px">'+x.ten.map(y=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 4px 2px 9px;border:1px solid var(--border);border-radius:14px;font-size:11.5px">'
+        +'<b>'+e(y.ten)+'</b><span style="color:var(--muted)">'+e(y.id)+'</span>'
+        +(y.id!==x.r.leadId?'<button onclick="rptSlTrungTach('+i+','+q+e(y.id)+q+',this)" title="Không phải người này — tách dòng này ra khách riêng" style="border:none;background:var(--bg2);color:var(--red);border-radius:10px;height:20px;padding:0 8px;cursor:pointer;font-size:10.5px;font-weight:800">Tách</button>':'')
+        +'</span>').join('')+'</div></div>').join('')):'';
+  if(!A&&!B&&!C)return '<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không có ca trùng SĐT nào cần soát</div>';
+  return A+B+C;
+}
+async function rptSlTrungGhiOk(ids,them){
+  for(const id of ids){const cu=String((rptSlManual[id]||{}).trung_ok||'').split(',').map(x=>x.trim()).filter(Boolean);
+    await rptSlSaveManual(id,{trung_ok:[...new Set(cu.concat(them))].join(',')});}
+}
+async function rptSlTrungXong(el,f){
+  if(el)el.disabled=true;
+  try{await f();window._kiotOrdByCode=null;_rptSlLoaiKia.khoa='';rptSlXoaCache();rptSlRender();}
+  catch(e){if(el)el.disabled=false;alert('Chưa lưu được: '+(/trung_ok/.test(String(e&&e.message))?'CSDL chưa có cột trung_ok (supabase-schema-trung-sdt.sql)':e.message));}
+}
+function rptSlTrungGiu(i,el){
+  const x=((window._rptSlTrungSdt||{}).A||[])[i];if(!x)return;
+  if(!confirm('Giữ riêng 2 khách (vừa mua sỉ vừa mua lẻ, hoặc không phải 1 người)?\n\n'+x.r.name+' ('+x.r.leadId+')\n'+x.o.name+' ('+x.o.leadId+')\n\nApp sẽ không nhắc lại cặp này.'))return;
+  rptSlTrungXong(el,async()=>{await rptSlTrungGhiOk([x.r.leadId],rptSlIdsCua(x.o));await rptSlTrungGhiOk([x.o.leadId],rptSlIdsCua(x.r));
+    logAct('U','saleretail_manual',x.r.leadId,x.r.name,'Trùng SĐT Sỉ/Lẻ','','giữ riêng với '+x.o.leadId);});
+}
+function rptSlTrungChuyen(i,el){
+  const x=((window._rptSlTrungSdt||{}).A||[])[i];if(!x)return;
+  const si=rptSlType()==='Sỉ'?x.r:x.o,le=rptSlType()==='Sỉ'?x.o:x.r;
+  const ten=rptSlSaleCuaDoi().includes(String(le.staff||'').trim())?String(le.staff).trim():String(si.staff||'').trim();
+  if(!confirm('Chuyển khách Sỉ "'+si.name+'" ('+si.leadId+') sang Lẻ?\n\n• đổi thẻ Pancake KH SỈ → KH LẺ\n• lịch sử chăm sóc, việc đang giao chuyển theo\n• Sale phụ trách: '+(ten||'(để trống)')
+    +'\n\nSau khi chuyển, app tự gộp với khách Lẻ "'+le.name+'" ('+le.leadId+') vì cùng SĐT.'))return;
+  rptSlTrungXong(el,async()=>{const k=await rptSlChuyenLoai(si,ten,'Lẻ');if(ten)await rptSlSaveManual(si.leadId,{si_sale:ten});rptSlBaoChuyen([k],'Lẻ');});
+}
+function rptSlTrungChonSale(i,el){
+  const x=((window._rptSlTrungSdt||{}).B||[])[i];if(!x)return;
+  const ten=String((document.getElementById('trungSale'+i)||{}).value||'').trim();
+  if(!ten)return alert('Chọn 1 Sale cho khách');
+  if(rptSlCanChuyen(ten)&&!rptSlHoiChuyen(ten,1,x.r.name))return;
+  rptSlTrungXong(el,async()=>{
+    const ids=rptSlIdsCua(x.r).filter(id=>id===x.r.leadId||rptSlSaleGanTay(id)!==null);
+    for(const id of ids)await rptSlSaveManual(id,{si_sale:ten});
+    logAct('U','saleretail_manual',x.r.leadId,x.r.name,'Sale phụ trách (trùng SĐT)',x.sale.join(' / '),ten);
+    if(rptSlCanChuyen(ten))rptSlBaoChuyen([await rptSlChuyenLoai(x.r,ten)],rptSlDoiCuaSale(ten));});
+}
+function rptSlTrungDung(i,el){
+  const x=((window._rptSlTrungSdt||{}).C||[])[i];if(!x)return;
+  rptSlTrungXong(el,async()=>{await rptSlTrungGhiOk([x.r.leadId],x.ten.map(y=>y.id));
+    logAct('U','saleretail_manual',x.r.leadId,x.r.name,'Trùng SĐT khác tên','','đúng 1 người: '+x.ten.map(y=>y.id).join(', '));});
+}
+function rptSlTrungTach(i,id,el){
+  const x=((window._rptSlTrungSdt||{}).C||[])[i];if(!x)return;
+  const y=x.ten.find(z=>z.id===id)||{ten:id};
+  if(!confirm('Tách "'+y.ten+'" ('+id+') ra khách riêng, KHÔNG gộp với "'+x.r.name+'" nữa dù cùng SĐT?'))return;
+  const khac=rptSlIdsCua(x.r).filter(z=>z!==id);
+  rptSlTrungXong(el,async()=>{
+    const ghi=async(dong,them)=>{const cu=String((rptSlManual[dong]||{}).khac_nguoi||'').split(',').map(z=>z.trim()).filter(Boolean);
+      await rptSlSaveManual(dong,{khac_nguoi:[...new Set(cu.concat(them))].join(',')});};
+    await ghi(id,khac);await ghi(x.r.leadId,[id]);
+    logAct('U','saleretail_manual',id,y.ten,'Tách khách (trùng SĐT)','gộp vào '+x.r.leadId,'khách riêng');});
 }
 // ── NGHI TRÙNG KHÁCH + HỢP NHẤT TAY (anh Hải chốt 25/9/2026, chị Sale đề xuất) ─────────────────────────
 // Gộp tự động (Mã KH -> SĐT đầu -> tên) vẫn sót khách trùng: chung SĐT phụ, tên có danh xưng ("KL C Hiền"
@@ -9495,6 +9626,7 @@ function rptSlInputHtml(){
         +'<button onclick="rptSlThuLai('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" style="border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 11px;cursor:pointer;font-size:11px;font-weight:700">Thử lại</button>'
         +'<button onclick="rptSlBoQuaLoi('+String.fromCharCode(39)+r.leadId+String.fromCharCode(39)+')" class="btn-ghost" style="margin-left:5px;padding:4px 10px;font-size:11px">Đã xử lý tay</button></td></tr>';}).join(''));
   window._rptSlTrungAll=b.all;
+  b.trungSdt=rptSlTrungSdt(b.all);
   const nghi=rptSlNghiTrung(b.all);   // việc KIỂM TRA, không cộng vào tổng việc cần làm
   // QUY TẮC MÀU (anh Hải 25/9/2026, áp luôn về sau): mục ĐỎ và VÀNG = việc cần làm, tính vào tổng;
   // mục màu khác (xanh) chỉ là ghi thêm cho đủ hồ sơ, không tính. Thêm mục mới thì chọn màu theo đúng quy tắc
@@ -9523,6 +9655,7 @@ function rptSlInputHtml(){
       return loc+rptSlInputSec('sGiao','','Việc được giao'+(chon.length?' · '+chon.join(', '):''),'ghi 1 lượt chăm sóc mới là xong việc · việc xong chuyển sang tab Đã hoàn thành',vg.length+(dashToanQuyenXem()?vx.length:0),'var(--red)',rptSlViecGiaoHtml(vg,dashToanQuyenXem()?vx:[]),true);
     })()}
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
+    ${rptSlInputSec('sTrungSdt','','Trùng SĐT','chuyển / giữ riêng khách Sỉ – Lẻ · chốt 1 Sale · tách dòng gộp nhầm',rptSlTrungSdtDem(b.trungSdt),'var(--red)',rptSlTrungSdtHtml(b.trungSdt),true)}
     ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}
     ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
     ${rptSlInputSec('sLoi','','Lỗi hệ thống — cần báo người tạo app kiểm tra','số liệu trong app vẫn đúng, chỉ chưa đẩy được sang Pancake',b.loiHT.length,'var(--red)',sLoi,true)}
