@@ -5813,7 +5813,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/10 09:56';
+const APP_VERSION='13/10 09:58';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
 const APP_BAN=467;
@@ -8849,13 +8849,14 @@ function rptSlTrungSdtHtml(t){
   const bang=(cot,dong)=>'<div class="tbl-scroll"><table style="width:100%"><thead><tr>'+cot.map(c=>'<th>'+c+'</th>').join('')+'</tr></thead><tbody>'+dong+'</tbody></table></div>';
   const loai=rptSlType(),kiaL=loai==='Sỉ'?'Lẻ':'Sỉ';
   const khach=(r,moDuoc)=>(moDuoc?mo(r):'<b>'+e(r.name)+'</b>')+phu(ma(r)+' · tạo '+(dmy(r.created)||'—'));
+  const khachTien=(r,moDuoc)=>khach(r,moDuoc)+phu(tien(r)?'<span style="color:var(--green);font-weight:800">'+vnd(tien(r))+'</span>':'chưa có doanh thu');
   const A=t.A.length?tieuDe('var(--red)','Cùng SĐT, 1 khách bên Sỉ – 1 khách bên Lẻ',t.A.length)+bang(
-      ['SĐT','Khách bên '+loai,'Sale','Khách bên '+kiaL,'Sale','Doanh thu '+kiaL,''],
+      ['SĐT','Khách bên '+loai,'Sale','Khách bên '+kiaL,'Sale',''],
       t.A.map((x,i)=>'<tr><td style="white-space:nowrap;font-weight:700">'+e(x.so.replace(/(\d{3})(\d{3})(\d{3})/,'0$1 $2 $3'))+'</td>'
-        +'<td>'+khach(x.r,true)+'</td><td style="font-size:11.5px">'+e(x.r.staff||'—')+'</td>'
-        +'<td>'+khach(x.o,false)+'</td><td style="font-size:11.5px">'+e(x.o.staff||'—')+'</td>'
-        +'<td class="num">'+(tien(x.o)?vnd(tien(x.o)):'—')+'</td>'
-        +'<td style="white-space:nowrap;text-align:right">'+nut('rptSlTrungChuyen',i,'Chuyển Sỉ → Lẻ','var(--accent)')+nut('rptSlTrungGiu',i,'Giữ riêng')+'</td></tr>').join('')):'';
+        +'<td>'+khachTien(x.r,true)+'</td><td style="font-size:11.5px">'+e(x.r.staff||'—')+'</td>'
+        +'<td>'+khachTien(x.o,false)+'</td><td style="font-size:11.5px">'+e(x.o.staff||'—')+'</td>'
+        // 2 CHIỀU (anh Hải 13/10/2026: "không có Lẻ sang Sỉ à, 1 chiều thế")
+        +'<td style="white-space:nowrap;text-align:right">'+nut('rptSlTrungChuyen',i,'Sỉ → Lẻ','var(--accent)')+nut('rptSlTrungChuyenSi',i,'Lẻ → Sỉ','#7c3aed')+nut('rptSlTrungGiu',i,'Giữ riêng')+'</td></tr>').join('')):'';
   const B=t.B.length?tieuDe('var(--red)','Đã gộp 1 khách nhưng đang gán nhiều Sale',t.B.length)+bang(['Khách','Các Sale đang gán','Chọn Sale',''],
       t.B.map((x,i)=>'<tr><td>'+khach(x.r,true)+'</td><td style="font-size:11.5px">'+x.sale.map(e).join('<br>')+'</td>'
         +'<td><select id="trungSale'+i+'" style="height:28px;padding:2px 8px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:700;font-family:var(--font)">'+rptSlSaleOptsHtml(x.r.staff)+'</select></td>'
@@ -8892,6 +8893,16 @@ function rptSlTrungChuyen(i,el){
   if(!confirm('Chuyển khách Sỉ "'+si.name+'" ('+si.leadId+') sang Lẻ?\n\n• đổi thẻ Pancake KH SỈ → KH LẺ\n• lịch sử chăm sóc, việc đang giao chuyển theo\n• Sale phụ trách: '+(ten||'(để trống)')
     +'\n\nSau khi chuyển, app tự gộp với khách Lẻ "'+le.name+'" ('+le.leadId+') vì cùng SĐT.'))return;
   rptSlTrungXong(el,async()=>{const k=await rptSlChuyenLoai(si,ten,'Lẻ');if(ten)await rptSlSaveManual(si.leadId,{si_sale:ten});rptSlBaoChuyen([k],'Lẻ');});
+}
+// LẺ -> SỈ (13/10/2026): chuyển khách bên Lẻ sang Sỉ, cùng cơ chế rptSlChuyenLoai (thẻ Pancake KH LẺ -> KH SỈ, dòng nhập tay
+// sale_type, lịch sử chăm sóc, việc đang giao). Sale: lấy Sale bên Sỉ nếu có trong Nhân sự, không thì giữ Sale bên Lẻ.
+function rptSlTrungChuyenSi(i,el){
+  const x=((window._rptSlTrungSdt||{}).A||[])[i];if(!x)return;
+  const le=rptSlType()==='Lẻ'?x.r:x.o,si=rptSlType()==='Lẻ'?x.o:x.r;
+  const ten=rptSlSaleCuaDoi().includes(String(si.staff||'').trim())?String(si.staff).trim():String(le.staff||'').trim();
+  if(!confirm('Chuyển khách Lẻ "'+le.name+'" ('+(le.kh||le.leadId)+') sang Sỉ?\n\n• đổi thẻ Pancake KH LẺ → KH SỈ, dòng nhập tay sang Sỉ\n• lịch sử chăm sóc, việc đang giao chuyển theo\n• Sale phụ trách: '+(ten||'(để trống)')
+    +'\n\nSau khi chuyển, app tự gộp với khách Sỉ "'+si.name+'" ('+si.leadId+') vì cùng SĐT.'))return;
+  rptSlTrungXong(el,async()=>{const k=await rptSlChuyenLoai(le,ten,'Sỉ');if(ten)await rptSlSaveManual(le.leadId,{si_sale:ten});rptSlBaoChuyen([k],'Sỉ');});
 }
 function rptSlTrungChonSale(i,el){
   const x=((window._rptSlTrungSdt||{}).B||[])[i];if(!x)return;
@@ -9705,7 +9716,7 @@ function rptSlInputHtml(){
       return loc+rptSlInputSec('sGiao','','Việc được giao'+(chon.length?' · '+chon.join(', '):''),'ghi 1 lượt chăm sóc mới là xong việc · việc xong chuyển sang tab Đã hoàn thành',vg.length+(dashToanQuyenXem()?vx.length:0),'var(--red)',rptSlViecGiaoHtml(vg,dashToanQuyenXem()?vx:[]),true);
     })()}
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
-    ${rptSlInputSec('sTrungSdt','','Trùng SĐT Sỉ – Lẻ','cùng 1 SĐT nhưng 1 khách bên Sỉ, 1 khách bên Lẻ — chuyển sang Lẻ hoặc giữ riêng',rptSlTrungSdtDem(b.trungSdt),'var(--red)',rptSlTrungSdtHtml(b.trungSdt),true)}
+    ${rptSlInputSec('sTrungSdt','','Trùng SĐT Sỉ – Lẻ','cùng 1 SĐT nhưng 1 khách bên Sỉ, 1 khách bên Lẻ — chuyển 1 bên sang bên kia hoặc giữ riêng',rptSlTrungSdtDem(b.trungSdt),'var(--red)',rptSlTrungSdtHtml(b.trungSdt),true)}
     ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}
     ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
     ${rptSlInputSec('sLoi','','Lỗi hệ thống — cần báo người tạo app kiểm tra','số liệu trong app vẫn đúng, chỉ chưa đẩy được sang Pancake',b.loiHT.length,'var(--red)',sLoi,true)}
