@@ -13,6 +13,12 @@ on:
         type: boolean
         default: false
 
+# KHÔNG cho 2 lượt chạy chồng (13/10/2026): job tự tạo (data nhập tay, Chốt đơn Sỉ, đơn Pancake từ hội thoại) đọc "chưa có" rồi mới tạo
+# -> 2 lượt cùng lúc là tạo TRÙNG. Lượt mới xếp hàng chờ lượt đang chạy xong (không huỷ lượt đang chạy).
+concurrency:
+  group: sync-datahub
+  cancel-in-progress: false
+
 jobs:
   sync:
     runs-on: ubuntu-latest

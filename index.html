@@ -1045,6 +1045,19 @@ async function sbInsert(table,row){
   const data=await res.json();
   return data[0];
 }
+// CHỐNG BẤM LƯU NHIỀU LẦN (anh Hải 13/10/2026: "lỗi này nghiêm trọng"). Sale bấm Lưu 2-3 lần trong lúc app còn đang ghi
+// -> mỗi lần bấm thêm 1 dòng (Kim Oanh 6-9/10: 10 lượt chăm sóc trùng). MỌI nút TẠO DÒNG MỚI đi qua motLan():
+// đang chạy thì bỏ qua lần bấm sau + khoá nút tới khi xong. CSDL còn lớp chặn thứ 2 (trigger chan_trung,
+// supabase-schema-chan-trung.sql): dòng giống hệt vừa ghi trong 2 phút -> bỏ qua. Thêm nút tạo dòng mới thì bọc motLan.
+const _dangLuu=new Set();
+function nutDangBam(){const t=window.event&&window.event.target;return t&&t.closest?t.closest('button'):null;}
+async function motLan(khoa,nut,fn){
+  if(_dangLuu.has(khoa))return;
+  _dangLuu.add(khoa);const chu=nut?nut.textContent:'';
+  if(nut){nut.disabled=true;nut.textContent='Đang lưu…';}
+  try{return await fn();}
+  finally{_dangLuu.delete(khoa);if(nut&&nut.isConnected){nut.disabled=false;nut.textContent=chu;}}
+}
 // Hiển thị ngày kiểu Việt Nam: 2026-09-17 -> 17/09/2026. Chỉ đổi lúc hiện, dữ liệu vẫn lưu ISO.
 // CĂN LỀ BẢNG: tiêu đề cột phải cùng phía với dữ liệu bên dưới (cột số -> căn phải).
 // Làm ở một chỗ cho mọi bảng thay vì gắn class thủ công ở từng chỗ dựng HTML, để bảng mới cũng tự đúng.
@@ -1969,11 +1982,12 @@ function qcOnlChotShow(idx){const d=(window._onlChotLists||{})[idx];if(d)dataMod
 function qcCloseModal(){const m=document.getElementById('qcModal');if(m)m.innerHTML='';}
 // Mở hồ sơ khách của loại KHÁC loại đang xem (popup báo cáo MKT trộn Lẻ + Sỉ), CHỈ tab Thông tin, không Sửa / Xoá
 // (anh Hải 06/10/2026). Đổi tạm loại để dựng đúng Master rồi trả lại như cũ.
-function rptMoKhachLoai(loai,key){
+// boPhamVi: bỏ phạm vi xem (CHỈ dùng ở mục Trùng SĐT Sỉ – Lẻ: Sale được xem Thông tin khách bên kia để biết trùng ai)
+function rptMoKhachLoai(loai,key,boPhamVi){
   const cu=window._rptSlType,cuMod=window._rptSlMod;
-  try{window._rptSlType=loai;window._rptSlMod=null;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==='function')rptSlXoaCache();
+  try{window._rptSlType=loai;window._rptSlMod=null;window._kiotOrdByCode=null;window._rptSlBoPhamVi=!!boPhamVi;if(typeof rptSlXoaCache==='function')rptSlXoaCache();
     window._rptSlChiInfo=true;window._rptSlCusKey=null;window._rptSlCusTab='info';rptSlShowCustomer(key);}
-  finally{window._rptSlChiInfo=false;window._rptSlType=cu;window._rptSlMod=cuMod;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==='function')rptSlXoaCache();}
+  finally{window._rptSlBoPhamVi=false;window._rptSlChiInfo=false;window._rptSlType=cu;window._rptSlMod=cuMod;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==='function')rptSlXoaCache();}
 }
 // Modal danh sách tổng quát {title,cols,rows}
 function dataModal(d){
@@ -2710,7 +2724,8 @@ function dhManualBrand(kenh,loai){
   if(/nến bơ|nen bo|tự tại|tu tai/.test(k))return'TTV';
   return (loai||(typeof dhManualType==='function'?dhManualType():''))==='Sỉ'?'Shidai':null;
 }
-async function dhManualAdd(){
+function dhManualAdd(...a){return motLan('dhManualAdd',nutDangBam(),()=>dhManualAdd_(...a));}
+async function dhManualAdd_(){
   const g=id=>(document.getElementById(id)||{}).value||'';
   const msg=document.getElementById('dhmMsg');
   const kenh=g('dhmKenh').trim();
@@ -3251,7 +3266,8 @@ function dhNhanSuThemForm(){
    +'<div id="nsMsg" style="font-size:12px;font-weight:700;color:var(--red)"></div>'
    +'<button onclick="dhNhanSuThem()" class="refresh-btn" style="padding:9px">Thêm</button></div></div></div>';
 }
-async function dhNhanSuThem(){
+function dhNhanSuThem(...a){return motLan('nsThem',nutDangBam(),()=>dhNhanSuThem_(...a));}
+async function dhNhanSuThem_(){
   const ten=(document.getElementById('nsTen')||{}).value||'';
   const doi=(document.getElementById('nsDoi')||{}).value==='Sỉ'?'Sỉ':'Lẻ';   // chia lại 2 đội (07/10/2026)
   const msg=document.getElementById('nsMsg');
@@ -5154,7 +5170,8 @@ async function dmGhi(url,method,body){
   const r=await fetch(SUPABASE_URL+'/rest/v1/'+url,{method,headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:body?JSON.stringify(body):undefined});
   if(!r.ok)throw new Error('lỗi '+r.status+' '+(await r.text()).slice(0,120));
 }
-async function dmThem(v){
+function dmThem(...a){return motLan('dmThem',nutDangBam(),()=>dmThem_(...a));}
+async function dmThem_(v){
   const loai=window._dmLoai;v=String(v||'').replace(/\s+/g,' ').trim();if(!v)return;
   const ds=dmDs(loai);
   if(ds.some(x=>x.gia_tri.toLowerCase()===v.toLowerCase()))return dmBao('Đã có "'+v+'"');
@@ -5359,7 +5376,8 @@ function rptSiThemKhachForm(){
    +'<button onclick="rptSiThemKhach()" class="refresh-btn" style="margin-left:auto;padding:8px 22px">Thêm khách</button></div>'
    +'</div></div>';
 }
-async function rptSiThemKhach(){
+function rptSiThemKhach(...a){return motLan('themKhach',nutDangBam(),()=>rptSiThemKhach_(...a));}
+async function rptSiThemKhach_(){
   const g=x=>String((document.getElementById(x)||{}).value||'').trim();
   const msg=document.getElementById('siT_msg');
   const ten=g('siT_ten');
@@ -5389,7 +5407,7 @@ async function rptSiThemKhach(){
       customer_name:ten,phone:g('siT_sdt')||null,staff_name:g('siT_sale')||null,
       kiot_code:ma||null,status:g('siT_phanloai')||null,note:g('siT_ghichu')||'Thêm tay ở Master '+T,
       created_by:logWho()});
-    if(!ins||!ins.id)throw new Error('không tạo được dòng khách');
+    if(!ins||!ins.id)throw new Error('không tạo được dòng khách (khách này có thể vừa được tạo rồi — tải lại trang để xem)');
     const leadId='M-'+String(ins.id).padStart(4,'0');
     const hoSo={si_nguoi_dai_dien:g('siT_nguoi')||null,si_sdt:g('siT_sdt')||null,
       si_dia_chi:g('siT_diachi')||null,si_mo_hinh:g('siT_mohinh')||null,si_dien_tich:g('siT_dientich')||null,
@@ -5814,10 +5832,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/10 14:17';
+const APP_VERSION='13/10 15:03';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=477;
+const APP_BAN=478;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8272,7 +8290,8 @@ function rptSlCsTabHtml(r){
       +'<th></th></tr></thead>'
     +'<tbody>'+(tr||'<tr><td colspan="5" style="padding:26px;text-align:center;color:var(--muted);font-size:12.5px">Chưa có lượt chăm sóc nào</td></tr>')+'</tbody></table>';
 }
-async function rptSlCsLuu(){
+function rptSlCsLuu(...a){return motLan('csLuu',nutDangBam(),()=>rptSlCsLuu_(...a));}
+async function rptSlCsLuu_(){
   const r=rptSlBuildMaster().find(x=>x.key===window._rptSlCusKey);if(!r)return;
   const g=x=>{const el=document.getElementById(x);return el?String(el.value||'').trim():'';};
   const msg=document.getElementById('csMsg');
@@ -8536,7 +8555,8 @@ function dhOrderStatusLabel(v){return DH_ORDER_STATUS[String(v)]||('mã '+v);}
 // rồi mới gọi Pancake ở nền. Xong thì vá thẳng vào dữ liệu đang giữ trong bộ nhớ (khỏi tải lại 2.5k đơn).
 // Hỏng thì trả dòng về bảng và báo, nên không sợ mất việc.
 const RPT_SL_DANG_LUU=new Set();
-async function rptSlSaveKH(leadId,val,el,chotLuon){
+function rptSlSaveKH(...a){return motLan('maKH:'+a[0],(a[2]?nutDangBam():null),()=>rptSlSaveKH_(...a));}
+async function rptSlSaveKH_(leadId,val,el,chotLuon){
   const ma=String(val||'').trim();
   if(!ma){if(el)el.focus();return;}
   const tat=rptSlBuildMaster();
@@ -8860,11 +8880,15 @@ function rptSlTrungSdt(all){
   return kq;
 }
 function rptSlTrungSdtDem(t){return t.A.length+t.B.length+t.C.length;}
-// mở hồ sơ khách BÊN KIA (Sỉ <-> Lẻ) chỉ xem Thông tin; khách ngoài phạm vi xem của tài khoản thì báo rõ thay vì im lặng
-function rptSlMoKhachKia(loai,key){
-  rptMoKhachLoai(loai,key);
-  const m=document.getElementById('qcModal');
-  if(!m||m.innerHTML.indexOf(key)<0&&!/Thông tin khách hàng/.test(m.innerHTML))alert('Khách bên '+loai+' này nằm ngoài phạm vi xem của tài khoản — nhờ Admin xem giúp.');
+// mở hồ sơ khách BÊN KIA (Sỉ <-> Lẻ), chỉ tab Thông tin, MỌI tài khoản kể cả Sale (anh Hải 13/10/2026: "mở cả cho sale trong phần bảng này").
+// Nạp mặt hàng Kiot TRƯỚC rồi mới mở: để rptSlShowCustomer tự nạp thì nó mở lại hồ sơ sau khi đã trả loại / phạm vi
+// về như cũ -> không thấy khách. (13/10 bản đầu kiểm hồ sơ ngay sau khi gọi -> hồ sơ chưa kịp hiện -> báo nhầm "ngoài phạm vi" cả với Admin.)
+async function rptSlMoKhachKia(loai,key){
+  const r=rptSlMasterLoaiKia(true,loai).find(x=>x.key===key);
+  if(!r)return alert('Không tìm thấy khách bên '+loai+' — tải lại trang rồi thử lại.');
+  const ma=(r.kiotCusts||[]).map(c=>c.code).filter(c=>c&&!_kiotItemsDaTai[c]);
+  if(ma.length){try{await Promise.all(ma.map(kiotLoadItems));}catch(e){console.warn('[Trùng SĐT] chưa nạp được mặt hàng:',e.message);}}
+  rptMoKhachLoai(loai,key,true);
 }
 function rptSlTrungSdtHtml(t){
   window._rptSlTrungSdt=t;

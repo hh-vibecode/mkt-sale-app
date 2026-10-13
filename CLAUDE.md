@@ -27,6 +27,8 @@ Phiên chạy trên cloud và phiên trên máy KHÔNG đọc được hội tho
 - **Đẩy bản mới lên `main` xong: đợi GitHub Pages deploy xong (trang live hiện đúng `APP_VERSION` mới) rồi BÁO ANH F5** (anh chốt 30/9).
 - Đổi logic báo cáo: so code cũ / mới trên CÙNG dữ liệu: `git show <commit-cũ>:index.html > cu.html` rồi `node scripts/kiem-so-lieu.js --so-code cu.html` (workflow `moc-so-lieu.yml` tự chạy khi đẩy index.html; mốc JSON không dùng từ 2/10). Đổi số CÓ CHỦ ĐÍCH: ghi lý do vào sổ + chữ `[doi-so]` trong commit.
 - Đọc bảng Supabase PHẢI phân trang (`limit/offset` hoặc `sbAll`) — `scripts/check-pagination.js` chạy trong CI sẽ chặn.
+- **Chống ghi trùng** (anh chốt 13/10/2026, "lỗi nghiêm trọng"): nút nào TẠO DÒNG MỚI phải bọc `motLan(khoá, nutDangBam(), fn)` (khoá nút tới khi ghi xong);
+  CSDL có trigger `chan_trung` trên `salesi_crm` / `datahub_manual` (dòng y hệt trong 2 phút -> bỏ qua); workflow có job tự tạo phải có `concurrency`.
 - Job nặng: chỉ chạy khi dữ liệu đổi (`scripts/lib/gianh-moc.js` → `gianhKhiDoi`, hàm CSDL `job_dau_van`) hoặc theo khung giờ;
   ghi hàng loạt dùng `return=minimal` / gộp 1 lệnh. (Egress đã từng vượt quota gói free, 29/9/2026 anh mua Pro.)
 - Thao tác ra ngoài khó gỡ (tạo / sửa / xoá đơn Pancake hàng loạt, gửi tin khách): chạy thử `KHO=1`, báo số trước.
