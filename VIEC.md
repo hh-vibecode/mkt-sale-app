@@ -17,6 +17,8 @@
 |---|---|---|
 | 1 | **Kéo full hoá đơn Kiot về hub** — 23/09 anh bảo **TẠM ĐỂ ĐÓ**, khi nào cần thì làm. Xem mục 6 bên dưới trước khi bắt tay | khi nào cần thì anh gọi |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 08/10 anh: CHƯA CẦN. 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
+| 13 | **Lượt chăm sóc lưu trùng** (Sale bấm Lưu 2–3 lần): 13/10 đếm ~109 nhóm / 134 dòng thừa (cùng khách, ngày, nội dung, người, phân loại, lưu cách nhau < 10 phút) -> thổi phồng số lượt chăm sóc. Đề xuất: khoá nút Lưu khi đang gửi + xoá dòng trùng y hệt (chạy thử trước) | anh duyệt thì làm |
+| 14 | M-0020 (KH007407) gộp với L-HT-0011 theo Mã KH, chưa rõ mã của M-0020 do ai điền — 13/10 anh: "t xử lý" | anh tự xử |
 | 12 | M-0197 (Sỉ "Ngoquoc Duy") và M-0021 (Lẻ "KL ANH DUY") chung SĐT …349764439 — KHÔNG gộp vì khác Lẻ/Sỉ | chỉ để anh biết |
 
 ## 2. CLAUDE ĐANG NỢ (tự làm, không cần hỏi)
