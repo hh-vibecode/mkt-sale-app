@@ -37,7 +37,7 @@
 **Đã soi xong 23/09:** không lệch đơn nào. API Kiot trả đủ 3.029 đơn, DB cũng 3.029, đối chiếu từng mã khớp tuyệt đối. Con số 3.076 là metadata `total` của Kiot (gồm cả đơn đã xoá), không phải số đơn thật — lần sau đừng lấy `total` làm chuẩn.
 
 ## 3. QUY TẮC ĐÃ CHỐT (đừng hỏi lại)
-- **TRÙNG SĐT** (anh chốt 13/10, ai cũng xử được): mục "Trùng SĐT" ở tab Nhập Liệu (đỏ, tính vào việc cần làm): A. cùng SĐT 1 bên Sỉ 1 bên Lẻ -> Chuyển khách Sỉ sang Lẻ (`rptSlChuyenLoai` ép đích Lẻ) / Giữ riêng; B. đã gộp mà các dòng gán Sale khác nhau -> chọn 1 Sale; C. đã gộp theo SĐT mà khác tên -> Đúng 1 người / Tách dòng (khac_nguoi). Ca đã soát lưu `saleretail_manual.trung_ok`. **Trong mục Trùng SĐT (và CHỈ ở đó)** Sale thấy cả khách bên kia ngoài phạm vi xem (anh chốt 13/10) — `rptSlMasterLoaiKia(true)` bật cờ `_rptSlBoPhamVi` lúc dựng; form Thêm khách gặp SĐT của khách ngoài phạm vi thì chỉ báo chung, không lộ tên. Form Thêm khách: SĐT đã có (cả Sỉ lẫn Lẻ, cả khách đã gỡ) thì KHÔNG tạo, báo khách đó + nút mở hồ sơ.
+- **TRÙNG SĐT** (anh chốt lại 13/10, nhiều lượt): (1) VẪN TỰ GỘP theo SĐT trong cùng loại (Sỉ / Lẻ), KHÔNG báo lại ở Nhập Liệu; dòng CHÍNH = khách TẠO TRƯỚC, ô trống lấy bổ sung từ dòng gộp vào; hồ sơ khách có bảng **Lịch sử gộp** (mỗi dòng đã gộp + gộp vì: cùng Mã KH / trùng SĐT / trùng tên / Sale hợp nhất tay). (2) Chỉ báo ca **cùng SĐT 1 bên Sỉ 1 bên Lẻ**: mục "Trùng SĐT Sỉ – Lẻ" ở Daily Task (đỏ, tính việc cần làm) với nút Chuyển Sỉ → Lẻ (`rptSlChuyenLoai` ép đích Lẻ) / Giữ riêng (lưu `saleretail_manual.trung_ok`); ai cũng bấm được; trong mục này Sale thấy cả khách bên kia ngoài phạm vi (`rptSlMasterLoaiKia(true)`, cờ `_rptSlBoPhamVi`). (3) Master / CRM gắn thẻ đỏ **Trùng Sỉ/Lẻ** cạnh tên, bấm sang mục đó. (4) Form Thêm khách: SĐT đã có thì không tạo, báo khách đó (ngoài phạm vi thì báo chung).
 - **TÌM KHÁCH** (anh chốt 13/10, thay luật 25/9 "tìm trong bộ lọc"): SĐT nào còn trong app đều phải tìm ra. Ô tìm Master / CRM tìm trên TOÀN BỘ khách tài khoản được xem, bỏ qua bộ lọc ngày / Sale / trạng thái; dò mọi tên + mọi SĐT của các dòng đã gộp (đơn Pancake, nhập tay, khách Kiot), SĐT so bỏ 0 / 84 đầu (`rptSlTimKhop`). Khớp khách đã gỡ thì báo kèm chỗ khôi phục.
 - **CÁCH CHIA DASHBOARD** (12/10/2026): bấm 1 ô để chia -> ra các Ô DASHBOARD NHỎ (vd Online / Offline) -> bấm ô nhỏ mới ra DANH SÁCH chi tiết. Không đổ thẳng ra bảng số.
 - **Tự gắn Mã KH** (12/10/2026) khi chắc chắn (SĐT khớp đúng 1 khách Kiot, mã chưa thuộc ai, có đơn từ lúc nhắn, đúng Lẻ/Sỉ); ca không chắc mới để Daily Task. **Không còn bước Xác nhận (12/10): việc xong sang tab Đã hoàn thành, admin Trả lại được.**
@@ -128,6 +128,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **13/10** — Anh đổi ý trong lúc làm: thử TẮT tự gộp SĐT (Sỉ 2026: 869 → 1.030 khách, 191 nhóm nghi trùng; doanh thu không đổi) rồi anh bảo "thôi tự gộp đi" -> GIỮ tự gộp, không đẩy bản tắt. Làm theo luật TRÙNG SĐT mục 3: Lịch sử gộp trong hồ sơ, Nhập Liệu chỉ còn ca Sỉ/Lẻ (20 cặp), thẻ đỏ ở Master/CRM; giao diện mục trùng đổi sang bảng. Kiểm: 0 khách có dòng gộp tạo trước dòng chính. Mốc `kiem-so-lieu` đang cũ (lệch >30% do luật các phiên 02–12/10 chưa chốt mốc) — CHƯA chốt lại, cần phiên sau soát rồi `--luu`.
 
 - **13/10** — Mục Trùng SĐT: Sale thấy được khách bên kia ngoài phạm vi (chỉ trong mục này). Giả lập: Khánh Nguyên / Chị Oanh (Sỉ) thấy 20 cặp Sỉ–Lẻ (trước 0), Vân Ngọc (Lẻ) 1 cặp; Master mọi tài khoản không đổi số khách.
 

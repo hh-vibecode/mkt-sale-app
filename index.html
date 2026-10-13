@@ -4611,6 +4611,25 @@ function rptSlChatUrl(r){
   if(!r||!r.convId)return'';
   return 'https://pancake.vn/'+(r.pageId||String(r.convId).split('_')[0])+'?c_id='+encodeURIComponent(r.convId);
 }
+// LỊCH SỬ GỘP trong hồ sơ khách (anh Hải 13/10/2026), trình bày như Lịch sử phát sinh: mỗi dòng dữ liệu đã gộp vào khách này
+// (ngày tạo · tên · Lead ID · kênh · SĐT · Sale lúc đó · gộp vì gì). Dòng đầu là dòng CHÍNH (khách tạo trước).
+function rptSlLichSuGopHtml(r){
+  const ds=(r.nguonLienHe||[]);if(ds.length<2)return '';
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const td='padding:7px 12px;font-size:12px;';
+  const chinh=ds.find(x=>x.leadId===r.leadId)||ds.find(x=>!x.lyDo)||ds[0];
+  const dong=[chinh].concat(ds.filter(x=>x!==chinh).sort((a,b)=>String(b.ngay).localeCompare(String(a.ngay))));
+  return '<div style="padding:14px 20px 4px;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Lịch sử gộp · '+ds.length+' dòng dữ liệu</div>'
+    +'<table style="width:100%;border-collapse:collapse"><tbody>'+dong.map(x=>{const la=x===chinh;
+      return '<tr style="border-bottom:1px solid var(--border)">'
+        +'<td style="'+td+'color:var(--text2);white-space:nowrap">'+(dmy(x.ngay)||'—')+'</td>'
+        +'<td style="'+td+'font-weight:700">'+e(x.ten||'—')+'<div style="font-size:10.5px;color:var(--muted);font-weight:700">'+e(x.leadId)+'</div></td>'
+        +'<td style="'+td+'font-size:11.5px">'+e(x.kenh||'—')+'</td>'
+        +'<td style="'+td+'font-size:11.5px;white-space:nowrap">'+e((x.sdt||[]).join(', ')||'—')+'</td>'
+        +'<td style="'+td+'font-size:11.5px">'+e(x.sale||'—')+'</td>'
+        +'<td style="'+td+'font-size:11px;font-weight:800;white-space:nowrap;text-align:right;color:'+(la?'var(--green)':'var(--accent)')+'">'+(la?'Dòng chính (tạo trước)':'Gộp vì '+e(String(x.lyDo||'trùng').toLowerCase()))+'</td></tr>';}).join('')
+    +'</tbody></table>';
+}
 // Mã gắn NGAY DƯỚI TÊN KHÁCH cho gọn bảng: đã có Mã KH Kiot thì hiện Mã KH (bấm mở sang Kiot),
 // chưa có thì hiện Lead ID do app sinh. Popup chi tiết vẫn giữ ĐỦ cả Lead ID lẫn Mã KH.
 // Gom các dòng CÙNG 1 lần liên hệ (lead Pancake + dòng nhập tay chép từ sheet: cùng ngày, cùng SĐT) thành 1 nguồn.
@@ -4648,11 +4667,26 @@ function rptSlSdtDuoiTen(r){
   if(!(r.phones||[]).length)return '';
   return '<div style="font-size:11px;font-weight:600;color:var(--text2);margin-top:1px;white-space:nowrap">'+rptSlSdtHtml(r)+'</div>';
 }
+// THẺ ĐỎ "Trùng Sỉ/Lẻ" cạnh tên khách (anh Hải 13/10/2026): bấm -> sang Daily Task (Nhập Liệu), mở mục Trùng SĐT để xử lý.
+// Tập khách trùng dựng 1 lần lúc vẽ Master / CRM (rptSlTrungKeysDung), các bảng khác dùng lại.
+function rptSlTrungKeysDung(all){
+  try{const t=rptSlTrungSdt(all);window._rptSlTrungKeys={T:rptSlType(),s:new Set(t.A.map(x=>x.r.key))};}catch(e){console.warn('rptSlTrungKeysDung',e);}
+}
+function rptSlTheTrung(r){
+  const k=window._rptSlTrungKeys;if(!k||k.T!==rptSlType()||!k.s.has(r.key))return '';
+  return ' <span onclick="rptSlStop(event);rptSlDiTrung()" title="Cùng SĐT với 1 khách bên '+(rptSlType()==='Sỉ'?'Lẻ':'Sỉ')+' — bấm để xử lý ở Daily Task > Trùng SĐT"'
+    +' style="display:inline-block;margin-left:4px;padding:1px 7px;border-radius:10px;background:var(--red);color:#fff;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap;vertical-align:middle">Trùng Sỉ/Lẻ</span>';
+}
+function rptSlDiTrung(){
+  try{localStorage.setItem('rptSlDtTab_'+rptSlType(),'viec');}catch(e){}
+  qcCloseModal();rptSlSetViewMode('input');
+  setTimeout(()=>{const el=document.querySelector('.tab-page.active [data-sec="sTrungSdt"]')||document.querySelector('[data-sec="sTrungSdt"]');if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},500);
+}
 function rptSlTenKhach(r){
-  const ten=String(r.name||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const ten=String(r.name||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;'),the=rptSlTheTrung(r);   // thẻ đỏ NẰM NGOÀI link chat
   const u=rptSlChatUrl(r);
-  if(!u)return ten;
-  return '<a href="'+u+'" target="_blank" rel="noopener" onclick="rptSlStop(event)" title="Mở hội thoại Pancake với khách này" style="color:inherit;text-decoration:none;border-bottom:1px dashed var(--accent)">'+ten+'</a>';
+  if(!u)return ten+the;
+  return '<a href="'+u+'" target="_blank" rel="noopener" onclick="rptSlStop(event)" title="Mở hội thoại Pancake với khách này" style="color:inherit;text-decoration:none;border-bottom:1px dashed var(--accent)">'+ten+'</a>'+the;
 }
 // NGƯỜI TẠO ĐƠN KIOT KHÔNG CÓ TRONG DANH SÁCH SALE (anh Hải 25/9/2026): vẫn giữ là người phụ trách trên dòng
 // dữ liệu, nhưng hiện chữ "Sale Kiot" -- rê chuột mới ra tên thật (vd Bùi Thị Kim Oanh, Sales Admin lên đơn hộ).
@@ -5783,7 +5817,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/10 09:34';
+const APP_VERSION='13/10 09:50';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
 const APP_BAN=467;
@@ -7043,9 +7077,13 @@ function rptSlBuildMasterRaw(){
       const that=(r.phones||[]).filter(p=>!p.tuKiot).map(p=>p.so);
       if(r.phone&&!r.phoneFromKiot&&!muon.has(rptSlLast9(r.phone)))that.push(r.phone);
       return [...new Set(that.filter(Boolean).map(x=>String(x).trim()))];})(),soDon:(r.orders||[]).length}];
+  // LÝ DO GỘP từng dòng (anh Hải 13/10/2026: "thêm lịch sử gộp cho các data gộp, giống lịch sử mua hàng") -- đặt trước mỗi bước.
+  // Dòng CHÍNH = khách TẠO TRƯỚC (g sắp theo ngày tạo), ô trống của dòng chính lấy từ các dòng gộp vào (đã có từ 24/9).
+  let lyDoGop='';
   const gopNhom=(g,chinh)=>{
     g.sort((a,b)=>String(a.created).localeCompare(String(b.created)));
     const keep=(chinh&&typeof chinh==='object')?chinh:g[0],rest=g.filter(x=>x!==keep);   // forEach truyền số thứ tự vào đây -> chỉ nhận khi đúng là 1 dòng khách
+    rest.forEach(r=>{r.nguonLienHe=nguonCua(r).map(x=>x.lyDo?x:Object.assign({},x,{lyDo:lyDoGop,vao:keep.leadId}));});
     {const co={};keep.nguonLienHe=g.flatMap(nguonCua).filter(x=>co[x.leadId]?false:(co[x.leadId]=true))
       .sort((a,b)=>String(a.ngay).localeCompare(String(b.ngay)));}
     keep.orders=g.flatMap(r=>r.orders).sort((a,b)=>String(a.order_date).localeCompare(String(b.order_date)));
@@ -7081,10 +7119,12 @@ function rptSlBuildMasterRaw(){
     rest.forEach(r=>{r._merged=true;});
   };
   // 1) Mã KH -- khoá chắc nhất, do người xác nhận
+  lyDoGop='Cùng Mã KH';
   nhomTheo(r=>r.kh||'').forEach(gopNhom);
-  // 2) SĐT 9 số cuối -- TRÙNG BẤT KỲ SỐ NÀO LÀ GỘP (anh Hải 28/9/2026: "cứ trùng sđt gộp hết, k cần nghi trùng").
-  //    Trước đây chỉ so số ĐẦU TIÊN của mỗi dòng -> khách 2 số / số nằm ở vị trí 2 rơi xuống mục Nghi trùng.
-  //    Chỉ chừa cặp Sale đã bấm "Khác người" (khac_nguoi).
+  // 2) SĐT 9 số cuối -- TRÙNG BẤT KỲ SỐ NÀO LÀ GỘP (anh Hải 28/9/2026: "cứ trùng sđt gộp hết, k cần nghi trùng"; 13/10 chốt lại
+  //    "thôi tự gộp đi", không báo lại ở Nhập Liệu). Trước đây chỉ so số ĐẦU TIÊN của mỗi dòng -> khách 2 số / số nằm ở vị trí 2 rơi
+  //    xuống mục Nghi trùng. Chỉ chừa cặp Sale đã bấm "Khác người" (khac_nguoi).
+  lyDoGop='Trùng SĐT';
   {
     const song=rows.filter(r=>!r._merged);
     const cha=new Map();song.forEach(r=>cha.set(r,r));
@@ -7102,12 +7142,14 @@ function rptSlBuildMasterRaw(){
   //    Và chỉ khi trong nhóm có TỐI ĐA 1 khách có SĐT (anh Hải 28/9/2026: trùng SĐT mới là 1 người, tên không
   //    tính). 2 khách cùng tên mà mỗi người 1 số khác nhau (vd "Phương Thảo" L-SD-1904 / L-SD-1729) = 2 người.
   //    Vẫn gộp dòng KHÔNG có số vào dòng cùng tên có số (ca Mỹ Hằng L-HT-0394 -> L-CT-0892, anh xác nhận 28/9).
+  lyDoGop='Trùng tên (dòng không có SĐT)';
   nhomTheo(r=>boDau(r.name)).filter(g=>{
     const ma=[...new Set(g.map(r=>r.kh).filter(Boolean))];
     return ma.length<=1&&g.filter(r=>(r.phones||[]).length||r.phone).length<=1;
   }).forEach(gopNhom);
   // 4) GỘP TAY (25/9/2026): Sale bấm Hợp nhất ở Nhập Liệu > Nghi trùng khách -> dòng phụ có gop_vao = Lead ID
   //    dòng chính. Lead ID của 1 dòng lấy từ nguonLienHe (đủ qua mọi bước gộp), không từ mergedFrom.
+  lyDoGop='Sale hợp nhất tay';
   {
     const song=rows.filter(r=>!r._merged);
     const dongCua={};song.forEach(r=>rptSlIdsCua(r).forEach(id=>{dongCua[id]=r;}));
@@ -7970,6 +8012,7 @@ function rptSlMasterHtmlRaw(){
   // bộ lọc") -- khách còn trong app là phải tìm ra. Xem rptSlTimKhop.
   if(q)list=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao).filter(r=>rptSlTimKhop(r,q));
   window._rptSlKeysDangXem=list.map(r=>String(r.leadId||'').replace(/'/g,'')).filter(Boolean);   // cho ô chọn tất cả
+  rptSlTrungKeysDung(rptSlBuildMaster());   // thẻ đỏ Trùng Sỉ/Lẻ cạnh tên (13/10/2026)
   const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   if((window._rptSlMasterPage||1)>totalPages)window._rptSlMasterPage=1;
   const page=window._rptSlMasterPage||1;
@@ -8447,7 +8490,7 @@ function rptSlShowCustomer(key,sua){
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px 18px;padding:16px 20px;border-bottom:1px solid var(--border)">${info}</div>
         ${suaSi?'':`<div style="padding:12px 20px 4px;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Lịch sử phát sinh</div>
         <table style="width:100%;border-collapse:collapse">
-          <tbody>${tlHtml||'<tr><td style="padding:20px;text-align:center;color:var(--muted)">Chưa có phát sinh</td></tr>'}</tbody></table>`}`}
+          <tbody>${tlHtml||'<tr><td style="padding:20px;text-align:center;color:var(--muted)">Chưa có phát sinh</td></tr>'}</tbody></table>${rptSlLichSuGopHtml(r)}`}`}
       </div>
     </div></div>`;
 }
@@ -8782,13 +8825,15 @@ function rptSlTrungSdt(all){
     rptSlSoCuaDong(r).forEach(k=>(theoSo[k]||[]).forEach(o=>{if(daCo.has(o.key))return;daCo.add(o.key);
       if(rptSlIdsCua(o).some(id=>ok.has(id))||rptSlIdsCua(r).some(id=>rptSlTrungOkCua(o).has(id)))return;
       kq.A.push({r,o,so:k});}));});
-  // B, C: trong 1 khách đã gộp
-  all.forEach(r=>{const ids=rptSlIdsCua(r);if(ids.length<2)return;
+  // B, C: BỎ (anh Hải 13/10/2026: "không cần báo lại bên Nhập Liệu khi tự gộp, chỉ báo khách Sỉ – Lẻ trùng nhau") -- giữ code, không chạy
+  if(window._rptSlBaoGopTrongLoai)all.forEach(r=>{const ids=rptSlIdsCua(r);if(ids.length<2)return;
     const sale=[...new Set(ids.map(id=>rptSlSaleGanTay(id)).filter(Boolean))];
     if(sale.length>1){kq.B.push({r,sale});return;}
     const ten=ids.map(id=>({id,ten:(idx.get(id)||{ten:[]}).ten[0]||''})).filter(x=>x.ten);
-    const khac=new Set(ten.map(x=>rptSlChuTen(x.ten).map(rptSlBoDau).join(' ')).filter(Boolean));
-    if(khac.size<2)return;
+    // khác tên = có 2 tên mà tên ngắn KHÔNG nằm trọn trong tên dài (bỏ dấu, bỏ danh xưng: "KB c Nhung - HN" ~ "Trịnh Nhung")
+    const chu=ten.map(x=>rptSlChuTen(x.ten).map(rptSlBoDau)).filter(c=>c.length);
+    const trong=(a,b)=>{const [n,d]=a.length<=b.length?[a,b]:[b,a];return n.every(w=>d.includes(w));};
+    if(!chu.some((a,i)=>chu.some((b,j)=>j>i&&!trong(a,b))))return;
     const ok=rptSlTrungOkCua(r);if(ten.every(x=>ok.has(x.id)))return;
     kq.C.push({r,ten});});
   return kq;
@@ -8796,35 +8841,36 @@ function rptSlTrungSdt(all){
 function rptSlTrungSdtDem(t){return t.A.length+t.B.length+t.C.length;}
 function rptSlTrungSdtHtml(t){
   window._rptSlTrungSdt=t;
+  // BẢNG, mỗi ca 1 dòng (anh Hải 13/10/2026: dạng thẻ "khó nhìn quá")
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const tien=r=>Number(r.revenue||0)+Number(r.repeatRevenue||0),q=String.fromCharCode(39);
-  const nut=(f,i,txt,mau)=>'<button onclick="'+f+'('+i+',this)" style="margin-left:6px;height:28px;padding:0 12px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:800;font-family:var(--font);'
-    +(mau?'border:none;background:'+mau+';color:#fff':'border:1.5px solid var(--border);background:var(--surface);color:var(--text2)')+'">'+txt+'</button>';
-  const the=(r,loai,moDuoc)=>'<div style="flex:1;min-width:240px;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface)'
-    +(moDuoc?';cursor:pointer" onclick="rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+')" title="Mở hồ sơ">':'" title="Khách bên '+loai+' — mở ở báo cáo Sale '+loai+'">')
-    +'<div style="font-size:10.5px;font-weight:800;color:var(--muted)">'+loai+' · tạo '+(dmy(r.created)||'—')+'</div>'
-    +'<div style="font-size:12.5px;font-weight:800">'+e(r.name)+'</div>'+rptSlMaDuoiTen(r)
-    +'<div style="font-size:11px;margin-top:3px">Sale: <b>'+e(r.staff||'—')+'</b> · '+e(r.siPhanLoai||r.status||'—')+' · '+(tien(r)?'<b style="color:var(--green)">'+vnd(tien(r))+'</b>':'chưa có doanh thu')+'</div></div>';
-  const hop=(mau,tieuDe,noiDung)=>'<div style="border-top:1px solid var(--border);padding:10px 16px">'
-    +'<div style="font-size:11px;font-weight:800;color:'+mau+';text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px">'+tieuDe+'</div>'+noiDung+'</div>';
+  const nut=(f,i,txt,chinh)=>'<button onclick="'+f+'('+i+',this)" style="height:26px;padding:0 10px;margin:2px 0 2px 4px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:800;font-family:var(--font);white-space:nowrap;'
+    +(chinh?'border:none;background:'+chinh+';color:#fff':'border:1.5px solid var(--border);background:var(--surface);color:var(--text2)')+'">'+txt+'</button>';
+  const mo=r=>'<span onclick="rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+')" style="cursor:pointer;font-weight:800;border-bottom:1px dashed var(--accent)">'+e(r.name)+'</span>';
+  const phu=t=>'<div style="font-size:10.5px;color:var(--muted);font-weight:600;margin-top:1px">'+t+'</div>';
+  const ma=r=>e(r.kh||r.leadId);
+  const tieuDe=(mau,txt,n)=>'<div style="padding:10px 16px 6px;font-size:11.5px;font-weight:800;color:'+mau+'">'+txt+' · '+n+'</div>';
+  const bang=(cot,dong)=>'<div class="tbl-scroll"><table style="width:100%"><thead><tr>'+cot.map(c=>'<th>'+c+'</th>').join('')+'</tr></thead><tbody>'+dong+'</tbody></table></div>';
   const loai=rptSlType(),kiaL=loai==='Sỉ'?'Lẻ':'Sỉ';
-  const A=t.A.length?hop('var(--red)','Cùng SĐT nhưng 1 bên Sỉ, 1 bên Lẻ · '+t.A.length,t.A.map((x,i)=>'<div style="padding:8px 0;border-bottom:1px dashed var(--border)">'
-      +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px"><span style="font-size:12px;font-weight:800">SĐT …'+e(x.so.slice(-6))+'</span>'
-      +'<span style="margin-left:auto">'+nut('rptSlTrungChuyen',i,'Chuyển khách Sỉ sang Lẻ','var(--accent)')+nut('rptSlTrungGiu',i,'Giữ riêng 2 khách')+'</span></div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+the(x.r,loai,true)+the(x.o,kiaL,false)+'</div></div>').join('')):'';
-  const B=t.B.length?hop('var(--red)','Đã gộp 1 khách nhưng đang gán nhiều Sale · '+t.B.length,t.B.map((x,i)=>'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:6px 0;border-bottom:1px dashed var(--border)">'
-      +'<span style="cursor:pointer;font-size:12.5px;font-weight:800" onclick="rptSlShowCustomer('+q+String(x.r.key).replace(/'/g,'')+q+')">'+e(x.r.name)+'</span>'+rptSlMaDuoiTen(x.r)
-      +'<span style="font-size:11.5px">các dòng đang gán: <b>'+x.sale.map(e).join(' · ')+'</b> (đang tính '+e(x.r.staff||'—')+')</span>'
-      +'<span style="margin-left:auto;display:flex;align-items:center;gap:6px"><select id="trungSale'+i+'" style="height:28px;padding:2px 8px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:700;font-family:var(--font)">'
-      +rptSlSaleOptsHtml(x.r.staff)+'</select>'+nut('rptSlTrungChonSale',i,'Chốt Sale','var(--accent)')+'</span></div>').join('')):'';
-  const C=t.C.length?hop('#b45309','Đã gộp theo SĐT nhưng khác tên — soát lại · '+t.C.length,t.C.map((x,i)=>'<div style="padding:6px 0;border-bottom:1px dashed var(--border)">'
-      +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px"><span style="cursor:pointer;font-size:12.5px;font-weight:800" onclick="rptSlShowCustomer('+q+String(x.r.key).replace(/'/g,'')+q+')">'+e(x.r.name)+'</span>'+rptSlMaDuoiTen(x.r)
-      +'<span style="font-size:11px;color:var(--muted)">SĐT '+e(rptSlSoCuaDong(x.r).map(k=>'…'+k.slice(-6)).join(', '))+' · Sale '+e(x.r.staff||'—')+'</span>'
-      +'<span style="margin-left:auto">'+nut('rptSlTrungDung',i,'Đúng 1 người','var(--green)')+'</span></div>'
-      +'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:5px">'+x.ten.map(y=>'<span style="display:inline-flex;align-items:center;gap:6px;padding:2px 4px 2px 9px;border:1px solid var(--border);border-radius:14px;font-size:11.5px">'
-        +'<b>'+e(y.ten)+'</b><span style="color:var(--muted)">'+e(y.id)+'</span>'
-        +(y.id!==x.r.leadId?'<button onclick="rptSlTrungTach('+i+','+q+e(y.id)+q+',this)" title="Không phải người này — tách dòng này ra khách riêng" style="border:none;background:var(--bg2);color:var(--red);border-radius:10px;height:20px;padding:0 8px;cursor:pointer;font-size:10.5px;font-weight:800">Tách</button>':'')
-        +'</span>').join('')+'</div></div>').join('')):'';
+  const khach=(r,moDuoc)=>(moDuoc?mo(r):'<b>'+e(r.name)+'</b>')+phu(ma(r)+' · tạo '+(dmy(r.created)||'—'));
+  const A=t.A.length?tieuDe('var(--red)','Cùng SĐT, 1 khách bên Sỉ – 1 khách bên Lẻ',t.A.length)+bang(
+      ['SĐT','Khách bên '+loai,'Sale','Khách bên '+kiaL,'Sale','Doanh thu '+kiaL,''],
+      t.A.map((x,i)=>'<tr><td style="white-space:nowrap;font-weight:700">'+e(x.so.replace(/(\d{3})(\d{3})(\d{3})/,'0$1 $2 $3'))+'</td>'
+        +'<td>'+khach(x.r,true)+'</td><td style="font-size:11.5px">'+e(x.r.staff||'—')+'</td>'
+        +'<td>'+khach(x.o,false)+'</td><td style="font-size:11.5px">'+e(x.o.staff||'—')+'</td>'
+        +'<td class="num">'+(tien(x.o)?vnd(tien(x.o)):'—')+'</td>'
+        +'<td style="white-space:nowrap;text-align:right">'+nut('rptSlTrungChuyen',i,'Chuyển Sỉ → Lẻ','var(--accent)')+nut('rptSlTrungGiu',i,'Giữ riêng')+'</td></tr>').join('')):'';
+  const B=t.B.length?tieuDe('var(--red)','Đã gộp 1 khách nhưng đang gán nhiều Sale',t.B.length)+bang(['Khách','Các Sale đang gán','Chọn Sale',''],
+      t.B.map((x,i)=>'<tr><td>'+khach(x.r,true)+'</td><td style="font-size:11.5px">'+x.sale.map(e).join('<br>')+'</td>'
+        +'<td><select id="trungSale'+i+'" style="height:28px;padding:2px 8px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11.5px;font-weight:700;font-family:var(--font)">'+rptSlSaleOptsHtml(x.r.staff)+'</select></td>'
+        +'<td style="text-align:right">'+nut('rptSlTrungChonSale',i,'Chốt Sale','var(--accent)')+'</td></tr>').join('')):'';
+  const C=t.C.length?tieuDe('#b45309','Đã gộp theo SĐT nhưng khác tên — soát lại',t.C.length)+bang(['Khách đang hiện','SĐT','Sale','Các dòng đã gộp vào',''],
+      t.C.map((x,i)=>'<tr><td>'+khach(x.r,true)+'</td>'
+        +'<td style="white-space:nowrap;font-size:11.5px">'+rptSlSoCuaDong(x.r).map(k=>'0'+e(k)).join('<br>')+'</td>'
+        +'<td style="font-size:11.5px">'+e(x.r.staff||'—')+'</td>'
+        +'<td style="font-size:11.5px;line-height:1.9">'+x.ten.map(y=>'<div style="display:flex;align-items:center;gap:6px"><span>'+e(y.ten)+'</span><span style="color:var(--muted);font-size:10.5px">'+e(y.id)+'</span>'
+          +(y.id!==x.r.leadId?'<button onclick="rptSlTrungTach('+i+','+q+e(y.id)+q+',this)" title="Không phải cùng người — tách dòng này ra khách riêng" style="border:1px solid var(--red);background:var(--surface);color:var(--red);border-radius:6px;height:20px;padding:0 7px;cursor:pointer;font-size:10.5px;font-weight:800">Tách</button>':'<span style="font-size:10px;color:var(--green);font-weight:800">dòng chính</span>')+'</div>').join('')+'</td>'
+        +'<td style="text-align:right">'+nut('rptSlTrungDung',i,'Đúng 1 người','var(--green)')+'</td></tr>').join('')):'';
   if(!A&&!B&&!C)return '<div style="padding:22px;text-align:center;color:var(--green);font-size:12.5px;font-weight:700">✓ Không có ca trùng SĐT nào cần soát</div>';
   return A+B+C;
 }
@@ -9663,7 +9709,7 @@ function rptSlInputHtml(){
       return loc+rptSlInputSec('sGiao','','Việc được giao'+(chon.length?' · '+chon.join(', '):''),'ghi 1 lượt chăm sóc mới là xong việc · việc xong chuyển sang tab Đã hoàn thành',vg.length+(dashToanQuyenXem()?vx.length:0),'var(--red)',rptSlViecGiaoHtml(vg,dashToanQuyenXem()?vx:[]),true);
     })()}
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
-    ${rptSlInputSec('sTrungSdt','','Trùng SĐT','chuyển / giữ riêng khách Sỉ – Lẻ · chốt 1 Sale · tách dòng gộp nhầm',rptSlTrungSdtDem(b.trungSdt),'var(--red)',rptSlTrungSdtHtml(b.trungSdt),true)}
+    ${rptSlInputSec('sTrungSdt','','Trùng SĐT Sỉ – Lẻ','cùng 1 SĐT nhưng 1 khách bên Sỉ, 1 khách bên Lẻ — chuyển sang Lẻ hoặc giữ riêng',rptSlTrungSdtDem(b.trungSdt),'var(--red)',rptSlTrungSdtHtml(b.trungSdt),true)}
     ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}
     ${rptSlInputSec('s2b','','Mã KH nghi gán nhầm khách','doanh thu đang tính theo mã này — sai thì dán lại mã đúng',b.maNgo.length,'var(--red)',s2b,true)}
     ${rptSlInputSec('sLoi','','Lỗi hệ thống — cần báo người tạo app kiểm tra','số liệu trong app vẫn đúng, chỉ chưa đẩy được sang Pancake',b.loiHT.length,'var(--red)',sLoi,true)}
@@ -9712,6 +9758,7 @@ function rptSlCrmHtmlRaw(){
   // tìm trên TOÀN BỘ khách tài khoản được xem, bỏ qua bộ lọc / ô dash (anh Hải 13/10/2026) -- xem rptSlTimKhop
   if(q)list=rptSlBuildMaster().filter(r=>rptSlTimKhop(r,q,[r.siNDCuoi]));
   window._rptSlKeysDangXem=list.map(r=>String(r.leadId||'').replace(/'/g,'')).filter(Boolean);   // cho ô chọn tất cả
+  rptSlTrungKeysDung(rptSlBuildMaster());   // thẻ đỏ Trùng Sỉ/Lẻ cạnh tên (13/10/2026)
   const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
   if((window._rptSlCrmPage||1)>totalPages)window._rptSlCrmPage=1;
   const page=window._rptSlCrmPage||1;
