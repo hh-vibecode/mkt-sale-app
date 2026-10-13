@@ -3747,7 +3747,8 @@ function rptVnMapHtml(mien,tieuDe,ma){
   const dao=(ten,vt,c)=>'<div style="position:absolute;'+vt+';text-align:center;pointer-events:none"><div style="display:flex;gap:4px;justify-content:center;align-items:center;margin-bottom:3px">'
     +c.map(([w,m])=>'<span style="width:'+w+'px;height:'+w+'px;border-radius:50%;background:'+m+';display:inline-block"></span>').join('')+'</div><div style="font-size:10px;color:var(--muted);font-weight:600">'+ten+'</div></div>';
   setTimeout(()=>rptVnMapVe(ma),0);
-  return '<div class="tbl-card" style="padding:18px;margin-bottom:16px">'
+  // margin-top:0 -- 2 thẻ Lẻ/Sỉ nằm cạnh nhau trong lưới, luật chung .tbl-card+.tbl-card đẩy thẻ Sỉ lệch xuống 16px
+  return '<div class="tbl-card" style="padding:18px;margin-top:0;margin-bottom:16px">'
     +'<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">'+(tieuDe||'Khách đã chốt theo miền')+'</span>'
     +'<span style="font-size:28px;font-weight:800;color:var(--accent)">'+num(tong)+'</span>'
     +(mien['Chưa rõ'].n?'<span style="font-size:11px;color:var(--muted);font-weight:700">'+num(mien['Chưa rõ'].n)+' chưa rõ tỉnh</span>':'')+'</div>'
@@ -5813,10 +5814,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/10 14:05';
+const APP_VERSION='13/10 14:17';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=476;
+const APP_BAN=477;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
