@@ -612,11 +612,13 @@ function dashGiao(a,b){            // [] = xem tất cả -> bên nào rỗng th
   return a.filter(x=>b.includes(x));
 }
 function dashSales(){
+  if(window._rptSlBoPhamVi)return [];   // tạm bỏ phạm vi khi dựng mục Trùng SĐT (13/10/2026) -- chỉ trong rptSlMasterLoaiKia
   const v=dashViewAs();
   if(v&&dashCanViewAs()&&dashViTriXemHet(v.vitri||''))return dashScope('dashDataSales');
   return v&&dashCanViewAs()?dashGiao(v.sales||[],dashScope('dashDataSales')):dashScope('dashDataSales');
 }
 function dashTypes(){
+  if(window._rptSlBoPhamVi)return [];
   const v=dashViewAs();
   if(v&&dashCanViewAs()&&dashViTriXemHet(v.vitri||''))return dashScope('dashDataTypes');
   return v&&dashCanViewAs()?dashGiao(v.types||[],dashScope('dashDataTypes')):dashScope('dashDataTypes');
@@ -5340,6 +5342,8 @@ async function rptSiThemKhach(){
   {const so=g('siT_sdt');
    if(so&&rptSlSoTim(so).length>=8){
      const co=rptSlBuildMaster().concat(rptSlMasterLoaiKia()).filter(r=>rptSlTimKhop(r,so));
+     if(!co.length&&rptSlMasterLoaiKia(true,'Sỉ').concat(rptSlMasterLoaiKia(true,'Lẻ')).some(r=>rptSlTimKhop(r,so))){
+       if(msg)msg.innerHTML='<span style="color:var(--red)">SĐT này đã có trong app, ở khách ngoài phạm vi bạn được xem — báo quản lý để gán / chuyển khách, không tạo mới</span>';return;}
      if(co.length){const r=co[0],q=String.fromCharCode(39),e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
        if(msg)msg.innerHTML='<span style="color:var(--red)">SĐT đã có ở khách <b>'+e(r.name)+'</b> ('+e(r.kh||r.leadId)+') · Sale '+e(r.staff||'—')+' · tạo '+(dmy(r.created)||'—')+'</span> '
          +'<button onclick="qcCloseModal();rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+')" class="btn-ghost" style="padding:3px 10px;font-size:11px">Mở hồ sơ khách đó</button>';
@@ -5779,7 +5783,7 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/10 09:30';
+const APP_VERSION='13/10 09:34';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
 const APP_BAN=467;
@@ -8755,21 +8759,24 @@ function rptSlSecToggle(id){
 //  C. Đã tự gộp theo SĐT, các dòng KHÁC TÊN: Đúng 1 người / Tách dòng ra (ghi khac_nguoi, như nút "Không phải cùng 1 người"). -> VÀNG
 //  Ca đã soát lưu ở saleretail_manual.trung_ok (Lead ID cách dấu phẩy) -- chạy supabase-schema-trung-sdt.sql.
 function rptSlTrungOkCua(r){const s=new Set();rptSlIdsCua(r).forEach(id=>String((rptSlManual[id]||{}).trung_ok||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(x=>s.add(x)));return s;}
-let _rptSlLoaiKia={khoa:'',rows:[]};
-function rptSlMasterLoaiKia(){   // Master của loại KIA (vẫn theo phạm vi tài khoản), nhớ theo dữ liệu
-  const kia=rptSlType()==='Sỉ'?'Lẻ':'Sỉ';
-  const khoa=[kia,window._rptSlVer||0,dhOrders.length,dhManual.length,kiotOrders.length,Object.keys(rptSlManual).length,dashSales().join(','),dashTypes().join(',')].join('|');
-  if(_rptSlLoaiKia.khoa===khoa)return _rptSlLoaiKia.rows;
+// Master của 1 loại, nhớ theo dữ liệu. boPhamVi=true: KHÔNG lọc phạm vi tài khoản -- CHỈ dùng cho mục Trùng SĐT (anh Hải 13/10/2026:
+// "trong case trùng thì cho Sale cũng nhìn thấy", "chỉ trong dash trùng thôi") và để form Thêm khách biết SĐT đã có.
+function rptSlMasterLoaiKia(boPhamVi,loaiEp){
+  const kia=loaiEp||(rptSlType()==='Sỉ'?'Lẻ':'Sỉ');
+  if(!window._rptSlLoaiCache)window._rptSlLoaiCache={};
+  const ck=kia+'|'+(boPhamVi?1:0);
+  const khoa=[ck,window._rptSlVer||0,dhOrders.length,dhManual.length,kiotOrders.length,Object.keys(rptSlManual).length,dashSales().join(','),dashTypes().join(',')].join('|');
+  const c=window._rptSlLoaiCache[ck];if(c&&c.khoa===khoa)return c.rows;
   const cu=window._rptSlType,cuK=window._kiotOrdByCode;let rows=[];
-  try{window._rptSlType=kia;window._kiotOrdByCode=null;rows=rptSlBuildMasterRaw();}catch(e){console.warn('rptSlMasterLoaiKia',e);}
-  window._rptSlType=cu;window._kiotOrdByCode=cuK;
-  _rptSlLoaiKia={khoa,rows};return rows;
+  try{window._rptSlType=kia;window._kiotOrdByCode=null;window._rptSlBoPhamVi=!!boPhamVi;rows=rptSlBuildMasterRaw();}catch(e){console.warn('rptSlMasterLoaiKia',e);}
+  finally{window._rptSlBoPhamVi=false;window._rptSlType=cu;window._kiotOrdByCode=cuK;}
+  window._rptSlLoaiCache[ck]={khoa,rows};return rows;
 }
 function rptSlSoCuaDong(r){return [...new Set([r.phone].concat((r.phones||[]).map(p=>p.so)).map(rptSlLast9).filter(k=>k&&k.length===9))];}
 function rptSlTrungSdt(all){
   const kq={A:[],B:[],C:[]},idx=rptSlTimIdx();
   // A: khác loại
-  const kia=rptSlMasterLoaiKia(),theoSo={};
+  const kia=rptSlMasterLoaiKia(true),theoSo={};   // bên kia: thấy cả khách ngoài phạm vi (chỉ trong mục này)
   kia.forEach(o=>rptSlSoCuaDong(o).forEach(k=>(theoSo[k]=theoSo[k]||[]).push(o)));
   all.forEach(r=>{const ok=rptSlTrungOkCua(r),daCo=new Set();
     rptSlSoCuaDong(r).forEach(k=>(theoSo[k]||[]).forEach(o=>{if(daCo.has(o.key))return;daCo.add(o.key);
@@ -8793,7 +8800,8 @@ function rptSlTrungSdtHtml(t){
   const tien=r=>Number(r.revenue||0)+Number(r.repeatRevenue||0),q=String.fromCharCode(39);
   const nut=(f,i,txt,mau)=>'<button onclick="'+f+'('+i+',this)" style="margin-left:6px;height:28px;padding:0 12px;border-radius:7px;cursor:pointer;font-size:11px;font-weight:800;font-family:var(--font);'
     +(mau?'border:none;background:'+mau+';color:#fff':'border:1.5px solid var(--border);background:var(--surface);color:var(--text2)')+'">'+txt+'</button>';
-  const the=(r,loai)=>'<div style="flex:1;min-width:240px;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);cursor:pointer" onclick="rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+')">'
+  const the=(r,loai,moDuoc)=>'<div style="flex:1;min-width:240px;padding:8px 10px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface)'
+    +(moDuoc?';cursor:pointer" onclick="rptSlShowCustomer('+q+String(r.key).replace(/'/g,'')+q+')" title="Mở hồ sơ">':'" title="Khách bên '+loai+' — mở ở báo cáo Sale '+loai+'">')
     +'<div style="font-size:10.5px;font-weight:800;color:var(--muted)">'+loai+' · tạo '+(dmy(r.created)||'—')+'</div>'
     +'<div style="font-size:12.5px;font-weight:800">'+e(r.name)+'</div>'+rptSlMaDuoiTen(r)
     +'<div style="font-size:11px;margin-top:3px">Sale: <b>'+e(r.staff||'—')+'</b> · '+e(r.siPhanLoai||r.status||'—')+' · '+(tien(r)?'<b style="color:var(--green)">'+vnd(tien(r))+'</b>':'chưa có doanh thu')+'</div></div>';
@@ -8803,7 +8811,7 @@ function rptSlTrungSdtHtml(t){
   const A=t.A.length?hop('var(--red)','Cùng SĐT nhưng 1 bên Sỉ, 1 bên Lẻ · '+t.A.length,t.A.map((x,i)=>'<div style="padding:8px 0;border-bottom:1px dashed var(--border)">'
       +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px"><span style="font-size:12px;font-weight:800">SĐT …'+e(x.so.slice(-6))+'</span>'
       +'<span style="margin-left:auto">'+nut('rptSlTrungChuyen',i,'Chuyển khách Sỉ sang Lẻ','var(--accent)')+nut('rptSlTrungGiu',i,'Giữ riêng 2 khách')+'</span></div>'
-      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+the(x.r,loai)+the(x.o,kiaL)+'</div></div>').join('')):'';
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+the(x.r,loai,true)+the(x.o,kiaL,false)+'</div></div>').join('')):'';
   const B=t.B.length?hop('var(--red)','Đã gộp 1 khách nhưng đang gán nhiều Sale · '+t.B.length,t.B.map((x,i)=>'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:6px 0;border-bottom:1px dashed var(--border)">'
       +'<span style="cursor:pointer;font-size:12.5px;font-weight:800" onclick="rptSlShowCustomer('+q+String(x.r.key).replace(/'/g,'')+q+')">'+e(x.r.name)+'</span>'+rptSlMaDuoiTen(x.r)
       +'<span style="font-size:11.5px">các dòng đang gán: <b>'+x.sale.map(e).join(' · ')+'</b> (đang tính '+e(x.r.staff||'—')+')</span>'
@@ -8826,7 +8834,7 @@ async function rptSlTrungGhiOk(ids,them){
 }
 async function rptSlTrungXong(el,f){
   if(el)el.disabled=true;
-  try{await f();window._kiotOrdByCode=null;_rptSlLoaiKia.khoa='';rptSlXoaCache();rptSlRender();}
+  try{await f();window._kiotOrdByCode=null;window._rptSlLoaiCache={};rptSlXoaCache();rptSlRender();}
   catch(e){if(el)el.disabled=false;alert('Chưa lưu được: '+(/trung_ok/.test(String(e&&e.message))?'CSDL chưa có cột trung_ok (supabase-schema-trung-sdt.sql)':e.message));}
 }
 function rptSlTrungGiu(i,el){
