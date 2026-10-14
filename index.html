@@ -829,11 +829,21 @@ function rptBrandDrop(mod,cb){
     +'<option value="">Tất cả brand</option>'
     +RPT_BRANDS.map(b=>'<option value="'+b[0]+'"'+(cur===b[0]?' selected':'')+'>'+b[1]+'</option>').join('')+'</select>';
 }
-// Dòng khách có thuộc brand đang lọc không. Khách Sỉ nhập tay không có brand -> coi là Shidai (mảng sỉ).
+// Dòng khách có thuộc brand đang lọc không. Khách Sỉ không có brand -> coi là Shidai (mảng sỉ).
+// 14/10/2026 (anh Hải duyệt): dùng CHUNG cách nhận thương hiệu với thẻ "Doanh thu theo thương hiệu" -- khách Lẻ chưa có r.brand
+// suy từ đơn Kiot gần nhất (rptSlBrandCua); dòng Khách vãng lai thuộc mọi thương hiệu có phiếu của nó, rồi rptCatBrand chỉ giữ
+// phiếu của thương hiệu đang lọc. Trước đó 2 nhóm này rơi khỏi mọi bộ lọc (Hiền Thuỷ T10: lọc 127,1tr, thẻ 132,5tr).
 function rptHopBrand(mod,r){
   const b=rptBrand(mod);if(!b)return true;
-  const cua=r.brand||((r.saleType==='Sỉ'||r.loai==='Sỉ')?'Shidai':'');
-  return cua===b;
+  if(r.saleType==='Sỉ'||r.loai==='Sỉ')return (r.brand?(r.brand==='SD'?'Shidai':r.brand):'Shidai')===b;
+  if(r.vangLai)return [...(r.kords||[]),...(r.repeatOrds||[])].some(o=>rptSlBrandDon(o)===b);
+  return rptSlBrandCua(r)===b;
+}
+// Khách vãng lai đang lọc 1 thương hiệu -> bản sao chỉ còn phiếu của thương hiệu đó (doanh thu tính lại). Dòng khác giữ nguyên.
+function rptCatBrand(mod,r){
+  const b=rptBrand(mod);if(!b||!r.vangLai||r.saleType==='Sỉ')return r;
+  const kords=(r.kords||[]).filter(o=>rptSlBrandDon(o)===b),repeatOrds=(r.repeatOrds||[]).filter(o=>rptSlBrandDon(o)===b);
+  return Object.assign({},r,{kords,repeatOrds,revenue:kords.reduce((s,o)=>s+Number(o.total||0),0),repeatRevenue:repeatOrds.reduce((s,o)=>s+Number(o.total||0),0)});
 }
 function modHeader(title,sub,mod,cb,tabs){
   return `<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px">
@@ -3809,7 +3819,7 @@ async function rptVnMapVe(ma){
 // Dùng đúng dữ liệu của 2 tab Sale Lẻ / Sale Sỉ (rptSlPeriod theo bộ lọc 'tonghop'), doanh thu = đơn tính + đơn mua lại.
 function rptThTongHtml(){
   const cu=window._rptSlType,cuK=window._kiotOrdByCode,d={};
-  try{['Lẻ','Sỉ'].forEach(t=>{window._rptSlType=t;window._kiotOrdByCode=null;d[t]=rptSlPeriod().filter(r=>rptHopBrand('tonghop',r));});}
+  try{['Lẻ','Sỉ'].forEach(t=>{window._rptSlType=t;window._kiotOrdByCode=null;d[t]=rptSlPeriod().filter(r=>rptHopBrand('tonghop',r)).map(r=>rptCatBrand('tonghop',r));});}
   finally{window._rptSlType=cu;window._kiotOrdByCode=cuK;}
   const tien=r=>r.revenue+(r.repeatRevenue||0),soDon=r=>(r.kords||[]).length+(r.repeatOrds||[]).length;
   const laOff=r=>/offline/i.test(r.nguon||'');
@@ -5870,10 +5880,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='14/10 15:58';
+const APP_VERSION='14/10 16:12';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=483;
+const APP_BAN=484;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6305,7 +6315,7 @@ async function rptSlRenderPage(type){
 function rptSlOverviewHtml(){
   // Áp bộ lọc ngày RIÊNG của báo cáo: khách lọc theo NGÀY TẠO, đơn thô lọc theo NGÀY ĐƠN.
   const mod0=rptSlMod();
-  const master=rptSlPeriod().filter(r=>rptHopBrand(mod0,r));
+  const master=rptSlPeriod().filter(r=>rptHopBrand(mod0,r)).map(r=>rptCatBrand(mod0,r));
   const le=dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))&&dashSeeSale(rptSlSaleCuaDon(o),dhSaleTypeOrder(o))&&modInRange(mod0,o.order_date)
     &&(!rptBrand(mod0)||o.brand===rptBrand(mod0)));
   const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
