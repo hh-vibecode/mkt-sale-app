@@ -3847,6 +3847,29 @@ function rptThTongHtml(){
   const mienCua=a=>{const m={'Miền Bắc':{n:0,dt:0},'Miền Trung':{n:0,dt:0},'Miền Nam':{n:0,dt:0},'Chưa rõ':{n:0,dt:0}};
     a.filter(r=>r.isChot).forEach(r=>{const k=rptMienCua(r.tinh&&r.tinh.moi);m[k].n++;m[k].dt+=tien(r);});return m;};
   const bMap=rptVnMapHtml(mienCua(d['Lẻ']),'Khách Lẻ đã chốt theo miền','Le')+rptVnMapHtml(mienCua(d['Sỉ']),'Khách Sỉ đã chốt theo miền','Si');
+  // 3) DOANH THU THEO THƯƠNG HIỆU (anh Hải 14/10/2026: "báo cáo tổng hợp thêm doanh thu / thương hiệu, chia đôi với khách đã chốt
+  // theo tỉnh") -- cả 2 đội. Lẻ: rptSlTienTheoBrand (vãng lai chia từng phiếu). Sỉ: r.brand, trống = Shidai -- ĐÚNG luật bộ lọc
+  // thương hiệu rptHopBrand, để chọn lọc 1 thương hiệu thì phần Sỉ khớp thanh đó.
+  // Mỗi thương hiệu 1 thanh, bấm ra danh sách khách. Tổng các thanh = ô Tổng doanh thu.
+  const theoTH=(r,doi)=>doi==='Sỉ'?[{b:r.brand?(r.brand==='SD'?'Shidai':r.brand):'Shidai',tien:tien(r),don:soDon(r)}]:rptSlTienTheoBrand(r);
+  const nhomTH={};[['Lẻ',L_.coDt],['Sỉ',S_.coDt]].forEach(([doi,a])=>a.forEach(r=>theoTH(r,doi).forEach(p=>{const b=p.b;
+    const x=nhomTH[b]=nhomTH[b]||{b,le:0,si:0,don:0,ds:{'Lẻ':[],'Sỉ':[]}};x[doi==='Lẻ'?'le':'si']+=p.tien;x.don+=p.don;x.ds[doi].push(r);})));
+  const thTen=b=>{const x=RPT_MKT_BRANDS.find(y=>y[0]===b);return x?x[1]:(b||'Chưa rõ');};
+  const thMau=b=>{const x=RPT_MKT_BRANDS.find(y=>y[0]===b);return x?x[2]:'var(--muted)';};
+  const dsTH=Object.values(nhomTH).sort((a,b)=>(a.b?0:1)-(b.b?0:1)||(b.le+b.si)-(a.le+a.si));
+  const maxTH=Math.max(1,...dsTH.map(x=>x.le+x.si));
+  const thanhTH=dsTH.map((x,i)=>{const dt=x.le+x.si,n=x.ds['Lẻ'].length+x.ds['Sỉ'].length;
+    window._rptSlLists['thTH'+i]={title:'Doanh thu '+thTen(x.b)+' · '+vnd(dt),cols,rows:dong(x.ds['Lẻ'],'Lẻ').concat(dong(x.ds['Sỉ'],'Sỉ')),
+      keys:ks(x.ds['Lẻ']).concat(ks(x.ds['Sỉ'])),loais:lo(x.ds['Lẻ'],'Lẻ').concat(lo(x.ds['Sỉ'],'Sỉ'))};
+    return bam('thTH'+i,'<div style="display:grid;grid-template-columns:130px 1fr 170px;align-items:center;gap:14px;padding:8px 0">'
+      +'<div><div style="font-size:12.5px;font-weight:700;color:var(--text)">'+e(thTen(x.b))+'</div>'
+        +'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+num(n)+' khách · '+num(x.don)+' đơn</div></div>'
+      +'<div style="height:12px;border-radius:6px;background:var(--bg2);overflow:hidden"><div style="height:100%;width:'+(dt/maxTH*100).toFixed(1)+'%;background:'+thMau(x.b)+';border-radius:6px"></div></div>'
+      +'<div style="text-align:right"><div style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums">'+vnd(dt)
+        +' <span style="font-size:11px;font-weight:700;color:var(--muted)">'+tl(dt,T_.dt)+'</span></div>'
+        +'<div style="font-size:10.5px;color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums">Lẻ '+(x.le?vnd(x.le):'—')+' · Sỉ '+(x.si?vnd(x.si):'—')+'</div></div></div>');}).join('');
+  const bTH='<div class="tbl-card" style="margin-bottom:16px"><div class="tbl-head"><div class="tbl-title">Doanh thu theo thương hiệu</div><div class="tbl-count">'+vnd(T_.dt)+'</div></div>'
+    +'<div style="padding:6px 20px 14px">'+(thanhTH||'<div style="color:var(--muted);font-size:12.5px;padding:10px 0">Không có doanh thu trong kỳ</div>')+'</div></div>';
   return `
     <div style="${g3}">
       ${bam('thTong',mkKpi(ic('cash'),'Tổng doanh thu',vnd(T_.dt),num(T_.don)+' đơn đặt hàng Kiot · 2 đội','g-green'))}
@@ -3859,7 +3882,7 @@ function rptThTongHtml(){
       ${mkKpi(ic('check'),'Tỉ lệ chốt chung',tl(T_.chot,T_.khach),'Lẻ '+tl(L_.chot,L_.khach)+' · Sỉ '+tl(S_.chot,S_.khach),'g-orange')}
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bMap}</div>
-    ${bTinh}`;
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bTH}${bTinh}</div>`;
 }
 const RPT_TH_TABS=[
   ['tong-hop','Tổng hợp',()=>rptThTongHtml()],
@@ -5847,10 +5870,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='14/10 14:11';
+const APP_VERSION='14/10 15:58';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=482;
+const APP_BAN=483;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7946,6 +7969,33 @@ function rptSlEmptyHtml(coFilter){
 //  1) Doanh thu + số khách (theo khoảng ngày trên đầu trang)   2) Phễu theo Phân loại KH (khách trong kỳ)
 //  3) Theo từng Sale (khách trong kỳ)   4) Việc & chăm sóc -- ẢNH CHỤP HIỆN TẠI, không theo ngày (việc tồn không được giấu)
 // Phạm vi xem của tài khoản đã áp sẵn trong rptSlBuildMaster / rptSlPeriod. Doanh thu = đơn tính + đơn mua lại (như Tổng hợp).
+// THƯƠNG HIỆU của khách (anh Hải 13/10/2026: Tổng quan Sale Lẻ thêm doanh thu theo thương hiệu). Lấy r.brand (page Pancake /
+// kênh nhập tay) như báo cáo MKT; trống (khách cửa hàng Kiot, vãng lai) thì suy từ đơn Kiot GẦN NHẤT: kênh ghi tên brand > chi nhánh.
+// So BỎ DẤU (14/10/2026): chi nhánh Kiot ghi "Đồ thờ Hiền Thủy" (ủ), kênh ghi "Facebook Hiền Thuỷ" (uỷ) -- so có dấu thì trượt chi nhánh.
+function rptSlBrandDon(o){
+  const k=rptSlBoDau(o&&o.sale_channel),b=rptSlBoDau(o&&o.branch_name);
+  if(/nen bo|tu tai vien|\bttv\b/.test(k))return 'TTV';
+  if(/shidai/.test(k))return 'Shidai';
+  if(/hien thu/.test(k))return 'HT';
+  if(/chanh tam/.test(k))return 'CT';
+  if(/hien thu/.test(b))return 'HT';
+  if(/chanh tam/.test(b))return 'CT';
+  if(/shidai/.test(b))return 'Shidai';
+  return '';
+}
+function rptSlBrandCua(r){
+  if(r.brand)return r.brand==='SD'?'Shidai':r.brand;
+  const ds=[...(r.kords||[]),...(r.repeatOrds||[])].sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)));
+  return ds.length?rptSlBrandDon(ds[ds.length-1]):'';
+}
+// Doanh thu 1 khách chia theo thương hiệu: khách thường = cả khối về 1 thương hiệu; dòng KHÁCH VÃNG LAI (gom phiếu không mã của
+// nhiều cửa hàng) thì chia TỪNG PHIẾU theo chi nhánh / kênh của phiếu đó. Trả [{b,tien,don}]; tổng tien = revenue + repeatRevenue.
+function rptSlTienTheoBrand(r){
+  const tien=Number(r.revenue||0)+Number(r.repeatRevenue||0),don=(r.kords||[]).length+(r.repeatOrds||[]).length;
+  if(!r.vangLai)return [{b:rptSlBrandCua(r),tien,don}];
+  const m={};[...(r.kords||[]),...(r.repeatOrds||[])].forEach(o=>{const b=rptSlBrandDon(o);const x=m[b]=m[b]||{b,tien:0,don:0};x.tien+=Number(o.total||0);x.don++;});
+  return Object.values(m);
+}
 function rptSlTongQuanHtml(){
   const M=rptSlMod(),P=rptSlPeriod(),all=rptSlBuildMaster(),t=todayISO(),T=rptSlType();
   const tien=r=>r.revenue+(r.repeatRevenue||0),soDon=r=>(r.kords||[]).length+(r.repeatOrds||[]).length;
@@ -8057,9 +8107,28 @@ function rptSlTongQuanHtml(){
     +o('onclick="rptSlShow('+q+'tqViec'+q+')" style="cursor:pointer"',mkKpi(ic('clipboard'),'Việc đang giao',num(viec.length),num(quaHan.length)+' quá hạn','g-blue'))
     +o(L('tqLau','Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',lau),mkKpi(ic('clock'),'Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',num(lau.length),'trên '+num(canCham.length)+' khách đang chăm','g-red'))
     +o(L('tqChuaCS','Chưa có lịch sử chăm sóc',chuaCS),mkKpi(ic('chat'),'Chưa có lịch sử chăm sóc',num(chuaCS.length),'cần ghi lượt chăm sóc đầu','g-purple'))+'</div>';
+  // DOANH THU THEO THƯƠNG HIỆU (anh Hải 13/10/2026: "xếp ngay sau 6 cái dashboard", "chia nửa ra với Phân loại khách trong kỳ")
+  // -- chỉ Lẻ; mỗi thương hiệu 1 thanh, bấm ra danh sách khách. Tổng các thanh = ô Doanh thu.
+  let kTH='';
+  if(T==='Lẻ'){
+    const nhom={};coDt.forEach(r=>rptSlTienTheoBrand(r).forEach(p=>{const x=nhom[p.b]=nhom[p.b]||{b:p.b,ds:[],dt:0,don:0};x.ds.push(r);x.dt+=p.tien;x.don+=p.don;}));
+    const ten=b=>{const x=RPT_MKT_BRANDS.find(y=>y[0]===b);return x?x[1]:(b||'Chưa rõ');};
+    const mau=b=>{const x=RPT_MKT_BRANDS.find(y=>y[0]===b);return x?x[2]:'var(--muted)';};
+    const ds=Object.values(nhom).sort((a,b)=>(a.b?0:1)-(b.b?0:1)||b.dt-a.dt);
+    const maxTH=Math.max(1,...ds.map(x=>x.dt));
+    const thanh=ds.map((x,i)=>'<div '+L('tqTH'+i,'Doanh thu '+ten(x.b),x.ds)+'><div style="display:grid;grid-template-columns:150px 1fr 150px;align-items:center;gap:14px;padding:7px 0">'
+      +'<div><div style="font-size:12.5px;font-weight:700;color:var(--text)">'+e(ten(x.b))+'</div>'
+        +'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+num(x.ds.length)+' khách · '+num(x.don)+' đơn</div></div>'
+      +'<div style="height:12px;border-radius:6px;background:var(--bg2);overflow:hidden"><div style="height:100%;width:'+(x.dt/maxTH*100).toFixed(1)+'%;background:'+mau(x.b)+';border-radius:6px"></div></div>'
+      +'<div style="text-align:right;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums">'+vnd(x.dt)
+        +' <span style="font-size:11px;font-weight:700;color:var(--muted)">'+(dt?pct(x.dt/dt*100):'—')+'</span></div></div></div>').join('');
+    kTH='<div class="tbl-card" style="padding:20px 24px">'+tieuDe('Doanh thu theo thương hiệu · '+vnd(dt))
+      +(thanh||'<div style="color:var(--muted);font-size:12.5px;padding:10px 0">Không có doanh thu trong kỳ</div>')+'</div>';
+  }
   return '<div style="display:flex;flex-direction:column;gap:28px">'   // trải hết trang (anh Hải 12/10/2026)
     +'<section>'+tieuDe('Doanh thu & khách')+k1+'</section>'
-    +'<section>'+k2+'</section>'
+    +(kTH?'<section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:stretch">'+kTH+k2+'</section>'
+         :'<section>'+k2+'</section>')
     +'<section style="display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,300px);gap:16px;align-items:start">'
       +'<div>'+k3+'</div><div>'+tieuDe('Việc & chăm sóc · hiện tại')+k4+'</div></section>'
     +'</div>';
