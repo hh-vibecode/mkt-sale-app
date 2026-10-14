@@ -5836,10 +5836,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='14/10 08:59';
+const APP_VERSION='14/10 14:07';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=161;
+const APP_BAN=481;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8990,6 +8990,7 @@ function rptSlTrungSdt(all){
   all.forEach(r=>{const ok=rptSlTrungOkCua(r),daCo=new Set();
     rptSlSoCuaDong(r).forEach(k=>(theoSo[k]||[]).forEach(o=>{if(daCo.has(o.key))return;daCo.add(o.key);
       if(rptSlIdsCua(o).some(id=>ok.has(id))||rptSlIdsCua(r).some(id=>rptSlTrungOkCua(o).has(id)))return;
+      if(window._rptSlTrungAn&&window._rptSlTrungAn.has(rptSlTrungCap(r,o)))return;   // vừa bấm xử, đang lưu ngầm
       kq.A.push({r,o,so:k});}));});
   // B, C: BỎ (anh Hải 13/10/2026: "không cần báo lại bên Nhập Liệu khi tự gộp, chỉ báo khách Sỉ – Lẻ trùng nhau") -- giữ code, không chạy
   if(window._rptSlBaoGopTrongLoai)all.forEach(r=>{const ids=rptSlIdsCua(r);if(ids.length<2)return;
@@ -9056,16 +9057,22 @@ async function rptSlTrungGhiOk(ids,them){
   for(const id of ids){const cu=String((rptSlManual[id]||{}).trung_ok||'').split(',').map(x=>x.trim()).filter(Boolean);
     await rptSlSaveManual(id,{trung_ok:[...new Set(cu.concat(them))].join(',')});}
 }
-async function rptSlTrungXong(el,f){
+// an = cặp ở mục A (Sỉ → Lẻ / Lẻ → Sỉ / Giữ riêng): bấm xác nhận là dòng BIẾN MẤT NGAY, số đếm giảm ngay (anh Hải 14/10/2026:
+// "chuyển phát là phải nhảy luôn", "nhảy là clear data luôn") -- phần gọi Pancake + ghi CSDL chạy ngầm sau đó. Lỗi thì dòng hiện lại + báo.
+function rptSlTrungCap(r,o){return [r.key,o.key].sort().join('|');}
+async function rptSlTrungXong(el,f,an){
   if(el)el.disabled=true;
-  try{await f();window._kiotOrdByCode=null;window._rptSlLoaiCache={};rptSlXoaCache();rptSlRender();}
-  catch(e){if(el)el.disabled=false;alert('Chưa lưu được: '+(/trung_ok/.test(String(e&&e.message))?'CSDL chưa có cột trung_ok (supabase-schema-trung-sdt.sql)':e.message));}
+  const ds=window._rptSlTrungAn=window._rptSlTrungAn||new Set(),cap=an?rptSlTrungCap(an.r,an.o):'';
+  if(cap){ds.add(cap);rptSlRender();}
+  try{await f();if(cap)ds.delete(cap);window._kiotOrdByCode=null;window._rptSlLoaiCache={};rptSlXoaCache();rptSlRender();}
+  catch(e){if(cap){ds.delete(cap);rptSlRender();}if(el)el.disabled=false;
+    alert('Chưa lưu được: '+(/trung_ok/.test(String(e&&e.message))?'CSDL chưa có cột trung_ok (supabase-schema-trung-sdt.sql)':e.message));}
 }
 function rptSlTrungGiu(i,el){
   const x=((window._rptSlTrungSdt||{}).A||[])[i];if(!x)return;
   if(!confirm('Giữ riêng 2 khách (vừa mua sỉ vừa mua lẻ, hoặc không phải 1 người)?\n\n'+x.r.name+' ('+x.r.leadId+')\n'+x.o.name+' ('+x.o.leadId+')\n\nApp sẽ không nhắc lại cặp này.'))return;
   rptSlTrungXong(el,async()=>{await rptSlTrungGhiOk([x.r.leadId],rptSlIdsCua(x.o));await rptSlTrungGhiOk([x.o.leadId],rptSlIdsCua(x.r));
-    logAct('U','saleretail_manual',x.r.leadId,x.r.name,'Trùng SĐT Sỉ/Lẻ','','giữ riêng với '+x.o.leadId);});
+    logAct('U','saleretail_manual',x.r.leadId,x.r.name,'Trùng SĐT Sỉ/Lẻ','','giữ riêng với '+x.o.leadId);},x);
 }
 function rptSlTrungChuyen(i,el){
   const x=((window._rptSlTrungSdt||{}).A||[])[i];if(!x)return;
@@ -9073,7 +9080,7 @@ function rptSlTrungChuyen(i,el){
   const ten=rptSlSaleCuaDoi().includes(String(le.staff||'').trim())?String(le.staff).trim():String(si.staff||'').trim();
   if(!confirm('Chuyển khách Sỉ "'+si.name+'" ('+si.leadId+') sang Lẻ?\n\n• đổi thẻ Pancake KH SỈ → KH LẺ\n• lịch sử chăm sóc, việc đang giao chuyển theo\n• Sale phụ trách: '+(ten||'(để trống)')
     +'\n\nSau khi chuyển, app tự gộp với khách Lẻ "'+le.name+'" ('+le.leadId+') vì cùng SĐT.'))return;
-  rptSlTrungXong(el,async()=>{const k=await rptSlChuyenLoai(si,ten,'Lẻ');if(ten)await rptSlSaveManual(si.leadId,{si_sale:ten});rptSlBaoChuyen([k],'Lẻ');});
+  rptSlTrungXong(el,async()=>{const k=await rptSlChuyenLoai(si,ten,'Lẻ');if(ten)await rptSlSaveManual(si.leadId,{si_sale:ten});rptSlBaoChuyen([k],'Lẻ');},x);
 }
 // LẺ -> SỈ (13/10/2026): chuyển khách bên Lẻ sang Sỉ, cùng cơ chế rptSlChuyenLoai (thẻ Pancake KH LẺ -> KH SỈ, dòng nhập tay
 // sale_type, lịch sử chăm sóc, việc đang giao). Sale: lấy Sale bên Sỉ nếu có trong Nhân sự, không thì giữ Sale bên Lẻ.
@@ -9083,7 +9090,7 @@ function rptSlTrungChuyenSi(i,el){
   const ten=rptSlSaleCuaDoi().includes(String(si.staff||'').trim())?String(si.staff).trim():String(le.staff||'').trim();
   if(!confirm('Chuyển khách Lẻ "'+le.name+'" ('+(le.kh||le.leadId)+') sang Sỉ?\n\n• đổi thẻ Pancake KH LẺ → KH SỈ, dòng nhập tay sang Sỉ\n• lịch sử chăm sóc, việc đang giao chuyển theo\n• Sale phụ trách: '+(ten||'(để trống)')
     +'\n\nSau khi chuyển, app tự gộp với khách Sỉ "'+si.name+'" ('+si.leadId+') vì cùng SĐT.'))return;
-  rptSlTrungXong(el,async()=>{const k=await rptSlChuyenLoai(le,ten,'Sỉ');if(ten)await rptSlSaveManual(le.leadId,{si_sale:ten});rptSlBaoChuyen([k],'Sỉ');});
+  rptSlTrungXong(el,async()=>{const k=await rptSlChuyenLoai(le,ten,'Sỉ');if(ten)await rptSlSaveManual(le.leadId,{si_sale:ten});rptSlBaoChuyen([k],'Sỉ');},x);
 }
 function rptSlTrungChonSale(i,el){
   const x=((window._rptSlTrungSdt||{}).B||[])[i];if(!x)return;
