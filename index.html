@@ -5836,10 +5836,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/10 15:26';
+const APP_VERSION='14/10 08:59';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=479;
+const APP_BAN=161;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7481,6 +7481,8 @@ function rptSlBuildMasterRaw(){
       r.manualStatus=r.siPhanLoai||'';          // mọi chỗ cũ đọc manualStatus của Lẻ nay ra cùng bộ với Sỉ
       r.status=r.isChot?'Chốt đơn':r.manualStatus;
     });
+    // KHÁCH ĐÃ DỪNG CHĂM (anh Hải 14/10/2026: "chuyển sang khách không tiềm năng rồi mà vẫn báo chuông") -> tắt chuông hẹn.
+    rows.forEach(r=>{if(r.siHenDen&&/^(không tiềm năng|mất lead)$/i.test(String(r.siPhanLoai||'').trim()))r.siHenDen=false;});
   }
   // DOANH SỐ CHỐT = mọi đơn trong VÒNG 1 THÁNG kể từ ĐƠN KIOT ĐẦU TIÊN (người dùng chốt 21/9/2026:
   // "đơn khách lần đầu trong phạm vi 1 tháng đều được tính, đơn phát sinh quá 1 tháng mới không tính").
@@ -7985,19 +7987,29 @@ function rptSlTongQuanHtml(){
     +o(L('tqMoi','Khách mới trong kỳ',moi),mkKpi(ic('users'),'Khách mới',num(moi.length),'tạo trong kỳ · '+num(moi.filter(onl).length)+' online','g-purple'))
     +o(L('tqMoiChot','Khách mới đã ra đơn',moiChot),mkKpi(ic('check'),'Khách mới đã ra đơn',num(moiChot.length),'doanh thu '+vnd(dtMoi),'g-orange'))
     +o('',mkKpi(ic('target'),'Tỉ lệ chốt khách mới',moi.length?pct(moiChot.length/moi.length*100):'—',num(moiChot.length)+' / '+num(moi.length)+' khách','g-yellow'))+'</div>';
-  // 2) PHỄU THEO PHÂN LOẠI (khách trong kỳ)
-  const dsPL=[...rptSlPhanLoaiDs(),'(chưa cập nhật)'];
-  const theoPL={};P.forEach(r=>{const v=rptSlLocTT(r);(theoPL[v]=theoPL[v]||[]).push(r);});
-  Object.keys(theoPL).forEach(v=>{if(!dsPL.includes(v))dsPL.push(v);});
-  const maxPL=Math.max(1,...dsPL.map(v=>(theoPL[v]||[]).length));
-  const phieu=dsPL.filter(v=>(theoPL[v]||[]).length).map((v,i)=>{const ds=theoPL[v],mau=rptSiPhanLoaiMau(v)||'var(--muted)';
-    return '<div '+L('tqPL'+i,v,ds)+'><div style="display:grid;grid-template-columns:190px 1fr 90px;align-items:center;gap:14px;padding:7px 0">'
-      +'<div style="font-size:12.5px;font-weight:700;color:var(--text)">'+e(v)+'</div>'
-      +'<div style="height:12px;border-radius:6px;background:var(--bg2);overflow:hidden"><div style="height:100%;width:'+(ds.length/maxPL*100).toFixed(1)+'%;background:'+mau+';border-radius:6px"></div></div>'
-      +'<div style="text-align:right;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums">'+num(ds.length)
-        +' <span style="font-size:11px;font-weight:700;color:var(--muted)">'+pct(ds.length/P.length*100)+'</span></div></div></div>';}).join('');
-  const k2='<div class="tbl-card" style="padding:20px 24px">'+tieuDe('Phân loại khách trong kỳ · '+num(P.length)+' khách')
-    +(phieu||'<div style="color:var(--muted);font-size:12.5px;padding:10px 0">Không có khách trong kỳ</div>')+'</div>';
+  // 2) KHÁCH TRONG KỲ: LEAD MỚI / LEAD CŨ (anh Hải 14/10/2026: "trước khi chốt đơn thì nó cũng phải là lead cũ hay mới chứ")
+  // Mỗi khách trong kỳ thuộc ĐÚNG 1 trong 2 nhóm: Lead mới = tạo trong kỳ · Lead cũ = tạo trước kỳ (mua lại / chăm lại trong kỳ).
+  // Mỗi nhóm 1 thanh chia theo tình trạng hiện tại: Đã ra đơn (có doanh thu trong kỳ) · rồi theo Phân loại KH của khách chưa ra đơn.
+  const laMoi=r=>modInRange(M,String(rptSlNgayTao(r)).slice(0,10));
+  const ttCua=r=>tienKy(r)>0||r.isChot?'Đã ra đơn':(()=>{const v=rptSlLocTT(r);return /^lead (mới|cũ)$/i.test(v)?'Chưa phân loại':v;})();
+  const thuTu=['Đã ra đơn','Tiềm năng, chưa ra đơn','Chưa liên hệ được','Chưa phân loại','(chưa cập nhật)','Không tiềm năng'];
+  const mauTT=v=>v==='Đã ra đơn'?'var(--green)':v==='Chưa phân loại'||v==='(chưa cập nhật)'?'var(--muted)':(rptSiPhanLoaiMau(v)||'var(--accent)');
+  const nhomLead=[['Lead mới','tạo trong kỳ',P.filter(laMoi)],['Lead cũ','tạo trước kỳ, phát sinh trong kỳ',P.filter(r=>!laMoi(r))]];
+  const tatCaTT=[...new Set(P.map(ttCua))].sort((a,b)=>(thuTu.indexOf(a)<0?99:thuTu.indexOf(a))-(thuTu.indexOf(b)<0?99:thuTu.indexOf(b)));
+  const thanhLead=nhomLead.map(([ten,phu,ds],gi)=>{
+    const dem={};ds.forEach(r=>{const v=ttCua(r);(dem[v]=dem[v]||[]).push(r);});
+    const chot=(dem['Đã ra đơn']||[]).length;
+    const thanh=tatCaTT.filter(v=>dem[v]).map((v,ti)=>'<div '+L('tqLd'+gi+'_'+ti,ten+' · '+v,dem[v]).replace('style="cursor:pointer" title="Bấm xem danh sách"','style="cursor:pointer;height:100%;width:'+(dem[v].length/Math.max(1,ds.length)*100).toFixed(2)+'%;background:'+mauTT(v)+'" title="'+e(v)+': '+num(dem[v].length)+' khách — bấm xem"')+'></div>').join('');
+    return '<div style="padding:10px 0;border-top:'+(gi?'1px solid var(--border)':'none')+'">'
+      +'<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:7px;flex-wrap:wrap">'
+      +'<span '+L('tqLd'+gi,ten,ds)+'><b style="font-size:13.5px">'+ten+'</b> <span style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums">'+num(ds.length)+'</span></span>'
+      +'<span style="font-size:11px;color:var(--muted);font-weight:600">'+phu+'</span>'
+      +'<span style="margin-left:auto;font-size:12px;font-weight:800;color:var(--green)">'+num(chot)+' đã ra đơn'+(ds.length?' · '+pct(chot/ds.length*100):'')+'</span></div>'
+      +'<div style="display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--bg2)">'+(thanh||'')+'</div></div>';}).join('');
+  const chuGiai='<div style="display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px">'+tatCaTT.map(v=>{const n=P.filter(r=>ttCua(r)===v).length;
+    return '<span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--text2)"><span style="width:10px;height:10px;border-radius:3px;background:'+mauTT(v)+'"></span>'+e(v)+' <b style="color:var(--text)">'+num(n)+'</b></span>';}).join('')+'</div>';
+  const k2='<div class="tbl-card" style="padding:20px 24px">'+tieuDe('Khách trong kỳ · '+num(P.length)+' khách · lead mới / lead cũ')
+    +(P.length?thanhLead+chuGiai:'<div style="color:var(--muted);font-size:12.5px;padding:10px 0">Không có khách trong kỳ</div>')+'</div>';
   // 3) THEO TỪNG SALE (khách trong kỳ) + việc quá hạn hiện tại
   const viec=rptSlViecGiaoDs();
   const quaHan=viec.filter(r=>String(r.viecGiao.ngay_hen||'')&&String(r.viecGiao.ngay_hen).slice(0,10)<t);
@@ -8027,15 +8039,16 @@ function rptSlTongQuanHtml(){
     keys:viec.map(r=>r.key),loais:viec.map(()=>T)};
   window._rptSlLists.tqQuaHan=Object.assign({},window._rptSlLists.tqViec,{title:'Việc quá hạn · '+num(quaHan.length),
     rows:window._rptSlLists.tqViec.rows.filter((x,i)=>quaHan.includes(viec[i])),keys:quaHan.map(r=>r.key),loais:quaHan.map(()=>T)});
-  const k4='<div style="'+g3+'">'
+  // BẢNG THEO SALE + 3 Ô VIỆC XẾP DỌC CÙNG 1 HÀNG (anh Hải 13/10/2026: "gộp thành 1 hàng, 1 bên bảng 1 bên 3 dash xếp dọc")
+  const k4='<div style="display:flex;flex-direction:column;gap:16px">'
     +o('onclick="rptSlShow('+q+'tqViec'+q+')" style="cursor:pointer"',mkKpi(ic('clipboard'),'Việc đang giao',num(viec.length),num(quaHan.length)+' quá hạn','g-blue'))
     +o(L('tqLau','Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',lau),mkKpi(ic('clock'),'Lâu chưa chăm sóc >'+RPT_SI_LAU_NGAY+' ngày',num(lau.length),'trên '+num(canCham.length)+' khách đang chăm','g-red'))
     +o(L('tqChuaCS','Chưa có lịch sử chăm sóc',chuaCS),mkKpi(ic('chat'),'Chưa có lịch sử chăm sóc',num(chuaCS.length),'cần ghi lượt chăm sóc đầu','g-purple'))+'</div>';
   return '<div style="display:flex;flex-direction:column;gap:28px">'   // trải hết trang (anh Hải 12/10/2026)
     +'<section>'+tieuDe('Doanh thu & khách')+k1+'</section>'
     +'<section>'+k2+'</section>'
-    +'<section>'+k3+'</section>'
-    +'<section>'+tieuDe('Việc & chăm sóc · hiện tại')+k4+'</section>'
+    +'<section style="display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,300px);gap:16px;align-items:start">'
+      +'<div>'+k3+'</div><div>'+tieuDe('Việc & chăm sóc · hiện tại')+k4+'</div></section>'
     +'</div>';
 }
 function rptSlMasterHtml(){try{return rptSlMasterHtmlRaw();}catch(e){rptBaoLoi('Bảng Master',e);
