@@ -4522,6 +4522,17 @@ function rptSlChuyenDoi(r){
   const ns=saleNhanSuDS().find(x=>String(x.ten).trim()===String(r.staff).trim());
   if(ns&&ns.dang_lam===false&&ns.ban_giao_cho){r.staffBanGiao=r.staff;r.staff=String(ns.ban_giao_cho).trim();}
 }
+// SALE MẶC ĐỊNH CỦA PAGE (anh Hải 14/10/2026: "page Tự Tại Viên fb đổ về mà không có tên Sale rõ ràng hay lỗi gì thì auto gắn hết
+// cho Trịnh Lê Vân Ngọc, page Hiền Thủy cũng thế"): khách LẺ, Online, đến từ Facebook (đơn Pancake hoặc kênh Kiot có chữ Facebook)
+// của thương hiệu TTV / HT mà Sale đang trống hoặc KHÔNG có trong Nhân sự Sale (người bán Kiot là nhân viên cửa hàng...)
+// -> Vân Ngọc. Gán tay (kể cả thu hồi về trống) luôn thắng. Tính lúc dựng, không ghi bảng. Vân Ngọc nghỉ thì luật tự tắt.
+const RPT_SL_SALE_PAGE={TTV:'Trịnh Lê Vân Ngọc',HT:'Trịnh Lê Vân Ngọc'};
+function rptSlSalePageMacDinh(r){
+  const ten=RPT_SL_SALE_PAGE[r.brand],ds=rptSlSaleCuaDoi();
+  if(!ten||!ds.includes(ten)||ds.includes(String(r.staff||'').trim()))return;
+  if((r.nguon||'Online')!=='Online'||!((r.orders||[]).length||/facebook/i.test(r.kenh||'')))return;
+  r.staffPageCu=r.staff||'';r.staff=ten;
+}
 // NHÂN VIÊN BÁN theo Kiot (anh Hải 03/10/2026): khách đã nối phiếu đặt hàng / hoá đơn bán thẳng Kiot -> Sale = người bán
 // (soldByName) trên phiếu GẦN NHẤT, quy về tên Phân quyền. Không có phiếu nào thì trả '' -> nơi gọi lấy người phụ trách Pancake.
 // Bên Lẻ bỏ phiếu của chi nhánh Tổng kho sỉ (người bán đội Sỉ) và tài khoản chung (Sales Admin...); Sỉ giữ mọi tên như cũ.
@@ -5836,10 +5847,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='14/10 14:07';
+const APP_VERSION='14/10 14:11';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=481;
+const APP_BAN=482;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6064,6 +6075,7 @@ const LOGIC_XU_LY=[
   ['Gán khách cho Sale đội kia','Hỏi xác nhận → đổi thẻ Pancake KH SỈ ↔ KH LẺ, chuyển dữ liệu và việc đang giao sang Sale mới','7/10'],
   ['Phạm vi xem','Lọc theo Sale đã chốt; Admin / Supreme xem hết. Mục Trùng SĐT Sỉ – Lẻ: Sale xem được Thông tin khách bên kia','3/10 · 13/10'],
   ['Sale đã nghỉ','Khách thuộc người nhận bàn giao','—'],
+  ['Page Tự Tại Viên / Hiền Thủy','Khách Lẻ Online từ Facebook 2 page này mà Sale trống / không có trong Nhân sự → Trịnh Lê Vân Ngọc (gán tay vẫn thắng)','14/10'],
   ['Tên Admin','Không hiện tên thật, hiện "Admin"','5/10']]],
  ['Phân loại & Daily Task',[
   ['6 phân loại','Lead mới · Lead cũ · Đã ra đơn · Tiềm năng, chưa ra đơn · Chưa liên hệ được · Không tiềm năng','7/10'],
@@ -7350,7 +7362,8 @@ function rptSlBuildMasterRaw(){
     // LẺ: Sale gán ở tab Gán data (hoặc thu hồi về trống) > NHÂN VIÊN BÁN trên phiếu đặt / hoá đơn Kiot đã nối
     // > người phụ trách bên Pancake (chỉ khi chưa có phiếu Kiot nào -- anh Hải 03/10/2026)
     rows.forEach(r=>{const ten=rptSlSaleKiotCua(r);r.staffKiot=ten;
-      const gan=rptSlSaleGanTayDong(r);if(gan!==null)r.staff=gan;else if(ten)r.staff=ten;rptSlChuyenDoi(r);});
+      const gan=rptSlSaleGanTayDong(r);if(gan!==null)r.staff=gan;else if(ten)r.staff=ten;rptSlChuyenDoi(r);
+      if(gan===null)rptSlSalePageMacDinh(r);});
   }
   if(rptSlType()==='Sỉ'){
     // SALE PHỤ TRÁCH BÊN SỈ (anh Hải chốt 23/9/2026): KHÔNG lấy người phụ trách bên Pancake nữa.
