@@ -14,7 +14,11 @@
 // Đọc dữ liệu (GET) tự THỬ LẠI khi mạng chập / Supabase 5xx (28/9/2026: 'Gateway Timeout' làm đỏ cả lượt Kiot).
 // Ghi (POST/PATCH) KHÔNG thử lại: máy chủ có thể đã ghi rồi mới báo lỗi, thử lại dễ sinh dòng trùng.
 const { fetchLai } = require('./lib/fetch-lai.js');
-const fetch = (u, o) => (!o || !o.method || o.method === 'GET') ? fetchLai(u, o, { ten: 'sync-datahub-pancake' }) : globalThis.fetch(u, o);
+// Pancake POS hay trả 500 "Server internal error" thoáng qua (15/10/2026: 3 lượt đỏ / ngày, anh: "báo fail hơi nhiều") -> đọc Pancake
+// thử 5 lần, chờ dần 3-6-9-12 giây; Supabase giữ 3 lần như cũ.
+const fetch = (u, o) => (!o || !o.method || o.method === 'GET')
+  ? fetchLai(u, o, /pos\.pages\.fm/.test(u) ? { ten: 'sync-datahub-pancake', lan: 5, cho: 3000 } : { ten: 'sync-datahub-pancake' })
+  : globalThis.fetch(u, o);
 const SUPABASE_URL = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const SESSION_TOKEN = process.env.PANCAKE_SESSION_TOKEN;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -48,9 +52,15 @@ async function fetchShopOrders(shopId) {
   let page = 1, all = [], totalPages = 1;
   while (page <= totalPages) {
     const url = `https://pos.pages.fm/api/v1/shops/${shopId}/orders?access_token=${SESSION_TOKEN}&page_size=${PAGE_SIZE}&page_number=${page}`;
-    const res = await fetch(url);
-    const json = await res.json();
-    if (!json.success) throw new Error(`Pancake lỗi shop ${shopId} trang ${page}: ${json.message || JSON.stringify(json).slice(0, 200)}`);
+    let res;
+    try { res = await fetch(url); }
+    catch (e) { e.tamThoi = true; throw e; }   // mạng chập sau 5 lần thử = lỗi tạm thời
+    const json = await res.json().catch(() => ({}));
+    if (!json.success) {
+      const e = new Error(`Pancake lỗi shop ${shopId} trang ${page}: ${json.message || ('HTTP ' + res.status + ' ' + JSON.stringify(json).slice(0, 200))}`);
+      e.tamThoi = res.status >= 500 || res.status === 429;   // lỗi máy chủ Pancake; còn sai / hết hạn token (4xx) thì KHÔNG phải tạm thời
+      throw e;
+    }
     all = all.concat(json.data || []);
     totalPages = json.total_pages || 1;
     if (!BACKFILL && page >= INCREMENTAL_MAX_PAGES) break;
@@ -305,6 +315,7 @@ async function autoB3() {
   const logId = await logSyncStart().catch(e => { console.warn('logSyncStart lỗi (bỏ qua):', e.message); return null; });
   let grandTotal = 0;
   const errors = [];
+  let loiThat = false;   // có lỗi KHÔNG phải Pancake 5xx thoáng qua (token, ghi Supabase...) -> phải đỏ ngay
   const CHUNK = 500; // upsert theo lô, tránh 1 request quá lớn
   for (const shop of SHOPS) {
     try {
@@ -320,11 +331,12 @@ async function autoB3() {
     } catch (e) {
       console.error(`Shop ${shop.id} (${shop.brand}) LỖI: ${e.message}`);
       errors.push(`Shop ${shop.id} (${shop.brand}): ${e.message}`);
+      if (!e.tamThoi) loiThat = true;
     }
   }
   // Không đơn nào về mà cũng không báo lỗi = bất thường (token hết hạn, Pancake trục trặc).
   // Dừng lại, KHÔNG chạy phần tự gắn thẻ / đổi trạng thái để máy không hành động trên dữ liệu thiếu.
-  if (grandTotal === 0) {
+  if (grandTotal === 0 && (loiThat || !errors.length)) {   // cả lượt chỉ dính Pancake 5xx -> xử ở khối dưới (vàng / đỏ khi kéo dài)
     console.error('DỪNG: không lấy được đơn nào từ Pancake — bỏ qua bước gắn thẻ và đổi trạng thái.');
     await logSyncEnd(logId, { status: 'failed', recordsCreated: 0, errorMessage: 'Không lấy được đơn nào từ Pancake' });
     process.exit(1);
@@ -332,6 +344,18 @@ async function autoB3() {
   if (errors.length) {
     console.error('CÓ SHOP LỖI — bỏ qua bước gắn thẻ và đổi trạng thái lượt này cho chắc.');
     await logSyncEnd(logId, { status: 'failed', recordsCreated: grandTotal, errorMessage: errors.join(' | ').slice(0, 500) });
+    // CHỈ Pancake 5xx thoáng qua ở vài shop (các shop khác vẫn về): lượt sau (10 phút) tự kéo bù vì upsert theo đơn mới nhất
+    // -> cảnh báo vàng, KHÔNG đỏ / không gửi mail. Đỏ khi lỗi thật, hoặc 2 lượt NGAY TRƯỚC cũng lỗi (Pancake hỏng kéo dài ~30 phút).
+    if (!loiThat) {
+      const truoc = await fetch(`${SUPABASE_URL}/rest/v1/sync_log?select=id,status&source=eq.${encodeURIComponent('Data Hub - Pancake POS')}&status=neq.running&id=neq.${logId || 0}&order=started_at.desc&limit=2`,
+        { headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY } }).then(r => r.json()).then(j => Array.isArray(j) ? j : []).catch(() => []);
+      const keoDai = truoc.length === 2 && truoc.every(x => x.status === 'failed');
+      if (!keoDai) {
+        console.log('::warning::Pancake lỗi máy chủ thoáng qua ở ' + errors.length + ' shop — lượt sau tự kéo bù: ' + errors.join(' | ').slice(0, 300));
+        return;
+      }
+      console.error('Pancake lỗi 3 lượt liền (~30 phút) — báo đỏ.');
+    }
     process.exit(1);
   }
   // 3 BƯỚC PHỤ chỉ chạy 1 GIỜ/LẦN (29/9/2026): mỗi bước đọc lại cả bảng đơn + capNhatChat ghi tới 250 dòng/lượt;
