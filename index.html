@@ -5886,10 +5886,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='16/10 14:15';
+const APP_VERSION='16/10 14:20';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=488;
+const APP_BAN=489;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6877,7 +6877,7 @@ function rptSlNhanCu(d,nhan){
   if(!rptSlNgoaiKy(d))return '';
   const tao=dmy(String(d||'').slice(0,10))||'?';
   // viết ngắn, dễ hiểu (anh Hải 07/10/2026)
-  const giai=nhan==='chăm sóc'?'Khách cũ (tạo '+tao+'). Hiện ở đây vì có chăm sóc trong khoảng ngày đang xem.'
+  const giai=nhan==='đang chăm'?'Khách cũ (tạo '+tao+'). Hiện ở đây vì có chăm sóc trong khoảng ngày đang xem.'
     :nhan==='mua lại'?'Khách cũ (tạo '+tao+'). Hiện ở đây vì có mua đơn trong khoảng ngày đang xem.'
     :nhan==='ngoài kỳ'?'Khách tạo '+tao+', không có đơn / chăm sóc trong khoảng ngày đang xem. Hiện ở đây vì khớp ô tìm kiếm (tìm trên toàn bộ khách).'
     :'Khách cũ (tạo '+tao+'). Hiện ở đây vì có phát sinh trong khoảng ngày đang xem.';
@@ -6887,11 +6887,11 @@ function rptSlNhanCu(d,nhan){
 }
 // LÝ DO KHÁCH CŨ HIỆN TRONG KỲ (anh Hải 16/10/2026: M-0028 chưa chốt đơn mà có nhãn "mua lại"): trước đây ngoài nhãn "chăm sóc" thì
 // mặc định "mua lại" -- sai với khách chỉ hiện vì Ô TÌM KIẾM (tìm trên toàn bộ khách, bỏ bộ lọc ngày). Giờ: có đơn có tiền / chốt trong kỳ
-// = mua lại; chỉ có lượt chăm sóc trong kỳ = chăm sóc; còn lại = ngoài kỳ.
+// = mua lại; chỉ có lượt chăm sóc trong kỳ = "đang chăm" (anh Hải 16/10/2026: "đang chăm sóc thì để thẻ đang chăm"); còn lại = ngoài kỳ.
 function rptSlLyDoKy(r){
-  if(r._chiCS)return 'chăm sóc';
+  if(r._chiCS)return 'đang chăm';
   if(rptSlInRange(r))return 'mua lại';
-  if(typeof rptSiLuotTrongKy==='function'&&rptSiLuotTrongKy(r).length)return 'chăm sóc';
+  if(typeof rptSiLuotTrongKy==='function'&&rptSiLuotTrongKy(r).length)return 'đang chăm';
   return 'ngoài kỳ';
 }
 function rptSlNgayCham(r){return r.careDate||r.created||'';}
