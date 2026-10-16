@@ -3871,14 +3871,24 @@ function rptThTongHtml(){
   const thanhTH=dsTH.map((x,i)=>{const dt=x.le+x.si,n=x.ds['Lẻ'].length+x.ds['Sỉ'].length;
     window._rptSlLists['thTH'+i]={title:'Doanh thu '+thTen(x.b)+' · '+vnd(dt),cols,rows:dong(x.ds['Lẻ'],'Lẻ').concat(dong(x.ds['Sỉ'],'Sỉ')),
       keys:ks(x.ds['Lẻ']).concat(ks(x.ds['Sỉ'])),loais:lo(x.ds['Lẻ'],'Lẻ').concat(lo(x.ds['Sỉ'],'Sỉ'))};
-    return bam('thTH'+i,'<div style="display:grid;grid-template-columns:130px 1fr 170px;align-items:center;gap:14px;padding:8px 0">'
-      +'<div><div style="font-size:12.5px;font-weight:700;color:var(--text)">'+e(thTen(x.b))+'</div>'
-        +'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+num(n)+' khách · '+num(x.don)+' đơn</div></div>'
-      +'<div style="height:12px;border-radius:6px;background:var(--bg2);overflow:hidden"><div style="height:100%;width:'+(dt/maxTH*100).toFixed(1)+'%;background:'+thMau(x.b)+';border-radius:6px"></div></div>'
-      +'<div style="text-align:right"><div style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums">'+vnd(dt)
-        +' <span style="font-size:11px;font-weight:700;color:var(--muted)">'+tl(dt,T_.dt)+'</span></div>'
-        +'<div style="font-size:10.5px;color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums">Lẻ '+(x.le?vnd(x.le):'—')+' · Sỉ '+(x.si?vnd(x.si):'—')+'</div></div></div>');}).join('');
-  const bTH='<div class="tbl-card" style="margin-bottom:16px"><div class="tbl-head"><div class="tbl-title">Doanh thu theo thương hiệu</div><div class="tbl-count">'+vnd(T_.dt)+'</div></div>'
+    // 3 TẦNG (anh Hải 16/10/2026: bản cột phải 170px "khó nhìn" -- số Lẻ / Sỉ gãy 2-3 dòng): tên + tổng | thanh cả chiều ngang,
+    // khúc đậm = Lẻ, khúc nhạt = Sỉ | khách · đơn bên trái, Lẻ / Sỉ bên phải, không xuống dòng.
+    const m=thMau(x.b),ph=(v,w)=>(v/w*100).toFixed(2)+'%';
+    const tach=[x.le?'Lẻ '+vnd(x.le):'',x.si?'Sỉ '+vnd(x.si):''].filter(Boolean).join(' · ');
+    return bam('thTH'+i,'<div style="padding:11px 0;'+(i<dsTH.length-1?'border-bottom:1px solid var(--border)':'')+'">'
+      +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">'
+        +'<span style="font-size:13px;font-weight:800;color:var(--text)">'+e(thTen(x.b))+'</span>'
+        +'<span style="white-space:nowrap;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums">'+vnd(dt)
+          +' <span style="font-size:11.5px;font-weight:700;color:var(--muted)">'+tl(dt,T_.dt)+'</span></span></div>'
+      +'<div style="height:10px;border-radius:5px;background:var(--bg2);overflow:hidden;margin:7px 0 6px">'
+        +'<div style="height:100%;width:'+ph(dt,maxTH)+';display:flex;border-radius:5px;overflow:hidden">'
+          +(x.le?'<div style="width:'+ph(x.le,dt)+';background:'+m+'"></div>':'')
+          +(x.si?'<div style="width:'+ph(x.si,dt)+';background:color-mix(in srgb,'+m+' 40%,var(--surface))"></div>':'')+'</div></div>'
+      +'<div style="display:flex;justify-content:space-between;gap:12px;font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums">'
+        +'<span>'+num(n)+' khách · '+num(x.don)+' đơn</span><span>'+tach+'</span></div></div>');}).join('');
+  const chu=(nen,txt)=>'<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:8px;border-radius:2px;background:'+nen+'"></span>'+txt+'</span>';
+  const bTH='<div class="tbl-card" style="margin-bottom:16px"><div class="tbl-head"><div class="tbl-title">Doanh thu theo thương hiệu</div><div class="tbl-count">'+vnd(T_.dt)+'</div>'
+    +'<span style="margin-left:auto;display:inline-flex;gap:12px;font-size:11px;color:var(--muted);font-weight:700">'+chu('var(--text2)','Lẻ')+chu('color-mix(in srgb,var(--text2) 40%,var(--surface))','Sỉ')+'</span></div>'
     +'<div style="padding:6px 20px 14px">'+(thanhTH||'<div style="color:var(--muted);font-size:12.5px;padding:10px 0">Không có doanh thu trong kỳ</div>')+'</div></div>';
   return `
     <div style="${g3}">
@@ -5886,10 +5896,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='16/10 14:20';
+const APP_VERSION='16/10 14:24';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=489;
+const APP_BAN=490;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8142,12 +8152,14 @@ function rptSlTongQuanHtml(){
     const mau=b=>{const x=RPT_MKT_BRANDS.find(y=>y[0]===b);return x?x[2]:'var(--muted)';};
     const ds=Object.values(nhom).sort((a,b)=>(a.b?0:1)-(b.b?0:1)||b.dt-a.dt);
     const maxTH=Math.max(1,...ds.map(x=>x.dt));
-    const thanh=ds.map((x,i)=>'<div '+L('tqTH'+i,'Doanh thu '+ten(x.b),x.ds)+'><div style="display:grid;grid-template-columns:150px 1fr 150px;align-items:center;gap:14px;padding:7px 0">'
-      +'<div><div style="font-size:12.5px;font-weight:700;color:var(--text)">'+e(ten(x.b))+'</div>'
-        +'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+num(x.ds.length)+' khách · '+num(x.don)+' đơn</div></div>'
-      +'<div style="height:12px;border-radius:6px;background:var(--bg2);overflow:hidden"><div style="height:100%;width:'+(x.dt/maxTH*100).toFixed(1)+'%;background:'+mau(x.b)+';border-radius:6px"></div></div>'
-      +'<div style="text-align:right;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums">'+vnd(x.dt)
-        +' <span style="font-size:11px;font-weight:700;color:var(--muted)">'+(dt?pct(x.dt/dt*100):'—')+'</span></div></div></div>').join('');
+    // cùng bố cục 3 tầng với thẻ ở trang Tổng hợp (16/10/2026): tên + tổng | thanh cả chiều ngang | khách · đơn
+    const thanh=ds.map((x,i)=>'<div '+L('tqTH'+i,'Doanh thu '+ten(x.b),x.ds)+'><div style="padding:10px 0;'+(i<ds.length-1?'border-bottom:1px solid var(--border)':'')+'">'
+      +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">'
+        +'<span style="font-size:13px;font-weight:800;color:var(--text)">'+e(ten(x.b))+'</span>'
+        +'<span style="white-space:nowrap;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums">'+vnd(x.dt)
+          +' <span style="font-size:11.5px;font-weight:700;color:var(--muted)">'+(dt?pct(x.dt/dt*100):'—')+'</span></span></div>'
+      +'<div style="height:10px;border-radius:5px;background:var(--bg2);overflow:hidden;margin:7px 0 6px"><div style="height:100%;width:'+(x.dt/maxTH*100).toFixed(1)+'%;background:'+mau(x.b)+';border-radius:5px"></div></div>'
+      +'<div style="font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap">'+num(x.ds.length)+' khách · '+num(x.don)+' đơn</div></div></div>').join('');
     kTH='<div class="tbl-card" style="padding:20px 24px">'+tieuDe('Doanh thu theo thương hiệu · '+vnd(dt))
       +(thanh||'<div style="color:var(--muted);font-size:12.5px;padding:10px 0">Không có doanh thu trong kỳ</div>')+'</div>';
   }
