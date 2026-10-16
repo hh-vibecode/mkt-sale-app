@@ -1,11 +1,12 @@
-name: Đối soát Kiot (tuần)
+name: Đối soát Kiot (hằng đêm)
 
-# ĐỐI SOÁT HẰNG TUẦN (anh Hải 08/10/2026: "đêm cuối tuần cà lại 1 lần"): Chủ nhật 23:00 giờ VN (= 16:00 UTC).
+# ĐỐI SOÁT HẰNG ĐÊM: 23:00 giờ VN (= 16:00 UTC) MỌI NGÀY (anh Hải 16/10/2026: "không cập nhật cuối ngày định kỳ à"; trước: chỉ Chủ nhật,
+# chốt 08/10). Lịch GitHub hay trễ 1-4 tiếng (lượt 11/10 hẹn 23:00 chạy 03:03 sáng). source sync_log GIỮ tên 'Đối soát Kiot (tuần)' vì app đọc tên đó.
 # 1) kéo lại TOÀN BỘ hoá đơn từ 1/1/2026 + đơn đặt hàng  2) so từng mã Kiot API vs CSDL app -> ghi sync_log
 #    (source 'Đối soát Kiot (tuần)'), tab Data Hub > Đối soát hiện kết quả. Không tự xoá gì.
 on:
   schedule:
-    - cron: '0 16 * * 0'
+    - cron: '0 16 * * *'   # 23:00 VN hằng ngày
   workflow_dispatch:
 
 jobs:

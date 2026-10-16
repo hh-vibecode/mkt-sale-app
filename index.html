@@ -3041,8 +3041,8 @@ function dhDoiSoatHtml(){
   const canXu=tong.vl+tong.kl+tong.chuaCo+tong.coMa+tong.trung;
   return '<div class="tbl-card" style="margin-bottom:16px">'
     +'<div class="tbl-head"><div class="tbl-title">Đối soát doanh thu Kiot ↔ App</div><div class="tbl-count">từ 1/1/2026</div>'
-    +(()=>{const t=window._dhDsTuan;   // kết quả soát từng mã hằng tuần (Chủ nhật 23:00 VN)
-      if(!t)return '<span style="margin-left:12px;font-size:11px;color:var(--muted)">Soát từng mã với Kiot: chạy tự động 23:00 Chủ nhật</span>';
+    +(()=>{const t=window._dhDsTuan;   // kết quả soát từng mã hằng đêm (23:00 VN, từ 16/10/2026)
+      if(!t)return '<span style="margin-left:12px;font-size:11px;color:var(--muted)">Soát từng mã với Kiot: chạy tự động 23:00 hằng đêm</span>';
       const luc=t.finished_at||t.started_at,d=new Date(new Date(luc).getTime()+7*3600e3).toISOString();
       const khi=d.slice(11,16)+' '+d.slice(8,10)+'/'+d.slice(5,7);
       const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
@@ -3624,7 +3624,7 @@ async function renderDataHub(){
   if(mode==='kenh'){el.innerHTML=header+kho+dhKenhHtml();tblAlign(el);return;}
   if(mode==='doisoat'){   // đối soát Kiot ↔ app: cần đủ dữ liệu dựng Master Lẻ + Sỉ
     await Promise.all([dhLoadOrders(),siCrmLoad(),
-      // lần SOÁT TỪNG MÃ với Kiot gần nhất (job doi-soat.yml, Chủ nhật 23:00 VN)
+      // lần SOÁT TỪNG MÃ với Kiot gần nhất (job doi-soat.yml, 23:00 VN hằng đêm)
       sbFetchAll('sync_log','select=started_at,finished_at,status,records_created,records_updated,error_message&source=eq.'+encodeURIComponent('Đối soát Kiot (tuần)')+'&order=started_at.desc&limit=1')
         .then(d=>{window._dhDsTuan=d[0]||null;}).catch(()=>null)]);
     el.innerHTML=header+kho+dhDoiSoatHtml();tblAlign(el);return;}
@@ -5896,10 +5896,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='16/10 14:24';
+const APP_VERSION='16/10 14:27';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=490;
+const APP_BAN=491;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6087,7 +6087,7 @@ const LOGIC_XU_LY=[
   ['Meta Ads','Chi phí + Mess (= Tổng số người liên hệ nhắn tin trên Ads Manager), từ 1/6/2026','8/10'],
   ['Data Pancake vào báo cáo','Đơn CÓ SĐT (chưa huỷ) vào luôn, không cần thẻ. Đơn không SĐT phải có thẻ: Sỉ TIỀM NĂNG / CHỐT ĐƠN · Lẻ CHỐT ĐƠN / BÀN GIAO / TIỀM NĂNG','27/9'],
   ['Data Hub','Chỉ để xem số liệu thô, không điền. Thêm / sửa khách ở báo cáo Sale Lẻ / Sỉ','8/10'],
-  ['Đối soát Kiot ↔ app','Tự soát từng mã mỗi Chủ nhật 23:00; so số THẬT, phiếu tạm không dấu vết tiền tách riêng chỉ để biết','8/10'],
+  ['Đối soát Kiot ↔ app','Tự soát từng mã 23:00 hằng đêm; so số THẬT, phiếu tạm không dấu vết tiền tách riêng chỉ để biết','8/10 · 16/10'],
   ['Job chạy chồng','Mỗi luồng đồng bộ chỉ 1 lượt chạy một lúc, lượt sau xếp hàng chờ','13/10']]],
  ['Gộp khách & nối Kiot',[
   ['Tự gộp','CHỈ khi trùng SĐT (so 9 số cuối), trong cùng loại Sỉ / Lẻ. Dòng chính = khách tạo trước, ô trống lấy bổ sung từ dòng gộp vào','13/10'],
