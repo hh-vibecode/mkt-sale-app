@@ -68,7 +68,7 @@ async function ghiLog(body, id) {
       doc('kiot_orders', 'code,customer_code,customer_name,purchase_date,total,total_payment,status,branch_name,sale_channel,sold_by_name'),
       doc('kiot_customers', 'code,name,phone,debt,customer_group'),
       doc('kiot_invoices', 'code,customer_code,customer_name,purchase_date,total,total_payment,status,branch_name,sale_channel,sold_by_name,order_code'),
-      doc('datahub_manual', 'kiot_code'),
+      doc('datahub_manual', 'id,kiot_code,sale_type,note,customer_name'),
       doc('datahub_orders', 'internal_note'),
     ]);
     const byCode = {}; kh.forEach(c => { byCode[c.code] = c; });
@@ -151,7 +151,32 @@ async function ghiLog(body, id) {
       + ` (Lẻ ${dem('Lẻ').length} · ${vn(dem('Lẻ').reduce((s, x) => s + x.tien, 0))} đ`
       + ` | Sỉ ${dem('Sỉ').length} · ${vn(dem('Sỉ').reduce((s, x) => s + x.tien, 0))} đ)`);
     ds.forEach(x => console.log(`   [${x.loai}] ${x.ngay} ${x.ma} ${String(x.ten).slice(0, 26)} · ${x.kenh} · ${x.don} đơn · ${vn(x.tien)} · ${bangChung(x.ma)}`));
+
+    // ── KHÁCH KIOT ĐỔI NHÓM LẺ <-> BUÔN (anh Hải 16/10/2026, ca KH006468 "KB CÔ LÀ"): dòng job TỰ TẠO vẫn nằm loại cũ -> báo cáo Lẻ
+    // gạt đơn của khách nhóm buôn (luật 24/9) mà bên Sỉ không có dòng -> 7,7tr rơi khỏi cả 2 bên. Anh chọn "tự chuyển theo Kiot":
+    // CHỈ dòng tự tạo (note "Tự tạo từ đơn Kiot"), CHỈ khi nhóm Kiot GHI RÕ buôn / lẻ (không đoán theo chi nhánh) -> đổi sale_type
+    // + lượt chăm sóc (loai) theo, ghi activity_log để soát. Dòng Sale nhập tay / khách Pancake không tự đụng.
+    const doiLoai = dm.filter(r => /^Tự tạo từ đơn Kiot/i.test(r.note || '') && r.kiot_code && byCode[r.kiot_code]).map(r => {
+      const c = byCode[r.kiot_code], g = c.customer_group || '';
+      const dich = laShopee(c) ? 'Lẻ' : NHOM_SI.test(g) ? 'Sỉ' : NHOM_LE.test(g) ? 'Lẻ' : null;
+      return dich && dich !== (r.sale_type || 'Lẻ') ? { r, c, dich, cu: r.sale_type || 'Lẻ' } : null; }).filter(Boolean);
+    if (doiLoai.length) {
+      console.log(`Đổi loại theo nhóm khách Kiot: ${doiLoai.length} khách`);
+      doiLoai.forEach(x => console.log(`   M-${String(x.r.id).padStart(4, '0')} ${x.r.kiot_code} ${x.c.name} · nhóm "${x.c.customer_group}" · ${x.cu} -> ${x.dich}`));
+    }
     if (CHI_XEM) { console.log('(KHO=1 -> chỉ xem trước, không ghi)'); return; }
+    for (const x of doiLoai) {
+      const leadId = 'M-' + String(x.r.id).padStart(4, '0');
+      const r1 = await fetch(`${SUPABASE_URL}/rest/v1/datahub_manual?id=eq.${Number(x.r.id)}`, { method: 'PATCH',
+        headers: { ...H, Prefer: 'return=minimal' }, body: JSON.stringify({ sale_type: x.dich, updated_at: new Date().toISOString() }) });
+      if (!r1.ok) { console.error('  lỗi đổi loại', leadId, r1.status); continue; }
+      await fetch(`${SUPABASE_URL}/rest/v1/salesi_crm?lead_id=eq.${encodeURIComponent(leadId)}&loai=neq.${encodeURIComponent(x.dich)}`, { method: 'PATCH',
+        headers: { ...H, Prefer: 'return=minimal' }, body: JSON.stringify({ loai: x.dich }) }).catch(() => {});
+      await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, { method: 'POST', headers: { ...H, Prefer: 'return=minimal' },
+        body: JSON.stringify({ who: 'Monsieur Claude', act: 'U', tbl: 'datahub_manual', ref: leadId, label: x.r.customer_name || x.c.name,
+          fld: 'Loại khách (theo nhóm Kiot "' + x.c.customer_group + '")', old_v: x.cu, new_v: x.dich }) }).catch(() => {});
+    }
+    if (doiLoai.length) console.log(`Đã đổi loại ${doiLoai.length} khách theo nhóm Kiot.`);
     if (!ds.length) { console.log('Không có gì mới.'); await ghiLog({ finished_at: new Date().toISOString(), status: 'success', records_created: 0 }, logId); return; }
 
     const rows = ds.map(x => ({ created_date: x.ngay, sale_type: x.loai, nguon: x.nguon, kenh: x.kenh,
