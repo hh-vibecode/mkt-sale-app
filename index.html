@@ -5907,10 +5907,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='17/10 09:51';
+const APP_VERSION='17/10 10:02';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=492;
+const APP_BAN=493;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6099,6 +6099,7 @@ const LOGIC_XU_LY=[
   ['Data Pancake vào báo cáo','Đơn CÓ SĐT (chưa huỷ) vào luôn, không cần thẻ. Đơn không SĐT phải có thẻ: Sỉ TIỀM NĂNG / CHỐT ĐƠN · Lẻ CHỐT ĐƠN / BÀN GIAO / TIỀM NĂNG','27/9'],
   ['Data Hub','Chỉ để xem số liệu thô, không điền. Thêm / sửa khách ở báo cáo Sale Lẻ / Sỉ','8/10'],
   ['Đối soát Kiot ↔ app','Tự soát từng mã 23:00 hằng đêm; so số THẬT, phiếu tạm không dấu vết tiền tách riêng chỉ để biết','8/10 · 16/10'],
+  ['Ảnh hồ sơ khách','Ảnh nén còn 1024px lúc tải lên; 23:40 hằng đêm tự rà ảnh trong ngày, file nào còn nặng thì nén tiếp; PDF giữ nguyên','17/10'],
   ['Job chạy chồng','Mỗi luồng đồng bộ chỉ 1 lượt chạy một lúc, lượt sau xếp hàng chờ','13/10']]],
  ['Gộp khách & nối Kiot',[
   ['Tự gộp','CHỈ khi trùng SĐT (so 9 số cuối), trong cùng loại Sỉ / Lẻ. Dòng chính = khách tạo trước, ô trống lấy bổ sung từ dòng gộp vào','13/10'],
@@ -8792,7 +8793,8 @@ function rptSlShowCustomer(key,sua){
 // ẢNH / TÀI LIỆU TRONG HỒ SƠ KHÁCH (anh Hải 17/10/2026: "thêm ảnh vào profile khách hàng" -- nhận diện cửa hàng, tình trạng; ảnh tài liệu).
 // File ở Storage bucket RIÊNG TƯ 'kh-anh', danh sách ở bảng kh_anh (supabase-schema-kh-anh.sql). Chỉ người đăng nhập app xem được:
 // mở tab mới nạp danh sách của ĐÚNG khách đó + xin link ký tên 1 giờ (không nạp sẵn mọi khách -> đỡ egress).
-// Ảnh nén còn cạnh dài 1600px trước khi tải lên; PDF giữ nguyên; tối đa 10 MB / file. Monsieur Claude.
+// Ảnh nén còn cạnh dài 1024px trước khi tải lên ("vừa đủ nhìn", 17/10/2026); PDF giữ nguyên; tối đa 10 MB / file.
+// Cuối ngày job nen-anh.yml (23:40 VN) rà lại ảnh trong ngày, nén tiếp file nào còn nặng (ảnh máy không nén được ở trình duyệt...). Monsieur Claude.
 const KH_ANH_BUCKET='kh-anh',KH_ANH_MAX=10*1024*1024;
 function rptSlAnhTabHtml(r){
   return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 20px 10px">'
@@ -8841,16 +8843,16 @@ async function rptSlAnhNap(key){
         +'</div></div>';}).join('')+'</div>';
   }catch(err){box.innerHTML='<span style="color:var(--red)">Chưa tải được ảnh: '+e(err.message)+'</span>';}
 }
-// Nén ảnh: cạnh dài tối đa 1600px, JPEG 0.82. Trình duyệt không đọc được (vd HEIC trên Chrome) -> gửi nguyên file.
+// Nén ảnh: cạnh dài tối đa 1024px, JPEG 0.7. Trình duyệt không đọc được (vd HEIC trên Chrome) -> gửi nguyên file.
 function rptSlAnhNen(f){
   return new Promise(ok=>{
     if(!/^image\/(jpeg|png|webp)$/.test(f.type))return ok(f);
     const url=URL.createObjectURL(f),img=new Image();
     img.onload=()=>{URL.revokeObjectURL(url);
-      const k=Math.min(1,1600/Math.max(img.width,img.height)),c=document.createElement('canvas');
+      const k=Math.min(1,1024/Math.max(img.width,img.height)),c=document.createElement('canvas');
       c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
       const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);
-      c.toBlob(b=>ok(b&&b.size<f.size?b:f),'image/jpeg',0.82);};
+      c.toBlob(b=>ok(b&&b.size<f.size?b:f),'image/jpeg',0.7);};
     img.onerror=()=>{URL.revokeObjectURL(url);ok(f);};
     img.src=url;});
 }

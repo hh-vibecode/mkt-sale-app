@@ -1,0 +1,28 @@
+name: Nén ảnh khách (cuối ngày)
+
+# NÉN ẢNH HỒ SƠ KHÁCH (anh Hải 17/10/2026): 23:40 giờ VN (= 16:40 UTC) hằng đêm rà ảnh tải lên trong ngày, thu còn 1024px JPEG 65.
+# Không có ảnh mới thì script thoát ngay. Lịch GitHub hay trễ 1-4 tiếng. Chạy thử không ghi: Run workflow với kho = 1.
+on:
+  schedule:
+    - cron: '40 16 * * *'   # 23:40 VN hằng ngày
+  workflow_dispatch:
+    inputs:
+      kho: {description: '1 = chạy thử, không ghi', required: false, default: '0'}
+
+concurrency:
+  group: nen-anh
+  cancel-in-progress: false
+
+jobs:
+  nen-anh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '20'}
+      - run: npm install --no-save --no-package-lock sharp@0.33.5
+      - name: Nén ảnh chưa rà
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          KHO: ${{ github.event.inputs.kho || '0' }}
+        run: node scripts/nen-anh-khach.js

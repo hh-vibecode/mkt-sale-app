@@ -41,3 +41,6 @@ create policy kh_anh_obj_del on storage.objects for delete to authenticated usin
 
 -- LEADER SALE (anh Hải 17/10/2026): Khánh Nguyên lên Leader Sale, giao việc cho Sale trong phạm vi xem (Bùi Thị Kim Oanh...)
 update public.sales_users set position_title='leader' where user_id='SR_khanhnguyen_c35d';
+
+-- 17/10/2026: JOB NÉN ẢNH CUỐI NGÀY (scripts/nen-anh-khach.js, workflow nen-anh.yml 23:40 VN) đánh dấu dòng đã rà
+alter table public.kh_anh add column if not exists da_nen timestamptz, add column if not exists kich_thuoc_goc integer, add column if not exists nen_ghi_chu text;
