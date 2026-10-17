@@ -48,3 +48,11 @@ alter table public.kh_anh add column if not exists da_nen timestamptz, add colum
 -- 17/10/2026: ảnh gắn TỪNG LƯỢT CHĂM SÓC (salesi_crm.id); null = ảnh chung của hồ sơ
 alter table public.kh_anh add column if not exists cs_id bigint;
 create index if not exists kh_anh_cs_idx on public.kh_anh(cs_id);
+
+-- 17/10/2026: hàng đợi ảnh trong trình duyệt tải lại không sinh ảnh đôi (POST ...?on_conflict=duong_dan, ignore-duplicates)
+create unique index if not exists kh_anh_duong_dan_uq on public.kh_anh(duong_dan);
+-- 17/10/2026: app nạp PHẦN MỚI của salesi_crm sau khi lưu lượt chăm sóc (updated_at > lần nạp trước) -> CSDL tự đóng dấu khi sửa
+create index if not exists salesi_crm_updated_idx on public.salesi_crm(updated_at);
+create or replace function public.salesi_crm_cham_luc() returns trigger language plpgsql set search_path=public as 'begin new.updated_at:=now(); return new; end';
+drop trigger if exists cham_luc on public.salesi_crm;
+create trigger cham_luc before update on public.salesi_crm for each row execute function public.salesi_crm_cham_luc();
