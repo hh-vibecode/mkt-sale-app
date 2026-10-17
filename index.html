@@ -5907,10 +5907,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='17/10 10:24';
+const APP_VERSION='17/10 10:31';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=494;
+const APP_BAN=495;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8593,33 +8593,35 @@ async function rptSlCsLuu_(){
   let csId=id||null;
   try{
     if(msg)msg.textContent='Đang lưu…';
+    let moi=null;   // dòng CSDL trả về -> vá thẳng vào siCrmRows, KHÔNG tải lại cả bảng ~2.300 lượt (17/10/2026: anh "lưu hơi lâu")
     if(id){
       const res=await fetch(SUPABASE_URL+'/rest/v1/salesi_crm?id=eq.'+id,{method:'PATCH',
-        headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},
+        headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=representation'},
         body:JSON.stringify(Object.assign({updated_at:new Date().toISOString()},row))});
       if(!res.ok)throw new Error('lỗi '+res.status);
+      moi=((await res.json().catch(()=>null))||[])[0]||null;
       logAct('U','salesi_crm','#'+id,r.name,'Lượt chăm sóc','',ngay+' · '+nd.slice(0,80));
     }else{
       const ins=await sbInsert('salesi_crm',row);
       logAct('C','salesi_crm',ins&&ins.id?('#'+ins.id):null,r.name,'Lượt chăm sóc','',ngay+' · '+nd.slice(0,80));
-      csId=ins&&ins.id||null;
+      csId=ins&&ins.id||null;moi=ins||null;
     }
-    // ảnh đã chọn cho lượt này -> tải lên, gắn id lượt (CSDL chặn trùng bỏ qua lượt thì ảnh vẫn vào hồ sơ, không gắn lượt)
-    const cho=rptSlCsAnhCho().slice(),loiAnh=[];
-    for(let i=0;i<cho.length;i++){if(msg)msg.textContent='Đang tải ảnh '+(i+1)+'/'+cho.length+'…';
-      try{await rptSlAnhGui(r,cho[i],null,csId);}catch(err){loiAnh.push((cho[i].name||'file')+': '+err.message);}}
-    window._csAnhCho=[];
-    if(loiAnh.length)alert('Đã lưu lượt chăm sóc, nhưng chưa tải được '+loiAnh.length+' ảnh:\n'+loiAnh.join('\n'));
+    // ảnh đã chọn cho lượt này -> tải NỀN sau khi đóng form, gắn id lượt (CSDL chặn trùng bỏ qua lượt thì ảnh vẫn vào hồ sơ, không gắn lượt)
+    const cho=rptSlCsAnhCho().slice();window._csAnhCho=[];
     // Chốt đơn -> hồ sơ khách bên Master đổi phân loại theo luôn (Master · CRM · Nhập Liệu dùng chung 1 ô).
     if(rptSlCsLaChot(tt)&&r.leadId){
       try{await rptSlSaveManual(r.leadId,{si_phan_loai:'Đã ra đơn'});}
       catch(err){console.warn('[Chăm sóc] chưa đồng bộ phân loại sang Master:',err.message);}
     }
-    await siCrmLoad(true);
+    if(moi&&moi.id){
+      const ds=siCrmRows.filter(x=>Number(x.id)!==Number(moi.id));ds.push(moi);
+      siCrmRows=ds.sort((a,b)=>String(b.ngay_cham||'').localeCompare(String(a.ngay_cham||''))||(b.id-a.id));
+    }else await siCrmLoad(true);   // không có dòng trả về (CSDL chặn trùng...) -> nạp lại như cũ
     window._kiotOrdByCode=null;rptSlXoaCache();
     window._rptSlCsForm=undefined;
     rptSlShowCustomer(window._rptSlCusKey);
-    rptSlRender();
+    setTimeout(rptSlRender,0);   // vẽ hồ sơ trước, bảng to vẽ sau -> bấm Lưu thấy xong ngay
+    if(cho.length)rptSlCsAnhTaiNen(r,cho,csId);
   }catch(err){bao('Chưa lưu được: '+err.message);}
 }
 async function rptSlCsXoa(id){
@@ -8829,6 +8831,9 @@ function rptSlAnhLoc(r){
 }
 // Danh sách file của 1 khách + link xem (ký tên 1 giờ). Trả {ds, ky: {duong_dan: url}}.
 async function rptSlAnhLayDs(r){
+  // NHỚ 50 PHÚT theo khách (link ký tên sống 1 giờ): hồ sơ vẽ lại liên tục (đổi tab, lưu lượt...) không phải xin lại danh sách + link (17/10/2026)
+  const C=window._khAnhCache=window._khAnhCache||{},k=r.key,c=C[k];
+  if(c&&Date.now()-c.t<50*60000)return c;
   const loc=rptSlAnhLoc(r);
   const ds=loc?await sbFetchAll('kh_anh','select=id,lead_id,kiot_code,cs_id,ten,duong_dan,mime,ghi_chu,created_by,created_at&'+loc+'&order=id.desc'):[];
   const ky={};
@@ -8839,15 +8844,16 @@ async function rptSlAnhLayDs(r){
     if(!res.ok)throw new Error('lỗi lấy link '+res.status);
     (await res.json()).forEach(x=>{if(x&&x.signedURL)ky[x.path]=SUPABASE_URL+'/storage/v1'+x.signedURL;});
   }
-  return {ds,ky};
+  return C[k]={t:Date.now(),ds,ky};
 }
+function rptSlAnhBoCache(key){if(window._khAnhCache)delete window._khAnhCache[key];}
 // Ô ảnh nhỏ (lịch sử chăm sóc / form sửa lượt): bấm mở cỡ lớn; xoa = có nút ✕
 function rptSlAnhNhoHtml(x,url,xoa){
   const e=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const pdf=String(x.mime||'').indexOf('pdf')>=0;
   return '<span style="position:relative;display:inline-block;margin:0 6px 6px 0;vertical-align:top">'
     +'<a href="'+e(url)+'" target="_blank" rel="noopener" title="'+e((x.ghi_chu?x.ghi_chu+' · ':'')+(x.ten||''))+'" style="display:flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1.5px solid var(--border);background:var(--bg2);text-decoration:none;color:var(--text2);font-size:11px;font-weight:800">'
-      +(pdf?'PDF':'<img src="'+e(url)+'" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover">')+'</a>'
+      +(pdf?'PDF':'<img src="'+e(url)+'" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover">')+'</a>'
     +(xoa?'<button onclick="rptSlAnhXoa('+Number(x.id)+')" title="Xoá file này" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:none;background:var(--red);color:#fff;font-size:10px;line-height:18px;padding:0;cursor:pointer">✕</button>':'')
     +'</span>';
 }
@@ -8858,15 +8864,18 @@ async function rptSlCsAnhNap(key){
     const {ds,ky}=await rptSlAnhLayDs(r);
     if(window._rptSlCusKey!==key)return;
     const theoCs={};ds.forEach(x=>{if(x.cs_id)(theoCs[x.cs_id]=theoCs[x.cs_id]||[]).push(x);});
-    document.querySelectorAll('.csAnhO').forEach(o=>{const a=theoCs[o.dataset.cs]||[];o.innerHTML=a.length?'<div style="margin-top:6px">'+a.map(x=>rptSlAnhNhoHtml(x,ky[x.duong_dan]||'',false)).join('')+'</div>':'';});
+    const dang=window._khAnhDangTai||{};   // ảnh đang tải nền của lượt vừa lưu -> hiện ô "đang tải"
+    document.querySelectorAll('.csAnhO').forEach(o=>{const a=theoCs[o.dataset.cs]||[],n=dang[o.dataset.cs]||0;
+      o.innerHTML=a.length||n?'<div style="margin-top:6px">'+a.map(x=>rptSlAnhNhoHtml(x,ky[x.duong_dan]||'',false)).join('')
+        +(n?'<span style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:8px;border:1.5px dashed var(--border2);font-size:10.5px;font-weight:800;color:var(--muted);vertical-align:top;text-align:center">đang tải '+n+' ảnh</span>':'')+'</div>':'';});
     const cu=document.getElementById('csAnhCu'),id=window._rptSlCsForm;
     if(cu&&id){const a=theoCs[id]||[];cu.innerHTML=a.map(x=>rptSlAnhNhoHtml(x,ky[x.duong_dan]||'',true)).join('');}
   }catch(err){console.warn('[Ảnh chăm sóc]',err.message);}
 }
-// Ảnh chọn trong form lượt chăm sóc: giữ trong bộ nhớ, bấm Lưu lượt chăm sóc mới tải lên (gắn id lượt vừa lưu)
+// Ảnh chọn trong form lượt chăm sóc: giữ trong bộ nhớ và NÉN NGAY lúc chọn (lúc Sale còn gõ nội dung), bấm Lưu chỉ còn tải lên.
 function rptSlCsAnhCho(){return window._csAnhCho=window._csAnhCho||[];}
 function rptSlCsAnhChon(inp){
-  [...(inp.files||[])].forEach(f=>{if(/^image\//.test(f.type)||f.type==='application/pdf')rptSlCsAnhCho().push(f);});inp.value='';rptSlCsAnhChoVe();}
+  [...(inp.files||[])].forEach(f=>{if(/^image\//.test(f.type)||f.type==='application/pdf'){rptSlAnhNen(f);rptSlCsAnhCho().push(f);}});inp.value='';rptSlCsAnhChoVe();}
 function rptSlCsAnhBo(i){rptSlCsAnhCho().splice(i,1);rptSlCsAnhChoVe();}
 function rptSlCsAnhChoVe(){
   const o=document.getElementById('csAnhMoi');if(!o)return;
@@ -8888,7 +8897,7 @@ async function rptSlAnhNap(key){
       const ngay=(()=>{const d=new Date(x.created_at);return isNaN(d)?'':new Date(d.getTime()+7*3600e3).toISOString().slice(0,10);})();
       return '<div style="border:1.5px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column">'
         +'<a href="'+e(url)+'" target="_blank" rel="noopener" title="Bấm để xem cỡ lớn" style="display:flex;align-items:center;justify-content:center;height:130px;background:var(--bg2);text-decoration:none;color:var(--text2)">'
-          +(pdf?'<span style="font-size:13px;font-weight:800">PDF</span>':'<img src="'+e(url)+'" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover">')+'</a>'
+          +(pdf?'<span style="font-size:13px;font-weight:800">PDF</span>':'<img src="'+e(url)+'" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover">')+'</a>'
         +'<div style="padding:7px 9px;font-size:11px;line-height:1.4">'
           +(x.cs_id?'<div style="font-weight:800;color:var(--accent)">Lượt chăm sóc'+(csNgay[x.cs_id]?' '+e(dmy(String(csNgay[x.cs_id]).slice(0,10))):'')+'</div>':'')
           +(x.ghi_chu?'<div style="font-weight:700;color:var(--text);white-space:pre-wrap">'+e(x.ghi_chu)+'</div>':'')
@@ -8899,52 +8908,92 @@ async function rptSlAnhNap(key){
   }catch(err){box.innerHTML='<span style="color:var(--red)">Chưa tải được ảnh: '+e(err.message)+'</span>';}
 }
 // Nén ảnh: cạnh dài tối đa 1024px, JPEG 0.7. Trình duyệt không đọc được (vd HEIC trên Chrome) -> gửi nguyên file.
+// Giải mã bằng createImageBitmap (chạy ngoài luồng chính, có sẵn xoay theo EXIF) -> nhanh hơn <img>; nhớ kết quả theo File
+// nên chọn ảnh xong là nén luôn, lúc Lưu dùng lại bản đã nén (17/10/2026: anh "lưu ảnh hơi lâu").
+const _khAnhNen=new WeakMap();
 function rptSlAnhNen(f){
-  return new Promise(ok=>{
-    if(!/^image\/(jpeg|png|webp)$/.test(f.type))return ok(f);
-    const url=URL.createObjectURL(f),img=new Image();
-    img.onload=()=>{URL.revokeObjectURL(url);
-      const k=Math.min(1,1024/Math.max(img.width,img.height)),c=document.createElement('canvas');
-      c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
-      const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);
-      c.toBlob(b=>ok(b&&b.size<f.size?b:f),'image/jpeg',0.7);};
-    img.onerror=()=>{URL.revokeObjectURL(url);ok(f);};
-    img.src=url;});
+  if(_khAnhNen.has(f))return _khAnhNen.get(f);
+  const p=(async()=>{
+    if(!/^image\/(jpeg|png|webp)$/.test(f.type))return f;
+    try{
+      let bm;
+      try{bm=await createImageBitmap(f,{imageOrientation:'from-image'});}
+      catch(e){bm=await new Promise((ok,no)=>{const u=URL.createObjectURL(f),i=new Image();i.onload=()=>{URL.revokeObjectURL(u);ok(i);};i.onerror=()=>{URL.revokeObjectURL(u);no(new Error('không đọc được ảnh'));};i.src=u;});}
+      const w=bm.width,h=bm.height,k=Math.min(1,1024/Math.max(w,h)),c=document.createElement('canvas');
+      c.width=Math.round(w*k);c.height=Math.round(h*k);
+      const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.imageSmoothingQuality='high';g.drawImage(bm,0,0,c.width,c.height);
+      if(bm.close)bm.close();
+      const b=await new Promise(ok=>c.toBlob(ok,'image/jpeg',0.7));
+      return b&&b.size<f.size?b:f;
+    }catch(e){return f;}
+  })();
+  _khAnhNen.set(f,p);return p;
 }
 function rptSlAnhTai(inp){return motLan('khAnh',document.getElementById('khAnhNut'),()=>rptSlAnhTai_(inp));}
-// Tải 1 file lên kho + ghi 1 dòng kh_anh. csId = id lượt chăm sóc (ảnh gắn lượt đó, 17/10/2026), null = ảnh chung của hồ sơ.
-async function rptSlAnhGui(r,f,ghiChu,csId){
-  if(!/^image\//.test(f.type)&&f.type!=='application/pdf')throw new Error('chỉ nhận ảnh hoặc PDF');
-  const b=await rptSlAnhNen(f);
-  if(b.size>KH_ANH_MAX)throw new Error('quá 10 MB');
+// TẢI NHIỀU FILE CÙNG LÚC (17/10/2026, trước tải lần lượt từng file): nén song song, tải lên 4 file một lượt,
+// rồi ghi kh_anh + nhật ký GỘP 1 LỆNH. csId = id lượt chăm sóc (ảnh gắn lượt đó), null = ảnh chung của hồ sơ.
+// tienDo(n, tong) báo số file đã tải xong. Trả {xong, loi[]}.
+async function rptSlAnhGuiNhieu(r,files,ghiChu,csId,tienDo){
   const thuMuc=(rptSlType()==='Sỉ'?'si':'le')+'/'+String(r.leadId||r.kh||'khac').replace(/[^A-Za-z0-9_-]/g,'_');
-  const loai=b.type||f.type,duoi=loai==='image/jpeg'?'jpg':(loai.split('/')[1]||'bin').replace(/[^a-z0-9]/g,'');
-  const duong=thuMuc+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+duoi;
-  const up=await fetch(SUPABASE_URL+'/storage/v1/object/'+KH_ANH_BUCKET+'/'+duong,{method:'POST',
-    headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':loai,'x-upsert':'false'},body:b});
-  if(!up.ok)throw new Error('lỗi tải lên '+up.status+' '+(await up.text()).slice(0,100));
-  const ins=await sbInsert('kh_anh',{lead_id:r.leadId||null,kiot_code:r.kh?String(r.kh).toUpperCase():null,loai:rptSlType(),
-    ten:f.name||null,duong_dan:duong,mime:loai,kich_thuoc:b.size,ghi_chu:ghiChu||null,cs_id:csId||null,created_by:logWho()});
-  logAct('C','kh_anh',ins&&ins.id?('#'+ins.id):null,r.name,csId?'Ảnh lượt chăm sóc #'+csId:'Ảnh / tài liệu','',(ghiChu?ghiChu+' · ':'')+(f.name||''));
-  return ins;
+  const loi=[],dong=[];let xong=0,i=0;
+  const mot=async f=>{
+    try{
+      if(!/^image\//.test(f.type)&&f.type!=='application/pdf')throw new Error('chỉ nhận ảnh hoặc PDF');
+      const b=await rptSlAnhNen(f);
+      if(b.size>KH_ANH_MAX)throw new Error('quá 10 MB');
+      const loai=b.type||f.type,duoi=loai==='image/jpeg'?'jpg':(loai.split('/')[1]||'bin').replace(/[^a-z0-9]/g,'');
+      const duong=thuMuc+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+duoi;
+      const up=await fetch(SUPABASE_URL+'/storage/v1/object/'+KH_ANH_BUCKET+'/'+duong,{method:'POST',
+        headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':loai,'x-upsert':'false'},body:b});
+      if(!up.ok)throw new Error('lỗi tải lên '+up.status+' '+(await up.text()).slice(0,100));
+      dong.push({lead_id:r.leadId||null,kiot_code:r.kh?String(r.kh).toUpperCase():null,loai:rptSlType(),
+        ten:f.name||null,duong_dan:duong,mime:loai,kich_thuoc:b.size,ghi_chu:ghiChu||null,cs_id:csId||null,created_by:logWho()});
+      xong++;if(tienDo)tienDo(xong,files.length);
+    }catch(err){loi.push((f.name||'file')+': '+err.message);}
+  };
+  await Promise.all(Array.from({length:Math.min(4,files.length)},async()=>{while(i<files.length)await mot(files[i++]);}));
+  if(dong.length){
+    const H={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'};
+    const res=await fetch(SUPABASE_URL+'/rest/v1/kh_anh',{method:'POST',headers:H,body:JSON.stringify(dong)});
+    if(!res.ok){loi.push('ghi danh sách ảnh lỗi '+res.status);xong=0;}
+    else fetch(SUPABASE_URL+'/rest/v1/activity_log',{method:'POST',headers:H,body:JSON.stringify(dong.map(d=>({who:logWho(),act:'C',tbl:'kh_anh',ref:r.leadId||null,label:r.name,
+      fld:csId?'Ảnh lượt chăm sóc #'+csId:'Ảnh / tài liệu',old_v:null,new_v:((ghiChu?ghiChu+' · ':'')+(d.ten||'')).slice(0,120)})))}).catch(()=>{});
+  }
+  rptSlAnhBoCache(r.key);
+  return {xong,loi};
 }
 async function rptSlAnhTai_(inp){
   const key=window._rptSlCusKey,r=rptSlBuildMaster().find(x=>x.key===key);
   const files=[...(inp.files||[])];inp.value='';if(!r||!files.length)return;
   const msg=document.getElementById('khAnhMsg'),bao=(t,mau)=>{if(msg)msg.innerHTML='<span style="color:'+(mau||'var(--muted)')+'">'+t+'</span>';};
   const ghiChu=String((document.getElementById('khAnhGhiChu')||{}).value||'').trim()||null;
-  let xong=0;const loi=[];
-  for(const f of files){
-    try{bao('Đang tải '+(xong+1)+'/'+files.length+'…');await rptSlAnhGui(r,f,ghiChu,null);xong++;}
-    catch(err){loi.push((f.name||'file')+': '+err.message);}
-  }
+  bao('Đang tải 0/'+files.length+'…');
+  const {xong,loi}=await rptSlAnhGuiNhieu(r,files,ghiChu,null,(n,t)=>bao('Đang tải '+n+'/'+t+'…'));
   const gc=document.getElementById('khAnhGhiChu');if(gc&&xong)gc.value='';
   bao(loi.length?'Đã tải '+xong+'/'+files.length+'. Lỗi: '+loi.join(' · '):'Đã tải '+xong+' file',loi.length?'var(--red)':'var(--green)');
   rptSlAnhNap(key);
 }
+// Ảnh của lượt chăm sóc vừa lưu: tải NỀN (form đóng ngay, không bắt chờ), góc dưới màn hình báo tiến độ; xong thì hiện ảnh vào lượt.
+async function rptSlCsAnhTaiNen(r,files,csId){
+  const D=window._khAnhDangTai=window._khAnhDangTai||{},k=csId||'_';
+  D[k]=(D[k]||0)+files.length;
+  let t=document.getElementById('khAnhToast');
+  if(!t){t=document.createElement('div');t.id='khAnhToast';t.style.cssText='position:fixed;right:16px;bottom:16px;z-index:3000;background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);padding:10px 14px;font-size:12.5px;font-weight:700;font-family:var(--font);max-width:340px';document.body.appendChild(t);}
+  const ve=s=>{t.style.display='';t.innerHTML=s;};
+  ve('Đang tải ảnh 0/'+files.length+' · '+String(r.name||'').replace(/</g,'&lt;'));
+  try{
+    const {xong,loi}=await rptSlAnhGuiNhieu(r,files,null,csId,(n,tg)=>ve('Đang tải ảnh '+n+'/'+tg+' · '+String(r.name||'').replace(/</g,'&lt;')));
+    if(loi.length){ve('<span style="color:var(--red)">Đã lưu lượt chăm sóc, chưa tải được '+loi.length+' ảnh</span>');alert('Đã lưu lượt chăm sóc, nhưng chưa tải được '+loi.length+' ảnh:\n'+loi.join('\n'));}
+    else ve('<span style="color:var(--green)">Đã tải '+xong+' ảnh</span>');
+  }finally{
+    D[k]=Math.max(0,(D[k]||0)-files.length);if(!D[k])delete D[k];
+    setTimeout(()=>{if(!Object.keys(D).length)t.style.display='none';},2500);
+    if(window._rptSlCusKey===r.key&&window._rptSlCusTab==='cs')rptSlCsAnhNap(r.key);
+  }
+}
 async function rptSlAnhXoa(id){
   const key=window._rptSlCusKey,r=rptSlBuildMaster().find(x=>x.key===key);
-  const xongXoa=()=>window._rptSlCusTab==='cs'?rptSlCsAnhNap(key):rptSlAnhNap(key);
+  const xongXoa=()=>{rptSlAnhBoCache(key);return window._rptSlCusTab==='cs'?rptSlCsAnhNap(key):rptSlAnhNap(key);};
   if(!confirm('Xoá ảnh / tài liệu này khỏi hồ sơ khách?'))return;
   const H={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};
   try{
