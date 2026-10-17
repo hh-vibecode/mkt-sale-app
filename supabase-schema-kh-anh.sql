@@ -44,3 +44,7 @@ update public.sales_users set position_title='leader' where user_id='SR_khanhngu
 
 -- 17/10/2026: JOB NÉN ẢNH CUỐI NGÀY (scripts/nen-anh-khach.js, workflow nen-anh.yml 23:40 VN) đánh dấu dòng đã rà
 alter table public.kh_anh add column if not exists da_nen timestamptz, add column if not exists kich_thuoc_goc integer, add column if not exists nen_ghi_chu text;
+
+-- 17/10/2026: ảnh gắn TỪNG LƯỢT CHĂM SÓC (salesi_crm.id); null = ảnh chung của hồ sơ
+alter table public.kh_anh add column if not exists cs_id bigint;
+create index if not exists kh_anh_cs_idx on public.kh_anh(cs_id);
