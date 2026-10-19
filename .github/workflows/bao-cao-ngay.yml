@@ -1,0 +1,37 @@
+name: Daily report (4-5h sáng)
+
+# DAILY REPORT (anh Hải 19/10/2026: "tự động xử lý vào 4-5h sáng hàng ngày"): báo cáo NGÀY HÔM QUA (giờ VN) -> bảng mkt_bao_cao_ngay,
+# trang "Daily report" trong app (chỉ Supreme). Lịch GitHub hay trễ 1-2 tiếng ban đêm nên hẹn 2 lần: 03:00 và 04:00 giờ VN
+# (= 20:00 / 21:00 UTC); lượt nào chạy trước thì làm, lượt sau thấy đã có báo cáo thì tự thoát. Chạy tay: CHAY_LAI=1 tính lại.
+on:
+  schedule:
+    - cron: '0 20 * * *'   # 03:00 VN
+    - cron: '0 21 * * *'   # 04:00 VN
+  workflow_dispatch:
+    inputs:
+      ngay:
+        description: 'Ngày báo cáo YYYY-MM-DD (trống = hôm qua)'
+        required: false
+      chay_lai:
+        description: 'Tính lại kể cả đã có (1 = có)'
+        required: false
+
+concurrency:
+  group: bao-cao-ngay
+  cancel-in-progress: false
+
+jobs:
+  bao-cao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Tính + ghi Daily report
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NGAY: ${{ github.event.inputs.ngay }}
+          CHAY_LAI: ${{ github.event.inputs.chay_lai }}
+        run: node scripts/bao-cao-ngay.js
