@@ -132,6 +132,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **19/10 (4)** — Luật mới vào CLAUDE.md: tin nhắn lạ / nhầm luồng (app kế toán, QC…) thì hỏi lại trước khi xử lý (sau ca ảnh phiếu chi PC001633 app kế toán gửi vào phiên MKT).
 - **19/10 (3)** — Logic xử lý chuyển thành TRANG RIÊNG, mục thứ 4 trong menu **Cài đặt nâng cao** (cờ lê đáy thanh bên, cạnh Data Hub / Phân quyền / Nhật ký); bỏ khỏi bánh răng (anh: "bánh răng chỉ cho các nút chức năng thôi"). Chỉ tài khoản toàn quyền thấy (`dashToanQuyenXem`, không theo tick quyền trang).
 - **19/10 (2)** — Trang **Logic xử lý** làm lại kiểu app kế toán (anh: "tham khảo bên kế toán, mấy cái công thức cho chỉ số cũng add vô"): mỗi phần 1 tab có số đếm, bảng STT · Mục (gộp ô) · Quy tắc · Ghi chú / ví dụ · Cập nhật, ô tìm bỏ dấu tìm mọi tab. Thêm tab **Công thức chỉ số** (26 dòng: MKT, MKT tab Chi tiết, Tổng quan Sale, Tổng hợp, Đối soát + bắc cầu Kiot doanh thu thuần). Bổ sung 8 luật mới 14–19/10 (Pancake 500, thương hiệu khách, trả hàng chưa trừ, so với Kiot Tổng quan, Sỉ / Lẻ theo nhóm Kiot, khách Kiot đổi nhóm, tab Chi tiết MKT, ô tìm, nhãn cạnh Ngày tạo). Tổng 10 phần · 91 dòng. ĐỔI LUẬT / CÁCH TÍNH Ô NÀO THÌ SỬA DÒNG Ở LOGIC_XU_LY.
 - **19/10** — Dọn sync_log #902 (MKT - Meta Ads) kẹt 'running' từ 23/9 -> failed (chỉ ảnh hưởng lịch sử đồng bộ). Rà job: Data Hub / Kiot / đối soát hằng đêm (16-18/10, 0 mã lệch, GitHub trễ tới ~1-2h sáng) / nén ảnh 23:40 (17, 18/10 xong ~01:50) đều xanh.
