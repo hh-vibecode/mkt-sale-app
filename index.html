@@ -4061,7 +4061,7 @@ function rptMktData(){
       const rev=rptSlDoanhThuMkt(r);   // MKT không tính đơn mua lại (kể cả khách Lẻ Online "tính hết" của Sale)
       if(!r.isChot||rev<=0)return;
       if(/offline/i.test(r.nguon||''))return;   // MKT CHỈ lấy nguồn Online -- cả Lẻ lẫn Sỉ (chốt 23/9/2026)
-      const brandRow=t==='Sỉ'?'Shidai':(r.brand||'');
+      const brandRow=t==='Sỉ'?'Shidai':(rptSlBrandCua(r)||'');   // Lẻ: luật thương hiệu chung (19/10/2026), Sỉ quy Shidai (22/9)
       if(brandLoc&&brandRow!==brandLoc)return;
       sale.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',
         brand:brandRow,adId:r.adId||'',
@@ -5931,10 +5931,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='19/10 12:36';
+const APP_VERSION='19/10 16:02';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=499;
+const APP_BAN=500;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7029,20 +7029,35 @@ function rptSlLocTT(r){
   const v=String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim();
   return /^chăm sóc dài hạn$/i.test(v)?'Tiềm năng, chưa ra đơn':/^mất kết nối$/i.test(v)?'Không tiềm năng':(v||'(chưa cập nhật)');   // đồng nhất 06/10 · bỏ Mất kết nối 07/10/2026
 }
-function rptSlApplyF(tab,list){
+// RÀ BỘ LỌC 19/10/2026 (anh Hải: "kiểm tra lại hết các bộ lọc"):
+//  · Sales: khách đứng tên người NGOÀI danh sách Sale của đội (nhân viên cửa hàng bán trên Kiot, Sale đội kia, tài khoản chung)
+//    trước không chọn được bằng mục nào (Lẻ 1.343 / 1.994 khách, Sỉ 284) -> gom vào mục RPT_SL_SALE_NGOAI.
+//  · Brand: dùng CHUNG luật thương hiệu với thẻ Doanh thu theo thương hiệu / bộ lọc Tổng hợp (rptSlBrandLoc) -- trước Sỉ có 302
+//    khách rơi vào "—" dù luật chung tính là Shidai.
+//  · opt.tim (đang gõ ô tìm): bộ lọc CHỌN TAY vẫn áp lên kết quả tìm (anh chọn 19/10), nhưng KHÔNG tự ẩn Offline · Kiot
+//    và không lọc ngày -- để khách nào còn trong app cũng tìm ra.
+const RPT_SL_SALE_NGOAI='(Sale ngoài danh sách)';
+function rptSlSaleLoc(r){const t=String(r.staff||'').trim();return !t?'(chưa gán)':rptSlSaleCuaDoi(rptSlType()).includes(t)?t:RPT_SL_SALE_NGOAI;}
+function rptSlBrandLoc(r){
+  const ten=b=>DH_BRAND_LABEL[b]||b||'Chưa rõ';
+  if(rptSlType()==='Sỉ')return [ten(r.brand?(r.brand==='SD'?'Shidai':r.brand):'Shidai')];
+  if(r.vangLai){const ds=[...new Set([...(r.kords||[]),...(r.repeatOrds||[]),...(r.staleOrds||[])].map(o=>ten(rptSlBrandDon(o))))];return ds.length?ds:['Chưa rõ'];}
+  return [ten(rptSlBrandCua(r))];
+}
+function rptSlApplyF(tab,list,opt){
   const sale=rptSlF(tab,'sale'),br=rptSlF(tab,'brand'),sp=rptSlType()==='Sỉ'?rptSlF(tab,'sp'):'';
   // lọc Nguồn theo NHÃN RÕ (08/10/2026); giá trị lọc cũ "Online" / "Offline" không còn trong danh sách -> bỏ, đừng lọc ngầm ra 0
   let ng=rptSlF(tab,'nguon');if(ng){ng=ng.filter(x=>RPT_SL_NGUON_DS.includes(x));if(!ng.length)ng='';}
-  const anOffKiot=tab==='master'&&!ng;   // MASTER chưa chọn Nguồn -> tự ẩn "Offline · Kiot" (anh Hải 08/10/2026)
+  const anOffKiot=tab==='master'&&!ng&&!(opt&&opt.tim);   // MASTER chưa chọn Nguồn -> tự ẩn "Offline · Kiot" (anh Hải 08/10/2026); đang tìm thì không ẩn
   const nguonCua=r=>/offline/i.test(r.nguon||'')?'Offline':(/online/i.test(r.nguon||'')||rptSlType()!=='Sỉ')?'Online':'Chưa rõ nguồn';
   let st=rptSlF(tab,'status');
   if(st){st=st.filter(x=>rptSlLocTTDs().includes(x));if(!st.length)st='';}   // giá trị lọc cũ không còn trong danh sách -> bỏ, đừng lọc ngầm ra 0
   return list.filter(r=>
-    (!sale||sale.includes(r.staff||'(chưa gán)'))&&
+    (!sale||sale.includes(rptSlSaleLoc(r)))&&
     (ng?ng.includes(rptSlNguonNhan(r)):!(anOffKiot&&rptSlNguonNhan(r)==='Offline · Kiot'))&&
     (!st||st.includes(rptSlLocTT(r)))&&
     (!sp||sp.includes(r.siSpQT||'(chưa rõ)'))&&
-    (!br||br.includes(DH_BRAND_LABEL[r.brand]||r.brand||'—')));
+    (!br||rptSlBrandLoc(r).some(b=>br.includes(b))));
 }
 // Ô LỌC TÍCH CHỌN NHIỀU dùng chung (bộ lọc Master + Daily Task). Trạng thái lưu theo (loại khách, tab, k) -- rptSlFArr.
 function rptSlMsLoc(tab,k,label,opts){
@@ -7064,10 +7079,10 @@ function rptSlFilterBar(tab){
   // Dựng lựa chọn từ TOÀN BỘ khách, không phải từ phần đang hiển thị -- nếu lấy theo phần đang hiển thị
   // thì lọc ngày mặc định (hôm qua -> hôm nay) làm dropdown chỉ còn 1-2 mục, không lọc được gì nữa.
   const full=rptSlBuildMaster();
-  const sales=[...rptSlSaleCuaDoi(rptSlType()),'(chưa gán)'];
+  const sales=[...rptSlSaleCuaDoi(rptSlType()),'(chưa gán)'].concat(full.some(r=>rptSlSaleLoc(r)===RPT_SL_SALE_NGOAI)?[RPT_SL_SALE_NGOAI]:[]);
   // Trạng thái lấy danh sách CỐ ĐỊNH, không lấy theo giá trị đang có trong data.
   const stats=rptSlLocTTDs();
-  const brands=[...new Set(full.map(r=>DH_BRAND_LABEL[r.brand]||r.brand||'—'))].sort();
+  const brands=[...new Set(full.flatMap(rptSlBrandLoc))].sort((a,b)=>(a==='Chưa rõ')-(b==='Chưa rõ')||a.localeCompare(b,'vi'));
   const ip='height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const one=(k,label,opts)=>rptSlMsLoc(tab,k,label,opts);
@@ -8369,7 +8384,7 @@ function rptSlMasterHtmlRaw(){
   let list=goc;
   // Ô TÌM KIẾM: tìm trên TOÀN BỘ khách tài khoản được xem, bỏ qua bộ lọc (anh Hải 13/10/2026, thay luật 25/9 "tìm trong
   // bộ lọc") -- khách còn trong app là phải tìm ra. Xem rptSlTimKhop.
-  if(q)list=rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao).filter(r=>rptSlTimKhop(r,q));
+  if(q)list=rptSlApplyF('master',rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao).filter(r=>rptSlTimKhop(r,q)),{tim:true});   // bộ lọc chọn tay vẫn áp (19/10/2026)
   window._rptSlKeysDangXem=list.map(r=>String(r.leadId||'').replace(/'/g,'')).filter(Boolean);   // cho ô chọn tất cả
   rptSlTrungKeysDung(rptSlBuildMaster());   // thẻ đỏ Trùng Sỉ/Lẻ cạnh tên (13/10/2026)
   const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
@@ -10444,7 +10459,7 @@ function rptSlCrmHtmlRaw(){
   const q=(window._rptSlCrmQ||'').trim();
   let list=goc;
   // tìm trên TOÀN BỘ khách tài khoản được xem, bỏ qua bộ lọc / ô dash (anh Hải 13/10/2026) -- xem rptSlTimKhop
-  if(q)list=rptSlBuildMaster().filter(r=>rptSlTimKhop(r,q,[r.siNDCuoi]));
+  if(q)list=rptSlApplyF('crm',rptSlBuildMaster().filter(r=>rptSlTimKhop(r,q,[r.siNDCuoi])),{tim:true});   // bộ lọc chọn tay vẫn áp (19/10/2026)
   window._rptSlKeysDangXem=list.map(r=>String(r.leadId||'').replace(/'/g,'')).filter(Boolean);   // cho ô chọn tất cả
   rptSlTrungKeysDung(rptSlBuildMaster());   // thẻ đỏ Trùng Sỉ/Lẻ cạnh tên (13/10/2026)
   const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
