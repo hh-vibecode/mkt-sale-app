@@ -323,8 +323,6 @@ thead th,.grp-table th{color:var(--text2)}
       <div onclick="toggleTheme()" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
         <div class="theme-toggle" style="pointer-events:none;padding:0;border:none;background:none"><div class="toggle-track"><div class="toggle-thumb"></div></div></div>
         Giao diện <span id="themeLabel" style="margin-left:auto;color:var(--muted);font-weight:600">Tối</span></div>
-      <div id="cdLogic" onclick="document.getElementById('tbMenu').style.display='none';logicMo()" style="display:none;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 5h16M4 12h16M4 19h10"/><circle cx="19" cy="19" r="2"/></svg>Logic xử lý</div>
       <div onclick="logout()" style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--red)" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Đăng xuất</div>
     </div>
@@ -353,6 +351,7 @@ thead th,.grp-table th{color:var(--text2)}
         <div class="nav-item" onclick="sbAdminGo('datahub')" id="nav-datahub"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span><span class="nav-label">Data Hub</span></div>
         <div class="nav-item" onclick="sbAdminGo('settings')" id="nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9.5 12 1.8 1.8L15 10"/></svg></span><span class="nav-label">Phân quyền</span></div>
         <div class="nav-item" onclick="sbAdminGo('log')" id="nav-log"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg></span><span class="nav-label">Nhật ký chỉnh sửa</span></div>
+        <div class="nav-item" onclick="sbAdminGo('logic')" id="nav-logic"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/><circle cx="19" cy="19" r="2"/></svg></span><span class="nav-label">Logic xử lý</span></div>
       </div>
       <div id="appVer" title="Bấm để tải lại bản mới nhất" onclick="location.reload(true)"
         style="margin:6px 14px 2px;font-size:10px;color:var(--muted);font-weight:700;cursor:pointer;letter-spacing:.02em"></div>
@@ -380,6 +379,7 @@ thead th,.grp-table th{color:var(--text2)}
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
     <div class="tab-page" id="page-log"></div>
+    <div class="tab-page" id="page-logic"></div>
     <div class="tab-page" id="page-settings">
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
@@ -678,7 +678,7 @@ function applyRole(){
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el=>{
     const id=el.id.replace('nav-','');
     // Data Hub có 2 mức quyền -> chỉ cần 1 trong 2 là hiện mục trên thanh bên.
-    const ok=!allowed||allowed.indexOf(id)>=0||(id==='datahub'&&allowed.indexOf('datahub-manual')>=0);
+    const ok=id==='logic'?dashToanQuyenXem():(!allowed||allowed.indexOf(id)>=0||(id==='datahub'&&allowed.indexOf('datahub-manual')>=0));
     el.style.display=ok?'':'none';
   });
   [['sec-report-label','sec-report'],['sec-qt-label','sec-qt']].forEach(([lab,nav])=>{
@@ -904,19 +904,21 @@ function switchPage(p){
     window._kiotOrdByCode=null;
   }
   // Data Hub mở được nếu có 1 trong 2 mức quyền; bên trong renderDataHub sẽ khoá tiếp tab data thô.
-  if(!dashCan(p)&&!(p==='datahub'&&dashCan('datahub-manual')))return;
+  // Logic xử lý: chỉ tài khoản toàn quyền (Admin / Supreme), không theo tick quyền trang (19/10/2026)
+  if(p==='logic'?!dashToanQuyenXem():(!dashCan(p)&&!(p==='datahub'&&dashCan('datahub-manual'))))return;
   // Rời trang Sale Lẻ / Sale Sỉ thì XOÁ SẠCH trang đó: 2 trang vẽ cùng bộ id (thanh Hợp nhất, ô tích...),
   // để lại trang ẩn thì thao tác ở trang kia bấm nhầm vào phần tử của trang ẩn (anh Hải 25/9/2026:
   // chuyển trang rồi quay lại thì tích không hiện thanh gộp). Quay lại là vẽ mới, ô tích trống như thường.
   ['report-saleretail','report-salesi'].forEach(x=>{
     if(x===p)return;const el=document.getElementById('page-'+x);if(el&&el.innerHTML)el.innerHTML='';
   });
-  ['datahub','settings','report-saleretail','report-salesi','report-mkt','report-tonghop','log'].forEach(x=>{
+  ['datahub','settings','report-saleretail','report-salesi','report-mkt','report-tonghop','log','logic'].forEach(x=>{
     const el=document.getElementById('page-'+x);if(el)el.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);if(nav)nav.classList.toggle('active',x===p);
   });
   if(p==='settings')renderSettings();
   if(p==='log')renderLog();
+  if(p==='logic')renderLogic();
   if(p==='datahub')renderDataHub();
   if(p==='report-saleretail')renderReportSaleLe();
   if(p==='report-salesi')renderReportSaleSi();
@@ -5929,10 +5931,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='19/10 09:34';
+const APP_VERSION='19/10 09:42';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=497;
+const APP_BAN=498;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6220,20 +6222,19 @@ LOGIC_XU_LY.push(['Công thức chỉ số',[
 // TRANG LOGIC KIỂU BẢNG GOOGLE SHEET như app kế toán (19/10/2026): mỗi phần 1 tab có số đếm · bảng STT | Mục (gộp ô) | Quy tắc |
 // Ghi chú / ví dụ | Cập nhật · ô tìm (bỏ dấu) tìm trên mọi tab. Dòng dữ liệu: [mục, quy tắc, ngày] hoặc [mục, quy tắc, ghi chú, ngày].
 function logicDong(d){return d.length>=4?{muc:d[0],qt:d[1],gc:d[2],ngay:d[3]}:{muc:d[0],qt:d[1],gc:'',ngay:d[2]};}
-function logicMo(){
-  if(!dashToanQuyen())return;
-  if(window._lgTab==null)window._lgTab=0;window._lgQ='';
+// TRANG "LOGIC XỬ LÝ" trong menu Cài đặt nâng cao (anh Hải 19/10/2026: "phải cho vào cài đặt nâng cao, bánh răng chỉ cho các nút
+// chức năng") -- trang riêng như Phân quyền / Nhật ký, không còn là cửa sổ bật lên từ bánh răng.
+function renderLogic(){
+  const el=document.getElementById('page-logic');if(!el)return;
+  if(!dashToanQuyenXem()){el.innerHTML='<div class="tbl-card" style="padding:16px 18px;color:var(--muted)">Chỉ Admin xem được Logic xử lý</div>';return;}
+  if(window._lgTab==null)window._lgTab=0;
   const tong=LOGIC_XU_LY.reduce((n,p)=>n+p[1].length,0);
-  let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
-  m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
-   +'<div style="background:var(--surface);color:var(--text);border-radius:16px;max-width:1180px;width:100%;height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">'
-   +'<div style="padding:15px 20px;border-bottom:1px solid var(--border);display:grid;gap:10px">'
-     +'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div style="font-size:16px;font-weight:800">Logic xử lý</div>'
-       +'<span style="font-size:11px;font-weight:800;color:var(--muted)">'+LOGIC_XU_LY.length+' phần · '+tong+' dòng</span>'
-       +'<input id="lgTim" oninput="window._lgQ=this.value;logicVe()" placeholder="Tìm quy tắc…" style="margin-left:auto;height:32px;min-width:220px;box-sizing:border-box;padding:4px 11px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:12.5px;font-family:var(--font);outline:none">'
-       +'<button onclick="qcCloseModal()" style="background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
-     +'<div id="lgTab" style="display:flex;gap:6px;flex-wrap:wrap"></div></div>'
-   +'<div id="lgThan" style="overflow:auto;padding:16px 20px"></div></div></div>';
+  el.innerHTML='<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
+      +'<div style="font-size:20px;font-weight:800">Logic xử lý</div>'
+      +'<span class="tbl-count">'+LOGIC_XU_LY.length+' phần · '+tong+' dòng</span>'
+      +'<input id="lgTim" value="'+String(window._lgQ||'').replace(/"/g,'&quot;')+'" oninput="window._lgQ=this.value;logicVe()" placeholder="Tìm quy tắc…" style="margin-left:auto;height:34px;min-width:240px;box-sizing:border-box;padding:4px 12px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:12.5px;font-family:var(--font);outline:none"></div>'
+    +'<div id="lgTab" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"></div>'
+    +'<div id="lgThan" class="tbl-card" style="padding:0;overflow:hidden"></div>';
   logicVe();
 }
 function logicVe(){
@@ -6256,12 +6257,11 @@ function logicVe(){
       +'<td style="'+td+';color:var(--muted);font-size:12px">'+e(x.gc)+'</td>'
       +'<td style="'+td+';text-align:center;color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums">'+e(x.ngay)+'</td></tr>';}).join('')).join('');
   const th=(t,w,c)=>'<th style="padding:9px 12px;text-align:'+(c?'center':'left')+';font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0'+(w?';width:'+w:'')+'">'+t+'</th>';
-  than.innerHTML='<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;table-layout:fixed">'
+  than.innerHTML='<div class="tbl-scroll"><table style="width:100%;border-collapse:collapse;table-layout:fixed">'
     +'<thead><tr>'+th('STT','52px',1)+th('Mục','190px')+th('Quy tắc')+th('Ghi chú / ví dụ','30%')+th('Cập nhật','90px',1)+'</tr></thead>'
     +'<tbody>'+(rows||'<tr><td colspan="5" style="padding:22px;text-align:center;color:var(--muted)">Không thấy quy tắc nào</td></tr>')+'</tbody></table></div>';
 }
 function tbCaiDatBam(ev){if(ev)ev.stopPropagation();const mn=document.getElementById('tbMenu'),h=document.getElementById('tbHop');if(h)h.style.display='none';
-  const lg=document.getElementById('cdLogic');if(lg)lg.style.display=dashToanQuyen()?'flex':'none';
   mn.style.display=mn.style.display==='block'?'none':'block';}
 document.addEventListener('click',ev=>{['tbHop','tbMenu'].forEach(id=>{const el=document.getElementById(id);if(el&&el.style.display==='block'&&!el.contains(ev.target))el.style.display='none';});});
 // BẤM TIN -> CHUYỂN TRANG tới Daily Task của báo cáo đó, cuộn tới bảng "Việc được giao" (tin Daily Task: lên đầu trang).
