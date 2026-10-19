@@ -5931,10 +5931,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='19/10 16:02';
+const APP_VERSION='19/10 16:08';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=500;
+const APP_BAN=501;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7485,7 +7485,8 @@ function rptSlBuildMasterRaw(){
   // TÊN KHÁCH Sale sửa trong app (saleretail_manual.ten_sua) ghi đè tên Pancake khi hiển thị (anh Hải 25/9/2026)
   rows.forEach(r=>{const tn=String((rptSlManual[r.leadId]||{}).ten_sua||'').trim();if(tn)r.name=tn;});
   // KÊNH Sale chọn tay trong hồ sơ (saleretail_manual.kenh_sua, dropdown kênh Kiot) đè kênh Pancake (30/9/2026)
-  rows.forEach(r=>{const kn=String((rptSlManual[r.leadId]||{}).kenh_sua||'').trim();if(kn)r.kenh=kn;});
+  // 19/10/2026: kênh chọn tay có tên thương hiệu (vd "Website Hiền Thuỷ") thì THƯƠNG HIỆU đổi theo (ca KL ANH DUY sửa theo sheet)
+  rows.forEach(r=>{const kn=String((rptSlManual[r.leadId]||{}).kenh_sua||'').trim();if(kn){r.kenh=kn;const b=dhManualBrand(kn,'Lẻ');if(b)r.brand=b;}});
   // NGUỒN KHÁCH chọn tay (saleretail_manual.nguon_sua: Online / Offline) đè nguồn Pancake -- đặt TRƯỚC bước
   // tách mua lại (khongCat) vì nguồn quyết định đơn nào còn tính cho Sale (30/9/2026)
   rows.forEach(r=>{const ng=String((rptSlManual[r.leadId]||{}).nguon_sua||'').trim();if(ng)r.nguon=ng;});
