@@ -5929,10 +5929,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='17/10 11:27';
+const APP_VERSION='19/10 09:34';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=496;
+const APP_BAN=497;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6122,7 +6122,8 @@ const LOGIC_XU_LY=[
   ['Data Hub','Chỉ để xem số liệu thô, không điền. Thêm / sửa khách ở báo cáo Sale Lẻ / Sỉ','8/10'],
   ['Đối soát Kiot ↔ app','Tự soát từng mã 23:00 hằng đêm; so số THẬT, phiếu tạm không dấu vết tiền tách riêng chỉ để biết','8/10 · 16/10'],
   ['Ảnh hồ sơ khách','Ảnh nén còn 1024px lúc tải lên; 23:40 hằng đêm tự rà ảnh trong ngày, file nào còn nặng thì nén tiếp; PDF giữ nguyên','17/10'],
-  ['Job chạy chồng','Mỗi luồng đồng bộ chỉ 1 lượt chạy một lúc, lượt sau xếp hàng chờ','13/10']]],
+  ['Job chạy chồng','Mỗi luồng đồng bộ chỉ 1 lượt chạy một lúc, lượt sau xếp hàng chờ','13/10'],
+  ['Pancake lỗi máy chủ','Pancake trả lỗi 500 thoáng qua → thử lại 5 lần, vẫn lỗi thì chỉ cảnh báo vàng, lượt sau tự kéo bù. Báo đỏ (gửi mail) khi lỗi thật: token sai / hết hạn, ghi CSDL lỗi, hoặc lỗi 3 lượt liền','15/10']]],
  ['Gộp khách & nối Kiot',[
   ['Tự gộp','CHỈ khi trùng SĐT (so 9 số cuối), trong cùng loại Sỉ / Lẻ. Dòng chính = khách tạo trước, ô trống lấy bổ sung từ dòng gộp vào','13/10'],
   ['Trùng tên','KHÔNG gộp — trùng tên là chuyện bình thường','13/10'],
@@ -6138,9 +6139,13 @@ const LOGIC_XU_LY=[
   ['Ngoại lệ Tự Tại Viên / Nến Bơ','Phiếu tạm gắn được khách thì tính ngay, kể cả không cọc; quá 14 ngày chưa ra hoá đơn thì tự gỡ + chuông báo Admin','13/10'],
   ['Đơn 0đ','Không tính là phát sinh, không kéo khách vào kỳ lọc','1/10'],
   ['Khách vãng lai','Phiếu Kiot không mã khách, có dấu vết tiền → 1 dòng "Khách vãng lai" mỗi báo cáo (Offline · Kiot)','8/10'],
-  ['Khoảng thời gian','Lẻ từ 1/6/2026 · Sỉ lấy toàn bộ lịch sử · bộ lọc "Tất cả" = cả năm 2026','2/10']]],
+  ['Khoảng thời gian','Lẻ từ 1/6/2026 · Sỉ lấy toàn bộ lịch sử · bộ lọc "Tất cả" = cả năm 2026','2/10'],
+  ['Thương hiệu của khách','Theo page Pancake / kênh nhập tay; khách Lẻ chưa có thì theo đơn Kiot gần nhất (kênh ghi tên brand > chi nhánh); Khách vãng lai chia từng phiếu theo chi nhánh; Sỉ chưa có = Shidai. Thẻ Doanh thu theo thương hiệu và ô lọc thương hiệu dùng chung luật này','14/10'],
+  ['Trả hàng','App CHƯA trừ phiếu trả hàng Kiot ("Doanh thu thuần" trên Kiot có trừ) — chờ anh quyết','19/10'],
+  ['So với Kiot Tổng quan','Kiot doanh thu thuần = hoá đơn, theo ngày xuất HĐ, trừ trả hàng; app = đơn đặt hàng theo ngày tạo đơn. Đối chiếu đúng ở Data Hub › Đối soát (so với đơn đặt hàng + HĐ bán thẳng)','19/10']]],
  ['Sỉ / Lẻ · Online / Offline',[
-  ['Sỉ / Lẻ bên Kiot','Theo chi nhánh: Tổng kho sỉ Shidai = Sỉ; Đồ Thờ Chánh Tâm, Đồ thờ Hiền Thủy = Lẻ','—'],
+  ['Sỉ / Lẻ bên Kiot','Theo NHÓM khách Kiot (Khách buôn / NPP / CTV / đại lý = Sỉ · Khách lẻ = Lẻ); không ghi nhóm thì theo chi nhánh mua nhiều hơn (Tổng kho sỉ Shidai = Sỉ). Báo cáo Lẻ không nhận đơn ở chi nhánh Sỉ / của khách nhóm buôn','24/9'],
+  ['Khách Kiot đổi nhóm','Kiot đổi nhóm lẻ ↔ buôn → dòng khách job tự tạo tự chuyển Lẻ / Sỉ theo (lượt chăm sóc chuyển theo, có nhật ký). Dòng Sale nhập tay / khách Pancake không tự chuyển','16/10'],
   ['Sỉ / Lẻ bên Pancake','Theo thẻ KH SỈ / KH LẺ; không thẻ thì theo đơn khác cùng SĐT; vẫn không có thì page Shidai = Sỉ, còn lại Lẻ. Khách mua dùng gia đình = KH LẺ','27/9'],
   ['Online / Offline','Kênh quyết định: Facebook / TikTok / Shopee / Zalo / Web = Online, bất kể hoá đơn hay đơn đặt hàng','9/10'],
   ['Nguồn / Kênh của khách','Chỉ Admin sửa; Sale chọn lúc tạo khách mới','8/10'],
@@ -6151,7 +6156,8 @@ const LOGIC_XU_LY=[
   ['Khách tính cho MKT','Lẻ: Online · Sỉ: chỉ Online (Sỉ Offline chỉ vào báo cáo Sale Sỉ)','—'],
   ['Cắt doanh thu','Đơn đầu luôn tính; Sỉ Online chỉ tính trong 1 tháng từ đơn đầu, trừ khi khách còn nhắn Pancake','—'],
   ['Đơn mua lại','Không tính cho MKT, vẫn là doanh thu Sale','—'],
-  ['Đếm lead','Theo người (sau khi gộp), không theo số đơn Pancake','13/10']]],
+  ['Đếm lead','Theo người (sau khi gộp), không theo số đơn Pancake','13/10'],
+  ['Tab Chi tiết','Chỉ chỉ số ads: Chi phí · Hiển thị · Tiếp cận · CPM · Click · CTR · CPC · Mess · CP/mess. CTR / CPC tính trên MỌI lượt click (CTR tất cả); Tiếp cận = cộng tiếp cận từng ngày','16/10']]],
  ['Sale · đội · phạm vi xem',[
   ['Sale của khách','Gán tay > người bán trên phiếu đặt / hoá đơn Kiot gần nhất đã nối > người phụ trách Pancake','3/10'],
   ['2 đội Sale','Đội = cột Đội ở Phân quyền › Nhân sự Sale. Bộ lọc Sales mỗi báo cáo chỉ có Sale đội đó; ô gán Sale có đủ 2 đội','7/10'],
@@ -6166,6 +6172,8 @@ const LOGIC_XU_LY=[
   ['Không tiềm năng','Thôi nhắc ở Daily Task','8/10'],
   ['Phạm vi Daily Task','Chỉ so Pancake (lỗi của Sale); lỗi liên quan hoá đơn Kiot để Đối soát. Đỏ / vàng = việc cần làm, tính vào số việc','17/9'],
   ['Lead cũ','Khách trước 1/9/2026 không vào Daily Task','—'],
+  ['Ô tìm khách','Tìm trên TOÀN BỘ khách tài khoản được xem, bỏ qua bộ lọc ngày / Sale / trạng thái; dò mọi tên + mọi SĐT đã gộp','13/10'],
+  ['Nhãn cạnh Ngày tạo','Khách tạo ngoài kỳ đang xem: "mua lại" = có đơn trong kỳ · "đang chăm" = có lượt chăm sóc trong kỳ · "ngoài kỳ" = chỉ hiện vì khớp ô tìm','16/10'],
   ['Mã KH nghi gán nhầm','Mã dùng cho nhiều khách khác số · khác cả SĐT lẫn tên với Kiot · đã chốt mà mã không có đơn đặt hàng nào','13/10'],
   ['Chưa có lịch sử chăm sóc','Lẻ: tạo từ 1/9/2026, chưa chốt, Lead mới / Tiềm năng · Sỉ: tạo từ 1/6/2026, nguồn Online','5/10 · 8/10'],
   ['Lượt chăm sóc "Chốt đơn"','Bắt buộc mã đơn đặt hàng có thật bên Kiot','—']]],
@@ -6180,41 +6188,77 @@ const LOGIC_XU_LY=[
   ['Dữ liệu nhập sai','Tự sửa chuẩn trong app bằng luật; không ghi ngược sang Kiot / Pancake','2/10'],
   ['Sao lưu','Tự chụp mỗi ngày; chụp thêm trước mọi lần xoá / sửa hàng loạt','—'],
   ['Giờ','Mọi mốc giờ theo giờ Việt Nam (UTC+7)','7/10']]]];
+// CÔNG THỨC CHỈ SỐ (anh Hải 19/10/2026: "tham khảo bên kế toán, mấy cái công thức cho chỉ số cũng add vô"). Mỗi dòng
+// [mục, công thức, ghi chú, cập nhật]. ĐỔI CÁCH TÍNH Ô NÀO THÌ SỬA ĐÚNG DÒNG Ở ĐÂY.
+LOGIC_XU_LY.push(['Công thức chỉ số',[
+  ['Báo cáo MKT','Tổng chi phí = Σ chi phí Meta Ads trong kỳ','Bỏ chiến dịch tuyển dụng; chỉ tính từ 1/6/2026','—'],
+  ['Báo cáo MKT','Tổng mess = Σ "Tổng số người liên hệ nhắn tin" (Ads Manager)','','8/10'],
+  ['Báo cáo MKT','CP / mess = Tổng chi phí ÷ Tổng mess','',''],
+  ['Báo cáo MKT','Doanh số = Σ doanh thu các đơn tính cho MKT (Lẻ Online + Sỉ Online)','Đơn mua lại không tính (trừ Shopee); Sỉ Online chỉ tính 1 tháng từ đơn đầu, trừ khi khách còn nhắn Pancake',''],
+  ['Báo cáo MKT','ADS / DS = Tổng chi phí ÷ Doanh số × 100%','Màu: ≤ 50% xanh · ≤ 100% vàng · > 100% đỏ. Theo brand: chi phí brand ÷ doanh số brand',''],
+  ['Báo cáo MKT','DS TB / đơn = Doanh số ÷ Số đơn chốt','',''],
+  ['Báo cáo MKT','Tỷ lệ chốt = Số đơn chốt ÷ Tổng mess × 100%','',''],
+  ['MKT · tab Chi tiết','Hiển thị = Σ lượt hiển thị · Tiếp cận = Σ tiếp cận từng ngày','Xem nhiều ngày thì Tiếp cận cao hơn số người duy nhất trên Ads Manager (Meta không cho cộng người duy nhất)','16/10'],
+  ['MKT · tab Chi tiết','CPM = Chi phí ÷ Hiển thị × 1.000','','16/10'],
+  ['MKT · tab Chi tiết','Click = Σ (CTR × Hiển thị ÷ 100) của từng quảng cáo từng ngày','CTR Meta trả về là CTR (tất cả) — mọi lượt click, không riêng click liên kết','16/10'],
+  ['MKT · tab Chi tiết','CTR = Click ÷ Hiển thị × 100%','Cộng click rồi mới chia, không lấy trung bình CTR các dòng','16/10'],
+  ['MKT · tab Chi tiết','CPC = Chi phí ÷ Click','','16/10'],
+  ['Tổng quan Sale Lẻ / Sỉ','Doanh thu = Σ (đơn tính + đơn mua lại) trong kỳ','Đơn đặt hàng Kiot có dấu vết tiền + HĐ bán thẳng, theo ngày tạo đơn; tách Online / Offline theo nguồn khách',''],
+  ['Tổng quan Sale Lẻ / Sỉ','Số đơn = số đơn đặt hàng + HĐ bán thẳng trong kỳ','Dòng phụ: số khách có doanh thu · số đơn mua lại',''],
+  ['Tổng quan Sale Lẻ / Sỉ','Giá trị TB / đơn = Doanh thu ÷ Số đơn','TB / khách = Doanh thu ÷ số khách có doanh thu',''],
+  ['Tổng quan Sale Lẻ / Sỉ','Khách mới = khách có ngày tạo trong kỳ · Khách mới đã ra đơn = khách mới đã chốt','Doanh thu khách mới = doanh thu trong kỳ của nhóm đã ra đơn',''],
+  ['Tổng quan Sale Lẻ / Sỉ','Tỉ lệ chốt khách mới = Khách mới đã ra đơn ÷ Khách mới × 100%','',''],
+  ['Tổng quan Sale Lẻ / Sỉ','Lâu chưa chăm sóc = khách đang chăm có lượt chăm sóc gần nhất cách hôm nay ≥ 10 ngày','Khách đang chăm = chưa chốt, phân loại cần chăm, không phải lead cũ; khách chưa có lượt nào tính ở ô Chưa có lịch sử chăm sóc',''],
+  ['Tổng quan Sale Lẻ / Sỉ','Doanh thu theo thương hiệu: Σ các thanh = ô Doanh thu','Thương hiệu theo luật "Thương hiệu của khách" (tab Doanh thu)','14/10'],
+  ['Báo cáo tổng hợp','Tổng doanh thu = Doanh thu Sale Lẻ + Doanh thu Sale Sỉ','',''],
+  ['Báo cáo tổng hợp','Tỉ lệ chốt chung = Khách đã chốt ÷ Tổng khách (Lẻ + Sỉ) × 100%','',''],
+  ['Báo cáo tổng hợp','Khách đã chốt theo tỉnh / miền = khách đã chốt gom theo tỉnh / TP mới (34 đơn vị)','Doanh thu cột cuối = doanh thu trong kỳ của các khách đó',''],
+  ['Đối soát Kiot ↔ App','Kiot cần tính = đơn đặt hàng không huỷ + HĐ bán thẳng hoàn thành, tiền > 0, từ 1/1/2026 − phiếu tạm chưa tiền','Phiếu tạm chưa tiền (báo giá) chỉ để biết, không tính lệch','8/10'],
+  ['Đối soát Kiot ↔ App','Khớp = App ÷ Kiot cần tính × 100%','',''],
+  ['Đối soát Kiot ↔ App','Lệch = Kiot cần tính − App = Vãng lai + Mã "khách lẻ" + Khách chưa có trong app + Khách có trong app chưa tính − App tính 2 lần','Còn dư không giải thích được thì hiện cột Khác',''],
+  ['Đối soát Kiot ↔ App','Kiot "Doanh thu thuần" (màn Tổng quan Kiot) = HĐ hoàn thành + đang xử lý − trả hàng, theo ngày HĐ','Bắc cầu sang App: + trả hàng − HĐ đang xử lý − HĐ của đơn đặt tháng trước + đơn đặt trong tháng đã cọc chưa ra HĐ (T10: 619,6tr → 918,1tr khớp từng đồng)','19/10']]]);
+// TRANG LOGIC KIỂU BẢNG GOOGLE SHEET như app kế toán (19/10/2026): mỗi phần 1 tab có số đếm · bảng STT | Mục (gộp ô) | Quy tắc |
+// Ghi chú / ví dụ | Cập nhật · ô tìm (bỏ dấu) tìm trên mọi tab. Dòng dữ liệu: [mục, quy tắc, ngày] hoặc [mục, quy tắc, ghi chú, ngày].
+function logicDong(d){return d.length>=4?{muc:d[0],qt:d[1],gc:d[2],ngay:d[3]}:{muc:d[0],qt:d[1],gc:'',ngay:d[2]};}
 function logicMo(){
   if(!dashToanQuyen())return;
-  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  if(window._lgTab==null)window._lgTab=0;window._lgQ='';
   const tong=LOGIC_XU_LY.reduce((n,p)=>n+p[1].length,0);
-  const chip=LOGIC_XU_LY.map((p,i)=>'<button onclick="document.getElementById(\'lgP'+i+'\').scrollIntoView({behavior:\'smooth\',block:\'start\'})" class="btn-ghost" style="margin:0;padding:5px 11px;font-size:11.5px">'+e(p[0])+'</button>').join('');
-  const phan=LOGIC_XU_LY.map((p,i)=>'<div id="lgP'+i+'" class="lg-phan" style="scroll-margin-top:8px;border:1px solid var(--border);border-radius:12px;overflow:hidden">'
-    +'<div style="display:flex;align-items:center;gap:10px;padding:11px 16px;background:var(--bg2);border-bottom:1px solid var(--border)">'
-      +'<span style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em">'+e(p[0])+'</span>'
-      +'<span class="lg-dem" style="font-size:11px;font-weight:800;color:var(--muted)">'+p[1].length+'</span></div>'
-    +'<table style="width:100%;border-collapse:collapse;table-layout:fixed"><colgroup><col style="width:26%"><col><col style="width:96px"></colgroup>'
-    +'<thead><tr>'+['Mục','Cách xử lý','Chốt ngày'].map((t,j)=>'<th style="padding:8px 16px;text-align:'+(j===2?'right':'left')+';font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)">'+t+'</th>').join('')+'</tr></thead><tbody>'
-    +p[1].map(d=>'<tr class="lg-dong" style="border-bottom:1px solid var(--border)">'
-      +'<td style="padding:9px 16px;font-size:12.5px;font-weight:800;vertical-align:top">'+e(d[0])+'</td>'
-      +'<td style="padding:9px 16px;font-size:12.5px;line-height:1.5;color:var(--text2);vertical-align:top">'+e(d[1])+'</td>'
-      +'<td style="padding:9px 16px;font-size:11.5px;color:var(--muted);text-align:right;white-space:nowrap;vertical-align:top;font-variant-numeric:tabular-nums">'+e(d[2])+'</td></tr>').join('')
-    +'</tbody></table></div>').join('');
   let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
   m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
-   +'<div style="background:var(--surface);color:var(--text);border-radius:16px;max-width:1080px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">'
+   +'<div style="background:var(--surface);color:var(--text);border-radius:16px;max-width:1180px;width:100%;height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">'
    +'<div style="padding:15px 20px;border-bottom:1px solid var(--border);display:grid;gap:10px">'
-     +'<div style="display:flex;align-items:center;gap:12px"><div style="font-size:16px;font-weight:800">Logic xử lý</div>'
-       +'<span style="font-size:11px;font-weight:800;color:var(--muted)">'+LOGIC_XU_LY.length+' phần · '+tong+' luật</span>'
-       +'<input id="lgTim" oninput="logicLoc(this.value)" placeholder="Tìm luật…" style="margin-left:auto;height:32px;box-sizing:border-box;padding:4px 11px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:12.5px;font-family:var(--font);outline:none;width:220px;max-width:40vw">'
+     +'<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div style="font-size:16px;font-weight:800">Logic xử lý</div>'
+       +'<span style="font-size:11px;font-weight:800;color:var(--muted)">'+LOGIC_XU_LY.length+' phần · '+tong+' dòng</span>'
+       +'<input id="lgTim" oninput="window._lgQ=this.value;logicVe()" placeholder="Tìm quy tắc…" style="margin-left:auto;height:32px;min-width:220px;box-sizing:border-box;padding:4px 11px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:12.5px;font-family:var(--font);outline:none">'
        +'<button onclick="qcCloseModal()" style="background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
-     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+chip+'</div></div>'
-   +'<div id="lgThan" style="overflow:auto;padding:16px 20px;display:grid;gap:14px">'+phan+'</div></div></div>';
+     +'<div id="lgTab" style="display:flex;gap:6px;flex-wrap:wrap"></div></div>'
+   +'<div id="lgThan" style="overflow:auto;padding:16px 20px"></div></div></div>';
+  logicVe();
 }
-// tìm: ẩn dòng không khớp, phần nào không còn dòng thì ẩn cả phần (so bỏ dấu)
-function logicLoc(q){
-  const bo=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase();
-  const k=bo(q).trim();
-  document.querySelectorAll('#lgThan .lg-phan').forEach(p=>{let con=0;
-    const tieuDe=k&&bo(p.firstChild.textContent).includes(k);
-    p.querySelectorAll('.lg-dong').forEach(tr=>{const ok=!k||tieuDe||bo(tr.textContent).includes(k);tr.style.display=ok?'':'none';if(ok)con++;});
-    p.style.display=con?'':'none';const d=p.querySelector('.lg-dem');if(d)d.textContent=con;});
+function logicVe(){
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const bo=t=>String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[đĐ]/g,'d').toLowerCase();
+  const q=bo(window._lgQ||'').trim(),tab=window._lgTab||0;
+  const tabEl=document.getElementById('lgTab'),than=document.getElementById('lgThan');if(!tabEl||!than)return;
+  tabEl.innerHTML=LOGIC_XU_LY.map((p,i)=>'<button onclick="window._lgTab='+i+';window._lgQ=\'\';document.getElementById(\'lgTim\').value=\'\';logicVe()" class="'+(!q&&tab===i?'refresh-btn':'btn-ghost')+'" style="margin:0;padding:5px 11px;font-size:11.5px">'
+    +e(p[0])+' <span style="opacity:.7;font-weight:800">'+p[1].length+'</span></button>').join('');
+  // dòng cần hiện: đang tìm -> mọi phần (kèm tên phần), không tìm -> tab đang chọn
+  const ds=[];LOGIC_XU_LY.forEach((p,i)=>{if(!q&&i!==tab)return;p[1].forEach(d=>{const x=logicDong(d);
+    if(q&&!bo(p[0]+' '+x.muc+' '+x.qt+' '+x.gc).includes(q))return;ds.push(Object.assign({phan:p[0]},x));});});
+  // gộp ô Mục cho các dòng liền nhau cùng mục (như app kế toán)
+  const nhom=[];ds.forEach(x=>{const g=(q?x.phan+'|':'')+x.muc,z=nhom[nhom.length-1];if(z&&z.g===g)z.r.push(x);else nhom.push({g,r:[x]});});
+  const td='padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top;font-size:12.5px;line-height:1.5;white-space:normal;overflow-wrap:anywhere';
+  let stt=0;const rows=nhom.map(z=>z.r.map((x,j)=>{stt++;
+    return '<tr><td style="'+td+';text-align:center;color:var(--muted);font-variant-numeric:tabular-nums">'+stt+'</td>'
+      +(j===0?'<td rowspan="'+z.r.length+'" style="'+td+';font-weight:800;border-right:1px solid var(--border)">'+(q?'<div style="font-size:10.5px;color:var(--muted);font-weight:700">'+e(x.phan)+'</div>':'')+e(x.muc)+'</td>':'')
+      +'<td style="'+td+';color:var(--text)">'+e(x.qt)+'</td>'
+      +'<td style="'+td+';color:var(--muted);font-size:12px">'+e(x.gc)+'</td>'
+      +'<td style="'+td+';text-align:center;color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums">'+e(x.ngay)+'</td></tr>';}).join('')).join('');
+  const th=(t,w,c)=>'<th style="padding:9px 12px;text-align:'+(c?'center':'left')+';font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0'+(w?';width:'+w:'')+'">'+t+'</th>';
+  than.innerHTML='<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden"><table style="width:100%;border-collapse:collapse;table-layout:fixed">'
+    +'<thead><tr>'+th('STT','52px',1)+th('Mục','190px')+th('Quy tắc')+th('Ghi chú / ví dụ','30%')+th('Cập nhật','90px',1)+'</tr></thead>'
+    +'<tbody>'+(rows||'<tr><td colspan="5" style="padding:22px;text-align:center;color:var(--muted)">Không thấy quy tắc nào</td></tr>')+'</tbody></table></div>';
 }
 function tbCaiDatBam(ev){if(ev)ev.stopPropagation();const mn=document.getElementById('tbMenu'),h=document.getElementById('tbHop');if(h)h.style.display='none';
   const lg=document.getElementById('cdLogic');if(lg)lg.style.display=dashToanQuyen()?'flex':'none';
