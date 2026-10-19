@@ -5931,10 +5931,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='19/10 09:42';
+const APP_VERSION='19/10 12:36';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=498;
+const APP_BAN=499;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6155,7 +6155,7 @@ const LOGIC_XU_LY=[
   ['Brand khách Sỉ','Kênh ghi rõ brand khác thì theo kênh, còn lại = Shidai','—']]],
  ['Báo cáo MKT',[
   ['Mốc thời gian','Chỉ từ 1/6/2026 (chi phí ads có từ T6), kể cả bộ lọc "Tất cả"','—'],
-  ['Khách tính cho MKT','Lẻ: Online · Sỉ: chỉ Online (Sỉ Offline chỉ vào báo cáo Sale Sỉ)','—'],
+  ['Khách tính cho MKT','Theo NGUỒN khách: nguồn Online (Lẻ + Sỉ) là tự tính theo cơ chế MKT; Sỉ Offline chỉ vào báo cáo Sale Sỉ','Kênh ghi gì (kể cả Sales trực tiếp / Bán trực tiếp) không ảnh hưởng. Đơn vẫn phải đủ dấu vết tiền — khách cọc / trả / có hoá đơn thì tự tính','19/10'],
   ['Cắt doanh thu','Đơn đầu luôn tính; Sỉ Online chỉ tính trong 1 tháng từ đơn đầu, trừ khi khách còn nhắn Pancake','—'],
   ['Đơn mua lại','Không tính cho MKT, vẫn là doanh thu Sale','—'],
   ['Đếm lead','Theo người (sau khi gộp), không theo số đơn Pancake','13/10'],
