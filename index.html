@@ -337,7 +337,6 @@ thead th,.grp-table th{color:var(--text2)}
     <div class="sb-section" id="sec-qt-label" style="margin-top:12px">Quản trị</div>
     <nav id="sec-qt">
       <div class="nav-item" onclick="switchPage('report-tonghop')" id="nav-report-tonghop"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span><span class="nav-label">Báo cáo tổng hợp</span></div>
-      <div class="nav-item" onclick="switchPage('daily')" id="nav-daily" style="display:none"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2v4M16 2v4M4 10h16M8 14h5M8 17h8"/></svg></span><span class="nav-label">Daily report</span></div>
     </nav>
     <div class="sb-section" id="sec-report-label" style="margin-top:12px">Báo cáo</div>
     <nav id="sec-report">
@@ -381,7 +380,6 @@ thead th,.grp-table th{color:var(--text2)}
     </div>
     <div class="tab-page" id="page-log"></div>
     <div class="tab-page" id="page-logic"></div>
-    <div class="tab-page" id="page-daily"></div>
     <div class="tab-page" id="page-settings">
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
@@ -680,7 +678,7 @@ function applyRole(){
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el=>{
     const id=el.id.replace('nav-','');
     // Data Hub có 2 mức quyền -> chỉ cần 1 trong 2 là hiện mục trên thanh bên.
-    const ok=id==='daily'?(dashIsSupreme()&&!dashViewAs()):id==='logic'?dashToanQuyenXem():(!allowed||allowed.indexOf(id)>=0||(id==='datahub'&&allowed.indexOf('datahub-manual')>=0));
+    const ok=id==='logic'?dashToanQuyenXem():(!allowed||allowed.indexOf(id)>=0||(id==='datahub'&&allowed.indexOf('datahub-manual')>=0));
     el.style.display=ok?'':'none';
   });
   [['sec-report-label','sec-report'],['sec-qt-label','sec-qt']].forEach(([lab,nav])=>{
@@ -907,21 +905,20 @@ function switchPage(p){
   }
   // Data Hub mở được nếu có 1 trong 2 mức quyền; bên trong renderDataHub sẽ khoá tiếp tab data thô.
   // Logic xử lý: chỉ tài khoản toàn quyền (Admin / Supreme), không theo tick quyền trang (19/10/2026)
-  if(p==='logic'?!dashToanQuyenXem():p==='daily'?!(dashIsSupreme()&&!dashViewAs()):(!dashCan(p)&&!(p==='datahub'&&dashCan('datahub-manual'))))return;   // Daily report: CHỈ Supreme (19/10/2026)
+  if(p==='logic'?!dashToanQuyenXem():(!dashCan(p)&&!(p==='datahub'&&dashCan('datahub-manual'))))return;
   // Rời trang Sale Lẻ / Sale Sỉ thì XOÁ SẠCH trang đó: 2 trang vẽ cùng bộ id (thanh Hợp nhất, ô tích...),
   // để lại trang ẩn thì thao tác ở trang kia bấm nhầm vào phần tử của trang ẩn (anh Hải 25/9/2026:
   // chuyển trang rồi quay lại thì tích không hiện thanh gộp). Quay lại là vẽ mới, ô tích trống như thường.
   ['report-saleretail','report-salesi'].forEach(x=>{
     if(x===p)return;const el=document.getElementById('page-'+x);if(el&&el.innerHTML)el.innerHTML='';
   });
-  ['datahub','settings','report-saleretail','report-salesi','report-mkt','report-tonghop','log','logic','daily'].forEach(x=>{
+  ['datahub','settings','report-saleretail','report-salesi','report-mkt','report-tonghop','log','logic'].forEach(x=>{
     const el=document.getElementById('page-'+x);if(el)el.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);if(nav)nav.classList.toggle('active',x===p);
   });
   if(p==='settings')renderSettings();
   if(p==='log')renderLog();
   if(p==='logic')renderLogic();
-  if(p==='daily')renderDaily();
   if(p==='datahub')renderDataHub();
   if(p==='report-saleretail')renderReportSaleLe();
   if(p==='report-salesi')renderReportSaleSi();
@@ -5934,10 +5931,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='19/10 16:18';
+const APP_VERSION='19/10 16:48';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=502;
+const APP_BAN=503;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6128,7 +6125,6 @@ const LOGIC_XU_LY=[
   ['Đối soát Kiot ↔ app','Tự soát từng mã 23:00 hằng đêm; so số THẬT, phiếu tạm không dấu vết tiền tách riêng chỉ để biết','8/10 · 16/10'],
   ['Ảnh hồ sơ khách','Ảnh nén còn 1024px lúc tải lên; 23:40 hằng đêm tự rà ảnh trong ngày, file nào còn nặng thì nén tiếp; PDF giữ nguyên','17/10'],
   ['Job chạy chồng','Mỗi luồng đồng bộ chỉ 1 lượt chạy một lúc, lượt sau xếp hàng chờ','13/10'],
-  ['Daily report','Báo cáo NGÀY HÔM QUA tự tạo 03:00 / 04:00 VN (GitHub hay trễ nên ra khoảng 4–5h), chỉ Supreme xem; doanh thu, MKT, thương hiệu, theo Sale, việc tồn, đối soát, thay đổi dữ liệu, job + cảnh báo','Số tính bằng đúng code app; việc tồn là ảnh chụp lúc tạo; trang có nút Tính lại','19/10'],
   ['Pancake lỗi máy chủ','Pancake trả lỗi 500 thoáng qua → thử lại 5 lần, vẫn lỗi thì chỉ cảnh báo vàng, lượt sau tự kéo bù. Báo đỏ (gửi mail) khi lỗi thật: token sai / hết hạn, ghi CSDL lỗi, hoặc lỗi 3 lượt liền','15/10']]],
  ['Gộp khách & nối Kiot',[
   ['Tự gộp','CHỈ khi trùng SĐT (so 9 số cuối), trong cùng loại Sỉ / Lẻ. Dòng chính = khách tạo trước, ô trống lấy bổ sung từ dòng gộp vào','13/10'],
@@ -6226,197 +6222,6 @@ LOGIC_XU_LY.push(['Công thức chỉ số',[
 // TRANG LOGIC KIỂU BẢNG GOOGLE SHEET như app kế toán (19/10/2026): mỗi phần 1 tab có số đếm · bảng STT | Mục (gộp ô) | Quy tắc |
 // Ghi chú / ví dụ | Cập nhật · ô tìm (bỏ dấu) tìm trên mọi tab. Dòng dữ liệu: [mục, quy tắc, ngày] hoặc [mục, quy tắc, ghi chú, ngày].
 function logicDong(d){return d.length>=4?{muc:d[0],qt:d[1],gc:d[2],ngay:d[3]}:{muc:d[0],qt:d[1],gc:'',ngay:d[2]};}
-// ── DAILY REPORT (anh Hải 19/10/2026) ───────────────────────────────────────────────────────────────────────
-// "Quản trị thêm 1 cái daily report, chỉ t nhìn thấy, tóm tắt các thay đổi của ngày hôm qua, tóm tắt tất cả báo cáo chính và
-// chỉ số + cảnh báo, tự động xử lý vào 4-5h sáng hằng ngày". Job scripts/bao-cao-ngay.js chạy ĐÚNG hàm bcnTinh này trong máy ảo
-// (cùng code app -> số khớp app) rồi ghi bảng mkt_bao_cao_ngay; trang Daily report chỉ đọc, nút "Tính lại" chạy bcnTinh trên trình duyệt.
-// CHỈ tài khoản Supreme thấy mục + đọc / ghi bảng (RLS, supabase-schema-bao-cao-ngay.sql). Đổi chỉ số / ngưỡng cảnh báo: sửa ở đây.
-const BCN_PHIEN='bcn';   // "mod" lọc kỳ riêng của báo cáo, không đụng bộ lọc ngày người dùng đang chọn
-function bcnCong(d,n){const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
-function bcnHomQua(){return bcnCong(todayISO(),-1);}
-// Tính 1 khoảng ngày: doanh thu / đơn / khách mới theo Lẻ - Sỉ, theo thương hiệu, theo Sale; MKT. Dùng đúng hàm báo cáo của app.
-function bcnKhoang(tu,den,chiTiet){
-  modRanges[BCN_PHIEN]={from:tu,to:den};window._rptSlMod=BCN_PHIEN;
-  const kq={tu,den,le:{dt:0,don:0,khDt:0,moi:0,moiChot:0},si:{dt:0,don:0,khDt:0,moi:0,moiChot:0},th:{},sale:{}};
-  const tien=r=>r.revenue+(r.repeatRevenue||0),soDon=r=>(r.kords||[]).length+(r.repeatOrds||[]).length;
-  const S=ten=>kq.sale[ten]=kq.sale[ten]||{ten,doi:'',dt:0,don:0,moi:0,cs:0};
-  ['Lẻ','Sỉ'].forEach(T=>{window._rptSlType=T;window._kiotOrdByCode=null;rptSlXoaCache();
-    const x=T==='Lẻ'?kq.le:kq.si;
-    rptSlPeriod().forEach(r=>{const v=tien(r);if(!v)return;x.dt+=v;x.don+=soDon(r);x.khDt++;
-      (T==='Sỉ'?[{b:r.brand?(r.brand==='SD'?'Shidai':r.brand):'Shidai',tien:v}]:rptSlTienTheoBrand(r)).forEach(p=>{
-        const b=p.b||'Chưa rõ',y=kq.th[b]=kq.th[b]||{le:0,si:0};y[T==='Lẻ'?'le':'si']+=p.tien;});
-      if(chiTiet){const s=S(r.staff||'(chưa gán)');s.dt+=v;s.don+=soDon(r);s.doi=s.doi||T;}});
-    const moi=rptSlBuildMaster().filter(r=>!r.vangLai&&modInRange(BCN_PHIEN,String(rptSlNgayTao(r)).slice(0,10)));
-    x.moi=moi.length;x.moiChot=moi.filter(r=>r.isChot).length;
-    if(chiTiet)moi.forEach(r=>{const s=S(r.staff||'(chưa gán)');s.moi++;s.doi=s.doi||T;});
-  });
-  if(chiTiet)(typeof siCrmRows!=='undefined'?siCrmRows:[]).forEach(c=>{const n=String(c.ngay_cham||'').slice(0,10);
-    if(n<tu||n>den||rptSlLaGiaoViec(c))return;const s=S(rptSlSaleName(c.sales)||'(chưa ghi Sale)');s.cs++;s.doi=s.doi||(c.loai||'');});
-  // MKT: đúng rptMktData của báo cáo MKT (chỉ từ 1/6/2026, nguồn Online)
-  const cuM=modRanges.mkt,cuB=rptBrands.mkt;
-  try{modRanges.mkt={from:tu,to:den};rptBrands.mkt='';rptSlXoaCache();const m=rptMktData();
-    kq.mkt={chi:m.kpi.totalSpend,mess:m.kpi.totalMess,rev:m.rev,don:m.don,chiBrand:m.spendBrand,revBrand:m.revBrand};}
-  finally{modRanges.mkt=cuM;rptBrands.mkt=cuB;}
-  kq.tong=kq.le.dt+kq.si.dt;return kq;
-}
-// phu = {log: activity_log trong ngày, sync: sync_log từ hôm trước, doiSoat: lượt soát Kiot gần nhất}
-function bcnTinh(D,phu){
-  phu=phu||{};
-  const cu={t:window._rptSlType,m:window._rptSlMod,k:window._kiotOrdByCode,r:modRanges[BCN_PHIEN]};
-  try{
-    const thang=D.slice(0,8)+'01',ngayTh=Number(D.slice(8,10));
-    const tt=new Date(D+'T00:00:00Z');tt.setUTCDate(1);tt.setUTCMonth(tt.getUTCMonth()-1);
-    const thangTruoc=tt.toISOString().slice(0,10),cuoiTT=new Date(Date.UTC(tt.getUTCFullYear(),tt.getUTCMonth()+1,0)).getUTCDate();
-    const ngay=bcnKhoang(D,D,true),homKia=bcnKhoang(bcnCong(D,-1),bcnCong(D,-1)),tuan=bcnKhoang(bcnCong(D,-7),bcnCong(D,-1));
-    const mtd=bcnKhoang(thang,D),mtdTruoc=bcnKhoang(thangTruoc,thangTruoc.slice(0,8)+String(Math.min(ngayTh,cuoiTT)).padStart(2,'0'));
-    // việc tồn: Daily Task + việc được giao (theo từng loại)
-    const viec={};['Lẻ','Sỉ'].forEach(T=>{window._rptSlType=T;window._rptSlMod=null;window._kiotOrdByCode=null;rptSlXoaCache();
-      const vg=rptSlViecGiaoDs(),homNay=bcnCong(D,1);
-      viec[T]={dailyTask:rptSlTodoCount(),giao:vg.length,quaHan:vg.filter(r=>String(r.viecGiao.ngay_hen||'')&&String(r.viecGiao.ngay_hen).slice(0,10)<homNay).length};});
-    // đối soát tháng của ngày báo cáo
-    let ds=null;try{const t=dhDoiSoatData().thang[D.slice(0,7)];if(t)ds={kiot:t.kiot-t.luat,app:t.app,lech:t.kiot-t.luat-t.app};}catch(e){}
-    // thay đổi dữ liệu trong ngày
-    const log=(phu.log||[]).slice().sort((a,b)=>String(a.at).localeCompare(String(b.at)));
-    const theoNguoi={};log.forEach(x=>{const w=x.who||'(không rõ)';theoNguoi[w]=(theoNguoi[w]||0)+1;});
-    const QT=/sale phụ trách|si_sale|loại khách|chuyển loại|mã kh|kiot_code|nguồn|nguon|kênh|kenh|gộp|gop_vao|tách|excluded|gỡ|xoá|phân loại|trạng thái|status/i;
-    const quanTrong=log.filter(x=>x.act==='D'||QT.test(String(x.fld||''))).slice(-80)
-      .map(x=>({at:x.at,who:x.who,act:x.act,tbl:x.tbl,ref:x.ref,label:x.label,fld:x.fld,old:x.old_v,moi:x.new_v}));
-    // job: lỗi trong ngày theo nguồn (giờ VN)
-    const job={};(phu.sync||[]).forEach(x=>{const n=new Date(new Date(x.started_at).getTime()+7*3600e3).toISOString().slice(0,10);if(n!==D)return;
-      const j=job[x.source]=job[x.source]||{chay:0,loi:0,loiCuoi:''};j.chay++;if(x.status==='failed'){j.loi++;j.loiCuoi=String(x.error_message||'').slice(0,160);}});
-    const du={ngay:D,ngay_cu:homKia,tuan,thang:mtd,thang_truoc:mtdTruoc,viec,doi_soat:ds,doi_soat_job:phu.doiSoat||null,
-      log:{tong:log.length,theoNguoi,quanTrong},job,
-      sale:Object.values(ngay.sale).sort((a,b)=>b.dt-a.dt||b.cs-a.cs),nhan_su:{le:rptSlSaleCuaDoi('Lẻ'),si:rptSlSaleCuaDoi('Sỉ')}};
-    du.hom=ngay;delete du.hom.sale;
-    // ── CẢNH BÁO (mức: cao = xử ngay · vua = cần xem) ──
-    const cb=[],them=(muc,nhom,nd)=>cb.push({muc,nhom,nd});
-    const tb7=tuan.tong/7,pc=(a,b)=>b?Math.round((a-b)/b*100):null;
-    if(!ngay.tong)them('cao','Doanh thu','Không có doanh thu nào ngày '+dmy(D)+' (Lẻ + Sỉ)');
-    else if(tb7&&ngay.tong<tb7*0.5)them('vua','Doanh thu','Doanh thu '+dmy(D)+' thấp hơn TB 7 ngày '+Math.abs(pc(ngay.tong,tb7))+'% ('+vnd(ngay.tong)+' / TB '+vnd(Math.round(tb7))+')');
-    const m=ngay.mkt||{},mt=tuan.mkt||{},mm=mtd.mkt||{};
-    if(!m.chi&&mt.chi)them('cao','MKT','Chưa có chi phí ads ngày '+dmy(D)+' — kiểm job đồng bộ Meta');
-    if(m.chi&&m.mess&&mt.chi&&mt.mess&&m.chi/m.mess>(mt.chi/mt.mess)*1.5)them('vua','MKT','CP / mess '+dmy(D)+' '+vnd(Math.round(m.chi/m.mess))+', cao hơn TB 7 ngày '+pc(m.chi/m.mess,mt.chi/mt.mess)+'%');
-    if(mm.rev&&mm.chi/mm.rev>0.5)them('vua','MKT','ADS / DS lũy kế tháng '+(mm.chi/mm.rev*100).toFixed(1)+'% (ngưỡng 50%)');
-    if(m.chi&&m.mess&&!m.rev&&mt.rev===0)them('vua','MKT','7 ngày qua MKT chưa có đơn chốt nào');
-    if(ds&&Math.abs(ds.lech)>=1)them('cao','Đối soát','Tháng '+D.slice(5,7)+' app lệch Kiot '+vnd(Math.round(ds.lech))+' — xem Data Hub › Đối soát');
-    const djob=phu.doiSoat;
-    if(!djob||djob.status!=='success')them('vua','Đối soát','Lượt soát từng mã Kiot gần nhất '+(djob?'lỗi':'không có'));
-    else if(Number(djob.records_updated||0)>0)them('cao','Đối soát','Soát từng mã Kiot: '+djob.records_updated+' mã lệch');
-    Object.keys(job).forEach(s=>{const j=job[s];if(j.loi>=3)them('cao','Job tự chạy',s+': '+j.loi+'/'+j.chay+' lượt lỗi — '+j.loiCuoi);
-      else if(j.loi)them('vua','Job tự chạy',s+': '+j.loi+'/'+j.chay+' lượt lỗi (thoáng qua)');});
-    ['Lẻ','Sỉ'].forEach(T=>{const v=viec[T];if(v.quaHan)them('vua','Việc','Sale '+T+': '+v.quaHan+' việc được giao đã quá hạn');
-      if(v.dailyTask)them('vua','Daily Task','Sale '+T+': còn '+v.dailyTask+' việc ở Daily Task');});
-    const thu=new Date(D+'T00:00:00Z').getUTCDay();   // 0 = Chủ nhật: không nhắc Sale không chăm sóc
-    if(thu!==0){const coCS=new Set(du.sale.filter(s=>s.cs).map(s=>s.ten));
-      const khong=du.nhan_su.le.concat(du.nhan_su.si).filter(t=>!coCS.has(t));
-      if(khong.length)them('vua','Chăm sóc','Không ghi lượt chăm sóc nào ngày '+dmy(D)+': '+khong.join(', '));}
-    const xoa=log.filter(x=>x.act==='D');if(xoa.length)them('vua','Dữ liệu',xoa.length+' lần XOÁ dữ liệu trong ngày — xem bảng thay đổi');
-    const cg=du.sale.find(s=>s.ten==='(chưa gán)');if(cg&&cg.moi)them('vua','Khách','Có '+cg.moi+' khách mới chưa có Sale phụ trách');
-    // ── TÓM TẮT ──
-    const tt2=[],ps=(a,b)=>{const p=pc(a,b);return p===null?'—':(p>0?'+':'')+p+'%';};
-    tt2.push('Doanh thu '+dmy(D)+': '+vnd(ngay.tong)+' (Lẻ '+vnd(ngay.le.dt)+' · Sỉ '+vnd(ngay.si.dt)+') · '+(ngay.le.don+ngay.si.don)+' đơn · so hôm trước '+ps(ngay.tong,homKia.tong)+', so TB 7 ngày '+ps(ngay.tong,tb7)+'.');
-    tt2.push('Lũy kế tháng '+D.slice(5,7)+' đến '+dmy(D)+': '+vnd(mtd.tong)+' (Lẻ '+vnd(mtd.le.dt)+' · Sỉ '+vnd(mtd.si.dt)+') · cùng kỳ tháng trước '+vnd(mtdTruoc.tong)+' ('+ps(mtd.tong,mtdTruoc.tong)+').');
-    tt2.push('MKT ngày: chi '+vnd(m.chi||0)+' · '+(m.mess||0)+' mess · CP/mess '+(m.mess?vnd(Math.round(m.chi/m.mess)):'—')+' · doanh số MKT '+vnd(m.rev||0)+(m.rev?' · ADS/DS '+(m.chi/m.rev*100).toFixed(1)+'%':'')+'. Tháng: chi '+vnd(mm.chi||0)+' · ADS/DS '+(mm.rev?(mm.chi/mm.rev*100).toFixed(1)+'%':'—')+'.');
-    tt2.push('Khách mới: Lẻ '+ngay.le.moi+' · Sỉ '+ngay.si.moi+' (đã ra đơn '+(ngay.le.moiChot+ngay.si.moiChot)+'). Lượt chăm sóc: '+du.sale.reduce((a,s)=>a+s.cs,0)+'.');
-    tt2.push('Dữ liệu: '+log.length+' thay đổi bởi '+Object.keys(theoNguoi).length+' người'+(ds?' · đối soát tháng '+(Math.abs(ds.lech)<1?'khớp 100%':'lệch '+vnd(Math.round(ds.lech))):'')+'.');
-    return {ngay:D,du_lieu:du,canh_bao:cb,tom_tat:tt2};
-  }finally{window._rptSlType=cu.t;window._rptSlMod=cu.m;window._kiotOrdByCode=cu.k;if(cu.r)modRanges[BCN_PHIEN]=cu.r;else delete modRanges[BCN_PHIEN];rptSlXoaCache();}
-}
-// dữ liệu phụ trên trình duyệt (job tự nạp bên Node)
-async function bcnNapPhu(D){
-  const tu=new Date(D+'T00:00:00+07:00').toISOString(),den=new Date(bcnCong(D,1)+'T00:00:00+07:00').toISOString();
-  const [log,sync,ds]=await Promise.all([
-    sbFetchAll('activity_log','select=at,who,act,tbl,ref,label,fld,old_v,new_v&at=gte.'+tu+'&at=lt.'+den+'&order=at'),
-    sbFetchAll('sync_log','select=source,status,started_at,error_message&started_at=gte.'+new Date(new Date(tu).getTime()-86400000).toISOString()+'&started_at=lt.'+den),
-    sbFetchAll('sync_log','select=status,records_updated,error_message,started_at,finished_at&source=eq.'+encodeURIComponent('Đối soát Kiot (tuần)')+'&order=started_at.desc&limit=1')]);
-  return {log,sync,doiSoat:ds[0]||null};
-}
-async function bcnTinhLai(D){
-  if(!dashIsSupreme())return;
-  const el=document.getElementById('bcnTrangThai');if(el)el.textContent='Đang tính lại '+dmy(D)+'…';
-  try{
-    await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null),mktLoadSpend()]);
-    await rptSlLockChot();
-    const kq=bcnTinh(D,await bcnNapPhu(D));
-    const res=await fetch(SUPABASE_URL+'/rest/v1/mkt_bao_cao_ngay?on_conflict=ngay',{method:'POST',
-      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
-      body:JSON.stringify(Object.assign(kq,{tao_luc:new Date().toISOString(),tao_boi:'Tính lại trên app · '+logWho()}))});
-    if(!res.ok)throw new Error('lưu lỗi '+res.status);
-    window._bcnChon=D;window._bcnDs=null;renderDaily();
-  }catch(e){if(el)el.textContent='';alert('Chưa tính được: '+e.message);}
-}
-async function renderDaily(){
-  const el=document.getElementById('page-daily');if(!el)return;
-  if(!dashIsSupreme()){el.innerHTML='<div class="tbl-card" style="padding:16px 18px;color:var(--muted)">Chỉ Supreme xem được Daily report</div>';return;}
-  if(!window._bcnDs){el.innerHTML=rptDangTai('Daily report');
-    try{window._bcnDs=await sbFetchAll('mkt_bao_cao_ngay','select=ngay,du_lieu,canh_bao,tom_tat,tao_luc,tao_boi&order=ngay.desc&limit=62');}
-    catch(e){el.innerHTML=rptTaiLoi('Daily report',e,'renderDaily');return;}}
-  const ds=window._bcnDs,D=window._bcnChon&&ds.some(x=>x.ngay===window._bcnChon)?window._bcnChon:(ds[0]||{}).ngay;
-  const hq=bcnHomQua(),q=String.fromCharCode(39);
-  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-  const chon='<select onchange="window._bcnChon=this.value;renderDaily()" style="height:32px;padding:2px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px;font-weight:700;font-family:var(--font)">'
-    +ds.map(x=>'<option value="'+x.ngay+'"'+(x.ngay===D?' selected':'')+'>'+dmy(x.ngay)+' · '+(x.canh_bao||[]).length+' cảnh báo</option>').join('')+'</select>';
-  const dau='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px"><div style="font-size:20px;font-weight:800">Daily report</div>'
-    +(ds.length?chon:'')+'<span id="bcnTrangThai" style="font-size:11.5px;color:var(--muted);font-weight:600"></span>'
-    +'<button class="btn-ghost" style="margin:0 0 0 auto;padding:6px 12px;font-size:11.5px" onclick="bcnTinhLai('+q+(D||hq)+q+')">↻ Tính lại '+dmy(D||hq)+'</button>'
-    +(D!==hq&&!ds.some(x=>x.ngay===hq)?'<button class="refresh-btn" style="margin:0;padding:6px 12px;font-size:11.5px" onclick="bcnTinhLai('+q+hq+q+')">Tạo báo cáo '+dmy(hq)+'</button>':'')+'</div>';
-  if(!D){el.innerHTML=dau+'<div class="tbl-card" style="padding:22px;text-align:center;color:var(--muted)">Chưa có báo cáo nào — job chạy 4–5h sáng hằng ngày, hoặc bấm Tạo báo cáo</div>';return;}
-  const R=ds.find(x=>x.ngay===D),d=R.du_lieu||{},n=d.hom||{},m=n.mkt||{},mt=(d.tuan||{}).mkt||{},mm=(d.thang||{}).mkt||{};
-  const pct2=(a,b)=>b?((a-b)/b*100):null,doi=(a,b)=>{const p=pct2(a,b);return p===null?'—':'<span style="color:'+(p>=0?'var(--green)':'var(--red)')+'">'+(p>0?'+':'')+p.toFixed(0)+'%</span>';};
-  const tb7=(d.tuan||{}).tong/7||0;
-  // cảnh báo
-  const cb=R.canh_bao||[],mau=x=>x==='cao'?'var(--red)':'#b45309';
-  const kCb='<div class="tbl-card" style="padding:14px 18px;margin-bottom:16px;border-left:4px solid '+(cb.some(x=>x.muc==='cao')?'var(--red)':cb.length?'#f59e0b':'var(--green)')+'">'
-    +'<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:8px">Cảnh báo · '+cb.length+'</div>'
-    +(cb.length?cb.sort((a,b)=>(a.muc==='cao'?0:1)-(b.muc==='cao'?0:1)).map(x=>'<div style="display:flex;gap:10px;padding:5px 0;font-size:12.5px;line-height:1.45"><span style="flex:0 0 auto;font-size:10.5px;font-weight:800;color:#fff;background:'+mau(x.muc)+';border-radius:6px;padding:1px 7px;height:fit-content">'+(x.muc==='cao'?'CAO':'VỪA')+'</span><span style="flex:0 0 96px;font-weight:800;color:var(--text2)">'+e(x.nhom)+'</span><span>'+e(x.nd)+'</span></div>').join('')
-      :'<div style="font-size:12.5px;color:var(--green);font-weight:700">✓ Không có cảnh báo</div>')+'</div>';
-  const kTt='<div class="tbl-card" style="padding:14px 18px;margin-bottom:16px"><div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:8px">Tóm tắt · '+dmy(D)+'</div>'
-    +(R.tom_tat||[]).map(t=>'<div style="font-size:12.5px;line-height:1.55;padding:2px 0">• '+e(t)+'</div>').join('')
-    +'<div style="font-size:10.5px;color:var(--muted);margin-top:6px">Tạo '+e(new Date(new Date(R.tao_luc).getTime()+7*3600e3).toISOString().slice(11,16))+' '+dmy(String(new Date(new Date(R.tao_luc).getTime()+7*3600e3).toISOString()).slice(0,10))+' · '+e(R.tao_boi||'')+'</div></div>';
-  const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px';
-  const kpi1='<div style="'+g3+'">'+mkKpi(ic('cash'),'Doanh thu ngày',vnd(n.tong||0),'Lẻ '+vnd((n.le||{}).dt||0)+' · Sỉ '+vnd((n.si||{}).dt||0)+' · '+doi(n.tong,tb7)+' so TB 7 ngày','g-green')
-    +mkKpi(ic('chart'),'Lũy kế tháng',vnd((d.thang||{}).tong||0),'cùng kỳ tháng trước '+vnd((d.thang_truoc||{}).tong||0)+' · '+doi((d.thang||{}).tong,(d.thang_truoc||{}).tong),'g-teal')
-    +mkKpi(ic('target'),'Doanh số MKT ngày',vnd(m.rev||0),'chi '+vnd(m.chi||0)+(m.rev?' · ADS/DS '+(m.chi/m.rev*100).toFixed(1)+'%':''),'g-blue')+'</div>';
-  const cs=(d.sale||[]).reduce((a,s)=>a+s.cs,0);
-  const kpi2='<div style="'+g3+';margin-bottom:16px">'+mkKpi(ic('users'),'Khách mới',String(((n.le||{}).moi||0)+((n.si||{}).moi||0)),'Lẻ '+((n.le||{}).moi||0)+' · Sỉ '+((n.si||{}).moi||0)+' · đã ra đơn '+(((n.le||{}).moiChot||0)+((n.si||{}).moiChot||0)),'g-purple')
-    +mkKpi(ic('box'),'Đơn',String(((n.le||{}).don||0)+((n.si||{}).don||0)),'Lẻ '+((n.le||{}).don||0)+' · Sỉ '+((n.si||{}).don||0)+' · '+(((n.le||{}).khDt||0)+((n.si||{}).khDt||0))+' khách','g-orange')
-    +mkKpi(ic('chat'),'Lượt chăm sóc',String(cs),(d.sale||[]).filter(s=>s.cs).length+' người ghi','g-pink')+'</div>';
-  const bang=(td,dauCot,dong)=>'<div class="tbl-card" style="margin-bottom:16px"><div class="tbl-head"><div class="tbl-title">'+td+'</div></div><div class="tbl-scroll"><table><thead><tr>'
-    +dauCot.map((h,i)=>'<th'+(i?' class="num"':'')+'>'+h+'</th>').join('')+'</tr></thead><tbody>'+dong+'</tbody></table></div></div>';
-  const o=v=>'<td class="num">'+v+'</td>';
-  const cpm=x=>x&&x.mess?vnd(Math.round(x.chi/x.mess)):'—',ads=x=>x&&x.rev?(x.chi/x.rev*100).toFixed(1)+'%':'—';
-  const bMkt=bang('MKT',['','Ngày '+dmy(D),'TB / ngày 7 ngày trước','Lũy kế tháng'],
-    [['Chi phí',vnd(m.chi||0),vnd(Math.round((mt.chi||0)/7)),vnd(mm.chi||0)],['Mess',m.mess||0,Math.round((mt.mess||0)/7),mm.mess||0],
-     ['CP / mess',cpm(m),cpm(mt),cpm(mm)],['Doanh số MKT',vnd(m.rev||0),vnd(Math.round((mt.rev||0)/7)),vnd(mm.rev||0)],['Đơn MKT',m.don||0,((mt.don||0)/7).toFixed(1),mm.don||0],
-     ['ADS / DS',ads(m),ads(mt),ads(mm)]].map(r=>'<tr><td class="name">'+r[0]+'</td>'+o(r[1])+o(r[2])+o(r[3])+'</tr>').join(''));
-  const thT=b=>{const x=RPT_MKT_BRANDS.find(y=>y[0]===b);return x?x[1]:b;};
-  const ths=[...new Set(Object.keys(n.th||{}).concat(Object.keys((d.thang||{}).th||{})))];
-  const bTh=bang('Doanh thu theo thương hiệu',['Thương hiệu','Ngày '+dmy(D),'Lũy kế tháng','Lẻ (tháng)','Sỉ (tháng)'],
-    ths.map(b=>{const a=(n.th||{})[b]||{le:0,si:0},t=((d.thang||{}).th||{})[b]||{le:0,si:0};return [b,a.le+a.si,t.le+t.si,t.le,t.si];})
-      .sort((a,b)=>b[2]-a[2]).map(r=>'<tr><td class="name">'+e(thT(r[0]))+'</td>'+o(r[1]?vnd(r[1]):'—')+o(vnd(r[2]))+o(r[3]?vnd(r[3]):'—')+o(r[4]?vnd(r[4]):'—')+'</tr>').join(''));
-  const bSale=bang('Theo Sale · '+dmy(D),['Sale','Lượt chăm sóc','Khách mới','Đơn','Doanh thu'],
-    (d.sale||[]).filter(s=>s.cs||s.moi||s.dt).map(s=>'<tr><td class="name">'+(String(s.ten).charAt(0)==='('?e(s.ten):rptSlSaleHien(s.ten))+(s.doi?' <span style="font-size:10.5px;color:var(--muted)">'+e(s.doi)+'</span>':'')+'</td>'+o(s.cs||'—')+o(s.moi||'—')+o(s.don||'—')+o(s.dt?vnd(s.dt):'—')+'</tr>').join('')
-      ||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px">Không có hoạt động</td></tr>');
-  const v=d.viec||{},vl=v['Lẻ']||{},vs=v['Sỉ']||{},dsj=d.doi_soat_job||{};
-  const bViec=bang('Việc tồn (lúc tạo báo cáo) & đối soát',['','Sale Lẻ','Sale Sỉ'],
-    [['Daily Task còn',vl.dailyTask||0,vs.dailyTask||0],['Việc được giao đang mở',vl.giao||0,vs.giao||0],['Trong đó quá hạn',vl.quaHan||0,vs.quaHan||0]].map(r=>'<tr><td class="name">'+r[0]+'</td>'+o(r[1])+o(r[2])+'</tr>').join('')
-    +(d.doi_soat?'<tr><td class="name">Đối soát tháng '+D.slice(5,7)+' (Kiot cần tính / App)</td><td class="num" colspan="2">'+vnd(Math.round(d.doi_soat.kiot))+' / '+vnd(Math.round(d.doi_soat.app))+' · '+(Math.abs(d.doi_soat.lech)<1?'<b style="color:var(--green)">khớp</b>':'<b style="color:var(--red)">lệch '+vnd(Math.round(d.doi_soat.lech))+'</b>')+'</td></tr>':'')
-    +'<tr><td class="name">Soát từng mã Kiot gần nhất</td><td class="num" colspan="2">'+(dsj.started_at?dmy(new Date(new Date(dsj.finished_at||dsj.started_at).getTime()+7*3600e3).toISOString().slice(0,10))+' · '+(dsj.status==='success'?Number(dsj.records_updated||0)+' mã lệch':'lỗi'):'—')+'</td></tr>');
-  const lg=d.log||{},tn=lg.theoNguoi||{};
-  const bLog=bang('Thay đổi dữ liệu · '+(lg.tong||0)+' lần',['Thời gian','Người','Khách / mục','Trường','Cũ → mới'],
-    (lg.quanTrong||[]).slice().reverse().map(x=>'<tr><td style="white-space:nowrap">'+e(new Date(new Date(x.at).getTime()+7*3600e3).toISOString().slice(11,16))+'</td><td>'+e(rptTenHien?rptTenHien(x.who):x.who)+'</td><td>'+e([x.label,x.ref].filter(Boolean).join(' · '))+'</td><td>'+(x.act==='D'?'<b style="color:var(--red)">XOÁ</b> ':'')+e(x.fld||x.tbl||'')+'</td><td style="max-width:360px;white-space:normal">'+e(String(x.old||'—').slice(0,80))+' → '+e(String(x.moi||'—').slice(0,80))+'</td></tr>').join('')
-      ||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:14px">Không có thay đổi quan trọng</td></tr>')
-    +'<div style="font-size:11.5px;color:var(--muted);margin:-8px 0 16px">Theo người: '+(Object.keys(tn).sort((a,b)=>tn[b]-tn[a]).map(w=>e(rptTenHien?rptTenHien(w):w)+' '+tn[w]).join(' · ')||'—')+'</div>';
-  const jb=d.job||{};
-  const bJob=bang('Job tự chạy · '+dmy(D),['Luồng','Số lượt','Lỗi','Lỗi gần nhất'],
-    Object.keys(jb).sort().map(s=>'<tr><td class="name">'+e(s)+'</td>'+o(jb[s].chay)+'<td class="num" style="color:'+(jb[s].loi?'var(--red)':'inherit')+'">'+jb[s].loi+'</td><td style="font-size:11px;color:var(--muted);white-space:normal">'+e(jb[s].loiCuoi||'')+'</td></tr>').join('')
-      ||'<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px">Không có dữ liệu job</td></tr>');
-  el.innerHTML=dau+kCb+kTt+kpi1+kpi2
-    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">'+bMkt+bTh+'</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">'+bSale+bViec+'</div>'
-    +bLog+bJob;
-  try{tblAlign(el);}catch(err){}
-}
 // TRANG "LOGIC XỬ LÝ" trong menu Cài đặt nâng cao (anh Hải 19/10/2026: "phải cho vào cài đặt nâng cao, bánh răng chỉ cho các nút
 // chức năng") -- trang riêng như Phân quyền / Nhật ký, không còn là cửa sổ bật lên từ bánh răng.
 function renderLogic(){
