@@ -5931,10 +5931,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='19/10 16:48';
+const APP_VERSION='20/10 16:06';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=503;
+const APP_BAN=504;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -5957,13 +5957,29 @@ async function appKiemBanMoi(){
     d.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:4100;background:var(--accent);'
       +'color:#fff;border-radius:999px;padding:9px 16px;font-family:var(--font);font-size:12.5px;font-weight:700;'
       +'box-shadow:0 10px 30px rgba(0,0,0,.28);display:flex;align-items:center;gap:10px';
-    d.innerHTML='Đã có bản cập nhật mới'
-      +'<button onclick="location.reload(true)" style="border:none;background:#fff;color:var(--accent);border-radius:999px;'
-      +'padding:4px 12px;font-weight:800;font-size:12px;cursor:pointer;font-family:var(--font)">Tải lại</button>';
-    document.body.appendChild(d);
+    document.body.appendChild(d);appBanMoiDem(d);
   }catch(e){}
 }
+// TỰ TẢI LẠI sau 10 giây khi có bản mới (anh Hải 20/10/2026, giống app Kế toán). Đang nhập dở (cửa sổ mở, ô nhập đang gõ,
+// đang lưu / tải ảnh) thì KHÔNG tự tải: dừng đếm, chờ bấm "Tải lại"; xong việc (đóng cửa sổ) thì đếm lại từ 10.
+function appDangNhapDo(){
+  if((window._rptSlTrungDangLuu||0)>0||(window._khAnhDangChay||0)>0)return true;
+  if(document.getElementById('qcModal'))return true;
+  if([...document.querySelectorAll('[style*="position:fixed;inset:0;background:rgba"]')].some(e=>getComputedStyle(e).display!=='none'))return true;
+  const a=document.activeElement;return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.type!=='button'&&String(a.value||'').trim());
+}
+function appBanMoiDem(d){
+  const nut='<button onclick="location.reload()" style="border:none;background:#fff;color:var(--accent);border-radius:999px;'
+    +'padding:4px 12px;font-weight:800;font-size:12px;cursor:pointer;font-family:var(--font)">Tải lại</button>';
+  const ve=n=>{d.innerHTML='Đã có bản cập nhật mới'+(n!=null?' — tự tải lại sau '+n+' giây':'')+nut;};
+  let n=10;ve(n);
+  setInterval(()=>{
+    if(appDangNhapDo()){n=10;ve(null);return;}
+    n--;if(n<=0)location.reload();else ve(n);
+  },1000);
+}
 setInterval(appKiemBanMoi,2*60*1000);setTimeout(appKiemBanMoi,4000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')appKiemBanMoi();});
 // DATA LÀM MỚI LÚC MẤY GIỜ (anh Hải 08/10/2026, thanh trên cùng, viết gọn): lấy lần chạy THÀNH CÔNG gần nhất của các job đồng bộ
 // (bảng sync_log), hiện giờ VN. Rê chuột ra từng nguồn. Hỏi lại mỗi 5 phút + khi quay lại tab.
 const DATA_MOI_NGUON=[['Data Hub - Pancake POS','Pancake'],['KiotViet - Đơn đặt hàng','Kiot đơn'],['KiotViet - Hoá đơn','Kiot HĐ'],['MKT - Meta Ads','Meta']];
