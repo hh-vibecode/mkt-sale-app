@@ -13,6 +13,7 @@ Soạn 29/9/2026 bởi Monsieur Claude.
 | QC CSKH | hh-vibecode/qc-cskh | `qc_` / `qc-` | Chủ `sale_response_review`, `sale_review_report` và mọi thứ `qc_*` |
 | Kế toán (tài chính) | hh-vibecode/ke-toan | `kt_` / `kt-` | Đăng ký 1/10/2026. Vào app bằng mã truy cập riêng (như QC), không dùng `dang-nhap` |
 | Dashboard-Meta (cũ) | hh-vibecode/Dashboard-Meta | — | CHỈ ĐỌC. 8/10/2026 đã KHOÁ: repo private, web tắt |
+| Văn phòng ảo (Mr.Mon) | hh-vibecode/van-phong-ao | `vp_` / `vp-` | Đăng ký 20/10/2026. Đăng nhập riêng (tài khoản của anh Hải, kiểm ở Edge Function `vp-api`), không dùng `dang-nhap`. Bảng bật RLS, anon không đọc |
 | *(app mới)* | … | `xx_` / `xx-` | tiền tố 2–4 chữ, không trùng |
 
 ## 2. Ai sở hữu bảng nào
@@ -25,6 +26,7 @@ Soạn 29/9/2026 bởi Monsieur Claude.
   hàm `la_quan_tri()`, `app_*` (tạo / sửa tài khoản).
 - **QC CSKH:** `sale_response_review`, `sale_review_report`, `qc_*` (bảng, hàm, lịch chạy).
 - **Kế toán:** mọi thứ `kt_*` / `kt-*`.
+- **Văn phòng ảo:** mọi thứ `vp_*` / `vp-*` (bảng, hàm, Edge Function `vp-api`).
 - **Dashboard-Meta cũ:** `product_faq`, `faq_feedback`, `faq_chat_usage`, `dash_presence`, `social_page_stats`.
 - **Bảng CŨ giữ có chủ đích — không xoá, không sửa:** `customers`, `leads`, `orders`, `crm_activities`, `assignments`,
   `config_options`, `audit_log`, `issue_handled`, `saonl_*`, view `v_saleretail_*` (còn dữ liệu lịch sử thật).
