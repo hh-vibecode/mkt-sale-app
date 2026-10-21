@@ -5931,10 +5931,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='20/10 16:06';
+const APP_VERSION='21/10 10:31';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=504;
+const APP_BAN=186;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8308,7 +8308,9 @@ function rptSiLuotTrongKy(r){
   return rptSlCsRows(r).filter(x=>String(x.noi_dung||'').trim()&&modInRange(M,String(x.ngay_cham||'').slice(0,10)));
 }
 function rptSiDaChamTrongKy(){
-  return rptSlApplyF('master',rptSlBuildMaster()).map(r=>({r,ds:rptSiLuotTrongKy(r)})).filter(x=>x.ds.length)
+  // {tim:true}: bộ lọc CHỌN TAY vẫn áp, nhưng KHÔNG tự ẩn Offline · Kiot -- khách Sale vừa ghi chăm sóc trong kỳ phải hiện
+  // (anh Hải 21/10/2026, ca ANH THẮNG KH006717: chăm 19/10, lọc ngày 19 không ra vì là khách Offline · Kiot)
+  return rptSlApplyF('master',rptSlBuildMaster(),{tim:true}).map(r=>({r,ds:rptSiLuotTrongKy(r)})).filter(x=>x.ds.length)
     .sort((a,b)=>String(b.ds[0].ngay_cham||'').localeCompare(String(a.ds[0].ngay_cham||'')))
     .map(x=>x.r);
 }
@@ -8391,8 +8393,12 @@ function rptSlMasterHtmlRaw(){
   // có tiền trong kỳ. Khách chỉ vào nhờ lượt chăm sóc: doanh thu trong kỳ = 0, không tính "đã chốt" trong kỳ, nhãn "chăm sóc".
   // CHỈ áp cho bảng Master -- Tổng quan / báo cáo doanh thu vẫn theo rptSlPeriod.
   let loc=rptSlApplyF('master',allRaw);
+  // dòng THEO KỲ của 1 khách: có trong rptSlPeriod thì lấy dòng đó (doanh thu đã cắt theo kỳ); không có -> doanh thu kỳ = 0
+  const theoKy={};allRaw.forEach(r=>{theoKy[r.key]=r;});
+  const rgM=modRange(rptSlMod()),coLocNgay=!!(rgM.from||rgM.to);
+  const dongKy=(r,nhan)=>theoKy[r.key]||(coLocNgay?Object.assign({},r,{kords:[],revenue:0,repeatOrds:[],repeatRevenue:0},nhan):r);
   if(laSi){const co=new Set(loc.map(r=>r.key));
-    loc=loc.concat(daCham.filter(r=>!co.has(r.key)).map(r=>Object.assign({},r,{kords:[],revenue:0,repeatOrds:[],repeatRevenue:0,_chiCS:true})));}
+    loc=loc.concat(daCham.filter(r=>!co.has(r.key)).map(r=>dongKy(r,{_chiCS:true})));}
   const all=rptSlSortNew(loc,rptSlNgayTao);
   const q=(window._rptSlMasterQ||'').trim().toLowerCase();
   // đã bỏ nút lọc Online / Offline (02/10/2026): ai đang lọc dở theo nguồn thì xoá, kẻo bảng kẹt ở 1 nguồn
@@ -8401,7 +8407,8 @@ function rptSlMasterHtmlRaw(){
   let list=goc;
   // Ô TÌM KIẾM: tìm trên TOÀN BỘ khách tài khoản được xem, bỏ qua bộ lọc (anh Hải 13/10/2026, thay luật 25/9 "tìm trong
   // bộ lọc") -- khách còn trong app là phải tìm ra. Xem rptSlTimKhop.
-  if(q)list=rptSlApplyF('master',rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao).filter(r=>rptSlTimKhop(r,q)),{tim:true});   // bộ lọc chọn tay vẫn áp (19/10/2026)
+  if(q)list=rptSlApplyF('master',rptSlSortNew(rptSlBuildMaster(),rptSlNgayTao).filter(r=>rptSlTimKhop(r,q)),{tim:true})
+    .map(r=>dongKy(r,{}));   // tìm ra khách ngoài kỳ vẫn hiện, nhưng cột Doanh thu theo KỲ đang lọc (21/10/2026)   // bộ lọc chọn tay vẫn áp (19/10/2026)
   window._rptSlKeysDangXem=list.map(r=>String(r.leadId||'').replace(/'/g,'')).filter(Boolean);   // cho ô chọn tất cả
   rptSlTrungKeysDung(rptSlBuildMaster());   // thẻ đỏ Trùng Sỉ/Lẻ cạnh tên (13/10/2026)
   const pageSize=50,totalPages=Math.max(1,Math.ceil(list.length/pageSize));
