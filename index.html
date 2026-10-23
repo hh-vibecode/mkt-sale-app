@@ -555,6 +555,9 @@ function dashToanQuyenXem(){
 // GIAO VIỆC (giao / sửa / huỷ / xác nhận / trả lại) cho đúng các Sale trong phạm vi xem của mình (Phân quyền > Sale được xem).
 function dashLaLeader(){return (localStorage.getItem('dashPosition')||'')==='leader';}
 function dashGiaoViec(){return dashToanQuyen()||dashLaLeader();}
+// SỬA KHÁCH CỦA LEADER (anh Hải 23/10/2026: "mở quyền cho Nguyên đổi trạng thái khách, với đổi sales phụ trách"):
+// leader đổi được Sale phụ trách (hồ sơ + hàng loạt) và Phân loại KH của khách đã chốt -- trước chỉ Admin.
+function dashSuaKhach(){return dashToanQuyen()||dashLaLeader();}
 function dashIsSupreme(){return (localStorage.getItem('dashPosition')||'')==='supreme';}
 // Quyền hiện tại của tài khoản đang đăng nhập; null = toàn quyền.
 function dashCan(page){
@@ -5129,7 +5132,7 @@ function rptSlThanhHangLoat(){
     +'<span style="display:inline-flex;gap:6px;align-items:center"><select id="hlPhanLoai" style="'+ip+'"><option value="">Đổi Phân loại KH…</option>'
       +rptSlPhanLoaiDs().filter(x=>x!=='Đã ra đơn').map(x=>'<option>'+e(x)+'</option>').join('')+'</select>'
       +'<button onclick="rptSlHangLoat(\'pl\',this)" class="refresh-btn" style="margin:0;padding:5px 12px;font-size:11.5px">Áp dụng</button></span>'
-    +(dashToanQuyen()?'<span style="display:inline-flex;gap:6px;align-items:center"><select id="hlSale" style="'+ip+'"><option value="__">Đổi Sale phụ trách…</option><option value="">— để trống —</option>'
+    +(dashSuaKhach()?'<span style="display:inline-flex;gap:6px;align-items:center"><select id="hlSale" style="'+ip+'"><option value="__">Đổi Sale phụ trách…</option><option value="">— để trống —</option>'
       +rptSlSaleOptsHtml('')+'</select>'
       +'<button onclick="rptSlHangLoat(\'sale\',this)" class="refresh-btn" style="margin:0;padding:5px 12px;font-size:11.5px">Áp dụng</button></span>':'')
     +(dashGiaoViec()?'<button onclick="rptSlGiaoViecForm([...rptSlChonDs()])" style="margin:0;padding:5px 12px;font-size:11.5px;border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;font-weight:800;cursor:pointer;font-family:var(--font)">Giao việc</button>':'')
@@ -5140,12 +5143,12 @@ async function rptSlHangLoat(loai,el){
   let cot,v,nhan;
   if(loai==='pl'){v=(document.getElementById('hlPhanLoai')||{}).value||'';if(!v)return alert('Chọn Phân loại KH cần đổi');cot='si_phan_loai';nhan='Phân loại KH';
     // khách đã chốt: chỉ Admin đổi được (07/10/2026) -> Sale chọn lẫn thì bỏ qua các khách đó
-    if(!dashToanQuyen()){const chot=new Set(rptSlBuildMaster().filter(r=>r.isChot).map(r=>r.leadId));
+    if(!dashSuaKhach()){const chot=new Set(rptSlBuildMaster().filter(r=>r.isChot).map(r=>r.leadId));
       const bo=ids.filter(id=>chot.has(id));
       if(bo.length){if(bo.length===ids.length)return alert('Các khách đã chọn đều đã chốt đơn — chỉ Admin đổi được Phân loại.');
         if(!confirm(bo.length+' khách đã chốt đơn sẽ được BỎ QUA (chỉ Admin đổi được). Tiếp tục với '+(ids.length-bo.length)+' khách còn lại?'))return;
         bo.forEach(id=>ids.splice(ids.indexOf(id),1));}}}
-  else{if(!dashToanQuyen())return;v=(document.getElementById('hlSale')||{}).value;if(v==='__'||v===undefined)return alert('Chọn Sale phụ trách');cot='si_sale';nhan='Sale phụ trách';}
+  else{if(!dashSuaKhach())return;v=(document.getElementById('hlSale')||{}).value;if(v==='__'||v===undefined)return alert('Chọn Sale phụ trách');cot='si_sale';nhan='Sale phụ trách';}
   // Sale ĐỘI KIA -> hỏi chuyển khách 1 lần cho cả lô (07/10/2026)
   const chuyen=cot==='si_sale'&&rptSlCanChuyen(v);
   const dongChuyen=chuyen?rptSlBuildMaster().filter(r=>ids.includes(r.leadId)):[];
@@ -5560,7 +5563,7 @@ function rptSiOSua(r){
     o.nguon={kieu:'chon',ds:['Online','Offline'],gt:r.nguon||sh.nguon||'',noi:'mn',cot:'nguon_sua',rong:'— (theo Pancake)'};}   // KHOÁ Nguồn / Kênh: chỉ Admin sửa (anh Hải 08/10/2026); Sale chỉ chọn lúc TẠO khách mới
     if(!r.kh)o.ma_kh={kieu:'text',gt:'',noi:'kh'};
   }
-  if(dashToanQuyen()){
+  if(dashSuaKhach()){
     const ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);   // gộp 2 đội (05/10/2026)
     o.sale={kieu:'chon',ds,gt:r.staff||'',noi:'mn',cot:'si_sale',optsHtml:rptSlSaleOptsHtml(r.staff,r.staff?[r.staff]:[])};
   }
@@ -5601,7 +5604,7 @@ function rptLeOSua(r){
     o.nguon={kieu:'chon',ds:['Online','Offline'],gt:r.nguon||'',noi:'mn',cot:'nguon_sua',rong:'— (theo Pancake)'};}   // KHOÁ Nguồn / Kênh: chỉ Admin sửa (anh Hải 08/10/2026); Sale chỉ chọn lúc TẠO khách mới
     if(!r.kh)o.ma_kh={kieu:'text',gt:'',noi:'kh'};
   }
-  if(dashToanQuyen()){
+  if(dashSuaKhach()){
     const ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);   // gộp 2 đội (05/10/2026)
     o.sale={kieu:'chon',ds,gt:r.staff||'',noi:'mn',cot:'si_sale',optsHtml:rptSlSaleOptsHtml(r.staff,r.staff?[r.staff]:[])};
   }
@@ -5931,10 +5934,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='21/10 10:31';
+const APP_VERSION='23/10 13:57';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=186;
+const APP_BAN=506;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7832,7 +7835,7 @@ function rptSlPhanLoaiDs(){return RPT_SI_PHANLOAI_DS;}   // Lẻ + Sỉ chung 1 
 // Lưu vào saleretail_manual.si_phan_loai; giá trị này được ưu tiên hơn phân loại lấy từ sheet.
 // KHOÁ KHÁCH ĐÃ CHỐT (anh Hải 07/10/2026: "chốt đơn trạng thái là khoá không cho thay đổi", "chỉ khoá với Sale"):
 // khách isChot -> Sale chỉ xem Phân loại; tài khoản toàn quyền (admin / supreme) vẫn đổi được.
-function rptSlKhoaChot(r){return !!(r&&r.isChot)&&!dashToanQuyen();}
+function rptSlKhoaChot(r){return !!(r&&r.isChot)&&!dashSuaKhach();}
 function rptSiPhanLoaiSelect(r){
   if(rptSlKhoaChot(r))return '<td onclick="rptSlStop(event)" title="Khách đã chốt — chỉ Admin đổi được Phân loại">'+rptSiPhanLoaiHtml(r.siPhanLoai||'Đã ra đơn',x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;'))+'</td>';
   const v=r.siPhanLoai||'';
