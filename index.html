@@ -4828,7 +4828,7 @@ function rptSlSaleHien(ten){
 // hồ sơ bấm Sửa (anh Hải 25/9/2026). Ghi vào si_sale (gán tay) -- cùng chỗ với Gán data / Thu hồi.
 // Tài khoản khác vẫn chỉ xem chữ.
 function rptSlSaleO(r){
-  if(!dashToanQuyen())return '<td>'+rptSlStaffHtml(r)+'</td>';
+  if(!dashSuaKhach())return '<td>'+rptSlStaffHtml(r)+'</td>';   // leader cũng đổi được (anh Hải 23/10/2026, Nguyên)
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const ds=rptSlSaleCuaDoi(),cur=String(r.staff||'').trim(),q=String.fromCharCode(39);
   const la=cur&&ds.indexOf(cur)<0;   // người ngoài danh sách (Sale Kiot)
@@ -5943,10 +5943,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/10 14:14';
+const APP_VERSION='23/10 14:27';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=509;
+const APP_BAN=510;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
