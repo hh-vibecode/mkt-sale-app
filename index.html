@@ -4610,11 +4610,15 @@ function rptSlChuyenDoi(r){
 // khách đứng tên nhân viên cửa hàng bán trên Kiot, dù ngoài Nhân sự Sale, GIỮ nguyên; tài khoản chung "Sales Admin", "PANCAKE THT
 // HOLDING" coi như không có Sale) -> Vân Ngọc. Gán tay (kể cả thu hồi về trống) luôn thắng. Tính lúc dựng, không ghi bảng.
 // Vân Ngọc nghỉ thì luật tự tắt.
-const RPT_SL_SALE_PAGE={TTV:'Trịnh Lê Vân Ngọc',HT:'Trịnh Lê Vân Ngọc'};
+// CHÁNH TÂM (anh Hải 23/10/2026: "sale không biết ai thì gán cho chị Lệ nếu liên quan tới Chánh Tâm") -> Phạm Thị Lệ, MỌI kênh
+// Online của Chánh Tâm (Facebook, TikTok...), không chỉ Facebook như TTV / HT. Cùng mốc từ 1/10/2026, gán tay vẫn thắng.
+const RPT_SL_SALE_PAGE={TTV:'Trịnh Lê Vân Ngọc',HT:'Trịnh Lê Vân Ngọc',CT:'Phạm Thị Lệ'};
+const RPT_SL_SALE_PAGE_MOI_KENH={CT:true};
 function rptSlSalePageMacDinh(r){
   const ten=RPT_SL_SALE_PAGE[r.brand],ds=rptSlSaleCuaDoi();
   if(!ten||!ds.includes(ten)||String(r.staff||'').trim())return;
-  if((r.nguon||'Online')!=='Online'||!((r.orders||[]).length||/facebook/i.test(r.kenh||'')))return;
+  if((r.nguon||'Online')!=='Online')return;
+  if(!RPT_SL_SALE_PAGE_MOI_KENH[r.brand]&&!((r.orders||[]).length||/facebook/i.test(r.kenh||'')))return;
   if(String(r.created||'').slice(0,10)<RPT_SL_SALE_PAGE_TU)return;   // anh Hải 15/10/2026: "luật gắn áp dụng từ T10 thôi"
   r.staffPageCu=r.staff||'';r.staff=ten;
 }
@@ -5939,10 +5943,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/10 14:04';
+const APP_VERSION='23/10 14:14';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=508;
+const APP_BAN=509;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
