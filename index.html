@@ -539,21 +539,27 @@ function rptTenHien(t){
   const ad=(window._rptSlAccs||[]).filter(a=>a.position_title==='admin'||a.position_title==='supreme').map(a=>String(a.name).trim());
   return ad.includes(x)||RPT_TEN_ADMIN_DU_PHONG.includes(x)?'Admin':x;
 }
-function dashToanQuyen(a){
+// Toàn quyền GỐC của người đang đăng nhập (không xét "Xem như").
+function dashToanQuyenGoc(a){
   if(a===undefined){try{a=JSON.parse(localStorage.getItem('dashPermissions')||'[]');}catch(e){a=[];}}
   if(Array.isArray(a)&&a.indexOf(PERM_ALL)>=0)return true;
   return dashViTriXemHet(localStorage.getItem('dashPosition')||'');
 }
-// TOÀN QUYỀN ĐANG ÁP: đang "Xem như" tài khoản khác thì theo quyền người đó (để thấy đúng những gì họ thấy -- anh Hải 08/10/2026:
-// xem như nhân sự phải thấy đúng chuông / bảng việc của họ để soát lỗi). Dùng cho phần HIỂN THỊ việc giao / chuông; quyền SỬA vẫn theo dashToanQuyen().
-function dashToanQuyenXem(){
-  const v=dashViewAs();
-  if(v&&dashCanViewAs()){const p=v.perms||[];return !!v.supreme||dashViTriXemHet(v.vitri||'')||p.indexOf(PERM_ALL)>=0;}
-  return dashToanQuyen();
+// TOÀN QUYỀN ĐANG ÁP: đang "Xem như" tài khoản khác thì theo quyền NGƯỜI ĐÓ -- cả phần hiển thị LẪN nút sửa / dropdown / giao việc
+// (anh Hải 23/10/2026: "đang xem view của sale mà vẫn thấy sửa được, check lại view as cho chuẩn"; trước chỉ đổi phần hiển thị).
+// Nút Xem như + menu Supreme vẫn theo quyền gốc (dashCanViewAs / dashIsSupreme đọc thẳng localStorage) nên luôn thoát ra được.
+function dashToanQuyen(a){
+  if(a===undefined){const v=dashViewAs();
+    if(v&&dashCanViewAs()){const p=v.perms||[];return !!v.supreme||dashViTriXemHet(v.vitri||'')||p.indexOf(PERM_ALL)>=0;}}
+  return dashToanQuyenGoc(a);
 }
+function dashToanQuyenXem(){return dashToanQuyen();}
 // LEADER SALE (anh Hải 17/10/2026: Khánh Nguyên lên leader, giao việc được cho Bùi Thị Kim Oanh): như Sale, thêm quyền
 // GIAO VIỆC (giao / sửa / huỷ / xác nhận / trả lại) cho đúng các Sale trong phạm vi xem của mình (Phân quyền > Sale được xem).
-function dashLaLeader(){return (localStorage.getItem('dashPosition')||'')==='leader';}
+// Đang "Xem như" thì theo vị trí người được xem (23/10/2026).
+function dashLaLeader(){const v=dashViewAs();
+  if(v&&dashCanViewAs())return (v.vitri||'')==='leader';
+  return (localStorage.getItem('dashPosition')||'')==='leader';}
 function dashGiaoViec(){return dashToanQuyen()||dashLaLeader();}
 // SỬA KHÁCH CỦA LEADER (anh Hải 23/10/2026: "mở quyền cho Nguyên đổi trạng thái khách, với đổi sales phụ trách"):
 // leader đổi được Sale phụ trách (hồ sơ + hàng loạt) và Phân loại KH của khách đã chốt -- trước chỉ Admin.
@@ -5934,10 +5940,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/10 13:57';
+const APP_VERSION='23/10 14:01';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=506;
+const APP_BAN=507;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
