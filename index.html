@@ -4621,23 +4621,19 @@ function rptSlChuyenDoi(r){
   const ns=saleNhanSuDS().find(x=>String(x.ten).trim()===String(r.staff).trim());
   if(ns&&ns.dang_lam===false&&ns.ban_giao_cho){r.staffBanGiao=r.staff;r.staff=String(ns.ban_giao_cho).trim();}
 }
-// SALE MẶC ĐỊNH CỦA PAGE (anh Hải 14/10/2026: "page Tự Tại Viên fb đổ về mà không có tên Sale rõ ràng hay lỗi gì thì auto gắn hết
-// cho Trịnh Lê Vân Ngọc, page Hiền Thủy cũng thế"): khách LẺ, Online, đến từ Facebook (đơn Pancake hoặc kênh Kiot có chữ Facebook)
-// của thương hiệu TTV / HT mà CHƯA CÓ SALE NÀO (15/10/2026 anh siết: "áp dụng các khách không có sale Kiot hoặc sale gì thôi" --
-// khách đứng tên nhân viên cửa hàng bán trên Kiot, dù ngoài Nhân sự Sale, GIỮ nguyên; tài khoản chung "Sales Admin", "PANCAKE THT
-// HOLDING" coi như không có Sale) -> Vân Ngọc. Gán tay (kể cả thu hồi về trống) luôn thắng. Tính lúc dựng, không ghi bảng.
-// Vân Ngọc nghỉ thì luật tự tắt.
-// (Chánh Tâm đi luật riêng rptSlSaleChanhTam từ 24/10/2026.)
-const RPT_SL_SALE_PAGE={TTV:'Trịnh Lê Vân Ngọc',HT:'Trịnh Lê Vân Ngọc'};
+// SALE MẶC ĐỊNH THEO THƯƠNG HIỆU (anh Hải 24/10/2026, thay luật 14/10 + 15/10 "page TTV / HT Facebook từ T10 -> Vân Ngọc"):
+// "Khách không có Sale hoặc k xác định theo quy tắc: thuộc brand nào phân về sale phụ trách của brand ấy: CT: Lệ · Shidai/HT/TTV: Vân Ngọc
+// · Sỉ ALL Brand: Nguyên". Không xác định = trống hoặc tài khoản chung ("Sales Admin", "PANCAKE THT HOLDING"...). Nhân viên cửa hàng /
+// Sale cũ có tên rõ GIỮ nguyên. Mọi kênh, mọi ngày tạo. Gán tay (kể cả thu hồi về trống) luôn thắng; Khách vãng lai không có Sale
+// (luật 8/10). Tính lúc dựng, không ghi bảng. Sale phụ trách nghỉ thì luật tự tắt. Lẻ CT đi rptSlSaleChanhTam (fallback Lệ ở đó).
+const RPT_SL_SALE_PAGE={TTV:'Trịnh Lê Vân Ngọc',HT:'Trịnh Lê Vân Ngọc',Shidai:'Trịnh Lê Vân Ngọc'};
+const RPT_SL_SALE_SI_MAC_DINH='Nguyễn Khánh Nguyên';
 function rptSlSalePageMacDinh(r){
-  const ten=RPT_SL_SALE_PAGE[r.brand],ds=rptSlSaleCuaDoi();
-  if(!ten||!ds.includes(ten)||String(r.staff||'').trim())return;
-  if((r.nguon||'Online')!=='Online')return;
-  if(!((r.orders||[]).length||/facebook/i.test(r.kenh||'')))return;
-  if(String(r.created||'').slice(0,10)<RPT_SL_SALE_PAGE_TU)return;   // anh Hải 15/10/2026: "luật gắn áp dụng từ T10 thôi"
+  if(r.vangLai||rptSlSaleIsHuman(r.staff))return;
+  const ten=rptSlType()==='Sỉ'?RPT_SL_SALE_SI_MAC_DINH:RPT_SL_SALE_PAGE[rptSlBrandCua(r)];
+  if(!ten||!rptSlSaleCuaDoi().includes(ten))return;
   r.staffPageCu=r.staff||'';r.staff=ten;
 }
-const RPT_SL_SALE_PAGE_TU='2026-10-01';   // chỉ khách TẠO từ ngày này (ngày đơn Pancake đầu / ngày tạo dòng nhập tay)
 // SALE CHÁNH TÂM (anh Hải 24/10/2026: "xử lý sale chánh tâm về chuẩn sale trên pancake, cái nào sale k phân biệt được ms chia cho
 // chị lệ. áp cho tất cả page vs zalo liên quan tới chánh tâm" · "data nạp lên bởi kiot thì vẫn là tính data bt" · "ưu tiên sale chính
 // là tuấn vs diệp, chị lệ là quản lý, cái nào k xác định đc ms đẩy cho c ấy để c ấy xếp lại" · "sale cũ cứ để nguyên cho họ"):
@@ -4651,7 +4647,7 @@ const RPT_SL_SALE_PAGE_TU='2026-10-01';   // chỉ khách TẠO từ ngày này 
 const RPT_SL_SALE_CT_MAC_DINH='Phạm Thị Lệ';
 const RPT_SL_SALE_CT_CHINH=['Nguyễn Đức Anh Tuấn','Đinh Ngọc Diệp'];
 function rptSlSaleChanhTam(r,pc){
-  if(r.brand!=='CT'||r.vangLai)return;
+  if(r.vangLai||rptSlBrandCua(r)!=='CT')return;
   const chuan=t=>String(t||'').normalize('NFC').replace(/\s+/g,' ').trim();
   const ns=saleNhanSuDS(),tim=t=>ns.find(x=>chuan(x.ten)===chuan(t));
   const chinh=t=>{const x=tim(t);return x&&x.dang_lam!==false&&RPT_SL_SALE_CT_CHINH.some(c=>chuan(c)===chuan(t))?String(x.ten).trim():'';};
@@ -5992,10 +5988,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='24/10 09:52';
+const APP_VERSION='24/10 09:57';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=514;
+const APP_BAN=515;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6243,7 +6239,7 @@ const LOGIC_XU_LY=[
   ['Gán khách cho Sale đội kia','Hỏi xác nhận → đổi thẻ Pancake KH SỈ ↔ KH LẺ, chuyển dữ liệu và việc đang giao sang Sale mới','7/10'],
   ['Phạm vi xem','Lọc theo Sale đã chốt; Admin / Supreme xem hết. Mục Trùng SĐT Sỉ – Lẻ: Sale xem được Thông tin khách bên kia','3/10 · 13/10'],
   ['Sale đã nghỉ','Khách thuộc người nhận bàn giao','—'],
-  ['Page Tự Tại Viên / Hiền Thủy','Khách Lẻ Online từ Facebook 2 page này, tạo từ 1/10/2026, CHƯA CÓ SALE NÀO (không người bán Kiot, không người phụ trách Pancake) → Trịnh Lê Vân Ngọc (gán tay vẫn thắng)','14/10 · 15/10'],
+  ['Khách không có Sale / không xác định','Trống hoặc tài khoản chung (Sales Admin, PANCAKE THT HOLDING…) → Sale phụ trách thương hiệu: Lẻ CT = Phạm Thị Lệ · Lẻ Shidai / Hiền Thuỷ / Tự Tại Viên = Trịnh Lê Vân Ngọc · Sỉ mọi thương hiệu = Nguyễn Khánh Nguyên. Mọi kênh, mọi ngày; Sale cũ / nhân viên Kiot có tên giữ nguyên; gán tay vẫn thắng; Khách vãng lai không có Sale','14/10 · 15/10 · 24/10'],
   ['Sale Chánh Tâm','Mọi khách Lẻ thương hiệu CT (online mọi page / TikTok / Zalo + khách Kiot nạp lên). Sale cũ / Sale Kiot / Sale khác giữ nguyên. Khách đang đứng tên Phạm Thị Lệ hoặc trống: Sale chính Nguyễn Đức Anh Tuấn / Đinh Ngọc Diệp nếu phụ trách Pancake / có bán phiếu Kiot (nhiều tiền nhất) / đứng tên dòng nhập tay; không xác định được → Phạm Thị Lệ (quản lý, tự xếp lại). Gán tay vẫn thắng','23/10 · 24/10'],
   ['Phạm vi xem Sale cũ / Sale Kiot','Khách đứng tên người không có trong app. Lẻ: chia theo thương hiệu — tài khoản tick Sale Chánh Tâm (Lệ / Diệp / Tuấn) thấy khách CT, tick Vân Ngọc thấy khách Hiền Thuỷ / Tự Tại Viên / Shidai; chưa rõ thương hiệu thì ai xem Lẻ cũng thấy. Sỉ: ai xem Sỉ cũng thấy hết, không chia thương hiệu','30/9 · 24/10'],
   ['Đổi Sale phụ trách','Mọi tài khoản đổi được (bảng Master, hồ sơ, đổi hàng loạt)','24/10'],
@@ -7611,6 +7607,7 @@ function rptSlBuildMasterRaw(){
       const gan=rptSlSaleGanTayDong(r);
       r.staff=gan!==null?(gan&&rptSlSaleName(gan)):(ten||r.staff||'');
       rptSlChuyenDoi(r);
+      if(gan===null)rptSlSalePageMacDinh(r);   // trống / tài khoản chung -> Nguyễn Khánh Nguyên (24/10/2026)
     });
   }
   // HỒ SƠ + LỊCH SỬ CHĂM SÓC: dùng CHUNG cho Sỉ và Lẻ (anh Hải 02/10/2026: giao diện Lẻ y như Sỉ)
