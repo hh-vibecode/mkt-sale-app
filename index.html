@@ -564,6 +564,9 @@ function dashGiaoViec(){return dashToanQuyen()||dashLaLeader();}
 // SỬA KHÁCH CỦA LEADER (anh Hải 23/10/2026: "mở quyền cho Nguyên đổi trạng thái khách, với đổi sales phụ trách"):
 // leader đổi được Sale phụ trách (hồ sơ + hàng loạt) và Phân loại KH của khách đã chốt -- trước chỉ Admin.
 function dashSuaKhach(){return dashToanQuyen()||dashLaLeader();}
+// ĐỔI SALE PHỤ TRÁCH: MỌI tài khoản (anh Hải 24/10/2026: "mở quyền sửa sale phụ trách cho tất cả tài khoản", "k cần khoá nữa")
+// -- ô Sale ở Master, hồ sơ (chế độ sửa) và đổi hàng loạt. Phân loại khách đã chốt vẫn theo dashSuaKhach.
+function dashSuaSale(){return true;}
 function dashIsSupreme(){return (localStorage.getItem('dashPosition')||'')==='supreme';}
 // Quyền hiện tại của tài khoản đang đăng nhập; null = toàn quyền.
 function dashCan(page){
@@ -2041,10 +2044,7 @@ const QC_CMP_GROUPS=[
   {name:'MKT PERFORMANCE',color:'#0091ae',cols:[
     {key:'totalSpend',label:'Tổng Chi Phí',icon:'',type:'vnd'},
     {key:'totalMess',label:'Tổng Mess',icon:'',type:'num'},
-    {key:'nTiem',label:'Số Data Tiềm Năng',icon:'‍‍',type:'num',expandKey:'tiemSrc',expandCols:[
-      {key:'nTiemLe',label:'Tiềm Năng Lẻ',icon:'',type:'num'},
-      {key:'nTiemSi',label:'Tiềm Năng Sỉ (nguồn Online)',icon:'',type:'num'},
-    ]},
+    // BỎ dòng "Số Data Tiềm Năng" (anh Hải 24/10/2026)
     {key:'costPerMess',label:'CP / Mess',icon:'',type:'vnd',lowerBetter:true,expandKey:'cost',expandCols:[
       {key:'costPerDat',label:'CP / Data Đạt',icon:'',type:'vnd',lowerBetter:true},
       {key:'costPerTiem',label:'CP / Tiềm Năng',icon:'',type:'vnd',lowerBetter:true},
@@ -4610,19 +4610,37 @@ function rptSlChuyenDoi(r){
 // khách đứng tên nhân viên cửa hàng bán trên Kiot, dù ngoài Nhân sự Sale, GIỮ nguyên; tài khoản chung "Sales Admin", "PANCAKE THT
 // HOLDING" coi như không có Sale) -> Vân Ngọc. Gán tay (kể cả thu hồi về trống) luôn thắng. Tính lúc dựng, không ghi bảng.
 // Vân Ngọc nghỉ thì luật tự tắt.
-// CHÁNH TÂM (anh Hải 23/10/2026: "sale không biết ai thì gán cho chị Lệ nếu liên quan tới Chánh Tâm") -> Phạm Thị Lệ, MỌI kênh
-// Online của Chánh Tâm (Facebook, TikTok...), không chỉ Facebook như TTV / HT. Cùng mốc từ 1/10/2026, gán tay vẫn thắng.
-const RPT_SL_SALE_PAGE={TTV:'Trịnh Lê Vân Ngọc',HT:'Trịnh Lê Vân Ngọc',CT:'Phạm Thị Lệ'};
-const RPT_SL_SALE_PAGE_MOI_KENH={CT:true};
+// (Chánh Tâm đi luật riêng rptSlSaleChanhTam từ 24/10/2026.)
+const RPT_SL_SALE_PAGE={TTV:'Trịnh Lê Vân Ngọc',HT:'Trịnh Lê Vân Ngọc'};
 function rptSlSalePageMacDinh(r){
   const ten=RPT_SL_SALE_PAGE[r.brand],ds=rptSlSaleCuaDoi();
   if(!ten||!ds.includes(ten)||String(r.staff||'').trim())return;
   if((r.nguon||'Online')!=='Online')return;
-  if(!RPT_SL_SALE_PAGE_MOI_KENH[r.brand]&&!((r.orders||[]).length||/facebook/i.test(r.kenh||'')))return;
+  if(!((r.orders||[]).length||/facebook/i.test(r.kenh||'')))return;
   if(String(r.created||'').slice(0,10)<RPT_SL_SALE_PAGE_TU)return;   // anh Hải 15/10/2026: "luật gắn áp dụng từ T10 thôi"
   r.staffPageCu=r.staff||'';r.staff=ten;
 }
 const RPT_SL_SALE_PAGE_TU='2026-10-01';   // chỉ khách TẠO từ ngày này (ngày đơn Pancake đầu / ngày tạo dòng nhập tay)
+// SALE CHÁNH TÂM THEO PANCAKE (anh Hải 24/10/2026: "xử lý sale chánh tâm về chuẩn sale trên pancake, cái nào sale k phân biệt được
+// ms chia cho chị lệ. áp cho tất cả page vs zalo liên quan tới chánh tâm"; Sale chính CT = Tuấn + Ngọc Diệp): khách LẺ, Online,
+// thương hiệu CT (mọi page / TikTok / Zalo), MỌI ngày tạo, chưa gán tay. Thứ tự: người phụ trách PANCAKE còn làm > người bán KIOT
+// còn làm > Sale đã nghỉ thì người nhận bàn giao > người có tên rõ ngoài Nhân sự (nhân viên cũ / cửa hàng: GIỮ, như luật 15/10)
+// > Phạm Thị Lệ khi KHÔNG phân biệt được (không tên / tài khoản chung). "Còn làm" = có trong Nhân sự Sale. Trước đây Lẻ lấy người
+// bán Kiot TRƯỚC Pancake -> Lệ (người lên đơn Kiot) đè mất Ngọc Diệp / Tuấn. Tính lúc dựng, không ghi bảng.
+// pc = Sale Pancake / dòng nhập tay (đã quy tên), kiot = người bán Kiot.
+const RPT_SL_SALE_CT_MAC_DINH='Phạm Thị Lệ';
+function rptSlSaleChanhTam(r,pc,kiot){
+  if(r.brand!=='CT'||(r.nguon||'Online')!=='Online')return false;
+  const chuan=t=>String(t||'').normalize('NFC').replace(/\s+/g,' ').trim();
+  const ns=saleNhanSuDS(),tim=t=>ns.find(x=>chuan(x.ten)===chuan(t));
+  const cands=[pc,kiot].filter(rptSlSaleIsHuman);
+  let ten=cands.map(tim).find(x=>x&&x.dang_lam!==false);ten=ten&&String(ten.ten).trim();
+  if(!ten){const x=cands.map(tim).find(x=>x&&x.dang_lam===false&&x.ban_giao_cho);if(x){r.staffBanGiao=x.ten;ten=String(x.ban_giao_cho).trim();}}
+  if(!ten)ten=cands.find(t=>!tim(t));
+  if(!ten&&rptSlSaleCuaDoi().includes(RPT_SL_SALE_CT_MAC_DINH)){ten=RPT_SL_SALE_CT_MAC_DINH;r.staffPageCu=pc||kiot||'';}
+  if(!ten)return false;
+  r.staff=ten;return true;
+}
 // NHÂN VIÊN BÁN theo Kiot (anh Hải 03/10/2026): khách đã nối phiếu đặt hàng / hoá đơn bán thẳng Kiot -> Sale = người bán
 // (soldByName) trên phiếu GẦN NHẤT, quy về tên Phân quyền. Không có phiếu nào thì trả '' -> nơi gọi lấy người phụ trách Pancake.
 // Bên Lẻ bỏ phiếu của chi nhánh Tổng kho sỉ (người bán đội Sỉ) và tài khoản chung (Sales Admin...); Sỉ giữ mọi tên như cũ.
@@ -4828,7 +4846,7 @@ function rptSlSaleHien(ten){
 // hồ sơ bấm Sửa (anh Hải 25/9/2026). Ghi vào si_sale (gán tay) -- cùng chỗ với Gán data / Thu hồi.
 // Tài khoản khác vẫn chỉ xem chữ.
 function rptSlSaleO(r){
-  if(!dashSuaKhach())return '<td>'+rptSlStaffHtml(r)+'</td>';   // leader cũng đổi được (anh Hải 23/10/2026, Nguyên)
+  if(!dashSuaSale())return '<td>'+rptSlStaffHtml(r)+'</td>';   // mọi tài khoản đổi được (anh Hải 24/10/2026)
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const ds=rptSlSaleCuaDoi(),cur=String(r.staff||'').trim(),q=String.fromCharCode(39);
   const la=cur&&ds.indexOf(cur)<0;   // người ngoài danh sách (Sale Kiot)
@@ -5016,6 +5034,9 @@ const RPT_SL_SALE_ALIAS={
   'ngọc diệp':'Đinh Ngọc Diệp',
   'chánh tâm ngọc diệp':'Đinh Ngọc Diệp',
   'đinh thị ngọc diệp':'Đinh Ngọc Diệp',
+  // Tuấn Chánh Tâm (anh Hải 24/10/2026 xác nhận cùng 1 người): Pancake "Đức Tuấn Chánh Tâm" = Kiot / Nhân sự "Nguyễn Đức Anh Tuấn"
+  'đức tuấn chánh tâm':'Nguyễn Đức Anh Tuấn',
+  'tuấn chánh tâm':'Nguyễn Đức Anh Tuấn',
 };
 // TỰ QUY TÊN VỀ ĐÚNG TÊN TRONG PHÂN QUYỀN > NHÂN SỰ SALE (anh Hải 25/9/2026): tên kéo từ Pancake/Kiot
 // hay lệch 1-2 chữ so với tên Sale khai ở Phân quyền (Pancake "Nguyễn Vân Ngọc" = Phân quyền "Vân Ngọc").
@@ -5141,7 +5162,7 @@ function rptSlThanhHangLoat(){
     +'<span style="display:inline-flex;gap:6px;align-items:center"><select id="hlPhanLoai" style="'+ip+'"><option value="">Đổi Phân loại KH…</option>'
       +rptSlPhanLoaiDs().filter(x=>x!=='Đã ra đơn').map(x=>'<option>'+e(x)+'</option>').join('')+'</select>'
       +'<button onclick="rptSlHangLoat(\'pl\',this)" class="refresh-btn" style="margin:0;padding:5px 12px;font-size:11.5px">Áp dụng</button></span>'
-    +(dashSuaKhach()?'<span style="display:inline-flex;gap:6px;align-items:center"><select id="hlSale" style="'+ip+'"><option value="__">Đổi Sale phụ trách…</option><option value="">— để trống —</option>'
+    +(dashSuaSale()?'<span style="display:inline-flex;gap:6px;align-items:center"><select id="hlSale" style="'+ip+'"><option value="__">Đổi Sale phụ trách…</option><option value="">— để trống —</option>'
       +rptSlSaleOptsHtml('')+'</select>'
       +'<button onclick="rptSlHangLoat(\'sale\',this)" class="refresh-btn" style="margin:0;padding:5px 12px;font-size:11.5px">Áp dụng</button></span>':'')
     +(dashGiaoViec()?'<button onclick="rptSlGiaoViecForm([...rptSlChonDs()])" style="margin:0;padding:5px 12px;font-size:11.5px;border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;font-weight:800;cursor:pointer;font-family:var(--font)">Giao việc</button>':'')
@@ -5157,7 +5178,7 @@ async function rptSlHangLoat(loai,el){
       if(bo.length){if(bo.length===ids.length)return alert('Các khách đã chọn đều đã chốt đơn — chỉ Admin đổi được Phân loại.');
         if(!confirm(bo.length+' khách đã chốt đơn sẽ được BỎ QUA (chỉ Admin đổi được). Tiếp tục với '+(ids.length-bo.length)+' khách còn lại?'))return;
         bo.forEach(id=>ids.splice(ids.indexOf(id),1));}}}
-  else{if(!dashSuaKhach())return;v=(document.getElementById('hlSale')||{}).value;if(v==='__'||v===undefined)return alert('Chọn Sale phụ trách');cot='si_sale';nhan='Sale phụ trách';}
+  else{if(!dashSuaSale())return;v=(document.getElementById('hlSale')||{}).value;if(v==='__'||v===undefined)return alert('Chọn Sale phụ trách');cot='si_sale';nhan='Sale phụ trách';}
   // Sale ĐỘI KIA -> hỏi chuyển khách 1 lần cho cả lô (07/10/2026)
   const chuyen=cot==='si_sale'&&rptSlCanChuyen(v);
   const dongChuyen=chuyen?rptSlBuildMaster().filter(r=>ids.includes(r.leadId)):[];
@@ -5572,7 +5593,7 @@ function rptSiOSua(r){
     o.nguon={kieu:'chon',ds:['Online','Offline'],gt:r.nguon||sh.nguon||'',noi:'mn',cot:'nguon_sua',rong:'— (theo Pancake)'};}   // KHOÁ Nguồn / Kênh: chỉ Admin sửa (anh Hải 08/10/2026); Sale chỉ chọn lúc TẠO khách mới
     if(!r.kh)o.ma_kh={kieu:'text',gt:'',noi:'kh'};
   }
-  if(dashSuaKhach()){
+  if(dashSuaSale()){
     const ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);   // gộp 2 đội (05/10/2026)
     o.sale={kieu:'chon',ds,gt:r.staff||'',noi:'mn',cot:'si_sale',optsHtml:rptSlSaleOptsHtml(r.staff,r.staff?[r.staff]:[])};
   }
@@ -5613,7 +5634,7 @@ function rptLeOSua(r){
     o.nguon={kieu:'chon',ds:['Online','Offline'],gt:r.nguon||'',noi:'mn',cot:'nguon_sua',rong:'— (theo Pancake)'};}   // KHOÁ Nguồn / Kênh: chỉ Admin sửa (anh Hải 08/10/2026); Sale chỉ chọn lúc TẠO khách mới
     if(!r.kh)o.ma_kh={kieu:'text',gt:'',noi:'kh'};
   }
-  if(dashSuaKhach()){
+  if(dashSuaSale()){
     const ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten!==RPT_SL_BOT_SI).map(x=>x.ten);   // gộp 2 đội (05/10/2026)
     o.sale={kieu:'chon',ds,gt:r.staff||'',noi:'mn',cot:'si_sale',optsHtml:rptSlSaleOptsHtml(r.staff,r.staff?[r.staff]:[])};
   }
@@ -5943,10 +5964,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/10 14:27';
+const APP_VERSION='24/10 09:40';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=510;
+const APP_BAN=511;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6195,6 +6216,8 @@ const LOGIC_XU_LY=[
   ['Phạm vi xem','Lọc theo Sale đã chốt; Admin / Supreme xem hết. Mục Trùng SĐT Sỉ – Lẻ: Sale xem được Thông tin khách bên kia','3/10 · 13/10'],
   ['Sale đã nghỉ','Khách thuộc người nhận bàn giao','—'],
   ['Page Tự Tại Viên / Hiền Thủy','Khách Lẻ Online từ Facebook 2 page này, tạo từ 1/10/2026, CHƯA CÓ SALE NÀO (không người bán Kiot, không người phụ trách Pancake) → Trịnh Lê Vân Ngọc (gán tay vẫn thắng)','14/10 · 15/10'],
+  ['Sale Chánh Tâm','Khách Lẻ Online thương hiệu CT (mọi page / TikTok / Zalo), mọi ngày tạo: người phụ trách Pancake (còn làm) > người bán Kiot (còn làm) > Sale nghỉ thì người nhận bàn giao > tên nhân viên ngoài Nhân sự giữ nguyên > không phân biệt được → Phạm Thị Lệ (gán tay vẫn thắng)','23/10 · 24/10'],
+  ['Đổi Sale phụ trách','Mọi tài khoản đổi được (bảng Master, hồ sơ, đổi hàng loạt)','24/10'],
   ['Tên Admin','Không hiện tên thật, hiện "Admin"','5/10']]],
  ['Phân loại & Daily Task',[
   ['6 phân loại','Lead mới · Lead cũ · Đã ra đơn · Tiềm năng, chưa ra đơn · Chưa liên hệ được · Không tiềm năng','7/10'],
@@ -6205,7 +6228,7 @@ const LOGIC_XU_LY=[
   ['Ô tìm khách','Tìm trên TOÀN BỘ khách tài khoản được xem, bỏ qua bộ lọc ngày / Sale / trạng thái; dò mọi tên + mọi SĐT đã gộp','13/10'],
   ['Nhãn cạnh Ngày tạo','Khách tạo ngoài kỳ đang xem: "mua lại" = có đơn trong kỳ · "đang chăm" = có lượt chăm sóc trong kỳ · "ngoài kỳ" = chỉ hiện vì khớp ô tìm','16/10'],
   ['Mã KH nghi gán nhầm','Mã dùng cho nhiều khách khác số · khác cả SĐT lẫn tên với Kiot · đã chốt mà mã không có đơn đặt hàng nào','13/10'],
-  ['Chưa có lịch sử chăm sóc','Lẻ: tạo từ 1/9/2026, chưa chốt, Lead mới / Tiềm năng · Sỉ: tạo từ 1/6/2026, nguồn Online','5/10 · 8/10'],
+  ['Chưa có lịch sử chăm sóc','CHỈ khách "Tiềm năng, chưa ra đơn", chưa chốt · Lẻ: tạo từ 1/9/2026 · Sỉ: tạo từ 1/6/2026, nguồn Online','5/10 · 8/10 · 24/10'],
   ['Lượt chăm sóc "Chốt đơn"','Bắt buộc mã đơn đặt hàng có thật bên Kiot','—']]],
  ['Việc được giao & thông báo',[
   ['Giao việc','Admin giao từ Master (1 hoặc nhiều khách) hoặc trong lượt chăm sóc; cần người phụ trách, việc cần làm, deadline','7/10'],
@@ -7543,7 +7566,9 @@ function rptSlBuildMasterRaw(){
     // LẺ: Sale gán ở tab Gán data (hoặc thu hồi về trống) > NHÂN VIÊN BÁN trên phiếu đặt / hoá đơn Kiot đã nối
     // > người phụ trách bên Pancake (chỉ khi chưa có phiếu Kiot nào -- anh Hải 03/10/2026)
     rows.forEach(r=>{const ten=rptSlSaleKiotCua(r);r.staffKiot=ten;
-      const gan=rptSlSaleGanTayDong(r);if(gan!==null)r.staff=gan;else if(ten)r.staff=ten;rptSlChuyenDoi(r);
+      const gan=rptSlSaleGanTayDong(r);
+      if(gan===null&&rptSlSaleChanhTam(r,r.staff,ten))return;   // Chánh Tâm: Pancake trước Kiot (24/10/2026)
+      if(gan!==null)r.staff=gan;else if(ten)r.staff=ten;rptSlChuyenDoi(r);
       if(gan===null)rptSlSalePageMacDinh(r);});
   }
   if(rptSlType()==='Sỉ'){
@@ -9457,11 +9482,12 @@ function rptSlTodoBuckets(){
     // Sỉ (anh Hải 25/9/2026): nội dung chăm khách = nội dung lượt GẦN NHẤT trong Lịch sử chăm sóc, nên chỉ báo
     // khách CHƯA CÓ lượt chăm nào. Lẻ giữ như cũ: chưa ghi ô nội dung trao đổi.
     thieuND:true
-      // LẺ (anh Hải 05/10/2026): chỉ khách tạo TỪ 1/9/2026, CHƯA chốt, Phân loại Lead mới / Tiềm năng, chưa ra đơn
-      ?all.filter(r=>!rptSlMatLeadSi(r)&&!rptSlLeadCu(r)&&!(r.siLuot>0)
+      // LẺ (anh Hải 05/10/2026): chỉ khách tạo TỪ 1/9/2026, CHƯA chốt, chưa ra đơn
+      // CẢ LẺ + SỈ (anh Hải 24/10/2026): chỉ khách Phân loại "Tiềm năng, chưa ra đơn" -- Lead mới / phân loại khác thôi nhắc
+      ?all.filter(r=>!rptSlMatLeadSi(r)&&!rptSlLeadCu(r)&&!(r.siLuot>0)&&!r.isChot&&rptSlLocTT(r)==='Tiềm năng, chưa ra đơn'
         // SỈ (anh Hải 08/10/2026): chỉ khách tạo TỪ 1/6/2026 và nguồn ONLINE (trước đây đếm mọi khách Sỉ -> 265)
         &&(rptSlType()==='Sỉ'?(String(rptSlNgayTao(r)).slice(0,10)>='2026-06-01'&&rptSiNguonCua(r)==='Online')
-          :(!r.isChot&&String(rptSlNgayTao(r)).slice(0,10)>='2026-09-01'&&['Lead mới','Tiềm năng, chưa ra đơn'].includes(rptSlLocTT(r)))))
+          :String(rptSlNgayTao(r)).slice(0,10)>='2026-09-01'))
       :all.filter(r=>!r.isChot&&r.status!=='Mất lead'
         &&!String(r.content||'').trim()&&!String(r.siNDCuoi||'').trim()&&!String((r.sh||{}).nd_cham_cuoi||'').trim()),
   };
