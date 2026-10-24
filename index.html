@@ -4621,22 +4621,38 @@ function rptSlSalePageMacDinh(r){
   r.staffPageCu=r.staff||'';r.staff=ten;
 }
 const RPT_SL_SALE_PAGE_TU='2026-10-01';   // chỉ khách TẠO từ ngày này (ngày đơn Pancake đầu / ngày tạo dòng nhập tay)
-// SALE CHÁNH TÂM THEO PANCAKE (anh Hải 24/10/2026: "xử lý sale chánh tâm về chuẩn sale trên pancake, cái nào sale k phân biệt được
-// ms chia cho chị lệ. áp cho tất cả page vs zalo liên quan tới chánh tâm"; Sale chính CT = Tuấn + Ngọc Diệp): khách LẺ, Online,
-// thương hiệu CT (mọi page / TikTok / Zalo), MỌI ngày tạo, chưa gán tay. Thứ tự: người phụ trách PANCAKE còn làm > người bán KIOT
-// còn làm > Sale đã nghỉ thì người nhận bàn giao > người có tên rõ ngoài Nhân sự (nhân viên cũ / cửa hàng: GIỮ, như luật 15/10)
-// > Phạm Thị Lệ khi KHÔNG phân biệt được (không tên / tài khoản chung). "Còn làm" = có trong Nhân sự Sale. Trước đây Lẻ lấy người
-// bán Kiot TRƯỚC Pancake -> Lệ (người lên đơn Kiot) đè mất Ngọc Diệp / Tuấn. Tính lúc dựng, không ghi bảng.
-// pc = Sale Pancake / dòng nhập tay (đã quy tên), kiot = người bán Kiot.
+// SALE CHÁNH TÂM (anh Hải 24/10/2026: "xử lý sale chánh tâm về chuẩn sale trên pancake, cái nào sale k phân biệt được ms chia cho
+// chị lệ. áp cho tất cả page vs zalo liên quan tới chánh tâm" · "data nạp lên bởi kiot thì vẫn là tính data bt" · "ưu tiên sale chính
+// là tuấn vs diệp, chị lệ là quản lý, cái nào k xác định đc ms đẩy cho c ấy để c ấy xếp lại"): MỌI khách Lẻ thương hiệu CT (Online
+// mọi page / TikTok / Zalo + khách Kiot nạp lên / Offline), mọi ngày tạo, chưa gán tay, trừ Khách vãng lai.
+//   1) SALE CHÍNH (RPT_SL_SALE_CT_CHINH): người phụ trách Pancake là Sale chính -> người đó; không thì Sale chính có bán phiếu Kiot
+//      của khách (nhiều tiền nhất; bằng nhau lấy phiếu gần hơn); không thì dòng nhập tay đứng tên Sale chính.
+//   2) Không có Sale chính: như cũ -- Pancake (khách có đơn Pancake) / người bán Kiot gần nhất / dòng nhập tay, ai còn làm trong
+//      Nhân sự trước; Sale nghỉ -> người nhận bàn giao; tên rõ ngoài Nhân sự (nhân viên cũ / cửa hàng) GIỮ.
+//   3) Không xác định được (không tên / tài khoản chung) -> Phạm Thị Lệ (quản lý, tự xếp lại).
+// Tính lúc dựng, không ghi bảng. pc = Sale Pancake / dòng nhập tay (đã quy tên), kiot = người bán Kiot gần nhất.
 const RPT_SL_SALE_CT_MAC_DINH='Phạm Thị Lệ';
+const RPT_SL_SALE_CT_CHINH=['Nguyễn Đức Anh Tuấn','Đinh Ngọc Diệp'];
 function rptSlSaleChanhTam(r,pc,kiot){
-  if(r.brand!=='CT'||(r.nguon||'Online')!=='Online')return false;
+  if(r.brand!=='CT'||r.vangLai)return false;
   const chuan=t=>String(t||'').normalize('NFC').replace(/\s+/g,' ').trim();
   const ns=saleNhanSuDS(),tim=t=>ns.find(x=>chuan(x.ten)===chuan(t));
-  const cands=[pc,kiot].filter(rptSlSaleIsHuman);
-  let ten=cands.map(tim).find(x=>x&&x.dang_lam!==false);ten=ten&&String(ten.ten).trim();
-  if(!ten){const x=cands.map(tim).find(x=>x&&x.dang_lam===false&&x.ban_giao_cho);if(x){r.staffBanGiao=x.ten;ten=String(x.ban_giao_cho).trim();}}
-  if(!ten)ten=cands.find(t=>!tim(t));
+  const coPc=(r.orders||[]).length>0;   // có đơn Pancake -> pc là người phụ trách Pancake; không thì pc là người đứng tên dòng nhập tay
+  const chinh=t=>{const x=tim(t);return x&&x.dang_lam!==false&&RPT_SL_SALE_CT_CHINH.some(c=>chuan(c)===chuan(t))?String(x.ten).trim():'';};
+  let ten=coPc?chinh(pc):'';
+  if(!ten){const m={};
+    [].concat(r.kords||[],r.repeatOrds||[],r.staleOrds||[]).filter(o=>o&&!KIOT_CN_SI.test(o.branch_name||'')).forEach(o=>{
+      const t=chinh(rptSlSaleName(o.sold_by_name));if(!t)return;
+      const c=m[t]||(m[t]={tien:0,ngay:''});c.tien+=+o.total||0;if(String(o.purchase_date)>c.ngay)c.ngay=String(o.purchase_date);});
+    ten=Object.keys(m).sort((a,b)=>m[b].tien-m[a].tien||m[b].ngay.localeCompare(m[a].ngay))[0]||'';}
+  if(!ten&&!coPc)ten=chinh(pc);
+  if(!ten){
+    // khách Kiot nạp lên: người bán Kiot gần nhất đứng trước như cũ (kể cả nhân viên ngoài Nhân sự), chỉ bù bằng dòng nhập tay
+    const cands=(coPc?[pc,kiot]:[kiot||pc]).filter(rptSlSaleIsHuman);
+    const x=cands.map(tim).find(x=>x&&x.dang_lam!==false);ten=x?String(x.ten).trim():'';
+    if(!ten){const y=cands.map(tim).find(x=>x&&x.dang_lam===false&&x.ban_giao_cho);if(y){r.staffBanGiao=y.ten;ten=String(y.ban_giao_cho).trim();}}
+    if(!ten)ten=cands.find(t=>!tim(t))||'';
+  }
   if(!ten&&rptSlSaleCuaDoi().includes(RPT_SL_SALE_CT_MAC_DINH)){ten=RPT_SL_SALE_CT_MAC_DINH;r.staffPageCu=pc||kiot||'';}
   if(!ten)return false;
   r.staff=ten;return true;
@@ -5964,10 +5980,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='24/10 09:40';
+const APP_VERSION='24/10 09:44';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=511;
+const APP_BAN=512;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6216,7 +6232,7 @@ const LOGIC_XU_LY=[
   ['Phạm vi xem','Lọc theo Sale đã chốt; Admin / Supreme xem hết. Mục Trùng SĐT Sỉ – Lẻ: Sale xem được Thông tin khách bên kia','3/10 · 13/10'],
   ['Sale đã nghỉ','Khách thuộc người nhận bàn giao','—'],
   ['Page Tự Tại Viên / Hiền Thủy','Khách Lẻ Online từ Facebook 2 page này, tạo từ 1/10/2026, CHƯA CÓ SALE NÀO (không người bán Kiot, không người phụ trách Pancake) → Trịnh Lê Vân Ngọc (gán tay vẫn thắng)','14/10 · 15/10'],
-  ['Sale Chánh Tâm','Khách Lẻ Online thương hiệu CT (mọi page / TikTok / Zalo), mọi ngày tạo: người phụ trách Pancake (còn làm) > người bán Kiot (còn làm) > Sale nghỉ thì người nhận bàn giao > tên nhân viên ngoài Nhân sự giữ nguyên > không phân biệt được → Phạm Thị Lệ (gán tay vẫn thắng)','23/10 · 24/10'],
+  ['Sale Chánh Tâm','Mọi khách Lẻ thương hiệu CT (online mọi page / TikTok / Zalo + khách Kiot nạp lên), mọi ngày tạo. Ưu tiên Sale chính Nguyễn Đức Anh Tuấn / Đinh Ngọc Diệp: phụ trách Pancake > có bán phiếu Kiot (nhiều tiền nhất) > đứng tên dòng nhập tay. Không có Sale chính: Pancake / người bán Kiot gần nhất như cũ. Không xác định được → Phạm Thị Lệ (quản lý, tự xếp lại). Gán tay vẫn thắng','23/10 · 24/10'],
   ['Đổi Sale phụ trách','Mọi tài khoản đổi được (bảng Master, hồ sơ, đổi hàng loạt)','24/10'],
   ['Tên Admin','Không hiện tên thật, hiện "Admin"','5/10']]],
  ['Phân loại & Daily Task',[
@@ -7567,7 +7583,7 @@ function rptSlBuildMasterRaw(){
     // > người phụ trách bên Pancake (chỉ khi chưa có phiếu Kiot nào -- anh Hải 03/10/2026)
     rows.forEach(r=>{const ten=rptSlSaleKiotCua(r);r.staffKiot=ten;
       const gan=rptSlSaleGanTayDong(r);
-      if(gan===null&&rptSlSaleChanhTam(r,r.staff,ten))return;   // Chánh Tâm: Pancake trước Kiot (24/10/2026)
+      if(gan===null&&rptSlSaleChanhTam(r,r.staff,ten))return;   // Chánh Tâm: ưu tiên Sale chính Tuấn / Diệp (24/10/2026)
       if(gan!==null)r.staff=gan;else if(ten)r.staff=ten;rptSlChuyenDoi(r);
       if(gan===null)rptSlSalePageMacDinh(r);});
   }
