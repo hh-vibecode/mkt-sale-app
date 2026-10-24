@@ -660,8 +660,21 @@ function dashPhamViDayDu(loai){
 // SỈ (anh Hải chốt 30/9/2026): MỌI tài khoản được xem Sỉ đều thấy HẾT data "Sale Kiot" (người tạo đơn Kiot không có
 // trong Nhân sự Sale: Bùi Thị Kim Oanh, Sales Admin...) và data CHƯA CÓ Sale phụ trách. Chỉ KHÔNG thấy data của các
 // Sale trong đội Sỉ trên app mà tài khoản không được tick.
-// LẺ: khách trống chỉ hiện khi tick đủ Sale của đội Lẻ; Sale cũ / Sale Kiot không có trong app -> ai xem Lẻ cũng thấy (24/10/2026).
-function dashSeeSale(name,loai){
+// LẺ: khách trống chỉ hiện khi tick đủ Sale của đội Lẻ; Sale cũ / Sale Kiot không có trong app -> ai xem Lẻ cũng thấy, chia theo
+// thương hiệu (dashSeeBrandLe, 24/10/2026).
+// THƯƠNG HIỆU của khách Sale cũ / Sale Kiot bên LẺ (anh Hải 24/10/2026: "sale k trong phạm vi app thì không chỉ chia sỉ lẻ mà còn chia
+// brand nữa, vd chị lệ chánh tâm thì chỉ nhìn sale cũ vs sale kiot của chánh tâm thôi, vân ngọc sẽ nhìn thấy khách lẻ của hiền thuỷ, tự tại
+// viên vs shidai"): tài khoản được tick ÍT NHẤT 1 Sale của thương hiệu -> thấy khách Sale cũ / Sale Kiot của thương hiệu đó.
+// Khách chưa rõ thương hiệu -> ai xem Lẻ cũng thấy (không để rơi mất). SỈ không chia brand (anh: "cứ khách sỉ là nhìn thấy hết").
+const RPT_SL_SALE_BRAND_PV={CT:['Phạm Thị Lệ','Đinh Ngọc Diệp','Nguyễn Đức Anh Tuấn'],
+  HT:['Trịnh Lê Vân Ngọc'],TTV:['Trịnh Lê Vân Ngọc'],Shidai:['Trịnh Lê Vân Ngọc']};
+function dashSeeBrandLe(brand){
+  const b=brand==='SD'?'Shidai':brand,ds=RPT_SL_SALE_BRAND_PV[b];
+  if(!ds)return true;
+  const a=dashSales();
+  return !a.length||ds.some(x=>a.includes(x));
+}
+function dashSeeSale(name,loai,brand){
   const a=dashSales();
   if(!a.length)return true;
   const t=String(name||'').trim();
@@ -673,7 +686,7 @@ function dashSeeSale(name,loai){
   // hoặc lẻ, để tránh việc họ k nhìn thấy data do k có bộ lọc sale tương ứng"): tên KHÔNG thuộc Sale đang làm trên app (Sale đã nghỉ,
   // nhân viên Kiot, tài khoản chung) -> ai được xem Lẻ cũng thấy. Khách của Sale đang làm thì vẫn chỉ người được tick Sale đó.
   let dang=[];try{dang=rptSlSaleCuaDoi();}catch(e){}
-  return !dang.includes(t)&&dashSeeType('Lẻ');
+  return !dang.includes(t)&&dashSeeType('Lẻ')&&dashSeeBrandLe(brand);   // + chia theo thương hiệu (24/10/2026)
 }
 function dashSeeType(t){const a=dashTypes();return !a.length||a.includes(t||'Lẻ');}
 function applyRole(){
@@ -2372,7 +2385,7 @@ function dhFilteredOrders(){
   const to=document.getElementById('dhDateTo')?.value||'';
   const q=(document.getElementById('dhSearch')?.value||'').trim().toLowerCase();
   return dhOrders.filter(o=>{
-    if(!dashSeeSale(rptSlSaleCuaDon(o),dhSaleTypeOrder(o))||!dashSeeType(dhSaleTypeOrder(o)))return false;   // Sale đã tính gán tay (28/9)
+    if(!dashSeeSale(rptSlSaleCuaDon(o),dhSaleTypeOrder(o),o.brand)||!dashSeeType(dhSaleTypeOrder(o)))return false;   // Sale đã tính gán tay (28/9)
     if(brand!=='all'&&o.brand!==brand)return false;
     if(from&&o.order_date<from)return false;
     if(to&&o.order_date>to)return false;
@@ -3139,7 +3152,7 @@ function dhManualTkHtml(canLe,canSi){
   const loai=[canLe?'Lẻ':'',canSi?'Sỉ':''].filter(Boolean);if(!loai.length)return '';
   const inv=dhManualRev(),byCode=kiotCustByCode(),e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const lo=r=>r.sale_type==='Sỉ'?'Sỉ':'Lẻ',tien=r=>((inv[lo(r)]||{})[r.kiot_code])||0;
-  const tatCa=dhManual.filter(r=>loai.includes(lo(r))&&dashSeeSale(rptSlSaleCuaNhapTay(r),lo(r))&&dashSeeType(lo(r)));
+  const tatCa=dhManual.filter(r=>loai.includes(lo(r))&&dashSeeSale(rptSlSaleCuaNhapTay(r),lo(r),r.brand)&&dashSeeType(lo(r)));
   const ds=tatCa.filter(r=>String(r.created_date||'')>=DH_MANUAL_MOC)
     .sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0));
   const an=tatCa.length-ds.length;
@@ -3178,7 +3191,7 @@ function dhManualHtml(){
   const mine=tatCa.filter(r=>String(r.created_date||'')>=DH_MANUAL_MOC);
   const an=tatCa.length-mine.length;
   const inp='height:26px;box-sizing:border-box;padding:2px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none';
-  const rows=mine.filter(r=>dashSeeSale(rptSlSaleCuaNhapTay(r),r.sale_type||'Lẻ')&&dashSeeType(r.sale_type||'Lẻ')).slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
+  const rows=mine.filter(r=>dashSeeSale(rptSlSaleCuaNhapTay(r),r.sale_type||'Lẻ',r.brand)&&dashSeeType(r.sale_type||'Lẻ')).slice().sort((a,b)=>String(b.created_date||'').localeCompare(String(a.created_date||''))||Number(b.id||0)-Number(a.id||0)).map(r=>{
     const v=((inv[r.sale_type==='Sỉ'?'Sỉ':'Lẻ']||{})[r.kiot_code])||0,kc=r.kiot_code?byCode[r.kiot_code]:null;
     return `<tr>
       <td>${dmy(r.created_date)||'—'}</td>
@@ -5979,10 +5992,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='24/10 09:49';
+const APP_VERSION='24/10 09:52';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=513;
+const APP_BAN=514;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6232,7 +6245,7 @@ const LOGIC_XU_LY=[
   ['Sale đã nghỉ','Khách thuộc người nhận bàn giao','—'],
   ['Page Tự Tại Viên / Hiền Thủy','Khách Lẻ Online từ Facebook 2 page này, tạo từ 1/10/2026, CHƯA CÓ SALE NÀO (không người bán Kiot, không người phụ trách Pancake) → Trịnh Lê Vân Ngọc (gán tay vẫn thắng)','14/10 · 15/10'],
   ['Sale Chánh Tâm','Mọi khách Lẻ thương hiệu CT (online mọi page / TikTok / Zalo + khách Kiot nạp lên). Sale cũ / Sale Kiot / Sale khác giữ nguyên. Khách đang đứng tên Phạm Thị Lệ hoặc trống: Sale chính Nguyễn Đức Anh Tuấn / Đinh Ngọc Diệp nếu phụ trách Pancake / có bán phiếu Kiot (nhiều tiền nhất) / đứng tên dòng nhập tay; không xác định được → Phạm Thị Lệ (quản lý, tự xếp lại). Gán tay vẫn thắng','23/10 · 24/10'],
-  ['Phạm vi xem Lẻ','Khách đứng tên Sale cũ / nhân viên Kiot không có trong app: ai được xem Lẻ cũng thấy (như Sỉ)','24/10'],
+  ['Phạm vi xem Sale cũ / Sale Kiot','Khách đứng tên người không có trong app. Lẻ: chia theo thương hiệu — tài khoản tick Sale Chánh Tâm (Lệ / Diệp / Tuấn) thấy khách CT, tick Vân Ngọc thấy khách Hiền Thuỷ / Tự Tại Viên / Shidai; chưa rõ thương hiệu thì ai xem Lẻ cũng thấy. Sỉ: ai xem Sỉ cũng thấy hết, không chia thương hiệu','30/9 · 24/10'],
   ['Đổi Sale phụ trách','Mọi tài khoản đổi được (bảng Master, hồ sơ, đổi hàng loạt)','24/10'],
   ['Tên Admin','Không hiện tên thật, hiện "Admin"','5/10']]],
  ['Phân loại & Daily Task',[
@@ -6477,7 +6490,7 @@ function rptSlOverviewHtml(){
   // Áp bộ lọc ngày RIÊNG của báo cáo: khách lọc theo NGÀY TẠO, đơn thô lọc theo NGÀY ĐƠN.
   const mod0=rptSlMod();
   const master=rptSlPeriod().filter(r=>rptHopBrand(mod0,r)).map(r=>rptCatBrand(mod0,r));
-  const le=dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))&&dashSeeSale(rptSlSaleCuaDon(o),dhSaleTypeOrder(o))&&modInRange(mod0,o.order_date)
+  const le=dhOrders.filter(o=>rptSlInType(dhSaleTypeOrder(o))&&dashSeeSale(rptSlSaleCuaDon(o),dhSaleTypeOrder(o),o.brand)&&modInRange(mod0,o.order_date)
     &&(!rptBrand(mod0)||o.brand===rptBrand(mod0)));
   const tag=(o,t)=>(o.customer_tags||'').toUpperCase().includes(t);
   const dat=le.filter(o=>tag(o,'LEAD ĐẠT')||dhIsQualified(o));
@@ -7810,7 +7823,7 @@ function rptSlBuildMasterRaw(){
   (window._rptSlViecXong=window._rptSlViecXong||{})[rptSlType()]=rows.filter(r=>(r.viecXong||[]).length);
   (window._rptSlViecDaXong=window._rptSlViecDaXong||{})[rptSlType()]=rows.filter(r=>(r.viecDaXong||[]).length);
   {const vl=rptSlVangLaiDong(rows);if(vl)rows.push(vl);}
-  rows=rows.filter(r=>dashSeeSale(r.staff,rptSlType())&&dashSeeType(r.saleType||'Lẻ'));
+  rows=rows.filter(r=>dashSeeSale(r.staff,rptSlType(),rptSlBrandCua(r))&&dashSeeType(r.saleType||'Lẻ'));
   return rows.sort((a,b)=>b.revenue-a.revenue||String(b.lastTouch).localeCompare(String(a.lastTouch)));
 }
 // KHÁCH VÃNG LAI (anh Hải 08/10/2026: "thêm đi" -- để tổng khớp Kiot): phiếu Kiot từ 2026 KHÔNG gắn mã khách (chủ yếu cửa hàng
