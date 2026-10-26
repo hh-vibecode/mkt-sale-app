@@ -866,17 +866,26 @@ function rptBrandDrop(mod,cb){
 // 14/10/2026 (anh Hải duyệt): dùng CHUNG cách nhận thương hiệu với thẻ "Doanh thu theo thương hiệu" -- khách Lẻ chưa có r.brand
 // suy từ đơn Kiot gần nhất (rptSlBrandCua); dòng Khách vãng lai thuộc mọi thương hiệu có phiếu của nó, rồi rptCatBrand chỉ giữ
 // phiếu của thương hiệu đang lọc. Trước đó 2 nhóm này rơi khỏi mọi bộ lọc (Hiền Thuỷ T10: lọc 127,1tr, thẻ 132,5tr).
+// 26/10/2026 (anh Hải: "ưu tiên dựa phân bổ trên Kiot để chia vào brand cho chuẩn, trừ Tự Tại Viên -- TTV không có chi nhánh
+// trên Kiot nên mới lấy theo page"): DOANH THU SALE chia thương hiệu theo TỪNG ĐƠN = chi nhánh Kiot bán ra đơn đó (rptSlBrandPhanBo),
+// cho cả Lẻ lẫn Sỉ. Ca gốc: KB a Đức Anh (Sỉ, tạo + mua ở chi nhánh Hiền Thủy) trước bị quy Shidai vì luật "Sỉ = Shidai".
+// Khách không có đơn nào -> thương hiệu theo khách (rptSlBrandKhach). Báo cáo MKT KHÔNG đổi (vẫn theo page quảng cáo).
 function rptHopBrand(mod,r){
   const b=rptBrand(mod);if(!b)return true;
-  if(r.saleType==='Sỉ'||r.loai==='Sỉ')return (r.brand?(r.brand==='SD'?'Shidai':r.brand):'Shidai')===b;
-  if(r.vangLai)return [...(r.kords||[]),...(r.repeatOrds||[])].some(o=>rptSlBrandDon(o)===b);
-  return rptSlBrandCua(r)===b;
+  const ds=[...(r.kords||[]),...(r.repeatOrds||[])];
+  if(ds.length)return ds.some(o=>rptSlBrandPhanBo(o,r)===b);
+  return rptSlBrandKhach(r)===b;
 }
-// Khách vãng lai đang lọc 1 thương hiệu -> bản sao chỉ còn phiếu của thương hiệu đó (doanh thu tính lại). Dòng khác giữ nguyên.
+// Đang lọc 1 thương hiệu -> khách có đơn của NHIỀU thương hiệu thì bản sao chỉ còn đơn của thương hiệu đó (doanh thu tính lại theo
+// tỉ lệ tiền đơn). Khách mọi đơn cùng 1 thương hiệu giữ nguyên.
 function rptCatBrand(mod,r){
-  const b=rptBrand(mod);if(!b||!r.vangLai||r.saleType==='Sỉ')return r;
-  const kords=(r.kords||[]).filter(o=>rptSlBrandDon(o)===b),repeatOrds=(r.repeatOrds||[]).filter(o=>rptSlBrandDon(o)===b);
-  return Object.assign({},r,{kords,repeatOrds,revenue:kords.reduce((s,o)=>s+Number(o.total||0),0),repeatRevenue:repeatOrds.reduce((s,o)=>s+Number(o.total||0),0)});
+  const b=rptBrand(mod);if(!b)return r;
+  const loc=ds=>(ds||[]).filter(o=>rptSlBrandPhanBo(o,r)===b);
+  const kords=loc(r.kords),repeatOrds=loc(r.repeatOrds);
+  if(kords.length===(r.kords||[]).length&&repeatOrds.length===(r.repeatOrds||[]).length)return r;
+  const tong=ds=>(ds||[]).reduce((s,o)=>s+Number(o.total||0),0);
+  const tl=(a,b2,goc)=>{const t=tong(b2);return t?Number(goc||0)*tong(a)/t:0;};
+  return Object.assign({},r,{kords,repeatOrds,revenue:tl(kords,r.kords,r.revenue),repeatRevenue:tl(repeatOrds,r.repeatOrds,r.repeatRevenue)});
 }
 function modHeader(title,sub,mod,cb,tabs){
   return `<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px">
@@ -3893,7 +3902,7 @@ function rptThTongHtml(){
   // theo tỉnh") -- cả 2 đội. Lẻ: rptSlTienTheoBrand (vãng lai chia từng phiếu). Sỉ: r.brand, trống = Shidai -- ĐÚNG luật bộ lọc
   // thương hiệu rptHopBrand, để chọn lọc 1 thương hiệu thì phần Sỉ khớp thanh đó.
   // Mỗi thương hiệu 1 thanh, bấm ra danh sách khách. Tổng các thanh = ô Tổng doanh thu.
-  const theoTH=(r,doi)=>doi==='Sỉ'?[{b:r.brand?(r.brand==='SD'?'Shidai':r.brand):'Shidai',tien:tien(r),don:soDon(r)}]:rptSlTienTheoBrand(r);
+  const theoTH=(r,doi)=>rptSlTienTheoBrand(r);   // Lẻ + Sỉ chia theo chi nhánh Kiot từng đơn (26/10/2026)
   const nhomTH={};[['Lẻ',L_.coDt],['Sỉ',S_.coDt]].forEach(([doi,a])=>a.forEach(r=>theoTH(r,doi).forEach(p=>{const b=p.b;
     const x=nhomTH[b]=nhomTH[b]||{b,le:0,si:0,don:0,ds:{'Lẻ':[],'Sỉ':[]}};x[doi==='Lẻ'?'le':'si']+=p.tien;x.don+=p.don;x.ds[doi].push(r);})));
   const thTen=b=>{const x=RPT_MKT_BRANDS.find(y=>y[0]===b);return x?x[1]:(b||'Chưa rõ');};
@@ -5988,10 +5997,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='24/10 09:57';
+const APP_VERSION='26/10 12:48';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=515;
+const APP_BAN=516;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6215,7 +6224,7 @@ const LOGIC_XU_LY=[
   ['Đơn 0đ','Không tính là phát sinh, không kéo khách vào kỳ lọc','1/10'],
   ['Khách vãng lai','Phiếu Kiot không mã khách, có dấu vết tiền → 1 dòng "Khách vãng lai" mỗi báo cáo (Offline · Kiot)','8/10'],
   ['Khoảng thời gian','Lẻ từ 1/6/2026 · Sỉ lấy toàn bộ lịch sử · bộ lọc "Tất cả" = cả năm 2026','2/10'],
-  ['Thương hiệu của khách','Theo page Pancake / kênh nhập tay; khách Lẻ chưa có thì theo đơn Kiot gần nhất (kênh ghi tên brand > chi nhánh); Khách vãng lai chia từng phiếu theo chi nhánh; Sỉ chưa có = Shidai. Thẻ Doanh thu theo thương hiệu và ô lọc thương hiệu dùng chung luật này','14/10'],
+  ['Thương hiệu của doanh thu Sale','Chia TỪNG ĐƠN theo chi nhánh Kiot bán ra đơn (Đồ thờ Hiền Thủy → Hiền Thuỷ, Đồ Thờ Chánh Tâm → Chánh Tâm, Tổng kho sỉ Shidai → Shidai), áp cả Lẻ, Sỉ, khách Online lẫn Offline. Riêng Tự Tại Viên (không có chi nhánh Kiot) theo page / kênh. Khách chưa có đơn: theo page / kênh, Sỉ chưa có = Shidai. Thẻ Doanh thu theo thương hiệu, ô lọc thương hiệu và ô Brand trong hồ sơ dùng chung luật này. Báo cáo MKT vẫn theo page quảng cáo','26/10'],
   ['Trả hàng','App CHƯA trừ phiếu trả hàng Kiot ("Doanh thu thuần" trên Kiot có trừ) — chờ anh quyết','19/10'],
   ['So với Kiot Tổng quan','Kiot doanh thu thuần = hoá đơn, theo ngày xuất HĐ, trừ trả hàng; app = đơn đặt hàng theo ngày tạo đơn. Đối chiếu đúng ở Data Hub › Đối soát (so với đơn đặt hàng + HĐ bán thẳng)','19/10']]],
  ['Sỉ / Lẻ · Online / Offline',[
@@ -6225,7 +6234,7 @@ const LOGIC_XU_LY=[
   ['Online / Offline','Kênh quyết định: Facebook / TikTok / Shopee / Zalo / Web = Online, bất kể hoá đơn hay đơn đặt hàng','9/10'],
   ['Nguồn / Kênh của khách','Chỉ Admin sửa; Sale chọn lúc tạo khách mới','8/10'],
   ['Master','Mặc định ẩn Offline · Kiot, chọn ở ô Nguồn để xem','8/10'],
-  ['Brand khách Sỉ','Kênh ghi rõ brand khác thì theo kênh, còn lại = Shidai','—']]],
+  ['Brand khách Sỉ','Doanh thu theo chi nhánh Kiot từng đơn (như Lẻ); chưa có đơn thì kênh ghi rõ brand khác theo kênh, còn lại = Shidai','26/10']]],
  ['Báo cáo MKT',[
   ['Mốc thời gian','Chỉ từ 1/6/2026 (chi phí ads có từ T6), kể cả bộ lọc "Tất cả"','—'],
   ['Khách tính cho MKT','Theo NGUỒN khách: nguồn Online (Lẻ + Sỉ) là tự tính theo cơ chế MKT; Sỉ Offline chỉ vào báo cáo Sale Sỉ','Kênh ghi gì (kể cả Sales trực tiếp / Bán trực tiếp) không ảnh hưởng. Đơn vẫn phải đủ dấu vết tiền — khách cọc / trả / có hoá đơn thì tự tính','19/10'],
@@ -7116,9 +7125,9 @@ const RPT_SL_SALE_NGOAI='(Sale ngoài danh sách)';
 function rptSlSaleLoc(r){const t=String(r.staff||'').trim();return !t?'(chưa gán)':rptSlSaleCuaDoi(rptSlType()).includes(t)?t:RPT_SL_SALE_NGOAI;}
 function rptSlBrandLoc(r){
   const ten=b=>DH_BRAND_LABEL[b]||b||'Chưa rõ';
-  if(rptSlType()==='Sỉ')return [ten(r.brand?(r.brand==='SD'?'Shidai':r.brand):'Shidai')];
-  if(r.vangLai){const ds=[...new Set([...(r.kords||[]),...(r.repeatOrds||[]),...(r.staleOrds||[])].map(o=>ten(rptSlBrandDon(o))))];return ds.length?ds:['Chưa rõ'];}
-  return [ten(rptSlBrandCua(r))];
+  // theo chi nhánh Kiot từng đơn (26/10/2026); khách chưa có đơn thì theo khách
+  const ds=[...new Set([...(r.kords||[]),...(r.repeatOrds||[]),...(r.staleOrds||[])].map(o=>ten(rptSlBrandPhanBo(o,r))))];
+  return ds.length?ds:[ten(rptSlBrandKhach(r))];
 }
 function rptSlApplyF(tab,list,opt){
   const sale=rptSlF(tab,'sale'),br=rptSlF(tab,'brand'),sp=rptSlType()==='Sỉ'?rptSlF(tab,'sp'):'';
@@ -8198,10 +8207,31 @@ function rptSlBrandCua(r){
 // Doanh thu 1 khách chia theo thương hiệu: khách thường = cả khối về 1 thương hiệu; dòng KHÁCH VÃNG LAI (gom phiếu không mã của
 // nhiều cửa hàng) thì chia TỪNG PHIẾU theo chi nhánh / kênh của phiếu đó. Trả [{b,tien,don}]; tổng tien = revenue + repeatRevenue.
 function rptSlTienTheoBrand(r){
-  const tien=Number(r.revenue||0)+Number(r.repeatRevenue||0),don=(r.kords||[]).length+(r.repeatOrds||[]).length;
-  if(!r.vangLai)return [{b:rptSlBrandCua(r),tien,don}];
-  const m={};[...(r.kords||[]),...(r.repeatOrds||[])].forEach(o=>{const b=rptSlBrandDon(o);const x=m[b]=m[b]||{b,tien:0,don:0};x.tien+=Number(o.total||0);x.don++;});
-  return Object.values(m);
+  const tien=Number(r.revenue||0)+Number(r.repeatRevenue||0),dsDon=[...(r.kords||[]),...(r.repeatOrds||[])];
+  if(!dsDon.length)return [{b:rptSlBrandKhach(r),tien,don:0}];
+  // CHIA THEO CHI NHÁNH KIOT TỪNG ĐƠN (26/10/2026), trừ TTV theo page. Vãng lai: tiền từng phiếu như cũ; khách thường: chia tổng
+  // doanh thu đang tính theo tỉ lệ tiền đơn (để tổng các thương hiệu = đúng doanh thu khách).
+  const m={};dsDon.forEach(o=>{const b=rptSlBrandPhanBo(o,r);const x=m[b]=m[b]||{b,tien:0,don:0};x.tien+=Number(o.total||0);x.don++;});
+  const ra=Object.values(m);if(r.vangLai)return ra;
+  if(ra.length===1){ra[0].tien=tien;return ra;}
+  const tongDon=ra.reduce((s,x)=>s+x.tien,0);ra.forEach(x=>{x.tien=tongDon?tien*x.tien/tongDon:0;});
+  return ra;
+}
+// Thương hiệu của 1 ĐƠN Kiot để chia doanh thu Sale: Tự Tại Viên (không có chi nhánh trên Kiot) theo page / kênh -> TTV;
+// còn lại theo CHI NHÁNH bán ra đơn (Đồ thờ Hiền Thủy -> HT, Đồ Thờ Chánh Tâm -> CT, Tổng kho sỉ Shidai -> Shidai);
+// chi nhánh lạ thì theo kênh đơn, cuối cùng theo khách.
+function rptSlBrandPhanBo(o,r){
+  const bk=r&&r.brand==='SD'?'Shidai':(r&&r.brand);
+  if(bk==='TTV'||/nen bo|tu tai vien|\bttv\b/.test(rptSlBoDau(o&&o.sale_channel)))return 'TTV';
+  const cn=rptSlBoDau(o&&o.branch_name);
+  if(/hien thu/.test(cn))return 'HT';
+  if(/chanh tam/.test(cn))return 'CT';
+  if(/shidai/.test(cn))return 'Shidai';
+  return rptSlBrandDon(o)||rptSlBrandKhach(r);
+}
+// Thương hiệu theo KHÁCH (khi chưa có đơn): r.brand (page / kênh) > đơn Kiot gần nhất > Sỉ thì Shidai.
+function rptSlBrandKhach(r){
+  return rptSlBrandCua(r||{})||((r&&(r.saleType==='Sỉ'||r.loai==='Sỉ'))||rptSlType()==='Sỉ'?'Shidai':'');
 }
 function rptSlTongQuanHtml(){
   const M=rptSlMod(),P=rptSlPeriod(),all=rptSlBuildMaster(),t=todayISO(),T=rptSlType();
@@ -8872,7 +8902,7 @@ function rptSlShowCustomer(key,sua){
   const gNguon=[
     fld('Nguồn khách',esc(r.nguon||(r.sh||{}).nguon),'','nguon'),
     fld('Kênh',esc(r.kenh||(r.sh||{}).kenh),'','kenh'),
-    fld('Brand',esc(DH_BRAND_LABEL[r.brand]||r.brand)),
+    fld('Brand',esc(rptSlBrandLoc(r).join(', '))+(r.brand||!(r.kords||[]).length?'':' <span style="font-size:10.5px;color:var(--muted);font-weight:700">· theo chi nhánh Kiot</span>')),
     fld('Nguồn gốc (Pancake)',esc(r.source)),
     fld('Ad ID',(()=>{const id=r.adId||(r.sh||{}).ad_id;if(!id)return'';
       return adIdNote(id)+(r.adSuyRa?' <span style="font-size:10.5px;color:var(--yellow);font-weight:700" title="Không có Ad ID sẵn — app suy ra bằng cách so SĐT '+esc(r.adSuyRaSdt||'')+' với đơn Pancake có gắn ads">· suy từ SĐT</span>':'');})()),
