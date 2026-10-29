@@ -4892,7 +4892,9 @@ function rptSlSaleO(r){
 //  3) trạng thái / phân loại / hồ sơ giữ nguyên (gắn theo Lead ID); các lượt chăm sóc đổi cột loai theo (lịch sử lọc theo
 //     loai, không đổi là mất lịch sử bên đội mới); việc quản lý đã giao còn mở -> chuyển sang Sale mới.
 // Huỷ xác nhận = không đổi gì cả.
-function rptSlCanChuyen(ten){const t=String(ten||'').trim();const d=t&&rptSlDoiCuaSale(t);return !!t&&rptSlSaleCuaDoi().includes(t)&&d!=='Cả 2'&&d!==rptSlType();}
+// 29/10/2026 anh chọn: "Bỏ hẳn: gán ai cũng được, khách vẫn ở nguyên đội cũ" -> gán Sale đội kia KHÔNG còn hỏi / tự chuyển khách
+// Lẻ <-> Sỉ (luật 07/10/2026 đã bỏ). Muốn chuyển đội vẫn làm được ở Daily Task > Trùng SĐT Sỉ – Lẻ (rptSlChuyenLoai gọi thẳng).
+function rptSlCanChuyen(ten){return false;}
 function rptSlHoiChuyen(ten,n,tenKhach){
   const dich=rptSlDoiCuaSale(ten),tu=rptSlType();
   return confirm(ten+' thuộc Sale '+dich+'.\n\nĐổi Sale cho '+(n>1?n+' khách':'khách "'+(tenKhach||'')+'"')+' sẽ CHUYỂN '+(n>1?'các khách này':'khách')
@@ -5993,10 +5995,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='29/10 15:25';
+const APP_VERSION='29/10 15:28';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=517;
+const APP_BAN=518;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6241,7 +6243,7 @@ const LOGIC_XU_LY=[
  ['Sale · đội · phạm vi xem',[
   ['Sale của khách','Gán tay > người bán trên phiếu đặt / hoá đơn Kiot gần nhất đã nối > người phụ trách Pancake','3/10'],
   ['2 đội Sale','Đội = cột Đội ở Phân quyền › Nhân sự Sale. Bộ lọc Sales mỗi báo cáo chỉ có Sale đội đó; ô gán Sale có đủ 2 đội','7/10'],
-  ['Gán khách cho Sale đội kia','Hỏi xác nhận → đổi thẻ Pancake KH SỈ ↔ KH LẺ, chuyển dữ liệu và việc đang giao sang Sale mới','7/10'],
+  ['Gán khách cho Sale đội kia','Gán ai cũng được, khách vẫn ở nguyên đội cũ (không đổi thẻ Pancake, không chuyển Lẻ ↔ Sỉ). Sale đội "Cả 2" có ở cả 2 báo cáo. Chuyển đội khách chỉ làm ở Daily Task > Trùng SĐT Sỉ – Lẻ','29/10'],
   ['Phạm vi xem','Lọc theo Sale đã chốt; Admin / Supreme xem hết. Mục Trùng SĐT Sỉ – Lẻ: Sale xem được Thông tin khách bên kia','3/10 · 13/10'],
   ['Sale đã nghỉ','Khách thuộc người nhận bàn giao','—'],
   ['Khách không có Sale / không xác định','Trống hoặc tài khoản chung (Sales Admin, PANCAKE THT HOLDING…) → Sale phụ trách thương hiệu: Lẻ CT = Phạm Thị Lệ · Lẻ Shidai / Hiền Thuỷ / Tự Tại Viên = Trịnh Lê Vân Ngọc · Sỉ mọi thương hiệu = Nguyễn Khánh Nguyên. Mọi kênh, mọi ngày; Sale cũ / nhân viên Kiot có tên giữ nguyên; gán tay vẫn thắng; Khách vãng lai không có Sale','14/10 · 15/10 · 24/10'],
