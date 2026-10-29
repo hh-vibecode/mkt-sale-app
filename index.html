@@ -5995,10 +5995,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='29/10 15:28';
+const APP_VERSION='29/10 15:35';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=518;
+const APP_BAN=519;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7480,7 +7480,10 @@ function rptSlBuildMasterRaw(){
   let lyDoGop='';
   const gopNhom=(g,chinh)=>{
     g.sort((a,b)=>String(a.created).localeCompare(String(b.created)));
-    const keep=(chinh&&typeof chinh==='object')?chinh:g[0],rest=g.filter(x=>x!==keep);   // forEach truyền số thứ tự vào đây -> chỉ nhận khi đúng là 1 dòng khách
+    // ƯU TIÊN KHÁCH ONLINE (anh Hải 29/10/2026: "nếu là nguồn online thì ưu tiên hợp lại là khách online"): tự gộp thì dòng chính =
+    // dòng Online tạo sớm nhất (không có Online mới lấy dòng tạo trước); gộp tay chọn dòng Offline làm chính thì nhóm có Online vẫn ra Online.
+    const laOnl=r=>/online/i.test(r.nguon||'Online');
+    const keep=(chinh&&typeof chinh==='object')?chinh:(g.find(laOnl)||g[0]),rest=g.filter(x=>x!==keep);   // forEach truyền số thứ tự vào đây -> chỉ nhận khi đúng là 1 dòng khách
     rest.forEach(r=>{r.nguonLienHe=nguonCua(r).map(x=>x.lyDo?x:Object.assign({},x,{lyDo:lyDoGop,vao:keep.leadId}));});
     {const co={};keep.nguonLienHe=g.flatMap(nguonCua).filter(x=>co[x.leadId]?false:(co[x.leadId]=true))
       .sort((a,b)=>String(a.ngay).localeCompare(String(b.ngay)));}
@@ -7514,8 +7517,14 @@ function rptSlBuildMasterRaw(){
     keep.lastTouch=touches[touches.length-1]||keep.lastTouch;
     keep.daysIdle=keep.lastTouch?Math.floor((new Date()-new Date(keep.lastTouch))/86400000):null;
     keep.status=keep.isChot?'Chốt đơn':keep.manualStatus||'';
+    if(!laOnl(keep)){const on=rest.find(laOnl);
+      if(on){keep.nguonGopTu=keep.nguon||'';keep.nguon='Online';if(on.kenh)keep.kenh=on.kenh;if(!keep.source&&on.source)keep.source=on.source;}}
     rest.forEach(r=>{r._merged=true;});
   };
+  // 0) SĐT Sale GHI THÊM ở hồ sơ (si_sdt) phải có mặt TRƯỚC khi gộp (anh Hải 29/10/2026, ca M-0065 / L-SD-0325:
+  //    số chung chỉ nằm ở si_sdt của dòng Pancake -> trước đây ghép vào sau bước gộp nên không tự gộp, rơi xuống Nghi trùng).
+  rows.forEach(r=>{const mn=rptSlManual[r.leadId]||{};if(!mn.si_sdt)return;const k9=rptSlLast9(mn.si_sdt);
+    if(k9&&!(r.phones||[]).some(p=>rptSlLast9(p.so)===k9))r.phones=(r.phones||[]).concat([{so:String(mn.si_sdt).trim(),tuKiot:false}]);});
   // 1) Mã KH -- khoá chắc nhất, do người xác nhận
   lyDoGop='Cùng Mã KH';
   nhomTheo(r=>r.kh||'').forEach(gopNhom);
@@ -9920,6 +9929,7 @@ function rptSlGopDem(){
   const sel=rptSlGopGoc().querySelector('#gopChinh');
   if(sel&&!laMa){const cu=sel.value;const g=(window._rptSlNghiTrung||[])[Number(nhom[0])]||{rows:[]};
     const ds=g.rows.filter(r=>tick.some(c=>c.value===r.leadId));
+    ds.sort((a,b)=>(/online/i.test(b.nguon||'Online')?1:0)-(/online/i.test(a.nguon||'Online')?1:0));   // dòng Online lên đầu = mặc định hồ sơ chính (29/10/2026)
     sel.innerHTML=ds.map(r=>'<option value="'+r.leadId+'">'+String(r.name).replace(/</g,'&lt;')+' · '+r.leadId+' · '+(dmy(r.created)||'')+'</option>').join('');
     if(ds.some(r=>r.leadId===cu))sel.value=cu;}
   const ok=tick.length>=2&&nhom.length===1;
