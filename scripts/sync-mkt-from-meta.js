@@ -101,7 +101,8 @@ async function upsertMktSpend(rows) {
 // TRẠNG THÁI BẬT / TẮT của từng quảng cáo + nhóm + chiến dịch (anh Hải 06/10/2026: chấm xanh như Ads Manager).
 // Ghi đè bảng mkt_ads_trang_thai (1 dòng / quảng cáo). Lỗi ở bước này chỉ cảnh báo, KHÔNG làm hỏng việc kéo chi phí.
 async function fetchTrangThai(adAccountId) {
-  let url = `https://graph.facebook.com/${META_API_VERSION}/${adAccountId}/ads?fields=id,name,effective_status,adset{id,name,effective_status},campaign{id,name,effective_status}&limit=500&access_token=${ACCESS_TOKEN}`;
+  // creative{thumbnail_url}: ẢNH MẪU quảng cáo cho bảng Chi tiết (30/10/2026). Link CDN Meta có hạn -> làm mới mỗi lượt sync.
+  let url = `https://graph.facebook.com/${META_API_VERSION}/${adAccountId}/ads?fields=id,name,effective_status,adset{id,name,effective_status},campaign{id,name,effective_status},creative{thumbnail_url}&limit=500&access_token=${ACCESS_TOKEN}`;
   let all = [], trang = 0;
   while (url && trang < 30) {
     const res = await fetch(url);
@@ -116,6 +117,7 @@ async function fetchTrangThai(adAccountId) {
     adset_id: (a.adset || {}).id || null, adset_name: (a.adset || {}).name || null, adset_status: (a.adset || {}).effective_status || null,
     campaign_id: (a.campaign || {}).id || null, campaign_name: (a.campaign || {}).name || null, campaign_status: (a.campaign || {}).effective_status || null,
     tai_khoan: adAccountId, cap_nhat: new Date().toISOString(),
+    anh: ((a.creative || {}).thumbnail_url) || null,
   }));
 }
 async function ghiTrangThai(adAccountIds) {
@@ -194,6 +196,9 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
         ctr: Number(r.ctr) || 0,
         cpc: Number(r.cpc) || 0,
         comments: Math.round(actionValue(r.actions, ['comment', 'post_comment'])),
+        // LƯỢT MUA như cột "Lượt mua" Ads Manager = omni_purchase (Pancake báo về Meta khi chốt đơn). Không cộng các loại
+        // onsite_*_purchase khác vì chúng là CÙNG 1 lượt đếm lặp (dò 30/10/2026: T10 mỗi loại đều 35).
+        purchases: Math.round(actionValue(r.actions, ['omni_purchase']) || actionValue(r.actions, ['onsite_conversion.purchase'])),
       };
     }));
     }
