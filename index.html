@@ -3879,9 +3879,16 @@ async function rptThNhomNap(){
   const g={},tong={dt:0,on:0,off:0};
   // ONLINE / OFFLINE THEO KÊNH BÁN CỦA TỪNG PHIẾU KIOT (anh Hải 30/10/2026: "nến sai bét" -- theo nguồn khách thì khách Sỉ lâu năm có nguồn
   // Online mua nến tại quầy bị tính Online). Phiếu không ghi kênh thì mới theo nguồn khách.
-  ds.forEach(({r,doi})=>{const offKhach=/offline/i.test(r.nguon||'');
+  // 30/10/2026 (anh: "thằng Kế toán bắt chuẩn nguồn mà m bắt sai") -- làm ĐÚNG cách Kế toán: kênh lấy ở HOÁ ĐƠN của đơn (Sale hay để
+  // "Bán trực tiếp" lúc tạo đơn rồi mới sửa kênh khi ra hoá đơn, vd DH003002 -> HD060376 Facebook Shidai), chưa có hoá đơn mới lấy kênh
+  // trên đơn; Online = có kênh và KHÁC "Bán trực tiếp" (Chùa Vẻn, Website… đều Online), không ghi kênh = Offline.
+  const kenhHD={};(typeof kiotInvoices!=='undefined'?kiotInvoices:[]).forEach(i=>{if(!i.order_code||!i.sale_channel)return;
+    const cu=kenhHD[i.order_code];if(!cu||/^bán trực tiếp$/i.test(String(cu).trim()))kenhHD[i.order_code]=i.sale_channel;});
+  const kenhPhieu=o=>(!o.direct&&kenhHD[o.code])||o.sale_channel||'';
+  window._thKenhPhieu=kenhPhieu;
+  ds.forEach(({r,doi})=>{
     [...(r.kords||[]),...(r.repeatOrds||[])].forEach(o=>{const tien=Number(o.total||0);if(!(tien>0))return;
-      const off=o.sale_channel?!RPT_KENH_ONLINE.test(o.sale_channel):offKhach;
+      const kp=String(kenhPhieu(o)).trim(),off=!kp||/^bán trực tiếp$/i.test(kp);
       const items=o.items||IT[o.code]||[];const sum=items.reduce((s,x)=>s+Number(x.qty||0)*Number(x.price||0),0);
       const phan=sum>0?items.map(x=>({n:NH[x.code]||'(chưa rõ nhóm)',v:Number(x.qty||0)*Number(x.price||0)*tien/sum})):[{n:'(chưa rõ nhóm)',v:tien}];
       const gop={};phan.forEach(p=>{gop[p.n]=(gop[p.n]||0)+p.v;});
@@ -3910,7 +3917,7 @@ async function rptThNhomNap(){
     +(con.length&&!window._thNhomDu?'<tr><td class="name" colspan="6"><a href="#" onclick="event.preventDefault();window._thNhomDu=true;rptThNhomNap()" style="color:var(--accent);font-weight:700;text-decoration:none">Khác ('+num(con.length)+' nhóm · '+vnd(con.reduce((s,x)=>s+x.dt,0))+') xem đủ</a></td></tr>':'')
     +'<tr style="background:var(--bg2)"><td class="name" style="font-weight:800">Tổng cộng</td><td class="num" style="font-weight:800">'+vnd(tong.dt)+'</td><td class="num">100%</td>'
     +'<td class="num" style="font-weight:800">'+vnd(tong.on)+'</td><td class="num" style="font-weight:800">'+vnd(tong.off)+'</td><td style="font-size:11px;font-weight:700">'+pc(tong.on,tong.dt)+' onl</td></tr>'
-    +'</tbody></table></div><div style="padding:8px 16px 12px;font-size:11px;color:var(--muted)">Doanh số = các phiếu đang tính doanh thu Sale trong kỳ (theo ngày chốt), chia cho từng nhóm theo tiền dòng hàng · Online / Offline theo kênh bán ghi trên phiếu Kiot</div></div>';
+    +'</tbody></table></div><div style="padding:8px 16px 12px;font-size:11px;color:var(--muted)">Doanh số = các phiếu đang tính doanh thu Sale trong kỳ (theo ngày chốt), chia cho từng nhóm theo tiền dòng hàng · Online / Offline theo kênh bán (như Kế toán: kênh trên hoá đơn của đơn)</div></div>';
 }
 function rptThNhomBung(k){const tr=[...document.querySelectorAll('[data-thnhom="'+k+'"]')];if(!tr.length)return;const mo=tr[0].hidden;
   tr.forEach(x=>{x.hidden=!mo;});const m=document.getElementById('thNhomMui'+k);if(m)m.textContent=mo?'▼':'▶';}
@@ -3922,7 +3929,7 @@ function rptThNhomMo(k,t){
   const loc=y=>t==='all'||(t==='on'?!y.off:y.off);
   const ds=x.don.filter(loc).sort((a,b)=>String(b.o.purchase_date).localeCompare(String(a.o.purchase_date)));
   const tien=ds.reduce((s,y)=>s+y.v,0),soPhieu=new Set(ds.map(y=>y.o.code)).size;
-  const kenh=y=>y.o.sale_channel||y.r.kenh||(y.off?'Offline':'Online');
+  const kenh=y=>(window._thKenhPhieu?window._thKenhPhieu(y.o):y.o.sale_channel)||'(không ghi kênh)';
   const ng={};ds.forEach(y=>{const n=kenh(y);const z=ng[n]=ng[n]||{n,dt:0,phieu:new Set()};z.dt+=y.v;z.phieu.add(y.o.code);});
   const dsNg=Object.values(ng).sort((a,b)=>b.dt-a.dt);
   const tab=(m,nhan)=>'<button onclick="rptThNhomMo('+k+','+q+m+q+')" style="flex:1;border:none;border-radius:8px;padding:9px 10px;cursor:pointer;font-family:var(--font);font-size:12.5px;font-weight:800;'
@@ -3946,7 +3953,7 @@ function rptThNhomMo(k,t){
     +ds.map(y=>'<tr onclick="rptMoKhachLoai('+q+y.doi+q+','+q+String(y.r.key).replace(/[\'"\\]/g,'')+q+')" style="cursor:pointer;border-bottom:1px solid var(--border)"><td style="padding:6px 8px;white-space:nowrap">'+(dmy(String(y.o.purchase_date).slice(0,10))||'—').slice(0,5)+'</td>'
       +'<td style="padding:6px 8px">'+link(y.o.code)+'</td><td style="padding:6px 8px">'+e(y.r.name)+rptSlSaoVip(y.r)+'<div style="font-size:10.5px;color:var(--muted)">'+e(y.r.kh||y.r.leadId||'')+' · '+y.doi+'</div></td>'
       +'<td style="padding:6px 8px">'+e(y.o.branch_name||'—')+'</td><td style="padding:6px 8px">'+e(kenh(y))+'</td><td style="padding:6px 8px;text-align:right;font-weight:800">'+vnd(y.v)+'</td></tr>').join('')
-    +'</tbody></table><div style="font-size:11px;color:var(--muted);margin-top:10px">Online / Offline theo KÊNH BÁN ghi trên phiếu Kiot (Facebook / TikTok / Shopee / Zalo / Web = Online; bán tại quầy = Offline); phiếu không ghi kênh thì theo nguồn khách. DS nhóm = phần dòng hàng thuộc nhóm này trong phiếu (giảm giá cả phiếu chia theo tỉ lệ). Bấm dòng để mở hồ sơ khách.</div>'
+    +'</tbody></table><div style="font-size:11px;color:var(--muted);margin-top:10px">Online / Offline theo KÊNH BÁN như app Kế toán: lấy kênh trên HOÁ ĐƠN của đơn (chưa có hoá đơn thì kênh trên đơn); khác "Bán trực tiếp" = Online, không ghi kênh = Offline. Doanh số theo NGÀY CHỐT nên hoá đơn tháng này của đơn đặt tháng trước nằm ở tháng trước (Kế toán tính theo tháng hoá đơn). DS nhóm = phần dòng hàng thuộc nhóm này trong phiếu (giảm giá cả phiếu chia theo tỉ lệ). Bấm dòng để mở hồ sơ khách.</div>'
     +'</div></div>';
 }
 function rptThTongHtml(){
@@ -6199,10 +6206,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='30/10 16:38';
+const APP_VERSION='30/10 16:45';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=528;
+const APP_BAN=529;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
