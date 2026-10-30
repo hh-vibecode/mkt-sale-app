@@ -116,9 +116,24 @@ async function layKenh(token, code, dm) {
   return { ten: d.SaleChannelName || d.saleChannelName || dm[id] || null, id };
 }
 
+// HỎI LẠI KÊNH (anh Hải 30/10/2026, "m kéo thiếu"): trước đây kênh chỉ hỏi 1 lần lúc đơn mới vào, Sale sửa kênh trên Kiot sau đó
+// (vd DH003002 / DH002865 / DH002842 / DH002835.01 "Bán trực tiếp" -> Facebook) thì bảng giữ kênh cũ mãi. Nay:
+//  - lượt 15 phút: hỏi lại kênh MỌI đơn vừa sửa (vài đơn / lượt);
+//  - lượt quét lại hằng ngày: hỏi lại đơn tạo trong THÁNG HIỆN TẠI (ngày 1–5 gồm cả tháng trước); Chủ nhật: mọi đơn từ 1/6/2026.
+function mocHoiLaiKenh() {
+  if (!DAY_DU) return null;
+  const vn = new Date(Date.now() + 7 * 3600e3);
+  if (vn.getUTCDay() === 0) return '2026-06-01';
+  return new Date(Date.UTC(vn.getUTCFullYear(), vn.getUTCMonth() - (vn.getUTCDate() <= 5 ? 1 : 0), 1)).toISOString().slice(0, 10);
+}
+
 async function ganKenh(token, rows) {
   const daCo = await kenhDaCo(DAY_DU ? null : rows.map(r => r.code));
-  const thieu = rows.filter(r => !daCo[r.code]).slice(0, GIOI_HAN_CHI_TIET);
+  const moc = mocHoiLaiKenh();
+  const hoiLai = r => !DAY_DU || String(r.purchase_date || '').slice(0, 10) >= moc;
+  const cu = {};Object.keys(daCo).forEach(c => { cu[c] = daCo[c].ten; });
+  const thieu = rows.filter(r => !daCo[r.code]).concat(rows.filter(r => daCo[r.code] && hoiLai(r)))
+    .slice(0, moc === '2026-06-01' ? 2500 : GIOI_HAN_CHI_TIET);
   if (!thieu.length) { rows.forEach(r => { const k = daCo[r.code] || {}; r.sale_channel = k.ten || null; r.sale_channel_id = k.id ?? null; }); return; }
   const dm = await danhMucKenh(token);
   let lay = 0;
@@ -132,7 +147,9 @@ async function ganKenh(token, rows) {
   // Dòng cũ lấy lại đúng giá trị đang có trong DB -> upsert không xoá mất kênh đã biết.
   rows.forEach(r => { const k = daCo[r.code] || {}; r.sale_channel = k.ten || null; r.sale_channel_id = k.id ?? null; });
   const conThieu = rows.filter(r => !r.sale_channel).length;
-  console.log(`Kênh bán: gọi chi tiết ${thieu.length} đơn, lấy được ${lay}. Còn ${conThieu} đơn chưa có kênh.`);
+  const doi = thieu.filter(r => cu[r.code] && r.sale_channel && cu[r.code] !== r.sale_channel);
+  console.log(`Kênh bán: gọi chi tiết ${thieu.length} đơn, lấy được ${lay}. Còn ${conThieu} đơn chưa có kênh. Kênh đổi trên Kiot: ${doi.length}`
+    + (doi.length ? ' (' + doi.slice(0, 20).map(r => r.code + ' ' + cu[r.code] + ' -> ' + r.sale_channel).join('; ') + ')' : ''));
 }
 
 function mapOrder(o) {
