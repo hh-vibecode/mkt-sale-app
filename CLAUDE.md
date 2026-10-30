@@ -50,6 +50,7 @@ Phiên chạy trên cloud và phiên trên máy KHÔNG đọc được hội tho
 - **Sỉ lấy full lịch sử**; Lẻ từ 1/6/2026. **MKT chỉ từ 1/6/2026** (chi phí ads chỉ có từ T6), MKT chỉ lấy Online.
 - **MKT**: Sỉ Online chỉ tính tháng đầu, trừ khi khách còn nhắn Pancake; đơn **mua lại** không tính MKT nhưng VẪN là doanh thu Sale.
 - **Doanh thu Online / Offline ở MỌI báo cáo = theo báo cáo MKT** (anh chốt 30/10/2026): Online = đúng các đơn MKT tính (`rptSlDonMkt` / `rptSlTienOnl`), còn lại Offline. Không theo kênh bán Kiot / cách Kế toán; Chùa Vẻn = Offline.
+- **Nguồn khách**: BẤT KỲ phiếu Kiot (không huỷ) nào của Mã KH ghi kênh online (Facebook / Tiktok / Shopee / Website / Google / Haravan) -> khách Online, không ngoại lệ (anh chốt 30/10/2026). Kênh lấy trên PHIẾU, không lấy kênh hoá đơn của đơn.
 - **Trùng SĐT = 1 người, tự gộp. ĐÂY LÀ TRƯỜNG HỢP DUY NHẤT ĐƯỢC TỰ GỘP** (anh chốt 13/10/2026): KHÔNG gộp theo tên dưới bất kỳ hình thức nào — trùng tên là chuyện bình thường.
 - **Gộp tên Sale**: chỉ khi tên ngắn nằm trọn trong tên dài (Kim Oanh ~ Nguyễn Kim Oanh).
 - **Phạm vi xem**: lọc theo Sale ĐÃ CHỐT (gán tay > người bán trên phiếu đặt / hoá đơn Kiot đã nối > không có mới lấy Pancake — anh chốt 3/10), lọc SAU khi xác định Sale; admin / supreme xem hết.
