@@ -4822,9 +4822,33 @@ function rptSlMaDuoiTen(r){
   const ma=r.kh||r.manualKH||'';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const oNho='font-size:10.5px;font-weight:700;color:var(--muted);margin-top:1px';
-  if(ma)return '<div style="'+oNho+'" title="Lead ID: '+e(r.leadId)+'">'
+  const vip=rptSlLaVip(r)?rptSlVipNhan():'';
+  if(ma)return '<div style="'+oNho+'" title="Lead ID: '+e(r.leadId)+'">'+vip
     +rptSlKiotLink(ma,'<span style="color:var(--accent)">'+e(ma)+'</span>')+rptSlNhanNguon(r)+'</div>';
-  return r.leadId?'<div style="'+oNho+'">'+e(r.leadId)+rptSlNhanNguon(r)+'</div>':'';
+  return r.leadId?'<div style="'+oNho+'">'+vip+e(r.leadId)+rptSlNhanNguon(r)+'</div>':'';
+}
+// ── KHÁCH VIP (anh Hải 30/10/2026: Sale phản hồi cần highlight khách VIP cần để ý -> nút NGÔI SAO cạnh tên trong hồ sơ khách,
+// Sale tự bấm chọn / bỏ). Lưu saleretail_manual.vip (+ vip_luc, vip_boi), SQL supabase-schema-vip.sql. Khách gộp: 1 dòng nào VIP là VIP.
+// Nhãn "VIP" vàng hiện dưới tên khách ở mọi bảng có rptSlMaDuoiTen (Master, Daily Task, CRM...). Monsieur Claude.
+const RPT_SL_SAO='<svg viewBox="0 0 24 24" width="15" height="15" style="vertical-align:-2px"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+function rptSlLaVip(r){return !!r&&rptSlIdsCua(r).some(id=>(rptSlManual[id]||{}).vip);}
+function rptSlVipNhan(){return '<span title="Khách VIP — cần để ý" style="display:inline-flex;align-items:center;gap:2px;margin-right:5px;padding:0 6px;border-radius:9px;background:#fef3c7;color:#b45309;font-size:10px;font-weight:800;vertical-align:1px">'
+  +RPT_SL_SAO.replace('width="15" height="15"','width="10" height="10"')+'VIP</span>';}
+function rptSlVipNut(r){const on=rptSlLaVip(r),k=String(r.key||'').replace(/['"\\]/g,'');
+  return '<button id="vipNut" onclick="rptSlVipDoi(\''+k+'\')" title="'+(on?'Khách VIP — bấm để bỏ đánh dấu':'Đánh dấu khách VIP cần để ý')+'"'
+    +' style="border:none;background:transparent;cursor:pointer;padding:0 2px;vertical-align:middle;color:'+(on?'#f59e0b':'var(--border2,#cbd5e1)')+'">'
+    +(on?RPT_SL_SAO:RPT_SL_SAO.replace('fill="currentColor"','fill="none"'))+'</button>';}
+async function rptSlVipDoi(key){
+  const r=rptSlBuildMaster().find(x=>x.key===key);if(!r)return;
+  const nut=document.getElementById('vipNut');if(nut){if(nut.disabled)return;nut.disabled=true;nut.style.opacity='.5';}
+  const bat=!rptSlLaVip(r),ai=localStorage.getItem('dashUser')||'app';
+  try{
+    if(bat)await rptSlSaveManual(r.leadId,{vip:true,vip_luc:new Date().toISOString(),vip_boi:ai});
+    else for(const id of rptSlIdsCua(r))if((rptSlManual[id]||{}).vip)await rptSlSaveManual(id,{vip:false,vip_luc:new Date().toISOString(),vip_boi:ai});
+    logAct('U','saleretail_manual',r.leadId,r.name||null,'Khách VIP',bat?'':'VIP',bat?'VIP':'bỏ VIP');
+  }catch(e){alert('Chưa lưu được VIP: '+e.message);}
+  try{rptSlRender();}catch(e){}
+  rptSlShowCustomer(key);
 }
 // SĐT nằm dưới Mã KH trong ô tên khách (Master + CRM, Lẻ + Sỉ -- anh Hải 02/10/2026), bỏ cột SĐT riêng.
 function rptSlSdtDuoiTen(r){
@@ -5995,10 +6019,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='29/10 15:35';
+const APP_VERSION='30/10 14:03';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=519;
+const APP_BAN=520;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -9007,7 +9031,7 @@ function rptSlShowCustomer(key,sua){
       <div style="display:flex;align-items:center;gap:13px;padding:16px 20px;border-bottom:1px solid var(--border)">
         <span style="width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:21px;color:var(--muted);flex:0 0 auto"></span>
         <div style="min-width:0">
-          <div style="font-size:16px;font-weight:800;color:var(--text)">${suaSi&&dsSua.ten?'<input id="siO_ten" value="'+esc(r.name).replace(/"/g,'&quot;')+'" onkeydown="if(event.key===\'Escape\')rptSiHuyO();else if(event.key===\'Enter\'){event.preventDefault();rptSiLuuTatCa();}" style="font-size:16px;font-weight:800;height:34px;min-width:280px;padding:2px 10px;border:1.5px solid var(--accent);border-radius:8px;background:var(--accent-l);color:var(--text);font-family:var(--font);outline:none">':esc(r.name)} <span style="font-size:12.5px;font-weight:700;color:var(--muted)">· ${esc(r.kh||r.leadId||'')}</span></div>
+          <div style="font-size:16px;font-weight:800;color:var(--text)">${suaSi&&dsSua.ten?'<input id="siO_ten" value="'+esc(r.name).replace(/"/g,'&quot;')+'" onkeydown="if(event.key===\'Escape\')rptSiHuyO();else if(event.key===\'Enter\'){event.preventDefault();rptSiLuuTatCa();}" style="font-size:16px;font-weight:800;height:34px;min-width:280px;padding:2px 10px;border:1.5px solid var(--accent);border-radius:8px;background:var(--accent-l);color:var(--text);font-family:var(--font);outline:none">':esc(r.name)} ${rptSlVipNut(r)} <span style="font-size:12.5px;font-weight:700;color:var(--muted)">· ${esc(r.kh||r.leadId||'')}</span></div>
           <div style="font-size:12px;color:var(--muted);font-weight:600">${[...(r.phones||[]).map(p=>p.so),r.kenh,r.staff].filter(Boolean).map(esc).join(' · ')}</div>
         </div>
         <span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex:0 0 auto">${nutDau}</span>
