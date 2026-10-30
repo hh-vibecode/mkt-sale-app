@@ -20,7 +20,7 @@ Soạn 29/9/2026 bởi Monsieur Claude.
 
 - **MKT / Sale (lõi, nhiều app đọc):** `datahub_orders`, `datahub_manual`, `saleretail_manual`, `salesi_crm`, `salesi_crm_note`, `mkt_ads_trang_thai`, `dang_xem`, `kiot_orders`,
   `kiot_invoices`, `kiot_customers`, `kiot_don_giu_tinh`, `mkt_spend`, `danh_muc`, `sale_nhan_su`, `pancake_tu_tao_don`, `job_moc`,
-  `activity_log`, `sync_log`, `datahub_sync_log`, `backup_snapshots`.
+  `activity_log`, `sync_log`, `datahub_sync_log`, `backup_snapshots`, `kiot_hang` (danh mục hàng + nhóm cha, 30/10/2026).
   Trigger `chan_trung` (13/10/2026) trên `salesi_crm` + `datahub_manual`: INSERT dòng giống hệt 1 dòng vừa ghi trong 2 phút sẽ bị BỎ QUA (không lỗi) — app khác ghi vào 2 bảng này cần biết.
 - **Tài khoản & đăng nhập (dùng chung, MKT / Sale giữ):** `sales_users`, `sales_user_credentials`, Edge Function `dang-nhap`,
   hàm `la_quan_tri()`, `app_*` (tạo / sửa tài khoản).

@@ -44,6 +44,15 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/sync-kiot-orders.js
 
+      # Danh mục hàng (nhóm cha) cho thẻ "Doanh số theo nhóm hàng" ở Báo cáo tổng hợp (30/10/2026) -- chỉ lượt quét lại hằng ngày (07:20 VN).
+      - name: Sync danh mục hàng KiotViet (nhóm cha)
+        if: always() && (github.event.schedule == '5 0 * * *' || inputs.backfill)
+        env:
+          KIOT_CLIENT_ID: ${{ secrets.KIOT_CLIENT_ID }}
+          KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/sync-kiot-hang.js
+
       # Sau khi có đơn mới: tự tạo dòng Data nhập tay cho khách LẺ mua qua kênh ONLINE từ 1/6/2026
       # mà app chưa có, để doanh thu về đúng báo cáo Sale/MKT mà Sale không phải gõ tay.
       - name: Tự tạo data nhập tay từ đơn Kiot
