@@ -3862,7 +3862,7 @@ async function rptVnMapVe(ma){
 // (bảng kiot_hang, job scripts/sync-kiot-hang.js mỗi sáng; khớp 100% nhóm cha bên Kế toán, đo 30/10/2026).
 // Online / Offline theo NGUỒN KHÁCH của app (như ô Online / Offline của Tổng doanh thu). Không tính lợi nhuận (anh: chỉ cần doanh số).
 window._thNhom=null;
-function rptThNhomCho(){return '<div class="tbl-card" style="margin-top:16px;padding:18px;color:var(--muted);font-size:12.5px">Doanh số theo nhóm hàng · đang tải dòng hàng…</div>';}
+function rptThNhomCho(){return '<div class="tbl-card" style="margin-bottom:16px;padding:18px;color:var(--muted);font-size:12.5px">Doanh số theo nhóm hàng · đang tải dòng hàng…</div>';}
 async function rptThNhomNap(){
   const box=document.getElementById('thNhomHang');if(!box)return;
   const ds=window._thNhomRows||[];
@@ -3874,7 +3874,7 @@ async function rptThNhomNap(){
     const nap=async(bang,set)=>{const a=[...set];for(let i=0;i<a.length;i+=80){const q=a.slice(i,i+80).map(c=>'"'+String(c).replace(/"/g,'')+'"').join(',');
       (await sbFetchAll(bang,'select=code,items&code=in.('+encodeURIComponent(q)+')')).forEach(x=>{IT[x.code]=x.items||[];});}};
     await nap('kiot_orders',can.dh);await nap('kiot_invoices',can.hd);
-  }catch(e){box.innerHTML='<div class="tbl-card" style="padding:16px 18px;color:var(--red);font-size:12.5px">Chưa tải được doanh số theo nhóm hàng: '+String(e.message||e).replace(/</g,'&lt;')+'</div>';return;}
+  }catch(e){box.innerHTML='<div class="tbl-card" style="margin-bottom:16px;padding:16px 18px;color:var(--red);font-size:12.5px">Chưa tải được doanh số theo nhóm hàng: '+String(e.message||e).replace(/</g,'&lt;')+'</div>';return;}
   const NH=window._khHangNhom,IT=window._itemsMa;
   const g={},tong={dt:0,on:0,off:0};
   ds.forEach(({r,doi})=>{const off=/offline/i.test(r.nguon||'');
@@ -3900,7 +3900,7 @@ async function rptThNhomNap(){
         +' <a href="#" onclick="event.preventDefault();event.stopPropagation();rptThNhomMo('+k+','+q+t+q+')" style="color:var(--accent);font-weight:700;text-decoration:none">xem đơn</a></td>'
         +'<td class="num">'+vnd(x[t])+'</td><td class="num">'+pc(x[t],x.dt)+'</td><td colspan="3" style="font-size:11px;color:var(--muted)">'
         +num(new Set(x.don.filter(y=>t==='on'?!y.off:y.off).map(y=>y.o.code)).size)+' phiếu</td></tr>').join('');};
-  box.innerHTML='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Doanh số theo nhóm hàng (nhóm cha)</div><div class="tbl-count">'+vnd(tong.dt)+'</div>'
+  box.innerHTML='<div class="tbl-card" style="margin-bottom:16px"><div class="tbl-head"><div class="tbl-title">Doanh số theo nhóm hàng (nhóm cha)</div><div class="tbl-count">'+vnd(tong.dt)+'</div>'
     +'<span style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:700">Online '+pc(tong.on,tong.dt)+' · Offline '+pc(tong.off,tong.dt)+'</span></div>'
     +'<div class="tbl-scroll"><table><thead><tr><th>Nhóm hàng</th><th class="num">Doanh số</th><th class="num">Tỷ trọng</th><th class="num">Online</th><th class="num">Offline</th><th>Tỉ trọng Online</th></tr></thead><tbody>'
     +(hien.map(dong).join('')||'<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted)">Không có doanh số trong kỳ</td></tr>')
@@ -4032,9 +4032,9 @@ function rptThTongHtml(){
       ${mkKpi(ic('check'),'Đã chốt',num(T_.chot),'Lẻ '+num(L_.chot)+' · Sỉ '+num(S_.chot),'g-green')}
       ${mkKpi(ic('check'),'Tỉ lệ chốt chung',tl(T_.chot,T_.khach),'Lẻ '+tl(L_.chot,L_.khach)+' · Sỉ '+tl(S_.chot,S_.khach),'g-orange')}
     </div>
+    <div id="thNhomHang">${rptThNhomCho()}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bMap}</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bTH}${bTinh}</div>
-    <div id="thNhomHang">${rptThNhomCho()}</div>`;
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bTH}${bTinh}</div>`;
 }
 const RPT_TH_TABS=[
   ['tong-hop','Tổng hợp',()=>rptThTongHtml()],
@@ -6186,10 +6186,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='30/10 16:26';
+const APP_VERSION='30/10 16:31';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=525;
+const APP_BAN=526;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
