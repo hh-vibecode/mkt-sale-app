@@ -25,6 +25,12 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // đơn đặt hàng chỉ ~3.100 đơn nên lấy hết vẫn nhẹ. Báo cáo Sale Lẻ tự chặn mốc 1/6/2026 ở phía app.
 const MIN_PURCHASE_DATE = '2021-01-01';
 const PAGE_SIZE = 100;
+// 30/10/2026 (anh Hải duyệt tối ưu): lượt 15 phút chỉ lấy đơn VỪA SỬA (lastModifiedFrom, lùi 3 giờ cho chồng lấn an toàn) -- trước
+// mỗi lượt kéo + ghi đè lại toàn bộ ~3.400 đơn (338 nghìn lần ghi). BACKFILL=1 (pg_cron 07:20 VN hằng ngày) mới quét toàn bộ như cũ.
+// API đã thử 30/10: /orders nhận lastModifiedFrom (24h: 11 đơn / 3.402); giờ truyền là GIỜ VN.
+const DAY_DU = process.env.BACKFILL === '1';
+const GIO_LUI = 3;
+const gioVN = msLui => new Date(Date.now() + 7 * 3600e3 - msLui).toISOString().slice(0, 19);
 
 const vnTime = s => (s ? (/[zZ]|[+-]\d\d:\d\d$/.test(s) ? s : s + '+07:00') : null);
 
@@ -39,18 +45,20 @@ async function getToken() {
   return json.access_token;
 }
 
-async function fetchOrders(token) {
+async function fetchOrders(token, since) {
   const headers = { Retailer: KIOT_RETAILER, Authorization: 'Bearer ' + token };
   let offset = 0, all = [];
   while (true) {
-    const qs = new URLSearchParams({ pageSize: PAGE_SIZE, currentItem: offset, orderBy: 'purchaseDate', orderDirection: 'Desc', includeOrderDelivery: 'true' });
+    const qs = new URLSearchParams(since
+      ? { pageSize: PAGE_SIZE, currentItem: offset, orderBy: 'modifiedDate', orderDirection: 'Desc', includeOrderDelivery: 'true', lastModifiedFrom: since }
+      : { pageSize: PAGE_SIZE, currentItem: offset, orderBy: 'purchaseDate', orderDirection: 'Desc', includeOrderDelivery: 'true' });
     const res = await fetch(`https://public.kiotapi.com/orders?${qs}`, { headers });
     if (!res.ok) throw new Error(`KiotViet orders lỗi ${res.status}: ${(await res.text()).slice(0, 200)}`);
     const data = (await res.json()).data || [];
     all = all.concat(data);
     if (data.length < PAGE_SIZE) break;
     const oldest = String(data[data.length - 1].purchaseDate || '').slice(0, 10);
-    if (oldest && oldest < MIN_PURCHASE_DATE) break;
+    if (!since && oldest && oldest < MIN_PURCHASE_DATE) break;
     offset += PAGE_SIZE;
     if (offset > 20000) throw new Error('Quét quá 20.000 đơn mà chưa tới mốc ngày -- dừng để tránh vòng lặp');
     await new Promise(r => setTimeout(r, 150));
@@ -63,8 +71,19 @@ async function fetchOrders(token) {
 // trong Supabase (thường chỉ là đơn mới), không gọi lại cho cả 3.000 đơn cũ.
 const GIOI_HAN_CHI_TIET = 400;   // trần mỗi lượt chạy, tránh job kéo dài bất thường
 
-async function kenhDaCo() {
+async function kenhDaCo(codes) {
   const m = {};
+  // lượt nhanh: chỉ đọc kênh của đúng các đơn vừa sửa (trước đọc lại ~3.400 dòng mỗi 15 phút)
+  if (codes) {
+    for (let i = 0; i < codes.length; i += 100) {
+      const ds = codes.slice(i, i + 100).map(c => '"' + String(c).replace(/"/g, '') + '"').join(',');
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/kiot_orders?select=code,sale_channel,sale_channel_id&sale_channel=not.is.null&code=in.(${encodeURIComponent(ds)})&limit=1000&offset=0`, {
+        headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY } });
+      if (!res.ok) throw new Error('Đọc kênh bán đã có lỗi ' + res.status);
+      (await res.json()).forEach(r => { m[r.code] = { ten: r.sale_channel, id: r.sale_channel_id }; });
+    }
+    return m;
+  }
   let offset = 0;
   for (;;) {
     // Phân trang bằng limit/offset trên URL (bộ chặn scripts/check-pagination.js chỉ nhận dạng này).
@@ -98,7 +117,7 @@ async function layKenh(token, code, dm) {
 }
 
 async function ganKenh(token, rows) {
-  const daCo = await kenhDaCo();
+  const daCo = await kenhDaCo(DAY_DU ? null : rows.map(r => r.code));
   const thieu = rows.filter(r => !daCo[r.code]).slice(0, GIOI_HAN_CHI_TIET);
   if (!thieu.length) { rows.forEach(r => { const k = daCo[r.code] || {}; r.sale_channel = k.ten || null; r.sale_channel_id = k.id ?? null; }); return; }
   const dm = await danhMucKenh(token);
@@ -172,10 +191,11 @@ async function logSync(body, id) {
   const logId = await logSync({ source: 'KiotViet - Đơn đặt hàng', status: 'running' });
   try {
     const token = await getToken();
-    const orders = await fetchOrders(token);
+    const since = DAY_DU ? null : gioVN(GIO_LUI * 3600e3);
+    console.log(`Chế độ: ${DAY_DU ? 'quét TOÀN BỘ đơn' : 'chỉ đơn sửa từ ' + since + ' (giờ VN)'}`);
+    const orders = await fetchOrders(token, since);
     const rows = orders.map(mapOrder).filter(r => r.purchase_date && r.purchase_date.slice(0, 10) >= MIN_PURCHASE_DATE);
-    await ganKenh(token, rows);
-    await upsert(rows);
+    if (rows.length) { await ganKenh(token, rows); await upsert(rows); }
     const st = {};
     rows.forEach(r => { st[r.status_value || r.status] = (st[r.status_value || r.status] || 0) + 1; });
     console.log(`XONG. API trả ${orders.length} đơn, upsert ${rows.length} đơn từ ${MIN_PURCHASE_DATE}.`, JSON.stringify(st));

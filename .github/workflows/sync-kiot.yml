@@ -34,7 +34,8 @@ jobs:
           BACKFILL: ${{ (github.event.schedule == '5 0 * * *' || inputs.backfill) && '1' || '0' }}
         run: node scripts/sync-kiot-invoices.js
       # Đơn đặt hàng = nguồn doanh số + ngày chốt của báo cáo Sale (hoá đơn phía trên chỉ để đối soát).
-      # Luôn quét lại toàn bộ từ 1/6 (~9 request) để bắt cả đơn cũ bị huỷ / đổi tiền.
+      # 30/10/2026: lượt 15 phút chỉ lấy đơn VỪA SỬA (lastModifiedFrom 3 giờ); lượt backfill hằng ngày (07:20 VN) quét lại TOÀN BỘ.
+      # Hoá đơn: lượt 15 phút lấy hoá đơn + khách vừa sửa 6 giờ; backfill = hoá đơn tháng hiện tại + toàn bộ khách, Chủ nhật toàn bộ hoá đơn.
       - name: Sync đơn đặt hàng KiotViet -> Supabase
         if: always()
         env:

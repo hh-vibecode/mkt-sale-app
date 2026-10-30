@@ -22,7 +22,11 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BACKFILL = process.env.BACKFILL === '1';
 // Từ 1/1/2026 (anh Hải 02/10/2026: app xem "Tất cả 2026"). Trước 2026 chỉ có SỐ TỔNG ở bảng kiot_luu_tru_thang (khoá).
 const MIN_PURCHASE_DATE = '2026-01-01';
-const INCREMENTAL_DAYS = 3;
+// 30/10/2026 (anh Hải duyệt tối ưu): lượt 15 phút lấy hoá đơn + khách VỪA SỬA trong 6 giờ (trước: hoá đơn 3 ngày + TOÀN BỘ 7.700 khách
+// mỗi lượt -> 780 nghìn lần ghi bảng khách). BACKFILL=1 (07:20 VN hằng ngày): hoá đơn THÁNG HIỆN TẠI (mùng 1–5 lấy cả tháng trước) +
+// toàn bộ khách; CHỦ NHẬT: hoá đơn toàn bộ từ MIN_PURCHASE_DATE (phòng hoá đơn cũ bị huỷ / sửa tiền mà sót).
+const GIO_LUI = 6;
+const gioVN = msLui => new Date(Date.now() + 7 * 3600e3 - msLui).toISOString().slice(0, 19);
 const PAGE_SIZE = 100;
 
 async function getToken() {
@@ -59,11 +63,33 @@ async function fetchInvoices(token, filter) {
 //   2) nối tự động Pancake <-> Kiot bằng 9 SỐ CUỐI SĐT, để khỏi phải nhờ Sale gõ Mã KH
 // Bắt buộc có includeCustomerGroup (lấy "Khách lẻ"/"Khách buôn") + includeTotal (lấy Tổng bán trừ trả lại).
 const phoneKeyOf = s => { const d = (s || '').toString().replace(/\D/g, ''); return d.length >= 9 ? d.slice(-9) : null; };
-async function fetchCustomers(token) {
+// Lượt nhanh: tải lại từng khách có hoá đơn / đơn đặt hàng vừa đổi (tối đa 80 khách / lượt), gộp vào danh sách khách để upsert.
+async function themKhachVuaGiaoDich(token, since, invoices, customers) {
+  const headers = { Retailer: KIOT_RETAILER, Authorization: 'Bearer ' + token };
+  const co = new Set(customers.map(c => c.code));
+  const ma = new Set(invoices.map(i => i.customerCode).filter(Boolean));
+  try {
+    const qs = new URLSearchParams({ pageSize: PAGE_SIZE, currentItem: 0, orderBy: 'modifiedDate', orderDirection: 'Desc', lastModifiedFrom: since });
+    const r = await fetch(`https://public.kiotapi.com/orders?${qs}`, { headers });
+    if (r.ok) ((await r.json()).data || []).forEach(o => { if (o.customerCode) ma.add(o.customerCode); });
+  } catch (e) { console.warn('Đọc đơn vừa đổi để làm mới khách lỗi (bỏ qua):', e.message); }
+  const can = [...ma].filter(c => !co.has(c)).slice(0, 80);
+  let them = 0;
+  for (const code of can) {
+    // /customers/code/{ma} trả 401 với kết nối này (thử 30/10) -> dùng danh sách lọc ?code= (trả đủ nhóm khách / nợ / tổng mua), khớp ĐÚNG mã
+    const r = await fetch(`https://public.kiotapi.com/customers?${new URLSearchParams({ code, includeCustomerGroup: 'true', includeTotal: 'true', pageSize: 20 })}`, { headers });
+    if (!r.ok) continue;
+    const c = ((await r.json()).data || []).find(x => x.code === code);
+    if (c) { customers.push(c); them++; }
+    await new Promise(x => setTimeout(x, 100));
+  }
+  console.log(`Làm mới thêm ${them}/${can.length} khách có phiếu vừa đổi (nợ / cọc / tổng mua).`);
+}
+async function fetchCustomers(token, since) {
   const headers = { Retailer: KIOT_RETAILER, Authorization: 'Bearer ' + token };
   let offset = 0, total = Infinity, all = [];
   while (offset < total) {
-    const qs = new URLSearchParams({ pageSize: PAGE_SIZE, currentItem: offset, includeCustomerGroup: 'true', includeTotal: 'true' });
+    const qs = new URLSearchParams({ pageSize: PAGE_SIZE, currentItem: offset, includeCustomerGroup: 'true', includeTotal: 'true', ...(since ? { lastModifiedFrom: since } : {}) });
     const res = await fetch(`https://public.kiotapi.com/customers?${qs}`, { headers });
     if (!res.ok) throw new Error(`KiotViet customers lỗi ${res.status}: ${(await res.text()).slice(0, 200)}`);
     const json = await res.json();
@@ -166,27 +192,44 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
     console.error('Thiếu KIOT_CLIENT_ID / KIOT_CLIENT_SECRET / SUPABASE_SERVICE_ROLE_KEY');
     process.exit(1);
   }
-  console.log(`Chế độ: ${BACKFILL ? 'BACKFILL từ ' + MIN_PURCHASE_DATE : 'incremental (sửa trong ' + INCREMENTAL_DAYS + ' ngày gần nhất)'}`);
   const logId = await logSyncStart().catch(e => { console.warn('logSyncStart lỗi (bỏ qua):', e.message); return null; });
   try {
     const token = await getToken();
-    let filter;
-    if (BACKFILL) {
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-      filter = { fromPurchaseDate: MIN_PURCHASE_DATE, toPurchaseDate: tomorrow };
+    let filter, sinceKhach = null, cheDo;
+    const homNay = new Date(Date.now() + 7 * 3600e3), tomorrow = new Date(Date.now() + 7 * 3600e3 + 86400000).toISOString().slice(0, 10);
+    if (BACKFILL && homNay.getUTCDay() === 0) {
+      filter = { fromPurchaseDate: MIN_PURCHASE_DATE, toPurchaseDate: tomorrow }; cheDo = 'CHỦ NHẬT: hoá đơn toàn bộ từ ' + MIN_PURCHASE_DATE;
+    } else if (BACKFILL) {
+      const d = new Date(Date.UTC(homNay.getUTCFullYear(), homNay.getUTCMonth() - (homNay.getUTCDate() <= 5 ? 1 : 0), 1)).toISOString().slice(0, 10);
+      filter = { fromPurchaseDate: d < MIN_PURCHASE_DATE ? MIN_PURCHASE_DATE : d, toPurchaseDate: tomorrow }; cheDo = 'hằng ngày: hoá đơn từ ' + filter.fromPurchaseDate;
     } else {
-      const since = new Date(Date.now() - INCREMENTAL_DAYS * 86400000).toISOString().slice(0, 19);
-      filter = { lastModifiedFrom: since };
+      sinceKhach = gioVN(GIO_LUI * 3600e3);
+      filter = { lastModifiedFrom: sinceKhach }; cheDo = 'nhanh: hoá đơn + khách sửa từ ' + sinceKhach + ' (giờ VN)';
     }
-    const [invoices, customers] = await Promise.all([fetchInvoices(token, filter), fetchCustomers(token)]);
+    console.log('Chế độ: ' + cheDo + (sinceKhach ? '' : ' · khách: toàn bộ'));
+    const [invoices, customers] = await Promise.all([fetchInvoices(token, filter), fetchCustomers(token, sinceKhach)]);
+    // Nợ / cọc của khách đổi khi có phiếu mới nhưng Kiot CHƯA CHẮC đánh dấu khách "vừa sửa" -> lượt nhanh tải lại riêng các khách
+    // có HOÁ ĐƠN hoặc ĐƠN ĐẶT HÀNG vừa đổi (app dùng nợ âm = đã cọc cho luật dấu vết tiền).
+    if (sinceKhach) await themKhachVuaGiaoDich(token, sinceKhach, invoices, customers);
     const phoneByCode = {};
     customers.forEach(c => { if (c.code && c.contactNumber) phoneByCode[c.code] = c.contactNumber; });
+    // lượt nhanh chỉ có khách vừa sửa -> SĐT các khách khác đọc lại từ CSDL, KHÔNG để hoá đơn bị ghi đè SĐT trống
+    if (sinceKhach) {
+      const thieu = [...new Set(invoices.map(i => i.customerCode).filter(c => c && !(c in phoneByCode)))];
+      for (let i = 0; i < thieu.length; i += 100) {
+        const ds = thieu.slice(i, i + 100).map(c => '"' + String(c).replace(/"/g, '') + '"').join(',');
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/kiot_customers?select=code,phone&code=in.(${encodeURIComponent(ds)})&limit=1000&offset=0`,
+          { headers: { apikey: SERVICE_ROLE_KEY, Authorization: 'Bearer ' + SERVICE_ROLE_KEY } });
+        if (!res.ok) throw new Error('Đọc SĐT khách đã có lỗi ' + res.status);
+        (await res.json()).forEach(c => { if (c.phone) phoneByCode[c.code] = c.phone; });
+      }
+    }
     const dm = await danhMucKenh(token);
     const rows = invoices.map(i => mapInvoice(i, dm)).filter(r => r.purchase_date && r.purchase_date.slice(0, 10) >= MIN_PURCHASE_DATE);
     rows.forEach(r => { r.customer_phone = r.customer_code ? (phoneByCode[r.customer_code] || null) : null; });
-    await upsertRows('kiot_invoices', rows, 'id');
+    if (rows.length) await upsertRows('kiot_invoices', rows, 'id');
     const custRows = customers.map(mapCustomer).filter(c => c.code);
-    await upsertRows('kiot_customers', custRows, 'id');
+    if (custRows.length) await upsertRows('kiot_customers', custRows, 'id');
     const le = custRows.filter(c => (c.customer_group || '').trim().toLowerCase() === 'khách lẻ').length;
     console.log(`XONG. Hoá đơn: API trả ${invoices.length}, upsert ${rows.length} (từ ${MIN_PURCHASE_DATE}), ${rows.filter(r => r.customer_phone).length} có SĐT.`);
     console.log(`      Khách hàng: upsert ${custRows.length} (${le} nhóm "Khách lẻ", ${custRows.filter(c => c.phone_key).length} có SĐT dùng để nối với Pancake).`);
