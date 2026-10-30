@@ -6021,10 +6021,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='30/10 14:19';
+const APP_VERSION='30/10 14:54';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=521;
+const APP_BAN=522;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7627,6 +7627,14 @@ function rptSlBuildMasterRaw(){
       if(d&&d.sale_channel!==r.kenh&&RPT_KENH_ONLINE.test(d.sale_channel)){r.kenhKiot=d.sale_channel;r.kenh=rptSlKenhNorm(d.sale_channel)||d.sale_channel;
         if(!nTay&&!/online/i.test(r.nguon||''))r.nguonTheoKenh=r.nguon||'(trống)';if(!nTay)r.nguon='Online';}}
     if(!nTay&&RPT_KENH_ONLINE.test(r.kenh||'')&&!/online/i.test(r.nguon||''))r.nguonTheoKenh=r.nguon||'(trống)',r.nguon='Online';
+    // (3) 30/10/2026 (anh Hải: "các bạn update thêm thông tin thì sao, chỉ kéo data mới thì dễ sót"): khách đang Offline mà BẤT KỲ đơn
+    //     Kiot nào (không chỉ đơn đầu) ghi kênh online -> Online, kênh theo đơn online sớm nhất. Ca soát T10: M-2145 có đơn Facebook HT
+    //     nhưng đơn đầu "Bán trực tiếp" nên vẫn Offline. Tính lại mỗi lần mở app theo kênh HIỆN TẠI trên Kiot (đơn quét lại toàn bộ mỗi lượt).
+    if(!nTay&&!/online/i.test(r.nguon||'Online')){
+      const d=(r.kords||[]).concat(r.repeatOrds||[]).filter(o=>o&&RPT_KENH_ONLINE.test(o.sale_channel||''))
+        .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)))[0];
+      if(d){r.nguonTheoKenh=r.nguon||'(trống)';r.nguon='Online';
+        if(!kTay&&!RPT_KENH_ONLINE.test(r.kenh||'')){r.kenhKiot=d.sale_channel;r.kenh=rptSlKenhNorm(d.sale_channel)||d.sale_channel;}}}
   });
   // LẺ: SĐT / địa chỉ Sale ghi ở chế độ sửa hồ sơ (cùng cột si_sdt / si_dia_chi với Sỉ, 30/9/2026)
   if(rptSlType()!=='Sỉ')rows.forEach(r=>{const mn=rptSlManual[r.leadId]||{};
