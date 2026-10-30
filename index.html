@@ -2058,7 +2058,7 @@ function dataModal(d){
       <div style="display:flex;justify-content:space-between;align-items:center;padding:15px 20px;border-bottom:1px solid var(--border)">
         <div style="font-size:15px;font-weight:800;color:var(--text)">${d.title} <span style="color:var(--muted);font-weight:600;font-size:13px">· ${d.rows.length}</span></div>
         <button onclick="qcCloseModal()" style="background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button>
-      </div>
+      </div>${d.phu?'<div style="padding:10px 20px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:8px;align-items:center">'+d.phu+'</div>':''}
       <div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     </div></div>`;
 }
@@ -3925,7 +3925,7 @@ function rptThNhomMo(k,t){
   const tab=(m,nhan)=>'<button onclick="rptThNhomMo('+k+','+q+m+q+')" style="flex:1;border:none;border-radius:8px;padding:9px 10px;cursor:pointer;font-family:var(--font);font-size:12.5px;font-weight:800;'
     +(t===m?'background:var(--accent);color:#fff':'background:transparent;color:var(--text2)')+'">'+nhan+'</button>';
   const trieu=v=>(v/1e6).toFixed(1).replace('.',',')+' tr';
-  const ky=(modRanges.tonghop||{});
+  const ky=modRange('tonghop')||{};   // kỳ đang chọn (kể cả kỳ mặc định -- modRanges chỉ có khi người dùng tự chọn)
   const link=c=>'<a href="https://sieuthidotho285.kiotviet.vn/man/#/'+(/^HD/i.test(c)?'Invoices':'Order')+'?Code='+encodeURIComponent(c)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);font-weight:700;text-decoration:none">'+e(c)+'</a>';
   let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
   m.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;justify-content:flex-end" onclick="if(event.target===this)qcCloseModal()">'
@@ -3934,16 +3934,16 @@ function rptThNhomMo(k,t){
     +'<button onclick="qcCloseModal()" style="margin-left:auto;background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
     +'<div style="display:flex;gap:6px;padding:4px;border:1px solid var(--border);border-radius:10px;margin-bottom:14px">'+tab('all','Tất cả · '+trieu(x.dt))+tab('on','Online · '+trieu(x.on))+tab('off','Offline · '+trieu(x.off))+'</div>'
     +'<table style="width:100%;border-collapse:collapse;font-size:12.5px;border:1px solid var(--border);border-radius:10px;margin-bottom:16px">'
-    +[['Kỳ',(dmy(ky.from)||'—')+' – '+(dmy(ky.to)||'—')],['Doanh số','<b>'+vnd(tien)+'</b>'],['Số phiếu',num(soPhieu)]].map(([a,b])=>'<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 12px;color:var(--muted);width:140px">'+a+'</td><td style="padding:8px 12px">'+b+'</td></tr>').join('')+'</table>'
-    +'<div style="font-size:13.5px;font-weight:800;margin-bottom:6px">Theo nguồn</div>'
-    +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px"><thead><tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border)"><th style="padding:6px 8px">Nguồn</th><th style="padding:6px 8px;text-align:right">Số phiếu</th><th style="padding:6px 8px;text-align:right">Doanh số</th><th style="padding:6px 8px;text-align:right">Tỷ trọng</th></tr></thead><tbody>'
+    +[['Kỳ',(ky.from||ky.to?(dmy(ky.from)||'…')+' – '+(dmy(ky.to)||'…'):'Tất cả')+' · theo ngày chốt (ngày tạo đơn Kiot)'],['Doanh số','<b>'+vnd(tien)+'</b>'],['Số phiếu',num(soPhieu)]].map(([a,b])=>'<tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 12px;color:var(--muted);width:140px">'+a+'</td><td style="padding:8px 12px">'+b+'</td></tr>').join('')+'</table>'
+    +'<div style="font-size:13.5px;font-weight:800;margin-bottom:6px">Theo kênh bán (ghi trên phiếu Kiot)</div>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px"><thead><tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border)"><th style="padding:6px 8px">Kênh bán</th><th style="padding:6px 8px;text-align:right">Số phiếu</th><th style="padding:6px 8px;text-align:right">Doanh số</th><th style="padding:6px 8px;text-align:right">Tỷ trọng</th></tr></thead><tbody>'
     +dsNg.map(z=>'<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px">'+e(z.n)+'</td><td style="padding:6px 8px;text-align:right">'+num(z.phieu.size)+'</td><td style="padding:6px 8px;text-align:right">'+vnd(z.dt)+'</td><td style="padding:6px 8px;text-align:right">'+(tien?(z.dt/tien*100).toFixed(1)+'%':'—')+'</td></tr>').join('')+'</tbody></table>'
     +'<div style="font-size:13.5px;font-weight:800;margin-bottom:6px">Phiếu ('+num(soPhieu)+')</div>'
-    +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border)"><th style="padding:6px 8px">Ngày</th><th style="padding:6px 8px">Phiếu</th><th style="padding:6px 8px">Khách hàng</th><th style="padding:6px 8px">Cơ sở</th><th style="padding:6px 8px">Nguồn</th><th style="padding:6px 8px;text-align:right">DS nhóm</th></tr></thead><tbody>'
+    +'<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border)"><th style="padding:6px 8px">Ngày chốt</th><th style="padding:6px 8px">Phiếu</th><th style="padding:6px 8px">Khách hàng</th><th style="padding:6px 8px">Cơ sở</th><th style="padding:6px 8px">Kênh bán</th><th style="padding:6px 8px;text-align:right">DS nhóm</th></tr></thead><tbody>'
     +ds.map(y=>'<tr onclick="rptMoKhachLoai('+q+y.doi+q+','+q+String(y.r.key).replace(/[\'"\\]/g,'')+q+')" style="cursor:pointer;border-bottom:1px solid var(--border)"><td style="padding:6px 8px;white-space:nowrap">'+(dmy(String(y.o.purchase_date).slice(0,10))||'—').slice(0,5)+'</td>'
       +'<td style="padding:6px 8px">'+link(y.o.code)+'</td><td style="padding:6px 8px">'+e(y.r.name)+rptSlSaoVip(y.r)+'<div style="font-size:10.5px;color:var(--muted)">'+e(y.r.kh||y.r.leadId||'')+' · '+y.doi+'</div></td>'
       +'<td style="padding:6px 8px">'+e(y.o.branch_name||'—')+'</td><td style="padding:6px 8px">'+e(kenh(y))+'</td><td style="padding:6px 8px;text-align:right;font-weight:800">'+vnd(y.v)+'</td></tr>').join('')
-    +'</tbody></table><div style="font-size:11px;color:var(--muted);margin-top:10px">DS nhóm = phần dòng hàng thuộc nhóm này trong phiếu (giảm giá cả phiếu chia theo tỉ lệ). Bấm dòng để mở hồ sơ khách.</div>'
+    +'</tbody></table><div style="font-size:11px;color:var(--muted);margin-top:10px">Online / Offline theo NGUỒN KHÁCH trong app (khách Online mua tại quầy vẫn là Online); cột Kênh bán là kênh ghi trên phiếu Kiot. DS nhóm = phần dòng hàng thuộc nhóm này trong phiếu (giảm giá cả phiếu chia theo tỉ lệ). Bấm dòng để mở hồ sơ khách.</div>'
     +'</div></div>';
 }
 function rptThTongHtml(){
@@ -4403,9 +4403,17 @@ function rptMktHtml(){
       .sort((a,b)=>(b.chot-a.chot)||(b.trungNgay.length-a.trungNgay.length)||String(b.ngay).localeCompare(String(a.ngay)));
     const tongMua=Object.values(ngayMua).reduce((s,n)=>s+n,0),soChot=ds.filter(y=>y.chot).length;
     const chuoiNgay=Object.entries(ngayMua).sort().map(([d,n])=>dmy(d).slice(0,5)+(n>1?' ×'+n:'')).join(', ');
-    window._rptSlLists[k]={title:tieuDe+' · Meta '+num(tongMua)+' lượt mua'+(chuoiNgay?' ('+chuoiNgay+')':'')+' · '+num(ds.length)+' khách từ quảng cáo · '+num(soChot)+' đã chốt',
-      cols:['Ngày (Pancake)','Khách','Thẻ Pancake','Sales','Quảng cáo','Pancake','Trong app / Kiot','Doanh thu MKT','Lượt mua Meta'],
-      rows:ds.map(y=>{const r=y.r,ka=y.ka,o=y.x.dons[0]||{};
+    // GỌN (anh Hải 30/10/2026: "10 mà ra 23, viết liên thiên dài dòng"): 23 = MỌI khách để lại đơn từ quảng cáo (lead), KHÔNG phải lượt mua.
+    // Mặc định chỉ hiện khách KHỚP lượt mua (đã chốt hoặc có đơn / ngày chốt trùng ngày Meta ghi lượt mua); nút chuyển xem tất cả.
+    const ung=ds.filter(y=>y.chot||y.trungNgay.length);
+    const the=(t,mau)=>'<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;background:var(--bg2);font-size:11.5px;font-weight:700;color:'+(mau||'var(--text2)')+'">'+t+'</span>';
+    const nut=(kk,t)=>'<a href="#" onclick="event.preventDefault();rptSlShow('+String.fromCharCode(39)+kk+String.fromCharCode(39)+')" style="margin-left:auto;font-size:12px;font-weight:800;color:var(--accent);text-decoration:none">'+t+'</a>';
+    const phu=dangXem=>the('Meta '+num(tongMua)+' lượt mua')+(chuoiNgay?'<span style="font-size:11px;color:var(--muted)">'+chuoiNgay+'</span>':'')
+      +the('Đã chốt '+num(soChot),'var(--green)')+the('Có thể '+num(ung.filter(y=>!y.chot).length)+' · trùng ngày, chưa chốt','var(--orange,#f97316)')+the(num(ds.length)+' khách từ quảng cáo','var(--muted)')
+      +(dangXem==='ung'?nut(k+'_tat','Xem tất cả '+num(ds.length)+' khách ›'):nut(k,'‹ Chỉ đã chốt / có thể'));
+    const goc={title:tieuDe,
+      cols:['Ngày (Pancake)','Khách','Thẻ Pancake','Sales','Quảng cáo','Pancake','Trong app / Kiot','Doanh thu MKT','Trùng ngày lượt mua'],
+      rows:y=>{const r=y.r,ka=y.ka,o=y.x.dons[0]||{};
         const ten=r?e(r.name)+rptSlSaoVip(r):ka?e(ka.name)+rptSlSaoVip(ka):e(o.customer_name||'—');
         const ma=r?(r.kh||r.leadId||''):ka?(ka.kh||ka.leadId||''):'';
         const chat=r&&rptSlChatUrl(r)||(o.conversation_id?'https://pancake.vn/'+(o.page_id||String(o.conversation_id).split('_')[0])+'?c_id='+encodeURIComponent(o.conversation_id):'')||(ka&&ka.chat)||'';
@@ -4420,8 +4428,10 @@ function rptMktHtml(){
           '<span style="font-size:10.5px">'+[...y.x.adIds].map(id=>e(tenAd[id]||id)).join('<br>')+'</span>',
           chat?'<a href="'+chat+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat ↗</a>':'—',
           app,dt>0?vnd(dt):'—',
-          y.trungNgay.length?'<span title="Ngày đơn / ngày chốt trùng ngày Meta ghi lượt mua" style="color:var(--green);font-weight:800">✓ '+y.trungNgay.map(d=>dmy(d).slice(0,5)).join(', ')+'</span>':'—'];}),
-      keys:ds.map(y=>y.r?y.r.key:(y.ka?y.ka.key:null)),loais:ds.map(y=>y.t||(y.ka?y.ka.loai:'Lẻ'))};
+          y.trungNgay.length?'<span title="Ngày đơn / ngày chốt trùng ngày Meta ghi lượt mua" style="color:var(--green);font-weight:800">✓ '+y.trungNgay.map(d=>dmy(d).slice(0,5)).join(', ')+'</span>':'—'];}};
+    const dung=(dsx,dangXem)=>({title:goc.title,cols:goc.cols,rows:dsx.map(goc.rows),phu:phu(dangXem),
+      keys:dsx.map(y=>y.r?y.r.key:(y.ka?y.ka.key:null)),loais:dsx.map(y=>y.t||(y.ka?y.ka.loai:'Lẻ'))});
+    window._rptSlLists[k]=dung(ung,'ung');window._rptSlLists[k+'_tat']=dung(ds,'tat');
     return k;};
   const oMua=(x,k,tieuDe,dsA)=>{const n=x.mua||0;const kk=muaDs(k,tieuDe,dsA);const coDs=(window._rptSlLists[kk].rows||[]).length;
     return '<td class="num">'+(n||coDs?'<span onclick="event.stopPropagation();rptSlShow('+String.fromCharCode(39)+kk+String.fromCharCode(39)+')" title="Bấm xem khách đến từ quảng cáo: đơn Pancake, đã chốt, phiếu Kiot" style="cursor:pointer;font-weight:800;border-bottom:1px dashed var(--accent)">'+num(n)+'</span>':'—')+'</td>'
@@ -6186,10 +6196,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='30/10 16:31';
+const APP_VERSION='30/10 16:35';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=526;
+const APP_BAN=527;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
