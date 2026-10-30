@@ -4149,6 +4149,20 @@ function rptMktData(){
     });
   });
   window._rptSlType=cu2||'Lẻ';window._rptSlMod=cuMod2||null;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
+  // NỐI LƯỢT MUA XUYÊN PANCAKE (anh Hải 30/10/2026: "sao 7 mà click có 1, tìm cách nối"): Meta chỉ cho SỐ lượt mua theo ngày, không cho
+  // biết của ai; Pancake không đánh dấu đơn nào đã gửi lượt mua (đã dò hội thoại + đơn POS). Nên nối từ phía Pancake: MỌI đơn Pancake mang
+  // Ad ID trong kỳ -> tra ra khách trong app (Lẻ / Sỉ, qua r.orders) -> đã chốt chưa, phiếu Kiot, doanh thu; ngày có lượt mua Meta để đối chiếu.
+  {const cu3=window._rptSlType,cuMod3=window._rptSlMod,ban={};
+   window._rptSlMod=null;
+   ['Lẻ','Sỉ'].forEach(t=>{window._rptSlType=t;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
+     rptSlBuildMaster().forEach(r=>(r.orders||[]).forEach(o=>{ban[o.shop_id+'_'+o.order_id]={r,t};}));});
+   window._rptSlType=cu3||'Lẻ';window._rptSlMod=cuMod3||null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
+   Object.values(theoAd).forEach(a=>{a.donPc=[];a.ngayMua={};});
+   (window.allRowsRaw||[]).forEach(x=>{const id=String(x[COL.AD_ID]||'').trim(),n=Number(x[COL.PURCHASES]||0);
+     if(!n||!theoAd[id])return;const d=String(x[COL.DATE]||'').slice(0,10);if(!rptMktInRange(d))return;theoAd[id].ngayMua[d]=(theoAd[id].ngayMua[d]||0)+n;});
+   (typeof dhOrders!=='undefined'?dhOrders:[]).forEach(o=>{const id=String(o.ad_id||'').trim();if(!id||!theoAd[id])return;
+     const d=String(o.order_date||'').slice(0,10);if(!rptMktInRange(d))return;if(typeof dhHuy==='function'&&dhHuy(o))return;
+     const m=ban[o.shop_id+'_'+o.order_id];theoAd[id].donPc.push({o,r:m&&m.r,t:m&&m.t});});}
   const rev=sale.reduce((a,x)=>a+x.rev,0);
   return{ads,kpi,spendBrand,spendNgay,camp,sale,revBrand,plat,rev,don:sale.length,theoAd};
 }
@@ -4273,20 +4287,49 @@ function rptMktHtml(){
     '<span title="Lượt mua Meta (Pancake báo khi chốt) · bấm số để xem khách trong app">Lượt mua</span>','<span title="Doanh thu tính cho MKT của khách mang Ad ID">Doanh thu</span>'];
   window._rptSlLists=window._rptSlLists||{};
   const KIOT_DON='https://sieuthidotho285.kiotviet.vn/man/#/Order?Code=';
-  const muaDs=(k,tieuDe,dsKhach)=>{
+  const kiotPhieu=c=>/^HD/i.test(String(c))?'https://sieuthidotho285.kiotviet.vn/man/#/Invoices?Code='+encodeURIComponent(c):KIOT_DON+encodeURIComponent(c);   // HD = hoá đơn, DH = đơn đặt hàng
+  // dsA = danh sách quảng cáo (theoAd) của dòng đang bấm (1 quảng cáo / cả nhóm / cả chiến dịch). Danh sách = MỌI đơn Pancake mang Ad ID
+  // trong kỳ + khách đã chốt trong app mang Ad ID (kể cả Ad ID suy từ SĐT); mỗi khách 1 dòng; dòng trùng NGÀY có lượt mua Meta được đánh dấu.
+  const muaDs=(k,tieuDe,dsA)=>{
     const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    const co={},ds=dsKhach.filter(x=>x.chot&&(co[x.key]?false:(co[x.key]=true))).sort((a,b)=>String(b.ngay).localeCompare(String(a.ngay)));
-    window._rptSlLists[k]={title:tieuDe+' · '+num(ds.length)+' khách đã chốt',
-      cols:['Ngày chốt','Khách','Sales','Ad ID','Pancake','Phiếu Kiot','Doanh thu MKT'],
-      rows:ds.map(x=>[dmy(x.ngay)||'—',e(x.name)+rptSlSaoVip(x)+'<div style="font-size:10.5px;color:var(--muted)">'+e(x.kh||x.leadId||'')+(x.tinh?'':' · <span title="Chưa đủ điều kiện tính MKT (thẻ chưa Chốt đơn / ngoài kỳ)">không tính MKT</span>')+'</div>',
-        rptSlSaleHien(x.staff),'<span style="font-size:10.5px">'+e(x.adId)+'</span>',
-        x.chat?'<a href="'+x.chat+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat ↗</a>':'—',
-        (x.don||[]).length?x.don.map(c=>'<a href="'+KIOT_DON+encodeURIComponent(c)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);font-weight:700;text-decoration:none">'+e(c)+'</a>').join('<br>'):'—',
-        x.rev>0?vnd(x.rev):'—']),
-      keys:ds.map(x=>x.key),loais:ds.map(x=>x.loai)};
+    const ngayMua={};dsA.forEach(a=>Object.entries(a.ngayMua||{}).forEach(([d,n])=>{ngayMua[d]=(ngayMua[d]||0)+n;}));
+    const tenAd={};dsA.forEach(a=>{tenAd[a.id]=a.ten||a.id;});
+    const dong={};   // khoá = khách trong app (r.key) hoặc đơn Pancake chưa có trong app
+    dsA.forEach(a=>(a.donPc||[]).forEach(({o,r,t})=>{const kk=r?r.key:'pc'+o.shop_id+'_'+o.order_id;
+      const x=dong[kk]=dong[kk]||{r,t,dons:[],adIds:new Set()};x.dons.push(o);x.adIds.add(a.id);}));
+    // khách đã chốt mang Ad ID mà không có đơn Pancake gắn Ad ID đó (Ad ID suy từ SĐT...) vẫn đưa vào
+    dsA.forEach(a=>(a.khach||[]).forEach(x=>{if(!x.chot||dong[x.key])return;dong[x.key]={khachApp:x,dons:[],adIds:new Set([a.id])};}));
+    const ds=Object.values(dong).map(x=>{const r=x.r,ka=x.khachApp;
+      const ngay=x.dons.map(o=>String(o.order_date||'').slice(0,10)).sort()[0]||(ka&&String(ka.ngay||'').slice(0,10))||'';
+      const chot=r?!!r.isChot:!!(ka&&ka.chot);
+      const ngayChot=r&&r.isChot?String(r.closeDate||'').slice(0,10):(ka?String(ka.ngay||'').slice(0,10):'');
+      const trungNgay=[...new Set([...x.dons.map(o=>String(o.order_date||'').slice(0,10)),ngayChot].filter(d=>d&&ngayMua[d]))];
+      return {x,r,ka,ngay,chot,ngayChot,trungNgay};})
+      .sort((a,b)=>(b.chot-a.chot)||(b.trungNgay.length-a.trungNgay.length)||String(b.ngay).localeCompare(String(a.ngay)));
+    const tongMua=Object.values(ngayMua).reduce((s,n)=>s+n,0),soChot=ds.filter(y=>y.chot).length;
+    const chuoiNgay=Object.entries(ngayMua).sort().map(([d,n])=>dmy(d).slice(0,5)+(n>1?' ×'+n:'')).join(', ');
+    window._rptSlLists[k]={title:tieuDe+' · Meta '+num(tongMua)+' lượt mua'+(chuoiNgay?' ('+chuoiNgay+')':'')+' · '+num(ds.length)+' khách từ quảng cáo · '+num(soChot)+' đã chốt',
+      cols:['Ngày (Pancake)','Khách','Thẻ Pancake','Sales','Quảng cáo','Pancake','Trong app / Kiot','Doanh thu MKT','Lượt mua Meta'],
+      rows:ds.map(y=>{const r=y.r,ka=y.ka,o=y.x.dons[0]||{};
+        const ten=r?e(r.name)+rptSlSaoVip(r):ka?e(ka.name)+rptSlSaoVip(ka):e(o.customer_name||'—');
+        const ma=r?(r.kh||r.leadId||''):ka?(ka.kh||ka.leadId||''):'';
+        const chat=r&&rptSlChatUrl(r)||(o.conversation_id?'https://pancake.vn/'+(o.page_id||String(o.conversation_id).split('_')[0])+'?c_id='+encodeURIComponent(o.conversation_id):'')||(ka&&ka.chat)||'';
+        const kords=r?(r.kords||[]):[];
+        const app=!r&&!ka?'<span style="color:var(--muted)">chưa có trong app</span>'
+          :y.chot?'<b style="color:var(--green)">Đã chốt'+(y.ngayChot?' '+dmy(y.ngayChot):'')+'</b>'+(kords.length?'<br>'+kords.map(d=>'<a href="'+kiotPhieu(d.code)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);font-weight:700;text-decoration:none">'+e(d.code)+'</a>').join(' · '):(ka&&(ka.don||[]).length?'<br>'+ka.don.map(c=>'<a href="'+kiotPhieu(c)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);font-weight:700;text-decoration:none">'+e(c)+'</a>').join(' · '):'<br><span style="color:var(--muted)">chưa có phiếu Kiot</span>'))
+          :'<span style="color:var(--orange,#f97316);font-weight:700">Chưa chốt</span>'+(r&&!r.kh?'<br><span style="color:var(--muted)">chưa gắn Mã KH Kiot</span>':'');
+        const dt=r&&y.chot?rptSlDoanhThuMkt(r):ka?ka.rev:0;
+        return [dmy(y.ngay)||'—',ten+(ma?'<div style="font-size:10.5px;color:var(--muted)">'+e(ma)+'</div>':''),
+          '<span style="font-size:10.5px">'+e(r?(r.tagStatus||''):(o.customer_tags||''))+'</span>',
+          rptSlSaleHien(r?r.staff:(ka?ka.staff:(o.staff_name||''))),
+          '<span style="font-size:10.5px">'+[...y.x.adIds].map(id=>e(tenAd[id]||id)).join('<br>')+'</span>',
+          chat?'<a href="'+chat+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat ↗</a>':'—',
+          app,dt>0?vnd(dt):'—',
+          y.trungNgay.length?'<span title="Ngày đơn / ngày chốt trùng ngày Meta ghi lượt mua" style="color:var(--green);font-weight:800">✓ '+y.trungNgay.map(d=>dmy(d).slice(0,5)).join(', ')+'</span>':'—'];}),
+      keys:ds.map(y=>y.r?y.r.key:(y.ka?y.ka.key:null)),loais:ds.map(y=>y.t||(y.ka?y.ka.loai:'Lẻ'))};
     return k;};
-  const oMua=(x,k,tieuDe,dsKhach)=>{const n=x.mua||0;const kk=muaDs(k,tieuDe,dsKhach);
-    return '<td class="num">'+(n||dsKhach.some(y=>y.chot)?'<span onclick="event.stopPropagation();rptSlShow('+String.fromCharCode(39)+kk+String.fromCharCode(39)+')" title="Bấm xem khách đã chốt mang Ad ID này" style="cursor:pointer;font-weight:800;border-bottom:1px dashed var(--accent)">'+num(n)+'</span>':'—')+'</td>'
+  const oMua=(x,k,tieuDe,dsA)=>{const n=x.mua||0;const kk=muaDs(k,tieuDe,dsA);const coDs=(window._rptSlLists[kk].rows||[]).length;
+    return '<td class="num">'+(n||coDs?'<span onclick="event.stopPropagation();rptSlShow('+String.fromCharCode(39)+kk+String.fromCharCode(39)+')" title="Bấm xem khách đến từ quảng cáo: đơn Pancake, đã chốt, phiếu Kiot" style="cursor:pointer;font-weight:800;border-bottom:1px dashed var(--accent)">'+num(n)+'</span>':'—')+'</td>'
       +'<td class="num" style="font-weight:800;color:'+(x.rev>0?'var(--green)':'var(--muted)')+'">'+(x.rev>0?vnd(x.rev):'—')+'</td>';};
   const oCs=(x,dam)=>{const imp=x.imp||0,ck=x.click||0;
     return '<td class="num"'+(dam?' style="font-weight:800"':'')+'>'+vnd(x.spend)+'</td>'
@@ -4298,11 +4341,11 @@ function rptMktHtml(){
       +'<td class="num">'+(ck>=1?vnd(x.spend/ck):'—')+'</td>'
       +'<td class="num">'+(x.mess?num(x.mess):'—')+'</td>'
       +'<td class="num" style="font-weight:800">'+(x.mess>0?vnd(x.spend/x.mess):'—')+'</td>';};
-  const khachCamp={};Object.values(d.theoAd||{}).forEach(a=>{(khachCamp[a.camp]=khachCamp[a.camp]||[]).push(...a.khach);});
+  const adsCamp={};Object.values(d.theoAd||{}).forEach(a=>{(adsCamp[a.camp]=adsCamp[a.camp]||[]).push(a);});
   const bang=camps.map(function(c,ci){
     const brandTen=(RPT_MKT_BRANDS.filter(x=>x[0]===c.brand)[0]||[null,'—'])[1];
     return '<tr><td class="name">'+chamTT(mktTT.camp[String(c.ten).trim()])+String(c.ten).replace(/</g,'&lt;')+'</td>'
-      +'<td style="font-size:11px">'+brandTen+'</td>'+oCs(c,true)+oMua(c,'muaCamp'+ci,'Lượt mua · '+String(c.ten),khachCamp[String(c.ten).trim()]||[])+'</tr>';
+      +'<td style="font-size:11px">'+brandTen+'</td>'+oCs(c,true)+oMua(c,'muaCamp'+ci,'Lượt mua · '+String(c.ten),adsCamp[String(c.ten).trim()]||[])+'</tr>';
   }).join('');
   // bảng chi tiết theo từng quảng cáo
   const dsAd=Object.values(d.theoAd||{}).sort((a,b)=>b.spend-a.spend);
@@ -4315,7 +4358,7 @@ function rptMktHtml(){
     const tenC=a.camp||'(không tên)',tenN=a.nhom||'(không có nhóm)';
     const c=cay[tenC]=cay[tenC]||{ten:tenC,spend:0,mess:0,khach:0,don:0,rev:0,imp:0,reach:0,click:0,soQc:0,nhom:{},mua:0,dsK:[]};
     const n=c.nhom[tenN]=c.nhom[tenN]||{ten:tenN,spend:0,mess:0,khach:0,don:0,rev:0,imp:0,reach:0,click:0,ads:[],mua:0,dsK:[]};
-    [c,n].forEach(x=>{x.spend+=a.spend;x.mess+=a.mess;x.khach+=a.khach.length;x.don+=a.don;x.rev+=a.rev;x.imp+=a.imp;x.reach+=a.reach;x.click+=a.click;x.mua+=a.mua||0;x.dsK.push(...a.khach);});
+    [c,n].forEach(x=>{x.spend+=a.spend;x.mess+=a.mess;x.khach+=a.khach.length;x.don+=a.don;x.rev+=a.rev;x.imp+=a.imp;x.reach+=a.reach;x.click+=a.click;x.mua+=a.mua||0;x.dsK.push(a);});
     c.soQc++;n.ads.push(Object.assign({},a,{idx:i}));
   });
   // TRẠNG THÁI kiểu Ads Manager (06/10/2026): chấm xanh = đang chạy. Chiến dịch / nhóm theo trạng thái riêng của nó,
@@ -4352,7 +4395,7 @@ function rptMktHtml(){
           +(anh?'<img src="'+String(anh).replace(/"/g,'&quot;')+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex:0 0 auto;border:1px solid var(--border)">':'')
           +'<span>'+String(a.ten||'(không tên)').replace(/</g,'&lt;')+'</span></span></td>'
           +'<td style="font-size:10.5px;color:var(--muted)">'+a.id+'</td>'
-          +oCs(a,false)+oMua(a,'muaAd'+a.id,'Lượt mua · '+(a.ten||a.id),a.khach)+'</tr>';
+          +oCs(a,false)+oMua(a,'muaAd'+a.id,'Lượt mua · '+(a.ten||a.id),[a])+'</tr>';
       });
     });
   });
@@ -6048,10 +6091,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='30/10 15:25';
+const APP_VERSION='30/10 16:15';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=523;
+const APP_BAN=524;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
