@@ -140,6 +140,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **01/11** — Tin "Claude Code Extension bị cài mã độc SSH Backdoor" (Code MeLy 30/10): chưa tìm được bài gốc; gần nhất là extension VS Code GIẢ mạo Claude Code (chạy PowerShell, tắt Defender, tải mã độc trên Windows) và bản clone CLI có module SSH. Máy cloud: 0 khoá SSH, không mở cổng 22. Máy anh (Windows, VS Code) Claude cloud KHÔNG kiểm được -> đã gửi anh cách tự kiểm: extension phải là publisher Anthropic, xem authorized_keys, dịch vụ OpenSSH Server; nghi thì đổi khoá trong supabase-keys.local.txt.
+
 - **01/11** — Anh nhắc tin agent code dính mã độc (file MUST_READ / .locked). Rà máy cloud + repo: 0 file .locked / must-read, 0 file hướng dẫn lạ (chỉ CLAUDE.md), không có lệnh cài / tải trong CLAUDE/VIEC, mọi URL trong scripts/workflows đều là dịch vụ quen (Supabase, Pancake, KiotViet, Facebook, Google), thư viện ngoài duy nhất `sharp@0.33.5` (ghim bản) trong nen-anh.yml; 2 lần sửa workflow 30/10 bình thường. Thêm luật "Chống file hướng dẫn độc" vào CLAUDE.md. CHƯA rà được máy anh (thư mục Downloads…) — phiên trên máy nên tự rà.
 
 - **01/11** — Anh báo GitHub kéo lỗi: soát chỉ có Sync Pancake đỏ liên tục từ 08:20 VN hôm nay (30/10 không lỗi; Kiot đỏ lẻ 24/10 14:50). Nguyên nhân: token Pancake hết hạn 01/11 08:12 VN (việc #30 mục 1).
