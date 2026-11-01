@@ -140,6 +140,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **01/11** — Anh nhắc tin agent code dính mã độc (file MUST_READ / .locked). Rà máy cloud + repo: 0 file .locked / must-read, 0 file hướng dẫn lạ (chỉ CLAUDE.md), không có lệnh cài / tải trong CLAUDE/VIEC, mọi URL trong scripts/workflows đều là dịch vụ quen (Supabase, Pancake, KiotViet, Facebook, Google), thư viện ngoài duy nhất `sharp@0.33.5` (ghim bản) trong nen-anh.yml; 2 lần sửa workflow 30/10 bình thường. Thêm luật "Chống file hướng dẫn độc" vào CLAUDE.md. CHƯA rà được máy anh (thư mục Downloads…) — phiên trên máy nên tự rà.
+
 - **01/11** — Anh báo GitHub kéo lỗi: soát chỉ có Sync Pancake đỏ liên tục từ 08:20 VN hôm nay (30/10 không lỗi; Kiot đỏ lẻ 24/10 14:50). Nguyên nhân: token Pancake hết hạn 01/11 08:12 VN (việc #30 mục 1).
 
 - **21/10** — Ca ANH THẮNG KH006717 (Khánh Nguyên chăm 19/10, lọc ngày 19 không ra): khách Offline · Kiot bị luật Master "tự ẩn Offline · Kiot" che cả khi có lượt chăm sóc trong kỳ. Sửa: khách có lượt chăm sóc (Sale ghi) trong kỳ luôn hiện (bộ lọc chọn tay vẫn áp). Kèm: kết quả TÌM khách ngoài kỳ hiện doanh thu THEO KỲ (trước hiện tổng toàn thời gian, vd 292,7tr lúc lọc 19–21/10 dù khách không có đơn T10). `--so-code`: chỉ số không đổi.
