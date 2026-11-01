@@ -15,6 +15,7 @@
 
 | # | Việc | Cần anh nói gì |
 |---|---|---|
+| 30 | **TOKEN PANCAKE HẾT HẠN 01/11/2026 08:12 VN** (cấp 03/08, sống ~90 ngày) -> sync Pancake đỏ mỗi 10 phút từ 08:20 ("access_token is invalid"); nút app gọi Edge `pancake-note` (điền Mã KH, gắn thẻ, chuyển Sỉ/Lẻ) cũng hỏng; bước Pancake trong sync Kiot + chấm QC (sync-sale-review) cũng dùng token này. Cần anh đăng nhập Pancake lấy token mới rồi thay ở: GitHub secret `PANCAKE_SESSION_TOKEN` (repo này + qc-cskh — Claude cloud bị 403, không tự sửa được), môi trường cloud MKT Dev, file khoá trên máy. Supabase secret (Edge pancake-note) Claude tự cập nhật được khi có token trong môi trường | anh lấy token mới |
 | 1 | **Kéo full hoá đơn Kiot về hub** — 23/09 anh bảo **TẠM ĐỂ ĐÓ**, khi nào cần thì làm. Xem mục 6 bên dưới trước khi bắt tay | khi nào cần thì anh gọi |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 08/10 anh: CHƯA CẦN. 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
 | 14 | M-0020 (KH007407) gộp với L-HT-0011 theo Mã KH, chưa rõ mã của M-0020 do ai điền — 13/10 anh: "t xử lý" | anh tự xử |
@@ -138,6 +139,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **01/11** — Anh báo GitHub kéo lỗi: soát chỉ có Sync Pancake đỏ liên tục từ 08:20 VN hôm nay (30/10 không lỗi; Kiot đỏ lẻ 24/10 14:50). Nguyên nhân: token Pancake hết hạn 01/11 08:12 VN (việc #30 mục 1).
 
 - **21/10** — Ca ANH THẮNG KH006717 (Khánh Nguyên chăm 19/10, lọc ngày 19 không ra): khách Offline · Kiot bị luật Master "tự ẩn Offline · Kiot" che cả khi có lượt chăm sóc trong kỳ. Sửa: khách có lượt chăm sóc (Sale ghi) trong kỳ luôn hiện (bộ lọc chọn tay vẫn áp). Kèm: kết quả TÌM khách ngoài kỳ hiện doanh thu THEO KỲ (trước hiện tổng toàn thời gian, vd 292,7tr lúc lọc 19–21/10 dù khách không có đơn T10). `--so-code`: chỉ số không đổi.
 
