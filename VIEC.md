@@ -15,7 +15,6 @@
 
 | # | Việc | Cần anh nói gì |
 |---|---|---|
-| 30 | **TOKEN PANCAKE HẾT HẠN 01/11/2026 08:12 VN** (cấp 03/08, sống ~90 ngày) -> sync Pancake đỏ mỗi 10 phút từ 08:20 ("access_token is invalid"); nút app gọi Edge `pancake-note` (điền Mã KH, gắn thẻ, chuyển Sỉ/Lẻ) cũng hỏng; bước Pancake trong sync Kiot + chấm QC (sync-sale-review) cũng dùng token này. Cần anh đăng nhập Pancake lấy token mới rồi thay ở: GitHub secret `PANCAKE_SESSION_TOKEN` (repo này + qc-cskh — Claude cloud bị 403, không tự sửa được), môi trường cloud MKT Dev, file khoá trên máy. Supabase secret (Edge pancake-note). **01/11 trưa:** anh gửi token mới (cấp 19/09, HẾT HẠN 18/12/2026 13:26 VN), Claude gọi thử OK; anh cho phép -> Claude ĐÃ THAY Supabase secret (Edge pancake-note, HTTP 201). GitHub secret: proxy cloud CHẶN hẳn đường dẫn Actions secrets (không phải thiếu quyền) -> anh tự thay ở GitHub repo này + qc-cskh, môi trường cloud, file khoá; token đã nằm trong lịch sử chat | anh thay GitHub secret |
 | 1 | **Kéo full hoá đơn Kiot về hub** — 23/09 anh bảo **TẠM ĐỂ ĐÓ**, khi nào cần thì làm. Xem mục 6 bên dưới trước khi bắt tay | khi nào cần thì anh gọi |
 | 4 | **Soát đơn huỷ / phiếu tạm** — 08/10 anh: CHƯA CẦN. 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
 | 14 | M-0020 (KH007407) gộp với L-HT-0011 theo Mã KH, chưa rõ mã của M-0020 do ai điền — 13/10 anh: "t xử lý" | anh tự xử |
@@ -139,6 +138,8 @@
 - `scripts/check-pagination.js` — chạy trong CI của workflow Pancake; đọc bảng phải dùng limit/offset, dùng header Range là fail.
 
 ## 5. NHẬT KÝ (mới nhất trước)
+
+- **01/11** — XONG #30: anh thay token Pancake mới ở GitHub (2 repo), Claude thay Supabase secret (Edge pancake-note). Sync Pancake xanh lại từ lượt 11:30 VN (đỏ 08:20–11:20, 19 lượt); lượt đầu cập nhật 1.991 đơn. **Token mới HẾT HẠN 18/12/2026 13:26 VN** — đổi trước ngày đó (đề xuất: job báo trước 7 ngày + chuyển token sang Supabase Vault để Claude tự đổi được, chờ anh duyệt).
 
 - **01/11** — Tin "Claude Code Extension bị cài mã độc SSH Backdoor" (Code MeLy 30/10): chưa tìm được bài gốc; gần nhất là extension VS Code GIẢ mạo Claude Code (chạy PowerShell, tắt Defender, tải mã độc trên Windows) và bản clone CLI có module SSH. Máy cloud: 0 khoá SSH, không mở cổng 22. Máy anh (Windows, VS Code) Claude cloud KHÔNG kiểm được -> đã gửi anh cách tự kiểm: extension phải là publisher Anthropic, xem authorized_keys, dịch vụ OpenSSH Server; nghi thì đổi khoá trong supabase-keys.local.txt.
 
