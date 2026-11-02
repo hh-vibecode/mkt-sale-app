@@ -139,6 +139,8 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/11** — v532: Ai đang xem KHÔNG TRÙNG CON VẬT (anh gửi ảnh 2 con giống nhau): mỗi trình duyệt bốc ngẫu nhiên 1/30 độc lập nên có lúc trùng (30 ảnh đều khác nhau, đã so). `dxKhongTrung`: trình duyệt cũ hơn giữ con, trình duyệt sau sang con trống kế tiếp, mọi máy tính ra cùng kết quả; trùng thì tự nhận con mới + ghi lại `dang_xem`. Quá 30 người mới đành trùng. Kiểm 8 tình huống bằng script (chưa thử 2 trình duyệt thật).
+
 - **01/11** — XONG #30: anh thay token Pancake mới ở GitHub (2 repo), Claude thay Supabase secret (Edge pancake-note). Sync Pancake xanh lại từ lượt 11:30 VN (đỏ 08:20–11:20, 19 lượt); lượt đầu cập nhật 1.991 đơn. **Token mới HẾT HẠN 18/12/2026 13:26 VN** — đổi trước ngày đó (đề xuất: job báo trước 7 ngày + chuyển token sang Supabase Vault để Claude tự đổi được, chờ anh duyệt).
 
 - **01/11** — Tin "Claude Code Extension bị cài mã độc SSH Backdoor" (Code MeLy 30/10): chưa tìm được bài gốc; gần nhất là extension VS Code GIẢ mạo Claude Code (chạy PowerShell, tắt Defender, tải mã độc trên Windows) và bản clone CLI có module SSH. Máy cloud: 0 khoá SSH, không mở cổng 22. Máy anh (Windows, VS Code) Claude cloud KHÔNG kiểm được -> đã gửi anh cách tự kiểm: extension phải là publisher Anthropic, xem authorized_keys, dịch vụ OpenSSH Server; nghi thì đổi khoá trong supabase-keys.local.txt.

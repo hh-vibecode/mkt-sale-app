@@ -6221,10 +6221,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='30/10 17:28';
+const APP_VERSION='02/11 09:23';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=531;
+const APP_BAN=532;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -6299,7 +6299,15 @@ const DX_TTL=90000,DX_PING=30000;
 // (script scratchpad cat-icon.ps1: dò khung con vật trong lưới 5x3, cắt vuông, bo tròn). Thêm con: thêm file + nâng DX_SO.
 const DX_SO=30,DX_CON=Array.from({length:DX_SO},(_,i)=>'a'+String(i+1).padStart(2,'0'));
 const DX_MAU=['#e0f2fe','#dcfce7','#ede9fe','#fef3c7','#ffe4e6','#cffafe','#fce7f3','#f1f5f9'];
-const dxCon=Math.floor(Math.random()*DX_CON.length),dxMau=Math.floor(Math.random()*DX_MAU.length);
+let dxCon=Math.floor(Math.random()*DX_CON.length);const dxMau=Math.floor(Math.random()*DX_MAU.length);
+// KHÔNG TRÙNG CON (anh Hải 2/11/2026): 2 trình duyệt bốc trúng cùng con -> trình duyệt cũ hơn giữ (session_id bắt đầu bằng mốc giờ tạo),
+// trình duyệt sau sang con trống. Tính lúc vẽ nên ai xem cũng ra một kết quả, người xem không phụ thuộc máy kia đã lên bản mới chưa. Quá 30 người mới đành trùng.
+function dxKhongTrung(ds){
+  const da=new Set(),trung=[];
+  ds.slice().sort((a,b)=>String(a.session_id).localeCompare(String(b.session_id))).forEach(x=>{
+    const i=(Number(x.avatar_idx)||0)%DX_SO;x.avatar_idx=i;if(da.has(i))trung.push(x);else da.add(i);});
+  trung.forEach(x=>{if(da.size>=DX_SO)return;let i=x.avatar_idx;while(da.has(i))i=(i+1)%DX_SO;da.add(i);x.avatar_idx=i;});
+}
 function dxMa(){let id='';try{id=localStorage.getItem('dxTrinhDuyet')||'';if(!id){id=Date.now().toString(36)+Math.random().toString(36).slice(2,9);localStorage.setItem('dxTrinhDuyet',id);}}catch(e){id='tam-'+dxCon+dxMau;}return id;}
 function dxTrang(){const a=document.querySelector('.nav-item.active .nav-label')||document.querySelector('.nav-item.active');return a?String(a.textContent||'').replace(/\s+/g,' ').trim().slice(0,40):'';}
 const dxH=()=>({apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'});
@@ -6316,6 +6324,8 @@ async function dxXem(){
     ds=await r.json();}catch(e){return;}
   if(!Array.isArray(ds))return;
   const toi=dxMa(),e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  dxKhongTrung(ds);
+  const minh=ds.find(x=>x.session_id===toi);if(minh&&minh.avatar_idx!==dxCon){dxCon=minh.avatar_idx;dxBaoDanh();}   // mình bị trùng -> nhận con mới, ghi lại luôn
   ds.sort((a,b)=>(a.session_id===toi?-1:b.session_id===toi?1:String(dxTen(a.ten)).localeCompare(String(dxTen(b.ten)),'vi')));
   const av=(x,z)=>'<div title="'+e(dxTen(x.ten))+'" style="width:'+z+'px;height:'+z+'px;border-radius:50%;'
     +'border:2px solid #213343;margin-left:-7px;flex-shrink:0;overflow:hidden;background:#f5f5f3">'
