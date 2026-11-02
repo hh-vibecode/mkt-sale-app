@@ -139,6 +139,7 @@
 
 ## 5. NHẬT KÝ (mới nhất trước)
 
+- **02/11 (2)** — v533: BỎ TỰ TẢI LẠI khi có bản mới (anh: "không được tự động refresh nữa, để làm thông báo thôi, ấn mới được refresh"). Thanh "Đã có bản cập nhật mới" + nút Tải lại, không đếm 10 giây (thay luật v504 20/10). Máy còn chạy bản cũ (≤ v532) vẫn tự tải 1 lần để lên v533, từ đó chỉ báo.
 - **02/11** — v532: Ai đang xem KHÔNG TRÙNG CON VẬT (anh gửi ảnh 2 con giống nhau): mỗi trình duyệt bốc ngẫu nhiên 1/30 độc lập nên có lúc trùng (30 ảnh đều khác nhau, đã so). `dxKhongTrung`: trình duyệt cũ hơn giữ con, trình duyệt sau sang con trống kế tiếp, mọi máy tính ra cùng kết quả; trùng thì tự nhận con mới + ghi lại `dang_xem`. Quá 30 người mới đành trùng. Kiểm 8 tình huống bằng script (chưa thử 2 trình duyệt thật).
 
 - **01/11** — XONG #30: anh thay token Pancake mới ở GitHub (2 repo), Claude thay Supabase secret (Edge pancake-note). Sync Pancake xanh lại từ lượt 11:30 VN (đỏ 08:20–11:20, 19 lượt); lượt đầu cập nhật 1.991 đơn. **Token mới HẾT HẠN 18/12/2026 13:26 VN** — đổi trước ngày đó (đề xuất: job báo trước 7 ngày + chuyển token sang Supabase Vault để Claude tự đổi được, chờ anh duyệt).
