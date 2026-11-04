@@ -4456,11 +4456,12 @@ function cvBaoCaoHtml(h,muc,ten,nguoiId){
   return '<div class="cv-bc">'
     +'<div class="cv-bc-dau"><div><div class="cv-bc-ten">'+cvE(ten||'—')+'</div><div class="cv-phu">Báo cáo công việc · khách '+L+' · '+CV_THU[dn.getDay()]+', '+dmy(d)+'</div></div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+      +(h&&h.tong_ket&&h.tong_ket.mau?the('var(--bg2)','var(--text2)','Mẫu từ lịch sử chăm sóc'):'')   // nạp từ lịch sử T10 (04/11/2026)
       +(h&&h.gui_luc?the('var(--green-l)','var(--green)','Gửi kế hoạch '+cvGio(h.gui_luc)):the('var(--bg2)','var(--muted)','Chưa gửi kế hoạch'))
       +(chot?the('var(--accent-l)','var(--accent)','Đã chốt '+cvGio(h.chot_luc)):the('#fef3c7','#b45309','Chưa chốt báo cáo'))+'</div></div>'
     +'<div class="cv-so">'+so(num(tk.ke_hoach),'Việc kế hoạch')+so(num(tk.xu_ly),'Đã xử lý','#16a34a')
       +so(num(tk.ke_hoach-tk.xu_ly),'Chưa xử lý',tk.ke_hoach-tk.xu_ly?'#d97706':'')+so(num(tk.ngoai_n),'Ngoài kế hoạch')
-      +so(num(tk.don)+(tk.tien?' <span style="font-size:12px;font-weight:700;color:var(--muted)">· '+vnd(tk.tien)+'</span>':''),'Đơn trong ngày',tk.don?'#16a34a':'')+'</div>'
+      +so(num(tk.don),'Đơn chốt',tk.don?'#16a34a':'')+so(vnd(tk.tien),'Tiền chốt',tk.tien?'#16a34a':'')+'</div>'
     +(bang?'<div style="overflow-x:auto"><table class="cv-bang"><thead><tr><th></th><th>Khách</th><th>Mục tiêu</th><th>Kết quả trong ngày</th><th>Ghi chú</th></tr></thead><tbody>'+bang+'</tbody></table></div>'
       :'<div class="cv-chua" style="padding:22px 18px">Chưa lên kế hoạch, chưa có lượt chăm sóc nào trong ngày</div>')
     +'<div class="cv-cuoi"><div style="flex:1;min-width:220px"><div class="cv-tieu">Tổng kết cuối ngày</div>'
@@ -4476,45 +4477,88 @@ function cvNgoaiCua(h,ten,d,nguoiId){
   return cvNgoai(ten,d,cvMuc.filter(m=>m.nguoi_id===nguoiId&&m.ngay===d));
 }
 function cvLichSuHtml(){
-  const ls=cvLichSu||{h:[],m:[]},st=cvSt(),toi=cvToi(),het=st.nguoi!=='',L=cvLoai();
+  const ls=cvLichSu||{h:[],m:[]},st=cvSt(),L=cvLoai();
   const dem={},demHet={};ls.m.forEach(x=>{const k=x.ngay+'|'+x.nguoi_id;demHet[k]=(demHet[k]||0)+1;if((x.loai||'Lẻ')===L)dem[k]=(dem[k]||0)+1;});
   const tkL=h=>{const t=h.tong_ket||{};return (t.theo_loai&&t.theo_loai[L])||{};};
-  const ds=ls.h.filter(h=>(het?(st.nguoi==='*'||h.nguoi_id===st.nguoi):h.nguoi_id===toi.id)
+  // admin: cả đội hoặc 1 người đang chọn; Sale: mình + người trong phạm vi (CSDL đã lọc)
+  const ds=ls.h.filter(h=>(!cvXemHet()||st.nguoi==='*'||h.nguoi_id===st.nguoi)
     &&(dem[h.ngay+'|'+h.nguoi_id]||tkL(h).ngoai_n||!demHet[h.ngay+'|'+h.nguoi_id]));
+  const het=new Set(ds.map(h=>h.nguoi_id)).size>1||cvXemHet();
   if(!ds.length)return '<div class="cv-bc"><div class="cv-chua" style="padding:22px 18px">Chưa có báo cáo nào</div></div>';
   return '<div class="cv-bc"><div style="overflow-x:auto"><table class="cv-bang"><thead><tr><th>Ngày</th>'+(het?'<th>Người</th>':'')
-    +'<th style="text-align:right">Việc kế hoạch</th><th style="text-align:right">Đã xử lý</th><th style="text-align:right">Ngoài kế hoạch</th><th style="text-align:right">Đơn trong ngày</th><th>Gửi kế hoạch</th><th>Chốt báo cáo</th></tr></thead><tbody>'
+    +'<th style="text-align:right">Việc kế hoạch</th><th style="text-align:right">Đã xử lý</th><th style="text-align:right">Ngoài kế hoạch</th><th style="text-align:right">Đơn chốt</th><th style="text-align:right">Tiền chốt</th><th>Gửi kế hoạch</th><th>Chốt báo cáo</th></tr></thead><tbody>'
     +ds.map(h=>{const t=tkL(h),kh=dem[h.ngay+'|'+h.nguoi_id]||0,dn=new Date(h.ngay+'T00:00:00');
       return '<tr style="cursor:pointer" onclick="cvMoNgay(\''+h.ngay+'\',\''+cvId(h.nguoi_id)+'\')"><td><b>'+dmy(h.ngay)+'</b> <span class="cv-phu">'+CV_THU[dn.getDay()]+'</span></td>'
         +(het?'<td>'+cvE(h.nguoi||'')+'</td>':'')
         +'<td style="text-align:right">'+num(kh)+'</td><td style="text-align:right">'+(h.chot_luc?num(t.xu_ly||0):'—')+'</td>'
         +'<td style="text-align:right">'+(h.chot_luc?num(t.ngoai_n||0):'—')+'</td>'
-        +'<td style="text-align:right">'+(h.chot_luc?num(t.don||0)+(t.tien?' · '+vnd(t.tien):''):'—')+'</td>'
+        +'<td style="text-align:right">'+(h.chot_luc?num(t.don||0):'—')+'</td><td style="text-align:right">'+(h.chot_luc&&t.tien?vnd(t.tien):'—')+'</td>'
         +'<td>'+(h.gui_luc?cvGio(h.gui_luc):'<span class="cv-chua">chưa</span>')+'</td><td>'+(h.chot_luc?cvGio(h.chot_luc):'<span class="cv-chua">chưa</span>')+'</td></tr>';}).join('')
     +'</tbody></table></div></div>';
 }
-function cvMoNgay(d,nguoiId){const st=cvSt(),toi=cvToi();st.ngay=d;st.tab='bao-cao';st.nguoi=nguoiId===toi.id?'':nguoiId;renderCongViec();}
+// TAB QUẢN TRỊ (anh Hải 04/11/2026: "thêm tab quản trị, thấy được các sale luôn, với số lượng việc xử lý"): 1 bảng mọi Sale của loại
+// khách đang xem trong ngày -- kể cả người chưa lên kế hoạch. Lượt chăm sóc = mọi lượt người đó ghi cho ngày (trong + ngoài kế hoạch).
+function cvQuanTriHtml(){
+  const st=cvSt(),d=st.ngay,L=cvLoai(),K=cvKhach();
+  const accs=(window._rptSlAccs||[]).filter(a=>cvAccTrongPhamVi(a,L));
+  cvNgay.forEach(h=>{if(!accs.some(a=>String(a.user_id)===h.nguoi_id)&&cvMuc.some(m=>m.nguoi_id===h.nguoi_id&&m.loai===L))accs.push({user_id:h.nguoi_id,name:h.nguoi});});
+  const dong=accs.map(a=>{const id=String(a.user_id),h=cvNgay.find(x=>x.nguoi_id===id),chot=!!(h&&h.chot_luc);
+    const muc=cvMuc.filter(m=>m.nguoi_id===id&&m.loai===L);
+    const kqs=muc.map(m=>chot&&m.ket_qua?m.ket_qua:cvKetQua(K.theoId[m.lead_id],d));
+    const ngoai=cvNgoaiCua(h,a.name,d,id).filter(o=>o.loai===L),tk=cvTongKet(kqs,ngoai);
+    const luot=siCrmRows.filter(c=>String(c.ngay_cham||'').slice(0,10)===d&&String(c.created_by||'').trim()===String(a.name||'').trim()
+      &&(c.loai||'Sỉ')===L&&!rptSlLaGiaoViec(c)).length;
+    const co=tk.ke_hoach||tk.ngoai_n||luot;   // không có việc khách loại đang xem -> không tính gửi / chốt cho loại này
+    return {id,ten:a.name,h:co?h:null,tk,luot};})
+    .sort((x,y)=>(y.tk.xu_ly+y.tk.ngoai_n)-(x.tk.xu_ly+x.tk.ngoai_n)||y.tk.ke_hoach-x.tk.ke_hoach||String(x.ten).localeCompare(String(y.ten),'vi'));
+  if(!dong.length)return '<div class="cv-bc"><div class="cv-chua" style="padding:22px 18px">'+(window._rptSlAccs?'Không có Sale nào xem khách '+L:'Đang tải danh sách Sale…')+'</div></div>';
+  const T=dong.reduce((s,x)=>{['ke_hoach','xu_ly','ngoai_n','don','tien'].forEach(k=>s[k]+=x.tk[k]);s.luot+=x.luot;s.gui+=x.h&&x.h.gui_luc?1:0;s.chot+=x.h&&x.h.chot_luc?1:0;return s;},
+    {ke_hoach:0,xu_ly:0,ngoai_n:0,don:0,tien:0,luot:0,gui:0,chot:0});
+  const dn=new Date(d+'T00:00:00'),so=(n,l,mau)=>'<div><div class="n"'+(mau?' style="color:'+mau+'"':'')+'>'+n+'</div><div class="l">'+l+'</div></div>';
+  const r=n=>'<td style="text-align:right">'+n+'</td>';
+  const gio=(t,chu)=>t?'<span style="color:var(--green);font-weight:800">'+cvGio(t)+'</span>':'<span class="cv-chua">'+chu+'</span>';
+  dong.forEach(x=>{if(x.h&&x.h.tong_ket&&x.h.tong_ket.mau)x.ten+=' (mẫu)';});
+  const tl=x=>x.tk.ke_hoach?Math.round(x.tk.xu_ly*100/x.tk.ke_hoach):null;
+  return '<div class="cv-bc">'
+    +'<div class="cv-bc-dau"><div><div class="cv-bc-ten">Tổng quan Sale · khách '+L+'</div><div class="cv-phu">'+CV_THU[dn.getDay()]+', '+dmy(d)+' · '+dong.length+' Sale</div></div></div>'
+    +'<div class="cv-so">'+so(num(T.gui)+'<span style="font-size:12px;color:var(--muted)">/'+dong.length+'</span>','Đã gửi kế hoạch')
+      +so(num(T.ke_hoach),'Việc kế hoạch')+so(num(T.xu_ly),'Đã xử lý','#16a34a')+so(num(T.ngoai_n),'Ngoài kế hoạch')
+      +so(num(T.luot),'Lượt chăm sóc')+so(num(T.don),'Đơn chốt',T.don?'#16a34a':'')+so(vnd(T.tien),'Tiền chốt',T.tien?'#16a34a':'')
+      +so(num(T.chot)+'<span style="font-size:12px;color:var(--muted)">/'+dong.length+'</span>','Đã chốt báo cáo')+'</div>'
+    +'<div style="overflow-x:auto"><table class="cv-bang"><thead><tr><th>Sale</th><th>Gửi kế hoạch</th><th style="text-align:right">Việc kế hoạch</th><th style="text-align:right">Đã xử lý</th>'
+      +'<th style="text-align:right">Chưa xử lý</th><th style="text-align:right">Ngoài kế hoạch</th><th style="text-align:right">Lượt chăm sóc</th><th style="text-align:right">Đơn chốt</th><th style="text-align:right">Tiền chốt</th><th>Chốt báo cáo</th></tr></thead><tbody>'
+    +dong.map(x=>{const p=tl(x),chua=x.tk.ke_hoach-x.tk.xu_ly;
+      return '<tr style="cursor:pointer" onclick="cvMoNgay(\''+d+'\',\''+cvId(x.id)+'\')" title="Xem báo cáo ngày của '+cvE(x.ten)+'"><td><b>'+cvE(x.ten)+'</b></td>'
+        +'<td>'+gio(x.h&&x.h.gui_luc,'chưa gửi')+'</td>'+r(num(x.tk.ke_hoach))
+        +r('<b style="color:#16a34a">'+num(x.tk.xu_ly)+'</b>'+(p==null?'':' <span class="cv-phu" style="display:inline">'+p+'%</span>'))
+        +r(chua?'<b style="color:#d97706">'+num(chua)+'</b>':'0')+r(num(x.tk.ngoai_n))+r(num(x.luot))
+        +r(x.tk.don?'<b style="color:#16a34a">'+num(x.tk.don)+'</b>':'0')+r(x.tk.tien?'<b style="color:#16a34a">'+vnd(x.tk.tien)+'</b>':'—')
+        +'<td>'+gio(x.h&&x.h.chot_luc,'chưa chốt')+'</td></tr>';}).join('')
+    +'</tbody></table></div></div>';
+}
+function cvMoNgay(d,nguoiId){const st=cvSt();st.ngay=d;st.tab='bao-cao';st.nguoi=cvXemHet()?nguoiId:'';renderCongViec();}
 async function renderCongViec(taiLai){
   const el=document.getElementById('page-congviec');if(!el)return;
   if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo công việc');
   const st=cvSt(),toi=cvToi(),het=cvXemHet();
-  // XEM BÁO CÁO NGƯỜI KHÁC theo phạm vi Sale (04/11/2026): MỌI tài khoản có "Cả đội" -- thấy ai do CSDL quyết (cv_xem_duoc)
-  if(st.nguoi===null)st.nguoi=het?'*':'';
-  const cuaToi=st.nguoi==='',L=cvLoai();
-  if(!st.tab||(st.tab==='ke-hoach'&&!cuaToi))st.tab=cuaToi?'ke-hoach':'bao-cao';
+  // BỎ NÚT "Cả đội / Của tôi" (anh Hải 04/11/2026: "sale bt thì k cần, t có việc đâu, t xem mn làm"):
+  //  · Admin / Supreme: KHÔNG lên kế hoạch, luôn xem cả đội (bấm 1 dòng Lịch sử thì xem riêng người đó, ✕ để quay lại).
+  //  · Tài khoản khác: lên kế hoạch của mình; Báo cáo ngày = của mình trước, rồi người trong phạm vi Sale (CSDL lọc: cv_xem_duoc).
+  if(het){if(!st.nguoi)st.nguoi='*';}else st.nguoi='';
+  const cuaToi=!het,L=cvLoai();
+  if(!st.tab||(st.tab==='ke-hoach'&&!cuaToi)||(st.tab==='quan-tri'&&!het))st.tab=cuaToi?'ke-hoach':'quan-tri';
   try{
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null),dmLoad()]);
     await rptSlLockChot();
     if(taiLai||cvMucNgay!==st.ngay)await cvTaiNgay(st.ngay);
     if(st.tab==='lich-su'&&(taiLai||!cvLichSu))await cvTaiLichSu();
-    if(!window._rptSlAccs)rptSlLoadAccs().then(()=>{if(st.tab==='bao-cao'&&st.nguoi==='*')renderCongViec();});
+    if(!window._rptSlAccs)rptSlLoadAccs().then(()=>{if(['bao-cao','quan-tri'].includes(st.tab))renderCongViec();});
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo công việc',e,'renderCongViec');return;}
   if(!document.getElementById('page-congviec').classList.contains('active'))return;
   const ip='height:28px;box-sizing:border-box;padding:2px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
-  const tabs=[cuaToi&&['ke-hoach','Lên kế hoạch'],['bao-cao','Báo cáo ngày'],['lich-su','Lịch sử']].filter(Boolean);
+  const tabs=[het&&['quan-tri','Quản trị'],cuaToi&&['ke-hoach','Lên kế hoạch'],['bao-cao','Báo cáo ngày'],['lich-su','Lịch sử']].filter(Boolean);
   const ten=x=>(cvNgay.find(h=>h.nguoi_id===x)||{}).nguoi||((window._rptSlAccs||[]).find(a=>a.user_id===x)||{}).name||x;
-  const chonNguoi=modTabBar([['*','Cả đội',st.nguoi==='*',"cvDat('nguoi','*')"],['','Của tôi',cuaToi,"cvDat('nguoi','')"]]
-      .concat(st.nguoi&&st.nguoi!=='*'?[[st.nguoi,cvE(ten(st.nguoi)),true,'']]:[]));
+  const chonNguoi=het&&st.nguoi!=='*'?'<button class="cv-chip on" onclick="cvDat(\'nguoi\',\'*\')" title="Quay lại xem cả đội">'+cvE(ten(st.nguoi))+' ✕</button>':'';
   const lds=cvLoaiDuoc();
   const chonLoai=lds.length>1?modTabBar(lds.map(t=>[t,'Khách '+t,L===t,"cvDoiLoai('"+t+"')"]))
     :'<span class="cv-the" style="background:var(--accent-l);color:var(--accent)">Khách '+L+'</span>';
@@ -4526,8 +4570,16 @@ async function renderCongViec(taiLai){
     +'<button class="cv-chip" onclick="renderCongViec(true)" title="Tải lại dữ liệu">Làm mới</button></div>';
   let than='';
   if(st.tab==='ke-hoach')than=cvBoardHtml();
+  else if(st.tab==='quan-tri')than=cvQuanTriHtml();
   else if(st.tab==='lich-su')than=cvLichSuHtml();
-  else if(cuaToi)than=cvBaoCaoHtml(cvNgay.find(h=>h.nguoi_id===toi.id),cvMuc.filter(m=>m.nguoi_id===toi.id),toi.ten,toi.id);
+  else if(cuaToi){
+    // của mình trước, sau đó người trong phạm vi Sale có việc khách đang xem
+    const coViec=h=>cvMuc.some(m=>m.nguoi_id===h.nguoi_id&&m.loai===L)||cvNgoaiCua(h,h.nguoi,st.ngay,h.nguoi_id).some(o=>o.loai===L);
+    than=cvBaoCaoHtml(cvNgay.find(h=>h.nguoi_id===toi.id),cvMuc.filter(m=>m.nguoi_id===toi.id),toi.ten,toi.id)
+      // lọc lại theo phạm vi ở app nữa: lúc admin "Xem như" Sale thì CSDL vẫn trả hết (thẻ phiên của admin)
+      +cvNgay.filter(h=>{const a=(window._rptSlAccs||[]).find(x=>String(x.user_id)===h.nguoi_id);
+        return h.nguoi_id!==toi.id&&a&&cvAccTrongPhamVi(a,L)&&coViec(h);}).map(h=>cvBaoCaoHtml(h,cvMuc.filter(m=>m.nguoi_id===h.nguoi_id),h.nguoi,h.nguoi_id)).join('');
+  }
   else{
     // chỉ hiện người có việc khách đang xem (L) -- trong kế hoạch hoặc phát sinh ngoài kế hoạch; người được xem mà chưa có = "chưa lên kế hoạch"
     const coViec=h=>cvMuc.some(m=>m.nguoi_id===h.nguoi_id&&m.loai===L)||cvNgoaiCua(h,h.nguoi,st.ngay,h.nguoi_id).some(o=>o.loai===L);
@@ -6685,10 +6737,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='04/11 15:15';
+const APP_VERSION='04/11 15:24';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=536;
+const APP_BAN=537;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
