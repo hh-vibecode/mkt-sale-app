@@ -20,3 +20,7 @@ update public.cong_viec_muc m set dau_muc = case when m.dau_muc = 'Chăm sau bá
 -- THU HỒI ĐỂ SỬA (anh Hải 04/11/2026): gửi kế hoạch / chốt báo cáo rồi thì KHOÁ, muốn sửa phải Thu hồi; đếm số lần cho quản lý thấy.
 alter table public.cong_viec_ngay add column if not exists thu_hoi_kh int not null default 0;
 alter table public.cong_viec_ngay add column if not exists thu_hoi_bc int not null default 0;
+
+-- LINK CỐ ĐỊNH CỦA CHIẾN DỊCH (quản lý góp ý 04/11/2026: "link chiến dịch cố định 1 link thôi, chứ ngày nào cũng post lại à?"):
+-- link đặt 1 lần trên danh mục (admin), Sale chỉ tích đã làm. Cột mới, chỉ THÊM.
+alter table public.danh_muc add column if not exists link text;

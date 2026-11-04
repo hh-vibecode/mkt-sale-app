@@ -4570,8 +4570,9 @@ function cvBoardHtml(){
       +ds.map((z,i)=>{const xong=!!(z.m&&z.m.xong);return '<div class="cv-bc-viec"><b class="cv-stt">'+String(stt0+i+1).padStart(2,'0')+'</b>'
         +'<label style="display:flex;align-items:center;gap:8px;flex:0 0 auto;min-width:200px;cursor:'+(suaKQ?'pointer':'default')+';font-size:12.5px;font-weight:700;color:var(--text)">'
         +'<input type="checkbox" '+(xong?'checked':'')+(suaKQ?'':' disabled')+' onchange="cvBC(\''+n+'\','+i+',\'xong\',this.checked)" style="accent-color:var(--green);width:15px;height:15px">'+cvE(z.ten)+'</label>'
-        +(suaKQ?'<input class="cv-o" style="margin:0;flex:1" placeholder="'+(n==='C'?'Link báo cáo chiến dịch / ghi chú…':'Link bài / ghi chú…')+'" value="'+cvE(z.m&&z.m.ghi_chu||'')+'" onchange="cvBC(\''+n+'\','+i+',\'ghi_chu\',this.value)">'
-          :'<div style="flex:1;font-size:12px">'+cvLinkHtml(z.m&&z.m.ghi_chu)+'</div>')+'</div>';}).join('')+'</div>';};
+        // B: chỉ tích, không link · C: link CỐ ĐỊNH của chiến dịch + ghi chú tuỳ chọn (quản lý góp ý 04/11/2026)
+        +(n==='C'?cvLinkCDHtml(z.ten)+(suaKQ?'<input class="cv-o" style="margin:0;flex:1" placeholder="Ghi chú (nếu có)…" value="'+cvE(z.m&&z.m.ghi_chu||'')+'" onchange="cvBC(\'C\','+i+',\'ghi_chu\',this.value)">'
+          :'<div style="flex:1;font-size:12px;color:var(--text2)">'+cvE(z.m&&z.m.ghi_chu||'')+'</div>'):'')+'</div>';}).join('')+'</div>';};
   const phai='<div class="cv-pan"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div class="cv-tieu" style="margin:0">'
       +(Si?'A. Khách hàng · khách Sỉ':'Đầu mục chăm sóc · khách '+L+dmBut('cv_dau_muc'))+'</div>'
       +'<span class="cv-dem">'+(muc.length+(Si?tuDo.filter(x=>!daCo.has(x)).length:0))+' khách</span></div>'
@@ -4624,11 +4625,13 @@ function cvBaoCaoHtml(h,muc,ten,nguoiId){
       bang+=phan(tieu+' <span style="font-weight:700;color:var(--muted)">· '+ds.filter(z=>z.m&&z.m.xong).length+'/'+ds.length+' đã làm</span>');
       ds.forEach((z,i)=>{stt++;const xong=!!(z.m&&z.m.xong);
         bang+='<tr><td style="padding-right:0">'+cham(xong?'#16a34a':'var(--border)',1)+'</td>'
-          +'<td colspan="2"><b class="cv-stt">'+String(stt).padStart(2,'0')+'</b><b>'+cvE(z.ten)+'</b></td>'
+          +'<td colspan="2"><b class="cv-stt">'+String(stt).padStart(2,'0')+'</b><b>'+cvE(z.ten)+'</b>'
+            +(n==='C'&&cvLinkCD(z.ten)?' <a href="'+cvE(cvLinkCD(z.ten))+'" target="_blank" rel="noopener" style="color:var(--accent);font-size:11px;font-weight:700;white-space:nowrap">báo cáo chiến dịch ↗</a>':'')+'</td>'
           +'<td>'+(sua?'<label style="display:inline-flex;align-items:center;gap:7px;cursor:pointer;font-weight:700"><input type="checkbox" '+(xong?'checked':'')+' onchange="cvBC(\''+n+'\','+i+',\'xong\',this.checked)" style="accent-color:var(--green);width:15px;height:15px;cursor:pointer">'+(xong?'Đã làm':'Chưa làm')+'</label>'
             :(xong?'<b style="color:#16a34a">Đã làm</b>':'<span class="cv-chua">Chưa làm</span>'))+'</td>'
-          +'<td>'+(sua?'<textarea class="cv-o" rows="1" style="margin:0" placeholder="'+(n==='C'?'Link báo cáo chiến dịch / ghi chú…':'Link bài / ghi chú…')+'" onchange="cvBC(\''+n+'\','+i+',\'ghi_chu\',this.value)">'+cvE(z.m&&z.m.ghi_chu||'')+'</textarea>'
-            :cvLinkHtml(z.m&&z.m.ghi_chu))+'</td></tr>';});});
+          // B: không link / ghi chú · C: ghi chú tuỳ chọn (link cố định nằm cạnh tên chiến dịch)
+          +'<td>'+(n==='B'?'':sua?'<textarea class="cv-o" rows="1" style="margin:0" placeholder="Ghi chú (nếu có)…" onchange="cvBC(\'C\','+i+',\'ghi_chu\',this.value)">'+cvE(z.m&&z.m.ghi_chu||'')+'</textarea>'
+            :(cvE(z.m&&z.m.ghi_chu||'')||'<span class="cv-chua">—</span>'))+'</td></tr>';});});
   }
   return '<div class="cv-bc">'
     +'<div class="cv-bc-dau"><div><div class="cv-bc-ten">'+cvE(ten||'—')+'</div><div class="cv-phu">Báo cáo công việc · khách '+L+' · '+CV_THU[dn.getDay()]+', '+dmy(d)+'</div></div>'
@@ -4651,9 +4654,18 @@ function cvBaoCaoHtml(h,muc,ten,nguoiId){
       +(nguoiId===toi.id&&!toi.xemNhu?(chot?'<button class="cv-nut phu" onclick="cvChot(true)" title="Đã chốt thì khoá; thu hồi để sửa rồi chốt lại">Thu hồi để sửa</button>':'<button class="cv-nut" onclick="cvChot()">Chốt báo cáo ngày</button>'):'')
     +'</div></div>';
 }
-// ghi chú việc B / C hay là link (bài đăng, báo cáo chiến dịch) -> bấm mở được
-function cvLinkHtml(v){const s=String(v||'').trim();if(!s)return '<span class="cv-chua">—</span>';
-  return cvE(s).replace(/https?:\/\/[^\s<]+/g,u=>'<a href="'+u+'" target="_blank" rel="noopener" style="color:var(--accent);word-break:break-all">'+(u.length>48?u.slice(0,45)+'…':u)+'</a>');}
+// LINK CỐ ĐỊNH CỦA CHIẾN DỊCH (quản lý góp ý 04/11/2026): lưu danh_muc.link, admin gắn 1 lần; Sale chỉ bấm mở, không dán lại mỗi ngày
+function cvLinkCD(ten){return ((_dm||[]).find(x=>x.loai==='cv_chien_dich_si'&&x.gia_tri===ten)||{}).link||'';}
+function cvLinkCDHtml(ten){const l=cvLinkCD(ten),j=cvId(ten).replace(/&/g,'');
+  return (l?'<a href="'+cvE(l)+'" target="_blank" rel="noopener" class="cv-chip" style="text-decoration:none;flex:0 0 auto" title="'+cvE(l)+'">Mở báo cáo chiến dịch ↗</a>':'')
+    +(dashToanQuyen()?'<button class="cv-chip" style="flex:0 0 auto" onclick="cvDatLinkCD(\''+j+'\')" title="Link báo cáo cố định của chiến dịch">'+(l?'Sửa link':'Gắn link')+'</button>':'');}
+async function cvDatLinkCD(ten){
+  const x=(_dm||[]).find(y=>y.loai==='cv_chien_dich_si'&&cvId(y.gia_tri).replace(/&/g,'')===ten);if(!x)return alert('Không thấy chiến dịch trong danh mục');
+  const v=prompt('Link báo cáo cố định của "'+x.gia_tri+'" (để trống = bỏ link):',x.link||'');if(v===null)return;
+  try{const cu=x.link||'';await cvGoi('danh_muc?id=eq.'+x.id,'PATCH',{link:v.trim()||null},'return=minimal');x.link=v.trim()||null;
+    logAct('U','danh_muc','#'+x.id,x.gia_tri,'Link chiến dịch',cu,v.trim());renderCongViec();}
+  catch(e){alert('Chưa lưu được link: '+e.message);}
+}
 // SỐ LIỆU 1 NGƯỜI / 1 NGÀY / 1 LOẠI KHÁCH -- dùng chung cho Báo cáo ngày + Quản trị (1 nguồn, khỏi lệch nhau).
 //  dong = việc khách (Sỉ: + 03 khách mới trong ngày tự đổ về khi chưa chốt) · ngoai = phát sinh ngoài kế hoạch
 //  tk.don / tk.tien = DOANH THU SALE trong ngày (đơn Kiot của khách đứng tên Sale), chốt rồi thì lấy bản chụp · bc = việc B / C (Sỉ)
@@ -7010,10 +7022,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='04/11 16:45';
+const APP_VERSION='04/11 17:03';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=540;
+const APP_BAN=541;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
