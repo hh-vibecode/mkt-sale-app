@@ -4300,10 +4300,26 @@ async function cvDamBaoNgay(d){
   const kq=await cvGoi('cong_viec_ngay?on_conflict=ngay,nguoi_id','POST',{ngay:d,nguoi_id:toi.id,nguoi:toi.ten},'resolution=ignore-duplicates,return=representation');
   if(kq&&kq[0])cvNgay.push(kq[0]);else await cvTaiNgay(d);
 }
-function cvSuaDuoc(){const toi=cvToi(),st=cvSt();if(toi.xemNhu||!toi.id)return false;
+// 2 MỨC KHOÁ (anh Hải 04/11/2026 "thu hồi để sửa lại báo cáo"): cvSuaDuoc = còn sửa phần KẾT QUẢ (ghi chú, tích B/C, tổng kết) tới khi
+// Chốt báo cáo; cvSuaKH = còn sửa KẾ HOẠCH (thêm / bỏ / chuyển khách, mục tiêu, ghi chú kế hoạch) tới khi Gửi kế hoạch. Đã gửi / chốt
+// muốn sửa phải bấm Thu hồi (đếm thu_hoi_kh / thu_hoi_bc, quản lý thấy ở báo cáo + Quản trị).
+function cvSuaDuoc(){const toi=cvToi(),st=cvSt();if(toi.xemNhu||!toi.id||cvXemHet())return false;
   const h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);return !(h&&h.chot_luc);}
+function cvSuaKH(){if(!cvSuaDuoc())return false;const toi=cvToi(),st=cvSt();
+  const h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);return !(h&&h.gui_luc);}
+async function cvThuHoiKH(){
+  const st=cvSt(),toi=cvToi(),h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);
+  if(!h||!h.gui_luc||!cvSuaDuoc())return;
+  if(!confirm('Thu hồi kế hoạch để sửa? Quản lý sẽ thấy kế hoạch chuyển về "chưa gửi" cho tới khi anh/chị gửi lại.'))return;
+  await motLan('cv-thuhoi-kh',nutDangBam(),async()=>{
+    try{const n=(h.thu_hoi_kh||0)+1;await cvGoi('cong_viec_ngay?id=eq.'+h.id,'PATCH',{gui_luc:null,thu_hoi_kh:n,updated_at:new Date().toISOString()},'return=minimal');
+      h.gui_luc=null;h.thu_hoi_kh=n;logAct('U','cong_viec_ngay',st.ngay,toi.ten,'Thu hồi kế hoạch','đã gửi','lần '+n);}
+    catch(e){alert('Chưa thu hồi được: '+e.message);}
+  });
+  renderCongViec();
+}
 async function cvThem(leadId,iMuc){
-  if(!cvSuaDuoc())return;
+  if(!cvSuaKH())return;
   const st=cvSt(),toi=cvToi(),x=cvKhach().theoId[leadId];if(!x)return;
   // Sỉ: bấm khách ở danh sách 01–04 -> vào đúng nhóm đó; danh sách khác -> nhóm đang chọn
   let i=iMuc;if(i==null){const j=x.loai==='Sỉ'?CV_A_SI.findIndex(a=>a[0]===st.nguon):-1;i=j>=0?j:st.muc;}
@@ -4335,23 +4351,23 @@ async function cvBC(nhom,i,k,v){
   if(k==='xong')renderCongViec();
 }
 async function cvDoiMuc(id,iMuc){
-  const m=cvMuc.find(x=>x.id===id),dm=cvDsMuc()[iMuc];if(!m||!dm||m.dau_muc===dm||!cvSuaDuoc())return;
+  const m=cvMuc.find(x=>x.id===id),dm=cvDsMuc()[iMuc];if(!m||!dm||m.dau_muc===dm||!cvSuaKH())return;
   const cu=m.dau_muc;m.dau_muc=dm;renderCongViec();
   try{await cvGoi('cong_viec_muc?id=eq.'+id,'PATCH',{dau_muc:dm,updated_at:new Date().toISOString()},'return=minimal');}
   catch(e){m.dau_muc=cu;renderCongViec();alert('Chưa chuyển được: '+e.message);}
 }
 async function cvXoa(id){
-  if(!cvSuaDuoc())return;
+  if(!cvSuaKH())return;
   try{await cvGoi('cong_viec_muc?id=eq.'+id,'DELETE',undefined,'return=minimal');cvMuc=cvMuc.filter(x=>x.id!==id);renderCongViec();}
   catch(e){alert('Chưa xoá được: '+e.message);}
 }
 async function cvSuaO(id,k,v){
-  const m=cvMuc.find(x=>x.id===id);if(!m||!cvSuaDuoc()||!['muc_tieu','ghi_chu'].includes(k))return;
+  const m=cvMuc.find(x=>x.id===id);if(!m||!['muc_tieu','ghi_chu'].includes(k)||!(k==='muc_tieu'?cvSuaKH():cvSuaDuoc()))return;
   try{await cvGoi('cong_viec_muc?id=eq.'+id,'PATCH',{[k]:v.trim()||null,updated_at:new Date().toISOString()},'return=minimal');m[k]=v.trim()||null;}
   catch(e){alert('Chưa lưu được: '+e.message);}
 }
 async function cvSuaNgay(k,v){
-  if(!cvSuaDuoc()||!['ghi_chu_sang','ghi_chu_toi'].includes(k))return;
+  if(!['ghi_chu_sang','ghi_chu_toi'].includes(k)||!(k==='ghi_chu_sang'?cvSuaKH():cvSuaDuoc()))return;
   const st=cvSt(),toi=cvToi();
   try{await cvDamBaoNgay(st.ngay);
     await cvGoi('cong_viec_ngay?ngay=eq.'+st.ngay+'&nguoi_id=eq.'+encodeURIComponent(toi.id),'PATCH',{[k]:v.trim()||null,updated_at:new Date().toISOString()},'return=minimal');
@@ -4359,8 +4375,8 @@ async function cvSuaNgay(k,v){
   catch(e){alert('Chưa lưu được: '+e.message);}
 }
 async function cvGuiKeHoach(){
-  const st=cvSt(),toi=cvToi();if(!cvSuaDuoc())return;
-  if(!cvMuc.some(m=>m.nguoi_id===toi.id))return alert('Chưa có việc nào trong kế hoạch');
+  const st=cvSt(),toi=cvToi();if(!cvSuaKH())return;
+  if(!cvMuc.some(m=>m.nguoi_id===toi.id&&cvLaKhach(m))&&!(cvLoai()==='Sỉ'&&cvMoiNgayCua(toi.id,st.ngay).length))return alert('Chưa có khách nào trong kế hoạch');
   await motLan('cv-gui',nutDangBam(),async()=>{
     try{await cvDamBaoNgay(st.ngay);const luc=new Date().toISOString();
       await cvGoi('cong_viec_ngay?ngay=eq.'+st.ngay+'&nguoi_id=eq.'+encodeURIComponent(toi.id),'PATCH',{gui_luc:luc,updated_at:luc},'return=minimal');
@@ -4373,9 +4389,11 @@ async function cvGuiKeHoach(){
 async function cvChot(mo){
   const st=cvSt(),toi=cvToi();if(toi.xemNhu)return;
   const h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);
-  if(mo){if(!h||!h.chot_luc)return;
-    try{await cvGoi('cong_viec_ngay?id=eq.'+h.id,'PATCH',{chot_luc:null,updated_at:new Date().toISOString()},'return=minimal');h.chot_luc=null;}
-    catch(e){alert('Chưa mở lại được: '+e.message);}
+  if(mo){if(!h||!h.chot_luc||cvXemHet())return;   // THU HỒI BÁO CÁO để sửa: đếm thu_hoi_bc
+    if(!confirm('Thu hồi báo cáo đã chốt để sửa? Quản lý sẽ thấy báo cáo "chưa chốt" và số lần thu hồi.'))return;
+    try{const n=(h.thu_hoi_bc||0)+1;await cvGoi('cong_viec_ngay?id=eq.'+h.id,'PATCH',{chot_luc:null,thu_hoi_bc:n,updated_at:new Date().toISOString()},'return=minimal');
+      h.chot_luc=null;h.thu_hoi_bc=n;logAct('U','cong_viec_ngay',st.ngay,toi.ten,'Thu hồi báo cáo ngày','đã chốt','lần '+n);}
+    catch(e){alert('Chưa thu hồi được: '+e.message);}
     return renderCongViec();}
   if(!cvSuaDuoc())return;
   const K=cvKhach(),d=st.ngay;
@@ -4411,22 +4429,39 @@ async function cvChot(mo){
 }
 // TÊN SALE của 1 tài khoản (tên tài khoản ≠ tên Sale): Sale trong phạm vi có tên chứa tên tài khoản hoặc ngược lại (luật gộp tên Sale);
 // không khớp ai (tài khoản chung "Sale Chánh Tâm", "Nguyễn Vân Ngọc" vs "Trịnh Lê Vân Ngọc") -> cả phạm vi của tài khoản. [] = tất cả.
-function cvTenSaleCua(nguoiId){
-  const toi=cvToi();let ten='',sa;
-  if(nguoiId===toi.id){ten=toi.ten;sa=dashSales();}
-  else{const a=(window._rptSlAccs||[]).find(x=>String(x.user_id)===nguoiId);if(!a)return null;ten=a.name;sa=a.data_sales||[];}
-  const t=String(ten||'').trim().toLowerCase(),khop=sa.filter(s=>{const v=String(s).trim().toLowerCase();return t&&(v.includes(t)||t.includes(v));});
-  return khop.length?khop:sa;
+// SỬA 04/11/2026 (anh Hải: "t có đứng tên sale của ai đâu, Sale Chánh Tâm là ai"): trước đây tài khoản phạm vi RỖNG (admin) bị hiểu
+// là "mọi Sale" -> cộng hết đơn trong ngày cho Admin; tài khoản chung lấy cả phạm vi. Nay 1 tài khoản = ĐÚNG 1 Sale (nhân sự đang làm):
+//  (1) tên Sale chứa tên tài khoản hoặc ngược lại (luật gộp tên), (2) không thì phạm vi tài khoản chỉ có đúng 1 Sale đang làm.
+// Admin / Supreme / tài khoản chung nhiều Sale (vd "Sale Chánh Tâm") -> null: KHÔNG gán doanh thu, không gán khách.
+function cvSaleCuaAcc(a){
+  if(!a||['admin','supreme'].includes(a.position_title))return null;
+  const dang=saleNhanSuDS().filter(x=>x.dang_lam!==false).map(x=>x.ten);
+  const t=String(a.name||'').trim().toLowerCase();
+  const khop=dang.filter(s=>{const v=s.toLowerCase();return t&&(v.includes(t)||t.includes(v));});
+  if(khop.length===1)return khop[0];
+  const pv=(a.data_sales||[]).filter(s=>dang.includes(s));
+  return pv.length===1?pv[0]:null;
 }
-function cvKhachCua(nguoiId,L){const ten=cvTenSaleCua(nguoiId);if(ten===null)return [];
-  return cvKhach().ds.filter(x=>x.loai===L&&(!ten.length||ten.includes(String(x.r.staff||'').trim())));}
+function cvAccCua(nguoiId){
+  const toi=cvToi(),a=(window._rptSlAccs||[]).find(x=>String(x.user_id)===nguoiId);if(a)return a;
+  if(nguoiId!==toi.id)return null;
+  const v=dashViewAs();
+  return v&&dashCanViewAs()?{name:v.name,position_title:v.vitri,data_sales:v.sales||[]}
+    :{name:toi.ten,position_title:localStorage.getItem('dashPosition')||'',data_sales:dashSales()};
+}
+function cvTenSaleCua(nguoiId){const s=cvSaleCuaAcc(cvAccCua(nguoiId));return s?[s]:null;}
+function cvKhachCua(nguoiId,L){const ten=cvTenSaleCua(nguoiId);if(!ten)return [];
+  return cvKhach().ds.filter(x=>x.loai===L&&ten.includes(String(x.r.staff||'').trim()));}
+// doanh thu trong ngày của ĐÚNG 1 Sale (theo tên Sale đứng tên khách)
+function cvDoanhThuSale(sale,d,L){let don=0,tien=0;
+  cvKhach().ds.forEach(x=>{if(x.loai!==L||String(x.r.staff||'').trim()!==sale)return;const co=new Set();
+    [...(x.r.kords||[]),...(x.r.repeatOrds||[])].forEach(o=>{
+      if(co.has(o.code)||o.khongTinh||o.status===4||Number(o.total||0)<=0||String(o.purchase_date||'').slice(0,10)!==d)return;co.add(o.code);don++;tien+=Number(o.total||0);});});
+  return {don,tien};}
 // 03 KH mới trong ngày của 1 người: khách Sỉ tạo đúng ngày d, đứng tên Sale của tài khoản đó
 function cvMoiNgayCua(nguoiId,d){return cvKhachCua(nguoiId,'Sỉ').filter(x=>cvNgayTao(x.r)===d);}
 // DOANH THU SALE TRONG NGÀY (tiền chốt): đơn Kiot tạo ngày d, có dấu vết tiền, của khách đứng tên Sale của tài khoản
-function cvDoanhThuNgay(nguoiId,d,L){let don=0,tien=0;
-  cvKhachCua(nguoiId,L).forEach(x=>{const co=new Set();[...(x.r.kords||[]),...(x.r.repeatOrds||[])].forEach(o=>{
-    if(co.has(o.code)||o.khongTinh||o.status===4||Number(o.total||0)<=0||String(o.purchase_date||'').slice(0,10)!==d)return;co.add(o.code);don++;tien+=Number(o.total||0);});});
-  return {don,tien};}
+function cvDoanhThuNgay(nguoiId,d,L){const ten=cvTenSaleCua(nguoiId);return ten?cvDoanhThuSale(ten[0],d,L):{don:0,tien:0,khongRo:true};}
 function cvTongKet(kqs,ngoai){
   const don=[...kqs,...ngoai].flatMap(k=>(k.don||[]).filter(o=>!o.tam));
   return {ke_hoach:kqs.length,xu_ly:kqs.filter(cvDaXuLy).length,ngoai_n:ngoai.length,don:don.length,tien:don.reduce((a,o)=>a+o.tien,0)};
@@ -4448,7 +4483,7 @@ function cvMoKhach(leadId){
     const p=document.getElementById('page-congviec');if(!m.innerHTML.trim()&&p&&p.classList.contains('active'))renderCongViec();});
     m._cvObs.observe(m,{childList:true});}
 }
-function cvDat(k,v){const st=cvSt();st[k]=v;if(k==='ngay'||k==='nguoi')st.muc=0;renderCongViec();}
+function cvDat(k,v){const st=cvSt();st[k]=v;if(k==='ngay'||k==='nguoi')st.muc=0;if(k==='tab')cvKhoang=null;renderCongViec();}
 // ── vẽ ──
 function cvTenKhHtml(o){   // o: {lead,ten,ma,loai,vip}
   const coHoSo=o.lead&&cvKhach().theoId[o.lead];
@@ -4468,7 +4503,7 @@ function cvKqHtml(kq){
   return out.length?out.join(''):'<span class="cv-chua">Chưa ghi nhận chăm sóc</span>';
 }
 function cvBoardHtml(){
-  const st=cvSt(),toi=cvToi(),sua=cvSuaDuoc(),K=cvKhach();
+  const st=cvSt(),toi=cvToi(),sua=cvSuaKH(),suaKQ=cvSuaDuoc(),K=cvKhach();   // sua = sửa kế hoạch (chưa gửi) · suaKQ = tích B / C (chưa chốt)
   const h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay)||{};
   const L=cvLoai(),Si=L==='Sỉ',muc=cvMuc.filter(m=>m.nguoi_id===toi.id&&m.loai===L&&cvLaKhach(m)),dsMuc=cvDsMuc();
   const tuDo=Si?cvMoiNgayCua(toi.id,st.ngay):[];   // 03 khách mới trong ngày: tự đổ về, không cần kéo
@@ -4501,25 +4536,28 @@ function cvBoardHtml(){
             :(m.muc_tieu?'<div class="cv-phu" style="color:var(--text2)">'+cvE(m.muc_tieu)+'</div>':''))+'</div>';}).join('')
       +(vs.length||tu.length?'':'<div class="cv-chua" style="padding:10px 2px;font-size:11px">'+(Si&&i===2?'Chưa có khách mới hôm nay':sua?'Kéo khách vào đây':'Trống')+'</div>')+'</div>';};
   // B / C của Sỉ: checklist tích đã làm + ghi chú / link
-  const bcHtml=(n,tieu,dmk,stt0)=>{const ds=cvViecBC(n,toi.id,!sua);
+  const bcHtml=(n,tieu,dmk,stt0)=>{const ds=cvViecBC(n,toi.id,!suaKQ);
     return '<div class="cv-pan" style="box-shadow:none;margin-top:12px;padding:12px 14px"><div class="cv-tieu" style="margin-bottom:4px">'+tieu+dmBut(dmk)
       +' <span style="text-transform:none;font-weight:700">· '+ds.filter(z=>z.m&&z.m.xong).length+'/'+ds.length+' đã làm</span></div>'
       +ds.map((z,i)=>{const xong=!!(z.m&&z.m.xong);return '<div class="cv-bc-viec"><b class="cv-stt">'+String(stt0+i+1).padStart(2,'0')+'</b>'
-        +'<label style="display:flex;align-items:center;gap:8px;flex:0 0 auto;min-width:200px;cursor:'+(sua?'pointer':'default')+';font-size:12.5px;font-weight:700;color:var(--text)">'
-        +'<input type="checkbox" '+(xong?'checked':'')+(sua?'':' disabled')+' onchange="cvBC(\''+n+'\','+i+',\'xong\',this.checked)" style="accent-color:var(--green);width:15px;height:15px">'+cvE(z.ten)+'</label>'
-        +(sua?'<input class="cv-o" style="margin:0;flex:1" placeholder="'+(n==='C'?'Link báo cáo chiến dịch / ghi chú…':'Link bài / ghi chú…')+'" value="'+cvE(z.m&&z.m.ghi_chu||'')+'" onchange="cvBC(\''+n+'\','+i+',\'ghi_chu\',this.value)">'
+        +'<label style="display:flex;align-items:center;gap:8px;flex:0 0 auto;min-width:200px;cursor:'+(suaKQ?'pointer':'default')+';font-size:12.5px;font-weight:700;color:var(--text)">'
+        +'<input type="checkbox" '+(xong?'checked':'')+(suaKQ?'':' disabled')+' onchange="cvBC(\''+n+'\','+i+',\'xong\',this.checked)" style="accent-color:var(--green);width:15px;height:15px">'+cvE(z.ten)+'</label>'
+        +(suaKQ?'<input class="cv-o" style="margin:0;flex:1" placeholder="'+(n==='C'?'Link báo cáo chiến dịch / ghi chú…':'Link bài / ghi chú…')+'" value="'+cvE(z.m&&z.m.ghi_chu||'')+'" onchange="cvBC(\''+n+'\','+i+',\'ghi_chu\',this.value)">'
           :'<div style="flex:1;font-size:12px">'+cvLinkHtml(z.m&&z.m.ghi_chu)+'</div>')+'</div>';}).join('')+'</div>';};
   const phai='<div class="cv-pan"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div class="cv-tieu" style="margin:0">'
       +(Si?'A. Khách hàng · khách Sỉ':'Đầu mục chăm sóc · khách '+L+dmBut('cv_dau_muc'))+'</div>'
       +'<span class="cv-dem">'+(muc.length+(Si?tuDo.filter(x=>!daCo.has(x)).length:0))+' khách</span></div>'
     +'<div class="cv-cots">'+dsMuc.map(cot).join('')+'</div>'
-    +(Si?bcHtml('B','B. Công việc cố định','cv_co_dinh_si',4)+bcHtml('C','C. Công việc chiến dịch · tháng '+st.ngay.slice(5,7),'cv_chien_dich_si',4+cvViecBC('B',toi.id,!sua).length):'')
+    +(Si?bcHtml('B','B. Công việc cố định','cv_co_dinh_si',4)+bcHtml('C','C. Công việc chiến dịch · tháng '+st.ngay.slice(5,7),'cv_chien_dich_si',4+cvViecBC('B',toi.id,!suaKQ).length):'')
     +'<div class="cv-cuoi" style="padding:14px 0 0;border:none">'
       +'<div style="flex:1;min-width:220px"><div class="cv-tieu">Ghi chú kế hoạch</div>'
       +(sua?'<textarea class="cv-o" rows="2" placeholder="Trọng tâm hôm nay, cần quản lý hỗ trợ gì…" onchange="cvSuaNgay(\'ghi_chu_sang\',this.value)">'+cvE(h.ghi_chu_sang||'')+'</textarea>'
         :'<div class="cv-phu" style="color:var(--text2)">'+(cvE(h.ghi_chu_sang||'')||'—')+'</div>')+'</div>'
+      +(h.thu_hoi_kh?'<span class="cv-the" style="background:#fef3c7;color:#b45309">Đã thu hồi '+h.thu_hoi_kh+' lần</span>':'')
       +(h.gui_luc?'<span class="cv-the" style="background:var(--green-l);color:var(--green)">Đã gửi '+cvGio(h.gui_luc)+'</span>':'')
-      +(sua?'<button class="cv-nut" onclick="cvGuiKeHoach()">'+(h.gui_luc?'Gửi lại kế hoạch':'Gửi kế hoạch')+'</button>':'')
+      +(h.chot_luc?'<span class="cv-the" style="background:var(--accent-l);color:var(--accent)">Đã chốt báo cáo — thu hồi ở tab Báo cáo ngày</span>'
+        :h.gui_luc&&suaKQ?'<button class="cv-nut phu" onclick="cvThuHoiKH()" title="Đã gửi thì khoá; thu hồi để sửa rồi gửi lại">Thu hồi để sửa</button>'
+        :sua?'<button class="cv-nut" onclick="cvGuiKeHoach()">Gửi kế hoạch</button>':'')
     +'</div></div>';
   return '<div class="cv-wrap">'+(sua?trai:'')+phai+'</div>';
 }
@@ -4568,6 +4606,7 @@ function cvBaoCaoHtml(h,muc,ten,nguoiId){
     +'<div class="cv-bc-dau"><div><div class="cv-bc-ten">'+cvE(ten||'—')+'</div><div class="cv-phu">Báo cáo công việc · khách '+L+' · '+CV_THU[dn.getDay()]+', '+dmy(d)+'</div></div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
       +(h&&h.tong_ket&&h.tong_ket.mau?the('var(--bg2)','var(--text2)','Mẫu từ lịch sử chăm sóc'):'')   // nạp từ lịch sử T10 (04/11/2026)
+      +(h&&(h.thu_hoi_kh||h.thu_hoi_bc)?the('#fef3c7','#b45309','Thu hồi '+[h.thu_hoi_kh?'kế hoạch '+h.thu_hoi_kh+' lần':'',h.thu_hoi_bc?'báo cáo '+h.thu_hoi_bc+' lần':''].filter(Boolean).join(' · ')):'')
       +(h&&h.gui_luc?the('var(--green-l)','var(--green)','Gửi kế hoạch '+cvGio(h.gui_luc)):the('var(--bg2)','var(--muted)','Chưa gửi kế hoạch'))
       +(chot?the('var(--accent-l)','var(--accent)','Đã chốt '+cvGio(h.chot_luc)):the('#fef3c7','#b45309','Chưa chốt báo cáo'))+'</div></div>'
     +'<div class="cv-so">'+so(num(tk.ke_hoach),'Việc kế hoạch')+so(num(tk.xu_ly),'Đã xử lý','#16a34a')
@@ -4581,7 +4620,7 @@ function cvBaoCaoHtml(h,muc,ten,nguoiId){
       +(sua?'<textarea class="cv-o" rows="2" style="margin:0" placeholder="Kết quả chính, khó khăn, cần hỗ trợ…" onchange="cvSuaNgay(\'ghi_chu_toi\',this.value)">'+cvE(h&&h.ghi_chu_toi||'')+'</textarea>'
         :'<div style="font-size:12px;color:var(--text2);white-space:pre-wrap">'+(cvE(h&&h.ghi_chu_toi||'')||'<span class="cv-chua">—</span>')+'</div>')+'</div>'
       +(h&&h.ghi_chu_sang?'<div style="flex:1;min-width:220px"><div class="cv-tieu">Ghi chú kế hoạch</div><div style="font-size:12px;color:var(--text2);white-space:pre-wrap">'+cvE(h.ghi_chu_sang)+'</div></div>':'')
-      +(nguoiId===toi.id&&!toi.xemNhu?(chot?'<button class="cv-nut phu" onclick="cvChot(true)">Mở lại để sửa</button>':'<button class="cv-nut" onclick="cvChot()">Chốt báo cáo ngày</button>'):'')
+      +(nguoiId===toi.id&&!toi.xemNhu&&!cvXemHet()?(chot?'<button class="cv-nut phu" onclick="cvChot(true)" title="Đã chốt thì khoá; thu hồi để sửa rồi chốt lại">Thu hồi để sửa</button>':'<button class="cv-nut" onclick="cvChot()">Chốt báo cáo ngày</button>'):'')
     +'</div></div>';
 }
 // ghi chú việc B / C hay là link (bài đăng, báo cáo chiến dịch) -> bấm mở được
@@ -4633,43 +4672,95 @@ function cvLichSuHtml(){
 }
 // TAB QUẢN TRỊ (anh Hải 04/11/2026: "thêm tab quản trị, thấy được các sale luôn, với số lượng việc xử lý"): 1 bảng mọi Sale của loại
 // khách đang xem trong ngày -- kể cả người chưa lên kế hoạch. Lượt chăm sóc = mọi lượt người đó ghi cho ngày (trong + ngoài kế hoạch).
+// SỬA 04/11/2026 (anh Hải: "t có đứng tên sale của ai đâu", "trước khi tính cho người đấy phải xem tên Sale đã chuẩn chưa"):
+// MỖI DÒNG = 1 SALE THẬT (Nhân sự Sale đang làm, đúng đội Lẻ / Sỉ), KHÔNG lấy tài khoản làm dòng. Đơn / tiền / lượt chăm chỉ tính cho Sale
+// khi tên Sale đứng tên khách (lượt chăm: cột sales, quy tên chuẩn) KHỚP ĐÚNG tên trong Nhân sự Sale; tên chưa chuẩn (chưa gán, Sale nghỉ,
+// nhân viên Kiot, tài khoản chung…) gom dòng "Chưa tính cho ai" để thấy mà sửa. Số kế hoạch lấy từ tài khoản của đúng Sale đó;
+// tài khoản chung (vd "Sale Chánh Tâm") 1 dòng riêng chỉ có số kế hoạch. Admin / Supreme không có dòng.
+// KHOẢNG NGÀY (anh Hải 04/11/2026: "chọn ngày không có range à"): Quản trị xem Từ – Đến; số kế hoạch cộng từng ngày (mỗi ngày tính đúng
+// như Báo cáo ngày của ngày đó), gửi / chốt đếm số ngày. Dữ liệu khoảng nạp riêng (cvKhoang).
+let cvKhoang=null;
+async function cvTaiKhoang(tu,den){
+  const [h,m]=await Promise.all([sbFetchAll('cong_viec_ngay','select=*&ngay=gte.'+tu+'&ngay=lte.'+den+'&order=ngay,nguoi'),
+    sbFetchAll('cong_viec_muc','select=*&ngay=gte.'+tu+'&ngay=lte.'+den+'&order=ngay,thu_tu,id')]);
+  cvKhoang={tu,den,h,m};
+}
+function cvKhoangNhanh(k){const st=cvSt(),hom=todayISO(),ng=(dd,n)=>{const t=new Date(dd+'T12:00:00');t.setDate(t.getDate()+n);return t.toISOString().slice(0,10);};
+  let tu=hom,den=hom;
+  if(k==='7')tu=ng(hom,-6);
+  else if(k==='thang')tu=hom.slice(0,8)+'01';
+  else if(k==='truoc'){const t=new Date(hom.slice(0,8)+'01T12:00:00');t.setDate(0);den=t.toISOString().slice(0,10);tu=den.slice(0,8)+'01';}
+  st.tu=tu;st.den=den;cvKhoang=null;renderCongViec();}
+function cvDatKhoang(k,v){const st=cvSt();if(!v)return;st[k]=v;if(st.tu>st.den){if(k==='tu')st.den=v;else st.tu=v;}cvKhoang=null;renderCongViec();}
 function cvQuanTriHtml(){
-  const st=cvSt(),d=st.ngay,L=cvLoai(),K=cvKhach();
-  const accs=(window._rptSlAccs||[]).filter(a=>cvAccTrongPhamVi(a,L));
-  cvNgay.forEach(h=>{if(!accs.some(a=>String(a.user_id)===h.nguoi_id)&&cvMuc.some(m=>m.nguoi_id===h.nguoi_id&&m.loai===L))accs.push({user_id:h.nguoi_id,name:h.nguoi});});
-  const dong=accs.map(a=>{const id=String(a.user_id),h=cvNgay.find(x=>x.nguoi_id===id);
-    const {tk,bc}=cvDongCua(h,id,a.name,L);
-    const luot=siCrmRows.filter(c=>String(c.ngay_cham||'').slice(0,10)===d&&String(c.created_by||'').trim()===String(a.name||'').trim()
-      &&(c.loai||'Sỉ')===L&&!rptSlLaGiaoViec(c)).length;
-    const dem=n=>bc?{x:bc[n].filter(z=>z.m&&z.m.xong).length,n:bc[n].length}:null;
-    const co=tk.ke_hoach||tk.ngoai_n||luot||tk.don||(bc&&(dem('B').x||dem('C').x));   // không có việc khách loại đang xem -> không tính gửi / chốt cho loại này
-    return {id,ten:a.name,h:co?h:null,tk,luot,B:dem('B'),C:dem('C')};})
-    .sort((x,y)=>(y.tk.xu_ly+y.tk.ngoai_n)-(x.tk.xu_ly+x.tk.ngoai_n)||y.tk.ke_hoach-x.tk.ke_hoach||String(x.ten).localeCompare(String(y.ten),'vi'));
-  if(!dong.length)return '<div class="cv-bc"><div class="cv-chua" style="padding:22px 18px">'+(window._rptSlAccs?'Không có Sale nào xem khách '+L:'Đang tải danh sách Sale…')+'</div></div>';
-  const T=dong.reduce((s,x)=>{['ke_hoach','xu_ly','ngoai_n','don','tien'].forEach(k=>s[k]+=x.tk[k]);s.luot+=x.luot;s.gui+=x.h&&x.h.gui_luc?1:0;s.chot+=x.h&&x.h.chot_luc?1:0;return s;},
-    {ke_hoach:0,xu_ly:0,ngoai_n:0,don:0,tien:0,luot:0,gui:0,chot:0});
+  const st=cvSt(),L=cvLoai(),K=cvKhach(),tu=st.tu||st.ngay,den=st.den||st.ngay,mot=tu===den,d=den;
+  const trong=v=>{const s=String(v||'').slice(0,10);return s>=tu&&s<=den;};
+  const KH=cvKhoang||{h:[],m:[]},ngays=[];
+  for(let t=new Date(tu+'T12:00:00');ngays.length<93;t.setDate(t.getDate()+1)){const s=t.toISOString().slice(0,10);if(s>den)break;ngays.push(s);}
+  const hNgay={},mNgay={};KH.h.forEach(h=>{(hNgay[h.ngay]=hNgay[h.ngay]||[]).push(h);});KH.m.forEach(m=>{(mNgay[m.ngay]=mNgay[m.ngay]||[]).push(m);});
+  const dang=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten&&x.ten!==RPT_SL_BOT_SI&&(x.doi==='Cả 2'||(x.doi==='Sỉ'?'Sỉ':'Lẻ')===L)).map(x=>x.ten);
+  const accs=(window._rptSlAccs||[]).filter(a=>!['admin','supreme'].includes(a.position_title)&&(!(a.data_types||[]).length||a.data_types.includes(L)));
+  const tien={},lech={},luot={},luotLech={},chuaGan='(chưa gán Sale)';
+  K.ds.forEach(x=>{if(x.loai!==L)return;const s=String(x.r.staff||'').trim(),chuan=dang.includes(s),co=new Set();
+    [...(x.r.kords||[]),...(x.r.repeatOrds||[])].forEach(o=>{
+      if(co.has(o.code)||o.khongTinh||o.status===4||Number(o.total||0)<=0||!trong(o.purchase_date))return;co.add(o.code);
+      const b=chuan?tien:lech,t=chuan?s:(s||chuaGan);(b[t]=b[t]||{don:0,tien:0});b[t].don++;b[t].tien+=Number(o.total||0);});});
+  siCrmRows.forEach(c=>{if(!trong(c.ngay_cham)||(c.loai||'Sỉ')!==L||rptSlLaGiaoViec(c))return;
+    const s=rptSlSaleName(c.sales||'');if(dang.includes(s))luot[s]=(luot[s]||0)+1;else{const t=s||chuaGan;luotLech[t]=(luotLech[t]||0)+1;}});
+  // số kế hoạch: cộng từng ngày trong khoảng, mỗi ngày tính y như Báo cáo ngày (cvDongCua đọc cvNgay / cvMuc / st.ngay -> tạm đổi rồi trả lại)
+  const keHoach=a=>{if(!a)return null;const id=String(a.user_id),p={id,acc:a.name,tk:{ke_hoach:0,xu_ly:0,ngoai_n:0},gui:0,chot:0,ngayCo:0,
+      B:L==='Sỉ'?{x:0,n:0}:null,C:L==='Sỉ'?{x:0,n:0}:null,mau:false,h:null,thuHoi:0};
+    const goc={n:cvNgay,m:cvMuc,d:st.ngay};
+    try{ngays.forEach(dd=>{cvNgay=hNgay[dd]||[];cvMuc=mNgay[dd]||[];st.ngay=dd;
+      const h=cvNgay.find(x=>x.nguoi_id===id);if(!h&&L!=='Sỉ')return;
+      const {tk,bc}=cvDongCua(h,id,a.name,L),dem=n=>({x:bc[n].filter(z=>z.m&&z.m.xong).length,n:bc[n].length});
+      const co=tk.ke_hoach||tk.ngoai_n||(bc&&(dem('B').x||dem('C').x))||(h&&h.gui_luc&&cvMuc.some(m=>m.nguoi_id===id&&m.loai===L));
+      if(!co)return;
+      ['ke_hoach','xu_ly','ngoai_n'].forEach(k=>p.tk[k]+=tk[k]);p.ngayCo++;
+      if(h&&h.gui_luc)p.gui++;if(h&&h.chot_luc)p.chot++;if(h&&h.tong_ket&&h.tong_ket.mau)p.mau=true;if(h)p.thuHoi+=(h.thu_hoi_kh||0)+(h.thu_hoi_bc||0);
+      if(bc&&h){['B','C'].forEach(n=>{const v=dem(n);p[n].x+=v.x;p[n].n+=v.n;});}   // B / C chỉ đếm ngày có mở báo cáo
+      if(mot)p.h=h;});}
+    finally{cvNgay=goc.n;cvMuc=goc.m;st.ngay=goc.d;}
+    return p;};
+  const dong=dang.map(s=>({ten:s,p:keHoach(accs.find(a=>cvSaleCuaAcc(a)===s)),dt:tien[s]||{don:0,tien:0},luot:luot[s]||0}))
+    .sort((x,y)=>y.dt.tien-x.dt.tien||((y.p&&y.p.tk.xu_ly)||0)-((x.p&&x.p.tk.xu_ly)||0)||x.ten.localeCompare(y.ten,'vi'));
+  accs.filter(a=>!cvSaleCuaAcc(a)).forEach(a=>dong.push({ten:a.name,chung:true,p:keHoach(a),dt:null,luot:null}));
+  if(!dong.length)return '<div class="cv-bc"><div class="cv-chua" style="padding:22px 18px">Không có Sale nào ở đội '+L+'</div></div>';
+  dong.forEach(x=>{x.tk=x.p?x.p.tk:{ke_hoach:0,xu_ly:0,ngoai_n:0};x.h=x.p?x.p.h:null;x.id=x.p?x.p.id:'';x.B=x.p?x.p.B:null;x.C=x.p?x.p.C:null;});
+  const T=dong.reduce((s,x)=>{['ke_hoach','xu_ly','ngoai_n'].forEach(k=>s[k]+=x.tk[k]);if(x.dt){s.don+=x.dt.don;s.tien+=x.dt.tien;}s.luot+=x.luot||0;
+    if(x.p){s.gui+=x.p.gui;s.chot+=x.p.chot;s.ngayCo+=x.p.ngayCo;}return s;},{ke_hoach:0,xu_ly:0,ngoai_n:0,don:0,tien:0,luot:0,gui:0,chot:0,ngayCo:0});
+  const lechDs=Object.entries(lech).sort((a,b)=>b[1].tien-a[1].tien),lechLuot=Object.entries(luotLech);
   const dn=new Date(d+'T00:00:00'),so=(n,l,mau)=>'<div><div class="n"'+(mau?' style="color:'+mau+'"':'')+'>'+n+'</div><div class="l">'+l+'</div></div>';
   const r=n=>'<td style="text-align:right">'+n+'</td>';
   const gio=(t,chu)=>t?'<span style="color:var(--green);font-weight:800">'+cvGio(t)+'</span>':'<span class="cv-chua">'+chu+'</span>';
-  dong.forEach(x=>{if(x.h&&x.h.tong_ket&&x.h.tong_ket.mau)x.ten+=' (mẫu)';});
   const tl=x=>x.tk.ke_hoach?Math.round(x.tk.xu_ly*100/x.tk.ke_hoach):null;
+  const coTK=dong.filter(x=>x.p).length,soCot=L==='Sỉ'?12:10;
   return '<div class="cv-bc">'
-    +'<div class="cv-bc-dau"><div><div class="cv-bc-ten">Tổng quan Sale · khách '+L+'</div><div class="cv-phu">'+CV_THU[dn.getDay()]+', '+dmy(d)+' · '+dong.length+' Sale</div></div></div>'
-    +'<div class="cv-so">'+so(num(T.gui)+'<span style="font-size:12px;color:var(--muted)">/'+dong.length+'</span>','Đã gửi kế hoạch')
+    +'<div class="cv-bc-dau"><div><div class="cv-bc-ten">Tổng quan Sale · khách '+L+'</div><div class="cv-phu">'
+      +(mot?CV_THU[dn.getDay()]+', '+dmy(d):dmy(tu)+' – '+dmy(den)+' · '+ngays.length+' ngày')+' · '+dong.length+' Sale</div></div></div>'
+    +'<div class="cv-so">'+so(num(T.gui)+'<span style="font-size:12px;color:var(--muted)">/'+(mot?coTK:T.ngayCo+' ngày')+'</span>','Đã gửi kế hoạch')
       +so(num(T.ke_hoach),'Việc kế hoạch')+so(num(T.xu_ly),'Đã xử lý','#16a34a')+so(num(T.ngoai_n),'Ngoài kế hoạch')
       +so(num(T.luot),'Lượt chăm sóc')+so(num(T.don),'Đơn chốt',T.don?'#16a34a':'')+so(vnd(T.tien),'Tiền chốt',T.tien?'#16a34a':'')
-      +so(num(T.chot)+'<span style="font-size:12px;color:var(--muted)">/'+dong.length+'</span>','Đã chốt báo cáo')+'</div>'
+      +so(num(T.chot)+'<span style="font-size:12px;color:var(--muted)">/'+(mot?coTK:T.ngayCo+' ngày')+'</span>','Đã chốt báo cáo')+'</div>'
     +'<div style="overflow-x:auto"><table class="cv-bang"><thead><tr><th>Sale</th><th>Gửi kế hoạch</th><th style="text-align:right">Việc kế hoạch</th><th style="text-align:right">Đã xử lý</th>'
       +'<th style="text-align:right">Chưa xử lý</th><th style="text-align:right">Ngoài kế hoạch</th><th style="text-align:right">Lượt chăm sóc</th><th style="text-align:right">Đơn chốt</th><th style="text-align:right">Tiền chốt</th>'
       +(L==='Sỉ'?'<th style="text-align:right">Việc cố định</th><th style="text-align:right">Việc chiến dịch</th>':'')+'<th>Chốt báo cáo</th></tr></thead><tbody>'
-    +dong.map(x=>{const p=tl(x),chua=x.tk.ke_hoach-x.tk.xu_ly;
-      return '<tr style="cursor:pointer" onclick="cvMoNgay(\''+d+'\',\''+cvId(x.id)+'\')" title="Xem báo cáo ngày của '+cvE(x.ten)+'"><td><b>'+cvE(x.ten)+'</b></td>'
-        +'<td>'+gio(x.h&&x.h.gui_luc,'chưa gửi')+'</td>'+r(num(x.tk.ke_hoach))
-        +r('<b style="color:#16a34a">'+num(x.tk.xu_ly)+'</b>'+(p==null?'':' <span class="cv-phu" style="display:inline">'+p+'%</span>'))
-        +r(chua?'<b style="color:#d97706">'+num(chua)+'</b>':'0')+r(num(x.tk.ngoai_n))+r(num(x.luot))
-        +r(x.tk.don?'<b style="color:#16a34a">'+num(x.tk.don)+'</b>':'0')+r(x.tk.tien?'<b style="color:#16a34a">'+vnd(x.tk.tien)+'</b>':'—')
-        +(x.B?[x.B,x.C].map(v=>r('<b style="color:'+(v.n&&v.x===v.n?'#16a34a':v.x?'var(--text)':'var(--muted)')+'">'+v.x+'</b>/'+v.n)).join(''):'')
-        +'<td>'+gio(x.h&&x.h.chot_luc,'chưa chốt')+'</td></tr>';}).join('')
+    +dong.map(x=>{const p=tl(x),chua=x.tk.ke_hoach-x.tk.xu_ly,g='<span class="cv-chua">—</span>',kh=!!x.p;
+      return '<tr'+(kh?' style="cursor:pointer" onclick="cvMoNgay(\''+d+'\',\''+cvId(x.id)+'\')" title="Xem báo cáo ngày của '+cvE(x.ten)+'"':'')+'><td><b>'+cvE(x.ten)+'</b>'
+          +(x.chung?' <span class="cv-loai">tài khoản chung</span>':'')+(x.p&&x.p.mau?' <span class="cv-loai">mẫu</span>':'')
+          +(x.chung?'<div class="cv-phu">không tính tiền — chưa biết của Sale nào</div>':kh?(x.p.acc!==x.ten?'<div class="cv-phu">tài khoản: '+cvE(x.p.acc)+'</div>':''):'<div class="cv-phu">chưa có tài khoản riêng</div>')+'</td>'
+        +'<td>'+(!kh?g:mot?gio(x.h&&x.h.gui_luc,'chưa gửi'):x.p.ngayCo?'<b>'+x.p.gui+'</b>/'+x.p.ngayCo+' ngày':'<span class="cv-chua">không có</span>')
+          +(x.p&&x.p.thuHoi?'<div class="cv-phu" style="color:#b45309">thu hồi '+x.p.thuHoi+' lần</div>':'')+'</td>'+r(kh?num(x.tk.ke_hoach):g)
+        +r(kh?'<b style="color:#16a34a">'+num(x.tk.xu_ly)+'</b>'+(p==null?'':' <span class="cv-phu" style="display:inline">'+p+'%</span>'):g)
+        +r(kh?(chua?'<b style="color:#d97706">'+num(chua)+'</b>':'0'):g)+r(kh?num(x.tk.ngoai_n):g)+r(x.luot==null?g:num(x.luot))
+        +r(!x.dt?g:x.dt.don?'<b style="color:#16a34a">'+num(x.dt.don)+'</b>':'0')+r(!x.dt?g:x.dt.tien?'<b style="color:#16a34a">'+vnd(x.dt.tien)+'</b>':'—')
+        +(L==='Sỉ'?(x.B?[x.B,x.C].map(v=>r('<b style="color:'+(v.n&&v.x===v.n?'#16a34a':v.x?'var(--text)':'var(--muted)')+'">'+v.x+'</b>/'+v.n)).join(''):r(g)+r(g)):'')
+        +'<td>'+(!kh?g:mot?gio(x.h&&x.h.chot_luc,'chưa chốt'):x.p.ngayCo?'<b>'+x.p.chot+'</b>/'+x.p.ngayCo+' ngày':g)+'</td></tr>';}).join('')
+    // tên Sale chưa chuẩn: không tính cho ai, hiện ra để sửa (gán Sale / chuẩn tên ở Nhân sự Sale)
+    +(lechDs.length||lechLuot.length?'<tr class="cv-nhom"><td colspan="'+soCot+'" style="font-weight:600;line-height:1.6">'
+      +'<b style="color:#b45309">Chưa tính cho ai — tên Sale chưa chuẩn (không có trong Nhân sự Sale) hoặc không thuộc đội '+L+'</b>'
+      +(lechDs.length?'<div>Đơn: '+lechDs.map(([t,v])=>'<b>'+cvE(t)+'</b> '+num(v.don)+' đơn · '+vnd(v.tien)).join(' &nbsp;·&nbsp; ')+'</div>':'')
+      +(lechLuot.length?'<div>Lượt chăm sóc: '+lechLuot.map(([t,n])=>'<b>'+cvE(t)+'</b> '+num(n)).join(' &nbsp;·&nbsp; ')+'</div>':'')+'</td></tr>':'')
     +'</tbody></table></div></div>';
 }
 function cvMoNgay(d,nguoiId){const st=cvSt();st.ngay=d;st.tab='bao-cao';st.nguoi=cvXemHet()?nguoiId:'';renderCongViec();}
@@ -4688,6 +4779,7 @@ async function renderCongViec(taiLai){
     await rptSlLockChot();
     if(taiLai||cvMucNgay!==st.ngay)await cvTaiNgay(st.ngay);
     if(st.tab==='lich-su'&&(taiLai||!cvLichSu))await cvTaiLichSu();
+    if(st.tab==='quan-tri'){if(!st.tu)st.tu=st.den=st.ngay;if(taiLai||!cvKhoang||cvKhoang.tu!==st.tu||cvKhoang.den!==st.den)await cvTaiKhoang(st.tu,st.den);}
     if(!window._rptSlAccs)rptSlLoadAccs().then(()=>{if(['bao-cao','quan-tri'].includes(st.tab))renderCongViec();});
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo công việc',e,'renderCongViec');return;}
   if(!document.getElementById('page-congviec').classList.contains('active'))return;
@@ -4698,8 +4790,14 @@ async function renderCongViec(taiLai){
   const lds=cvLoaiDuoc();
   const chonLoai=lds.length>1?modTabBar(lds.map(t=>[t,'Khách '+t,L===t,"cvDoiLoai('"+t+"')"]))
     :'<span class="cv-the" style="background:var(--accent-l);color:var(--accent)">Khách '+L+'</span>';
+  const hom=todayISO(),thangNay=hom.slice(0,8)+'01',khoangLa=(a,b)=>st.tu===a&&st.den===b;
+  const nhanh=(k,t,on)=>'<button class="cv-chip'+(on?' on':'')+'" onclick="cvKhoangNhanh(\''+k+'\')">'+t+'</button>';
   const thanh='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+chonLoai+chonNguoi
-    +(st.tab==='lich-su'?'':'<button class="cv-chip" onclick="cvLui(-1)" title="Ngày trước">◀</button>'
+    +(st.tab==='quan-tri'?'<span style="font-size:11px;color:var(--muted);font-weight:700">Từ</span><input type="date" value="'+st.tu+'" onchange="cvDatKhoang(\'tu\',this.value)" style="'+ip+'">'
+      +'<span style="font-size:11px;color:var(--muted);font-weight:700">Đến</span><input type="date" value="'+st.den+'" onchange="cvDatKhoang(\'den\',this.value)" style="'+ip+'">'
+      +nhanh('hom','Hôm nay',khoangLa(hom,hom))+nhanh('7','7 ngày',st.den===hom&&st.tu!==hom&&(new Date(hom)-new Date(st.tu))/864e5===6)
+      +nhanh('thang','Tháng này',khoangLa(thangNay,hom))+nhanh('truoc','Tháng trước',st.den===new Date(new Date(thangNay+'T12:00:00').getTime()-864e5).toISOString().slice(0,10)&&st.tu===st.den.slice(0,8)+'01')
+    :st.tab==='lich-su'?'':'<button class="cv-chip" onclick="cvLui(-1)" title="Ngày trước">◀</button>'
       +'<input type="date" value="'+st.ngay+'" onchange="if(this.value)cvDat(\'ngay\',this.value)" style="'+ip+'">'
       +'<button class="cv-chip" onclick="cvLui(1)" title="Ngày sau">▶</button>'
       +(st.ngay!==todayISO()?'<button class="cv-chip" onclick="cvDat(\'ngay\',todayISO())">Hôm nay</button>':''))
@@ -6875,10 +6973,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='04/11 15:33';
+const APP_VERSION='04/11 16:36';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=538;
+const APP_BAN=539;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;

@@ -16,3 +16,7 @@ on conflict (loai, gia_tri) do nothing;
 update public.cong_viec_muc m set dau_muc = case when m.dau_muc = 'Chăm sau bán' then 'KH chăm sóc sau bán' else 'KH đến lịch tái chăm sóc' end
  where m.loai = 'Sỉ' and left(m.lead_id,1) <> '#' and m.dau_muc in ('Gọi / nhắn chăm sóc','Tư vấn, gửi báo giá','Chốt đơn','Chăm sau bán','Thu tiền, cọc')
    and exists (select 1 from public.cong_viec_ngay n where n.ngay = m.ngay and n.nguoi_id = m.nguoi_id and (n.tong_ket->>'mau')::boolean);
+
+-- THU HỒI ĐỂ SỬA (anh Hải 04/11/2026): gửi kế hoạch / chốt báo cáo rồi thì KHOÁ, muốn sửa phải Thu hồi; đếm số lần cho quản lý thấy.
+alter table public.cong_viec_ngay add column if not exists thu_hoi_kh int not null default 0;
+alter table public.cong_viec_ngay add column if not exists thu_hoi_bc int not null default 0;
