@@ -4165,7 +4165,21 @@ function cvToi(){const v=dashViewAs();
   if(v&&dashCanViewAs())return {id:String(v.id),ten:v.name||'',xemNhu:true};
   return {id:String(localStorage.getItem('dashUserId')||''),ten:localStorage.getItem('dashUser')||'',xemNhu:false};}
 function cvXemHet(){return dashToanQuyen();}
-function cvSt(){if(!window._cv)window._cv={ngay:todayISO(),tab:'',nguoi:null,nguon:'hen',q:'',muc:0};return window._cv;}
+function cvSt(){if(!window._cv)window._cv={ngay:todayISO(),tab:'',nguoi:null,nguon:'hen',q:'',muc:0,loai:''};return window._cv;}
+// TÁCH LẺ / SỈ (anh Hải 04/11/2026): cả trang xem 1 loại khách 1 lúc, theo loại tài khoản được xem (Phân quyền > loại khách).
+function cvLoaiDuoc(){const a=dashTypes();return ['Lẻ','Sỉ'].filter(t=>!a.length||a.includes(t));}
+function cvLoai(){const st=cvSt(),ds=cvLoaiDuoc();
+  if(!ds.includes(st.loai)){let nho='';try{nho=localStorage.getItem('cvLoai')||'';}catch(e){}st.loai=ds.includes(nho)?nho:ds[0]||'Lẻ';}
+  return st.loai;}
+function cvDoiLoai(t){try{localStorage.setItem('cvLoai',t);}catch(e){}cvDat('loai',t);}
+// Phạm vi xem báo cáo người khác = phạm vi Sale đang có ở các báo cáo khác (CSDL chặn: cv_xem_duoc). Ở đây chỉ để liệt kê
+// "chưa lên kế hoạch": tài khoản có phạm vi Sale nằm trọn trong phạm vi mình, cùng loại khách đang xem.
+function cvAccTrongPhamVi(a,loai){
+  if(['admin','supreme'].includes(a.position_title))return false;
+  const ds=a.data_sales||[],ty=a.data_types||[],toi=dashSales();
+  if(ty.length&&!ty.includes(loai))return false;
+  return !toi.length||(ds.length>0&&ds.every(x=>toi.includes(x)));
+}
 function cvDsMuc(){const a=CV_DAU_MUC.slice();cvMuc.forEach(m=>{if(m.dau_muc&&!a.includes(m.dau_muc))a.push(m.dau_muc);});return a;}
 function cvMau(dm){return dmMau('cv_dau_muc',dm)||DM_MAU[Math.max(0,CV_DAU_MUC.indexOf(dm))%DM_MAU.length];}
 async function cvGoi(path,method,body,prefer){
@@ -4181,7 +4195,7 @@ async function cvTaiNgay(d){
 }
 async function cvTaiLichSu(){
   const [h,m]=await Promise.all([sbFetchAll('cong_viec_ngay','select=id,ngay,nguoi_id,nguoi,gui_luc,chot_luc,tong_ket&order=ngay.desc,nguoi'),
-    sbFetchAll('cong_viec_muc','select=id,ngay,nguoi_id&order=id')]);
+    sbFetchAll('cong_viec_muc','select=id,ngay,nguoi_id,loai&order=id')]);
   cvLichSu={h,m};
 }
 // Khách cả Lẻ lẫn Sỉ (đúng phạm vi xem của tài khoản), tra theo mọi Lead ID của khách gộp.
@@ -4199,10 +4213,10 @@ function cvKhach(){
 }
 function cvNgayTao(r){return String((typeof rptSlNgayTao==='function'?rptSlNgayTao(r):r.created)||'').slice(0,10);}
 function cvNguonDs(k,q){
-  const K=cvKhach(),sa=dashSales(),cua=x=>!sa.length||sa.includes(String(x.r.staff||'').trim());
+  const K=cvKhach(),L=cvLoai(),sa=dashSales(),cua=x=>!sa.length||sa.includes(String(x.r.staff||'').trim());
   const hom=todayISO(),dau=hom.slice(0,8)+'01',tuan=new Date(Date.now()+7*3600e3-7*864e5).toISOString().slice(0,10);
-  if(k==='tim'){q=String(q||'').trim();return q?K.ds.filter(x=>cvVoiLoai(x.loai,()=>rptSlTimKhop(x.r,q))):[];}
-  const ds=K.ds.filter(cua);
+  if(k==='tim'){q=String(q||'').trim();return q?K.ds.filter(x=>x.loai===L&&cvVoiLoai(x.loai,()=>rptSlTimKhop(x.r,q))):[];}
+  const ds=K.ds.filter(x=>x.loai===L&&cua(x));
   if(k==='hen')return ds.filter(x=>x.r.siHenDen).sort((a,b)=>String(a.r.siNgayHen).localeCompare(String(b.r.siNgayHen)));
   if(k==='moi')return ds.filter(x=>!x.r.isChot&&!rptSlLeadCu(x.r)&&cvNgayTao(x.r)>=tuan).sort((a,b)=>cvNgayTao(b.r).localeCompare(cvNgayTao(a.r)));
   if(k==='thang')return ds.filter(x=>[...(x.r.kords||[]),...(x.r.repeatOrds||[])].some(o=>Number(o.total||0)>0&&String(o.purchase_date||'').slice(0,10)>=dau));
@@ -4235,7 +4249,7 @@ function cvNgoai(ten,d,muc){
     const k=x?'x'+x.r.leadId:'c'+(c.kiot_code||c.lead_id||c.customer_name);
     if(!nhom.has(k)){const kq=x?cvKetQua(x,d):null;
       nhom.set(k,{lead:x?x.r.leadId:(c.lead_id||''),ten:x?x.r.name:(c.customer_name||''),ma:x?(x.r.kh||x.r.leadId):(c.kiot_code||c.lead_id||''),
-        loai:x?x.loai:(c.loai||''),vip:x?rptSlLaVip(x.r):false,pl:kq?kq.pl:'',cs:kq?kq.cs:[],don:kq?kq.don:[]});
+        loai:x?x.loai:(c.loai||'Sỉ'),vip:x?rptSlLaVip(x.r):false,pl:kq?kq.pl:'',cs:kq?kq.cs:[],don:kq?kq.don:[]});
       if(x)return;}
     nhom.get(k).cs.push(cvCs(c));
   });
@@ -4316,6 +4330,7 @@ async function cvChot(mo){
       if(kq.length)await cvGoi('cong_viec_muc?on_conflict=ngay,nguoi_id,lead_id','POST',
         kq.map(({m,kq})=>({ngay:m.ngay,nguoi_id:m.nguoi_id,lead_id:m.lead_id,dau_muc:m.dau_muc,ket_qua:kq,updated_at:new Date().toISOString()})),'resolution=merge-duplicates,return=minimal');
       const ngoai=cvNgoai(toi.ten,st.ngay,muc),tk=cvTongKet(kq.map(x=>x.kq),ngoai);tk.ngoai=ngoai;
+      tk.theo_loai={};['Lẻ','Sỉ'].forEach(t=>{tk.theo_loai[t]=cvTongKet(kq.filter(x=>x.m.loai===t).map(x=>x.kq),ngoai.filter(o=>o.loai===t));});   // Lịch sử xem theo Lẻ / Sỉ
       const luc=new Date().toISOString();
       await cvGoi('cong_viec_ngay?ngay=eq.'+st.ngay+'&nguoi_id=eq.'+encodeURIComponent(toi.id),'PATCH',{chot_luc:luc,tong_ket:tk,updated_at:luc},'return=minimal');
       kq.forEach(({m,kq})=>{m.ket_qua=kq;});
@@ -4369,8 +4384,8 @@ function cvKqHtml(kq){
 function cvBoardHtml(){
   const st=cvSt(),toi=cvToi(),sua=cvSuaDuoc(),K=cvKhach();
   const h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay)||{};
-  const muc=cvMuc.filter(m=>m.nguoi_id===toi.id),dsMuc=cvDsMuc();
-  const daCo=new Set();muc.forEach(m=>{const x=K.theoId[m.lead_id];if(x)daCo.add(x);});
+  const L=cvLoai(),muc=cvMuc.filter(m=>m.nguoi_id===toi.id&&m.loai===L),dsMuc=cvDsMuc();
+  const daCo=new Set();cvMuc.filter(m=>m.nguoi_id===toi.id).forEach(m=>{const x=K.theoId[m.lead_id];if(x)daCo.add(x);});
   const ds=cvNguonDs(st.nguon,st.q),hien=ds.slice(0,80);
   const nghi=r=>r.siHenDen?' · <b class="cv-hen">hẹn '+dmy(r.siNgayHen)+'</b>':r.siNgayNghi!=null?' · '+r.siNgayNghi+' ngày chưa liên hệ':' · chưa chăm sóc';
   const theKh=x=>{const r=x.r,co=daCo.has(x),id=cvId(r.leadId);
@@ -4378,7 +4393,7 @@ function cvBoardHtml(){
       +(sua&&!co?' onclick="cvThem(\''+id+'\')"':'')+' title="'+(co?'Đã có trong kế hoạch':'Kéo vào đầu mục, hoặc bấm để thêm vào đầu mục đang chọn')+'">'
       +cvTenKhHtml({lead:'',ten:r.name,loai:x.loai,vip:rptSlLaVip(r)})
       +'<div class="cv-phu">'+cvE(r.kh||r.leadId)+' · '+cvE(rptSlLocTT(r))+nghi(r)+'</div></div>';};
-  const trai='<div class="cv-pan"><div class="cv-tieu">Danh sách khách</div><div class="cv-chips">'
+  const trai='<div class="cv-pan"><div class="cv-tieu">Danh sách khách '+L+'</div><div class="cv-chips">'
     +CV_NGUON.map(([k,t])=>'<button class="cv-chip'+(st.nguon===k?' on':'')+'" onclick="cvDat(\'nguon\',\''+k+'\')">'+t+(k==='tim'?'':'<b>'+num(cvNguonDs(k).length)+'</b>')+'</button>').join('')+'</div>'
     +(st.nguon==='tim'?'<input id="cvTim" class="cv-o" style="margin:0 0 10px" placeholder="Tên, SĐT, Mã KH…" value="'+cvE(st.q)+'" oninput="clearTimeout(window._cvTimT);const v=this.value;window._cvTimT=setTimeout(()=>{cvSt().q=v;renderCongViec();},350)">':'')
     +'<div class="cv-ds">'+(hien.length?hien.map(theKh).join(''):'<div class="cv-chua" style="padding:14px 4px">'+(st.nguon==='tim'?'Gõ để tìm khách':'Không có khách')+'</div>')
@@ -4395,8 +4410,8 @@ function cvBoardHtml(){
           +(sua?'<textarea class="cv-o" rows="1" placeholder="Mục tiêu hôm nay…" onchange="cvSuaO('+m.id+',\'muc_tieu\',this.value)">'+cvE(m.muc_tieu||'')+'</textarea>'
             :(m.muc_tieu?'<div class="cv-phu" style="color:var(--text2)">'+cvE(m.muc_tieu)+'</div>':''))+'</div>';}).join('')
       +(vs.length?'':'<div class="cv-chua" style="padding:10px 2px;font-size:11px">'+(sua?'Kéo khách vào đây':'Trống')+'</div>')+'</div>';};
-  const phai='<div class="cv-pan"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div class="cv-tieu" style="margin:0">Đầu mục chăm sóc'+dmBut('cv_dau_muc')+'</div>'
-      +'<span class="cv-dem">'+muc.length+' việc</span></div>'
+  const phai='<div class="cv-pan"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div class="cv-tieu" style="margin:0">Đầu mục chăm sóc · khách '+L+dmBut('cv_dau_muc')+'</div>'
+      +'<span class="cv-dem">'+muc.length+' việc '+L+'</span></div>'
     +'<div class="cv-cots">'+dsMuc.map(cot).join('')+'</div>'
     +'<div class="cv-cuoi" style="padding:14px 0 0;border:none">'
       +'<div style="flex:1;min-width:220px"><div class="cv-tieu">Ghi chú kế hoạch</div>'
@@ -4409,12 +4424,13 @@ function cvBoardHtml(){
 }
 // Báo cáo ngày của 1 người: h = dòng cong_viec_ngay (có thể chưa có), muc = việc của người đó.
 function cvBaoCaoHtml(h,muc,ten,nguoiId){
-  const st=cvSt(),d=st.ngay,K=cvKhach(),toi=cvToi();
+  const st=cvSt(),d=st.ngay,K=cvKhach(),toi=cvToi(),L=cvLoai();
   const chot=!!(h&&h.chot_luc),sua=nguoiId===toi.id&&cvSuaDuoc();
   const dsMuc=cvDsMuc();
+  muc=muc.filter(m=>(m.loai||'Lẻ')===L);   // tách Lẻ / Sỉ (04/11/2026)
   const dong=muc.map(m=>{const x=K.theoId[m.lead_id];const kq=chot&&m.ket_qua?m.ket_qua:cvKetQua(x,d);return {m,x,kq};})
     .sort((a,b)=>dsMuc.indexOf(a.m.dau_muc)-dsMuc.indexOf(b.m.dau_muc)||(a.m.thu_tu-b.m.thu_tu));
-  const ngoai=chot&&h.tong_ket&&h.tong_ket.ngoai?h.tong_ket.ngoai:cvNgoai(ten,d,muc);
+  const ngoai=cvNgoaiCua(h,ten,d,nguoiId).filter(o=>o.loai===L);
   const tk=cvTongKet(dong.map(x=>x.kq),ngoai);
   const dn=new Date(d+'T00:00:00');
   const the=(nen,mau,t)=>'<span class="cv-the" style="background:'+nen+';color:'+mau+'">'+t+'</span>';
@@ -4438,7 +4454,7 @@ function cvBaoCaoHtml(h,muc,ten,nguoiId){
       +'<td>'+cvTenKhHtml(o)+'<div class="cv-phu">'+cvE(o.ma)+(o.pl?' · '+cvE(o.pl):'')+'</div></td><td><span class="cv-chua">—</span></td><td>'+cvKqHtml(o)+'</td><td></td></tr>';});
   }
   return '<div class="cv-bc">'
-    +'<div class="cv-bc-dau"><div><div class="cv-bc-ten">'+cvE(ten||'—')+'</div><div class="cv-phu">Báo cáo công việc · '+CV_THU[dn.getDay()]+', '+dmy(d)+'</div></div>'
+    +'<div class="cv-bc-dau"><div><div class="cv-bc-ten">'+cvE(ten||'—')+'</div><div class="cv-phu">Báo cáo công việc · khách '+L+' · '+CV_THU[dn.getDay()]+', '+dmy(d)+'</div></div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
       +(h&&h.gui_luc?the('var(--green-l)','var(--green)','Gửi kế hoạch '+cvGio(h.gui_luc)):the('var(--bg2)','var(--muted)','Chưa gửi kế hoạch'))
       +(chot?the('var(--accent-l)','var(--accent)','Đã chốt '+cvGio(h.chot_luc)):the('#fef3c7','#b45309','Chưa chốt báo cáo'))+'</div></div>'
@@ -4454,14 +4470,21 @@ function cvBaoCaoHtml(h,muc,ten,nguoiId){
       +(nguoiId===toi.id&&!toi.xemNhu?(chot?'<button class="cv-nut phu" onclick="cvChot(true)">Mở lại để sửa</button>':'<button class="cv-nut" onclick="cvChot()">Chốt báo cáo ngày</button>'):'')
     +'</div></div>';
 }
+// Việc ngoài kế hoạch của 1 người trong ngày (cả Lẻ lẫn Sỉ): đã chốt thì lấy bản chụp, chưa chốt thì tính sống.
+function cvNgoaiCua(h,ten,d,nguoiId){
+  if(h&&h.chot_luc&&h.tong_ket&&h.tong_ket.ngoai)return h.tong_ket.ngoai;
+  return cvNgoai(ten,d,cvMuc.filter(m=>m.nguoi_id===nguoiId&&m.ngay===d));
+}
 function cvLichSuHtml(){
-  const ls=cvLichSu||{h:[],m:[]},st=cvSt(),toi=cvToi(),het=cvXemHet()&&st.nguoi!=='';
-  const dem={};ls.m.forEach(x=>{const k=x.ngay+'|'+x.nguoi_id;dem[k]=(dem[k]||0)+1;});
-  const ds=ls.h.filter(h=>het?(st.nguoi==='*'||h.nguoi_id===st.nguoi):h.nguoi_id===toi.id);
+  const ls=cvLichSu||{h:[],m:[]},st=cvSt(),toi=cvToi(),het=st.nguoi!=='',L=cvLoai();
+  const dem={},demHet={};ls.m.forEach(x=>{const k=x.ngay+'|'+x.nguoi_id;demHet[k]=(demHet[k]||0)+1;if((x.loai||'Lẻ')===L)dem[k]=(dem[k]||0)+1;});
+  const tkL=h=>{const t=h.tong_ket||{};return (t.theo_loai&&t.theo_loai[L])||{};};
+  const ds=ls.h.filter(h=>(het?(st.nguoi==='*'||h.nguoi_id===st.nguoi):h.nguoi_id===toi.id)
+    &&(dem[h.ngay+'|'+h.nguoi_id]||tkL(h).ngoai_n||!demHet[h.ngay+'|'+h.nguoi_id]));
   if(!ds.length)return '<div class="cv-bc"><div class="cv-chua" style="padding:22px 18px">Chưa có báo cáo nào</div></div>';
   return '<div class="cv-bc"><div style="overflow-x:auto"><table class="cv-bang"><thead><tr><th>Ngày</th>'+(het?'<th>Người</th>':'')
     +'<th style="text-align:right">Việc kế hoạch</th><th style="text-align:right">Đã xử lý</th><th style="text-align:right">Ngoài kế hoạch</th><th style="text-align:right">Đơn trong ngày</th><th>Gửi kế hoạch</th><th>Chốt báo cáo</th></tr></thead><tbody>'
-    +ds.map(h=>{const t=h.tong_ket||{},kh=dem[h.ngay+'|'+h.nguoi_id]||0,dn=new Date(h.ngay+'T00:00:00');
+    +ds.map(h=>{const t=tkL(h),kh=dem[h.ngay+'|'+h.nguoi_id]||0,dn=new Date(h.ngay+'T00:00:00');
       return '<tr style="cursor:pointer" onclick="cvMoNgay(\''+h.ngay+'\',\''+cvId(h.nguoi_id)+'\')"><td><b>'+dmy(h.ngay)+'</b> <span class="cv-phu">'+CV_THU[dn.getDay()]+'</span></td>'
         +(het?'<td>'+cvE(h.nguoi||'')+'</td>':'')
         +'<td style="text-align:right">'+num(kh)+'</td><td style="text-align:right">'+(h.chot_luc?num(t.xu_ly||0):'—')+'</td>'
@@ -4470,30 +4493,32 @@ function cvLichSuHtml(){
         +'<td>'+(h.gui_luc?cvGio(h.gui_luc):'<span class="cv-chua">chưa</span>')+'</td><td>'+(h.chot_luc?cvGio(h.chot_luc):'<span class="cv-chua">chưa</span>')+'</td></tr>';}).join('')
     +'</tbody></table></div></div>';
 }
-function cvMoNgay(d,nguoiId){const st=cvSt(),toi=cvToi();st.ngay=d;st.tab='bao-cao';
-  if(cvXemHet()&&nguoiId!==toi.id)st.nguoi=nguoiId;else if(cvXemHet())st.nguoi='';renderCongViec();}
+function cvMoNgay(d,nguoiId){const st=cvSt(),toi=cvToi();st.ngay=d;st.tab='bao-cao';st.nguoi=nguoiId===toi.id?'':nguoiId;renderCongViec();}
 async function renderCongViec(taiLai){
   const el=document.getElementById('page-congviec');if(!el)return;
   if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo công việc');
   const st=cvSt(),toi=cvToi(),het=cvXemHet();
+  // XEM BÁO CÁO NGƯỜI KHÁC theo phạm vi Sale (04/11/2026): MỌI tài khoản có "Cả đội" -- thấy ai do CSDL quyết (cv_xem_duoc)
   if(st.nguoi===null)st.nguoi=het?'*':'';
-  if(!het)st.nguoi='';
-  const cuaToi=st.nguoi==='';
+  const cuaToi=st.nguoi==='',L=cvLoai();
   if(!st.tab||(st.tab==='ke-hoach'&&!cuaToi))st.tab=cuaToi?'ke-hoach':'bao-cao';
   try{
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null),dmLoad()]);
     await rptSlLockChot();
     if(taiLai||cvMucNgay!==st.ngay)await cvTaiNgay(st.ngay);
     if(st.tab==='lich-su'&&(taiLai||!cvLichSu))await cvTaiLichSu();
-    if(het&&!window._rptSlAccs)rptSlLoadAccs().then(()=>{if(st.tab==='bao-cao'&&st.nguoi==='*')renderCongViec();});
+    if(!window._rptSlAccs)rptSlLoadAccs().then(()=>{if(st.tab==='bao-cao'&&st.nguoi==='*')renderCongViec();});
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo công việc',e,'renderCongViec');return;}
   if(!document.getElementById('page-congviec').classList.contains('active'))return;
   const ip='height:28px;box-sizing:border-box;padding:2px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
   const tabs=[cuaToi&&['ke-hoach','Lên kế hoạch'],['bao-cao','Báo cáo ngày'],['lich-su','Lịch sử']].filter(Boolean);
   const ten=x=>(cvNgay.find(h=>h.nguoi_id===x)||{}).nguoi||((window._rptSlAccs||[]).find(a=>a.user_id===x)||{}).name||x;
-  const chonNguoi=het?modTabBar([['*','Cả đội',st.nguoi==='*',"cvDat('nguoi','*')"],['','Của tôi',cuaToi,"cvDat('nguoi','')"]]
-      .concat(st.nguoi&&st.nguoi!=='*'?[[st.nguoi,cvE(ten(st.nguoi)),true,'']]:[])):'';
-  const thanh='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+chonNguoi
+  const chonNguoi=modTabBar([['*','Cả đội',st.nguoi==='*',"cvDat('nguoi','*')"],['','Của tôi',cuaToi,"cvDat('nguoi','')"]]
+      .concat(st.nguoi&&st.nguoi!=='*'?[[st.nguoi,cvE(ten(st.nguoi)),true,'']]:[]));
+  const lds=cvLoaiDuoc();
+  const chonLoai=lds.length>1?modTabBar(lds.map(t=>[t,'Khách '+t,L===t,"cvDoiLoai('"+t+"')"]))
+    :'<span class="cv-the" style="background:var(--accent-l);color:var(--accent)">Khách '+L+'</span>';
+  const thanh='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+chonLoai+chonNguoi
     +(st.tab==='lich-su'?'':'<button class="cv-chip" onclick="cvLui(-1)" title="Ngày trước">◀</button>'
       +'<input type="date" value="'+st.ngay+'" onchange="if(this.value)cvDat(\'ngay\',this.value)" style="'+ip+'">'
       +'<button class="cv-chip" onclick="cvLui(1)" title="Ngày sau">▶</button>'
@@ -4504,9 +4529,11 @@ async function renderCongViec(taiLai){
   else if(st.tab==='lich-su')than=cvLichSuHtml();
   else if(cuaToi)than=cvBaoCaoHtml(cvNgay.find(h=>h.nguoi_id===toi.id),cvMuc.filter(m=>m.nguoi_id===toi.id),toi.ten,toi.id);
   else{
-    const ds=cvNgay.filter(h=>st.nguoi==='*'||h.nguoi_id===st.nguoi);
-    const coId=new Set(cvNgay.map(h=>h.nguoi_id));
-    const chua=st.nguoi==='*'?(window._rptSlAccs||[]).filter(a=>['sales','leader'].includes(a.position_title)&&!coId.has(String(a.user_id))).map(a=>a.name):[];
+    // chỉ hiện người có việc khách đang xem (L) -- trong kế hoạch hoặc phát sinh ngoài kế hoạch; người được xem mà chưa có = "chưa lên kế hoạch"
+    const coViec=h=>cvMuc.some(m=>m.nguoi_id===h.nguoi_id&&m.loai===L)||cvNgoaiCua(h,h.nguoi,st.ngay,h.nguoi_id).some(o=>o.loai===L);
+    const ds=cvNgay.filter(h=>(st.nguoi==='*'||h.nguoi_id===st.nguoi)&&(st.nguoi!=='*'||coViec(h)));
+    const coId=new Set(cvMuc.filter(m=>m.loai===L).map(m=>m.nguoi_id));
+    const chua=st.nguoi==='*'?(window._rptSlAccs||[]).filter(a=>cvAccTrongPhamVi(a,L)&&!coId.has(String(a.user_id))).map(a=>a.name):[];
     const chuaGui=ds.filter(h=>!h.gui_luc).map(h=>h.nguoi),chuaChot=ds.filter(h=>!h.chot_luc).map(h=>h.nguoi);
     than=(st.nguoi==='*'?'<div class="cv-pan" style="margin-bottom:16px;display:flex;gap:18px;flex-wrap:wrap;font-size:12px">'
         +'<div><span class="cv-tieu" style="margin-right:6px">Đã lên kế hoạch</span><b>'+num(ds.length)+'</b></div>'
@@ -6658,10 +6685,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='04/11 14:35';
+const APP_VERSION='04/11 15:15';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=535;
+const APP_BAN=536;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
