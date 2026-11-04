@@ -4204,20 +4204,48 @@ function cvViecBC(nhom,nguoiId,chot){
 }
 function cvMau(dm){return dmMau('cv_dau_muc',dm)||DM_MAU[Math.max(0,CV_DAU_MUC.indexOf(dm))%DM_MAU.length];}
 async function cvGoi(path,method,body,prefer){
+  if(cvThu()&&/^cong_viec_/.test(path))return cvGoiThu(path,method,body,prefer);   // admin thử: chỉ ghi trên máy
   const h={apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'};if(prefer)h.Prefer=prefer;
   const res=await fetch(SUPABASE_URL+'/rest/v1/'+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body)});
   if(!res.ok){const t=await res.text().catch(()=>'');throw new Error('lỗi '+res.status+(t?' · '+t.slice(0,160):''));}
   const t=await res.text().catch(()=>'');return t?JSON.parse(t):null;
 }
+// CHẾ ĐỘ THỬ CỦA ADMIN (anh Hải 04/11/2026: "t không phải Sale, t chỉ test", "test bằng nick t chỉ lưu trên local, không tác động dữ liệu
+// và hiển thị chung", "cho t đầy đủ tính năng như Sale bt"): Admin / Supreme đăng nhập chính mình -> đủ Lên kế hoạch / Gửi / Chốt / Thu hồi,
+// nhưng mọi ghi cong_viec_* đi vào localStorage (cvThu_<user_id>), không lên CSDL, không vào Quản trị / số liệu chung, không ghi nhật ký.
+// (Ghi lượt chăm sóc trong HỒ SƠ KHÁCH vẫn là dữ liệu thật -- dải báo trên trang nói rõ.)
+function cvThu(){return cvXemHet()&&!cvToi().xemNhu&&!!cvToi().id;}
+function cvLog(...a){if(!cvThu())logAct(...a);}
+function cvThuKho(){try{const k=JSON.parse(localStorage.getItem('cvThu_'+cvToi().id)||'null');if(k&&k.h&&k.m)return k;}catch(e){}return {h:[],m:[]};}
+function cvThuLuu(k){try{localStorage.setItem('cvThu_'+cvToi().id,JSON.stringify(k));}catch(e){alert('Trình duyệt không cho lưu dữ liệu thử: '+e.message);}}
+function cvGoiThu(path,method,body,prefer){
+  const kho=cvThuKho(),[bang,q]=path.split('?'),laNgay=bang==='cong_viec_ngay',ds=laNgay?kho.h:kho.m;
+  const loc={};(q||'').split('&').forEach(p=>{const m=p.match(/^(\w+)=eq\.(.*)$/);if(m)loc[m[1]]=decodeURIComponent(m[2]);});
+  const khop=r=>Object.keys(loc).every(k=>String(r[k])===loc[k]);
+  const khoa=laNgay?['ngay','nguoi_id']:['ngay','nguoi_id','lead_id'],luc=new Date().toISOString(),ra=[];
+  if(method==='POST'){const gop=/merge-duplicates/.test(prefer||'');
+    [].concat(body).forEach(b=>{const cu=ds.find(r=>khoa.every(k=>String(r[k])===String(b[k])));
+      if(cu){if(gop){Object.assign(cu,b,{updated_at:luc});ra.push(cu);}return;}   // ignore-duplicates: không trả dòng, giống PostgREST
+      const r=Object.assign({id:-(Date.now()*1000+Math.floor(Math.random()*1000)),created_at:luc,updated_at:luc,thu_tu:0},
+        laNgay?{gui_luc:null,chot_luc:null,thu_hoi_kh:0,thu_hoi_bc:0,tong_ket:null}:{xong:null,ket_qua:null,ghi_chu:null,muc_tieu:null},b);
+      ds.push(r);ra.push(r);});}
+  else if(method==='PATCH')ds.filter(khop).forEach(r=>{Object.assign(r,body);ra.push(r);});
+  else if(method==='DELETE'){const con=ds.filter(r=>!khop(r));if(laNgay)kho.h=con;else kho.m=con;}
+  cvThuLuu(kho);return JSON.parse(JSON.stringify(ra));
+}
+function cvXoaThu(){if(!confirm('Xoá hết kế hoạch / báo cáo thử trên máy này?'))return;try{localStorage.removeItem('cvThu_'+cvToi().id);}catch(e){}renderCongViec(true);}
 async function cvTaiNgay(d){
   const [h,m]=await Promise.all([sbFetchAll('cong_viec_ngay','select=*&ngay=eq.'+d+'&order=nguoi,id'),
     sbFetchAll('cong_viec_muc','select=*&ngay=eq.'+d+'&order=thu_tu,id')]);
   cvNgay=h;cvMuc=m;cvMucNgay=d;
+  if(cvThu()){const k=cvThuKho(),id=cvToi().id;
+    cvNgay=cvNgay.filter(x=>x.nguoi_id!==id).concat(k.h.filter(x=>x.ngay===d));cvMuc=cvMuc.filter(x=>x.nguoi_id!==id).concat(k.m.filter(x=>x.ngay===d));}
 }
 async function cvTaiLichSu(){
   const [h,m]=await Promise.all([sbFetchAll('cong_viec_ngay','select=id,ngay,nguoi_id,nguoi,gui_luc,chot_luc,tong_ket&order=ngay.desc,nguoi'),
     sbFetchAll('cong_viec_muc','select=id,ngay,nguoi_id,loai,lead_id&order=id')]);
   cvLichSu={h,m};
+  if(cvThu()){const k=cvThuKho();cvLichSu.h=k.h.slice().sort((a,b)=>String(b.ngay).localeCompare(String(a.ngay))).concat(h);cvLichSu.m=m.concat(k.m);}
 }
 // Khách cả Lẻ lẫn Sỉ (đúng phạm vi xem của tài khoản), tra theo mọi Lead ID của khách gộp.
 let _cvKh={khoa:'',ds:[],theoId:{}};
@@ -4303,7 +4331,7 @@ async function cvDamBaoNgay(d){
 // 2 MỨC KHOÁ (anh Hải 04/11/2026 "thu hồi để sửa lại báo cáo"): cvSuaDuoc = còn sửa phần KẾT QUẢ (ghi chú, tích B/C, tổng kết) tới khi
 // Chốt báo cáo; cvSuaKH = còn sửa KẾ HOẠCH (thêm / bỏ / chuyển khách, mục tiêu, ghi chú kế hoạch) tới khi Gửi kế hoạch. Đã gửi / chốt
 // muốn sửa phải bấm Thu hồi (đếm thu_hoi_kh / thu_hoi_bc, quản lý thấy ở báo cáo + Quản trị).
-function cvSuaDuoc(){const toi=cvToi(),st=cvSt();if(toi.xemNhu||!toi.id||cvXemHet())return false;
+function cvSuaDuoc(){const toi=cvToi(),st=cvSt();if(toi.xemNhu||!toi.id)return false;
   const h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);return !(h&&h.chot_luc);}
 function cvSuaKH(){if(!cvSuaDuoc())return false;const toi=cvToi(),st=cvSt();
   const h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);return !(h&&h.gui_luc);}
@@ -4313,7 +4341,7 @@ async function cvThuHoiKH(){
   if(!confirm('Thu hồi kế hoạch để sửa? Quản lý sẽ thấy kế hoạch chuyển về "chưa gửi" cho tới khi anh/chị gửi lại.'))return;
   await motLan('cv-thuhoi-kh',nutDangBam(),async()=>{
     try{const n=(h.thu_hoi_kh||0)+1;await cvGoi('cong_viec_ngay?id=eq.'+h.id,'PATCH',{gui_luc:null,thu_hoi_kh:n,updated_at:new Date().toISOString()},'return=minimal');
-      h.gui_luc=null;h.thu_hoi_kh=n;logAct('U','cong_viec_ngay',st.ngay,toi.ten,'Thu hồi kế hoạch','đã gửi','lần '+n);}
+      h.gui_luc=null;h.thu_hoi_kh=n;cvLog('U','cong_viec_ngay',st.ngay,toi.ten,'Thu hồi kế hoạch','đã gửi','lần '+n);}
     catch(e){alert('Chưa thu hồi được: '+e.message);}
   });
   renderCongViec();
@@ -4381,7 +4409,7 @@ async function cvGuiKeHoach(){
     try{await cvDamBaoNgay(st.ngay);const luc=new Date().toISOString();
       await cvGoi('cong_viec_ngay?ngay=eq.'+st.ngay+'&nguoi_id=eq.'+encodeURIComponent(toi.id),'PATCH',{gui_luc:luc,updated_at:luc},'return=minimal');
       const h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);if(h)h.gui_luc=luc;
-      logAct('U','cong_viec_ngay',st.ngay,toi.ten,'Gửi kế hoạch','',cvMuc.filter(m=>m.nguoi_id===toi.id).length+' việc');
+      cvLog('U','cong_viec_ngay',st.ngay,toi.ten,'Gửi kế hoạch','',cvMuc.filter(m=>m.nguoi_id===toi.id).length+' việc');
     }catch(e){alert('Chưa gửi được: '+e.message);}
   });
   renderCongViec();
@@ -4389,10 +4417,10 @@ async function cvGuiKeHoach(){
 async function cvChot(mo){
   const st=cvSt(),toi=cvToi();if(toi.xemNhu)return;
   const h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);
-  if(mo){if(!h||!h.chot_luc||cvXemHet())return;   // THU HỒI BÁO CÁO để sửa: đếm thu_hoi_bc
+  if(mo){if(!h||!h.chot_luc)return;   // THU HỒI BÁO CÁO để sửa: đếm thu_hoi_bc
     if(!confirm('Thu hồi báo cáo đã chốt để sửa? Quản lý sẽ thấy báo cáo "chưa chốt" và số lần thu hồi.'))return;
     try{const n=(h.thu_hoi_bc||0)+1;await cvGoi('cong_viec_ngay?id=eq.'+h.id,'PATCH',{chot_luc:null,thu_hoi_bc:n,updated_at:new Date().toISOString()},'return=minimal');
-      h.chot_luc=null;h.thu_hoi_bc=n;logAct('U','cong_viec_ngay',st.ngay,toi.ten,'Thu hồi báo cáo ngày','đã chốt','lần '+n);}
+      h.chot_luc=null;h.thu_hoi_bc=n;cvLog('U','cong_viec_ngay',st.ngay,toi.ten,'Thu hồi báo cáo ngày','đã chốt','lần '+n);}
     catch(e){alert('Chưa thu hồi được: '+e.message);}
     return renderCongViec();}
   if(!cvSuaDuoc())return;
@@ -4422,7 +4450,7 @@ async function cvChot(mo){
       kq.forEach(({m,kq})=>{m.ket_qua=kq;});
       const h2=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);if(h2){h2.chot_luc=luc;h2.tong_ket=tk;}
       cvLichSu=null;
-      logAct('U','cong_viec_ngay',st.ngay,toi.ten,'Chốt báo cáo ngày','',tk.xu_ly+'/'+tk.ke_hoach+' việc · '+tk.ngoai_n+' ngoài kế hoạch');
+      cvLog('U','cong_viec_ngay',st.ngay,toi.ten,'Chốt báo cáo ngày','',tk.xu_ly+'/'+tk.ke_hoach+' việc · '+tk.ngoai_n+' ngoài kế hoạch');
     }catch(e){alert('Chưa chốt được: '+e.message);}
   });
   renderCongViec();
@@ -4620,7 +4648,7 @@ function cvBaoCaoHtml(h,muc,ten,nguoiId){
       +(sua?'<textarea class="cv-o" rows="2" style="margin:0" placeholder="Kết quả chính, khó khăn, cần hỗ trợ…" onchange="cvSuaNgay(\'ghi_chu_toi\',this.value)">'+cvE(h&&h.ghi_chu_toi||'')+'</textarea>'
         :'<div style="font-size:12px;color:var(--text2);white-space:pre-wrap">'+(cvE(h&&h.ghi_chu_toi||'')||'<span class="cv-chua">—</span>')+'</div>')+'</div>'
       +(h&&h.ghi_chu_sang?'<div style="flex:1;min-width:220px"><div class="cv-tieu">Ghi chú kế hoạch</div><div style="font-size:12px;color:var(--text2);white-space:pre-wrap">'+cvE(h.ghi_chu_sang)+'</div></div>':'')
-      +(nguoiId===toi.id&&!toi.xemNhu&&!cvXemHet()?(chot?'<button class="cv-nut phu" onclick="cvChot(true)" title="Đã chốt thì khoá; thu hồi để sửa rồi chốt lại">Thu hồi để sửa</button>':'<button class="cv-nut" onclick="cvChot()">Chốt báo cáo ngày</button>'):'')
+      +(nguoiId===toi.id&&!toi.xemNhu?(chot?'<button class="cv-nut phu" onclick="cvChot(true)" title="Đã chốt thì khoá; thu hồi để sửa rồi chốt lại">Thu hồi để sửa</button>':'<button class="cv-nut" onclick="cvChot()">Chốt báo cáo ngày</button>'):'')
     +'</div></div>';
 }
 // ghi chú việc B / C hay là link (bài đăng, báo cáo chiến dịch) -> bấm mở được
@@ -4772,8 +4800,9 @@ async function renderCongViec(taiLai){
   //  · Admin / Supreme: KHÔNG lên kế hoạch, luôn xem cả đội (bấm 1 dòng Lịch sử thì xem riêng người đó, ✕ để quay lại).
   //  · Tài khoản khác: lên kế hoạch của mình; Báo cáo ngày = của mình trước, rồi người trong phạm vi Sale (CSDL lọc: cv_xem_duoc).
   if(het){if(!st.nguoi)st.nguoi='*';}else st.nguoi='';
+  //  · 04/11/2026 (anh: "cho t đầy đủ tính năng như Sale bt"): Admin cũng có Lên kế hoạch -- ở CHẾ ĐỘ THỬ (cvThu, chỉ lưu trên máy).
   const cuaToi=!het,L=cvLoai();
-  if(!st.tab||(st.tab==='ke-hoach'&&!cuaToi)||(st.tab==='quan-tri'&&!het))st.tab=cuaToi?'ke-hoach':'quan-tri';
+  if(!st.tab||(st.tab==='quan-tri'&&!het))st.tab=het?'quan-tri':'ke-hoach';
   try{
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null),dmLoad()]);
     await rptSlLockChot();
@@ -4784,7 +4813,12 @@ async function renderCongViec(taiLai){
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo công việc',e,'renderCongViec');return;}
   if(!document.getElementById('page-congviec').classList.contains('active'))return;
   const ip='height:28px;box-sizing:border-box;padding:2px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
-  const tabs=[het&&['quan-tri','Quản trị'],cuaToi&&['ke-hoach','Lên kế hoạch'],['bao-cao','Báo cáo ngày'],['lich-su','Lịch sử']].filter(Boolean);
+  const tabs=[het&&['quan-tri','Quản trị'],['ke-hoach','Lên kế hoạch'],['bao-cao','Báo cáo ngày'],['lich-su','Lịch sử']].filter(Boolean);
+  const thuBao=cvThu()&&['ke-hoach','bao-cao'].includes(st.tab)?'<div class="cv-pan" style="margin-bottom:14px;border-color:#f59e0b;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;padding:10px 14px">'
+    +'<span class="cv-the" style="background:#fef3c7;color:#b45309">Chế độ thử của Admin</span>'
+    +'<span style="flex:1;min-width:240px;color:var(--text2)">Kế hoạch / báo cáo của anh chỉ lưu trên trình duyệt máy này — không ai khác thấy, không vào số liệu chung. '
+    +'<b>Riêng ghi lượt chăm sóc trong hồ sơ khách vẫn là dữ liệu thật.</b></span>'
+    +'<button class="cv-chip" onclick="cvXoaThu()">Xoá dữ liệu thử</button></div>':'';
   const ten=x=>(cvNgay.find(h=>h.nguoi_id===x)||{}).nguoi||((window._rptSlAccs||[]).find(a=>a.user_id===x)||{}).name||x;
   const chonNguoi=het&&st.nguoi!=='*'?'<button class="cv-chip on" onclick="cvDat(\'nguoi\',\'*\')" title="Quay lại xem cả đội">'+cvE(ten(st.nguoi))+' ✕</button>':'';
   const lds=cvLoaiDuoc();
@@ -4817,7 +4851,10 @@ async function renderCongViec(taiLai){
   else{
     // chỉ hiện người có việc khách đang xem (L) -- trong kế hoạch hoặc phát sinh ngoài kế hoạch; người được xem mà chưa có = "chưa lên kế hoạch"
     const coViec=h=>cvMuc.some(m=>m.nguoi_id===h.nguoi_id&&m.loai===L)||cvNgoaiCua(h,h.nguoi,st.ngay,h.nguoi_id).some(o=>o.loai===L);
-    const ds=cvNgay.filter(h=>(st.nguoi==='*'||h.nguoi_id===st.nguoi)&&(st.nguoi!=='*'||coViec(h)));
+    const ds=cvNgay.filter(h=>(st.nguoi==='*'?h.nguoi_id!==toi.id&&coViec(h):h.nguoi_id===st.nguoi));
+    // bản thử của admin (chỉ trên máy) lên đầu, tách khỏi số của đội
+    const banThu=cvThu()&&st.nguoi==='*'&&cvNgay.some(h=>h.nguoi_id===toi.id)
+      ?cvBaoCaoHtml(cvNgay.find(h=>h.nguoi_id===toi.id),cvMuc.filter(m=>m.nguoi_id===toi.id),toi.ten+' (bản thử)',toi.id):'';
     const coId=new Set(cvMuc.filter(m=>m.loai===L).map(m=>m.nguoi_id));
     const chua=st.nguoi==='*'?(window._rptSlAccs||[]).filter(a=>cvAccTrongPhamVi(a,L)&&!coId.has(String(a.user_id))).map(a=>a.name):[];
     const chuaGui=ds.filter(h=>!h.gui_luc).map(h=>h.nguoi),chuaChot=ds.filter(h=>!h.chot_luc).map(h=>h.nguoi);
@@ -4826,11 +4863,11 @@ async function renderCongViec(taiLai){
         +'<div><span class="cv-tieu" style="margin-right:6px">Chưa lên kế hoạch</span>'+(chua.length?cvE(chua.join(', ')):'<span class="cv-chua">không ai</span>')+'</div>'
         +'<div><span class="cv-tieu" style="margin-right:6px">Chưa gửi</span>'+(chuaGui.length?cvE(chuaGui.join(', ')):'<span class="cv-chua">không ai</span>')+'</div>'
         +'<div><span class="cv-tieu" style="margin-right:6px">Chưa chốt</span>'+(chuaChot.length?cvE(chuaChot.join(', ')):'<span class="cv-chua">không ai</span>')+'</div></div>':'')
-      +(ds.length?ds.map(h=>cvBaoCaoHtml(h,cvMuc.filter(m=>m.nguoi_id===h.nguoi_id),h.nguoi,h.nguoi_id)).join('')
+      +banThu+(ds.length?ds.map(h=>cvBaoCaoHtml(h,cvMuc.filter(m=>m.nguoi_id===h.nguoi_id),h.nguoi,h.nguoi_id)).join('')
         :'<div class="cv-bc"><div class="cv-chua" style="padding:22px 18px">Chưa ai lên kế hoạch ngày '+dmy(st.ngay)+'</div></div>');
   }
   el.innerHTML=modHeader('Báo cáo công việc','','','',modTabBar(tabs.map(t=>[t[0],t[1],st.tab===t[0],"cvDat('tab','"+t[0]+"')"])))
-    +'<div style="margin:-4px 0 14px">'+thanh+'</div>'+than;
+    +'<div style="margin:-4px 0 14px">'+thanh+'</div>'+thuBao+than;
   if(st.tab==='ke-hoach'&&st.nguon==='tim'){const t=document.getElementById('cvTim');if(t&&document.activeElement!==t&&window._cvTimFocus!==false){t.focus();t.setSelectionRange(t.value.length,t.value.length);}}
 }
 function cvLui(n){const st=cvSt(),d=new Date(st.ngay+'T12:00:00');d.setDate(d.getDate()+n);
@@ -6973,10 +7010,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='04/11 16:36';
+const APP_VERSION='04/11 16:45';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=539;
+const APP_BAN=540;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
