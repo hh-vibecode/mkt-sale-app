@@ -278,12 +278,15 @@ thead th,.grp-table th{color:var(--text2)}
 /* hai bảng đứng liền nhau luôn cách 16px (anh Hải 06/10/2026: các bảng dính sát vào nhau) */
 .tbl-card+.tbl-card{margin-top:16px}
 /* BÁO CÁO CÔNG VIỆC (04/11/2026) */
-.cv-wrap{display:grid;grid-template-columns:minmax(250px,310px) 1fr;gap:16px;align-items:start}
+.cv-wrap{display:grid;grid-template-columns:minmax(300px,370px) 1fr;gap:16px;align-items:start}
+.cv-kh .cv-phu,.cv-kh .cv-nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}   /* 1 ô khách = 2 dòng (anh Hải 04/11/2026) */
 @media(max-width:900px){.cv-wrap{grid-template-columns:1fr}}
 .cv-pan{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
 .cv-tieu{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
 .cv-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .cv-loc{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.cv-menu-o{padding:8px 10px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:700;color:var(--text)}
+.cv-menu-o:hover{background:var(--accent-l);color:var(--accent)}
 .cv-chip{border:1.5px solid var(--border);background:var(--surface);color:var(--text2);border-radius:999px;padding:4px 10px;font:700 11px var(--font);cursor:pointer;line-height:1.3}
 .cv-chip:hover{border-color:var(--accent);color:var(--accent)}
 .cv-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -4160,7 +4163,7 @@ async function renderReportTongHop(){
 //     Sale ghi chú từng việc rồi Chốt -> kết quả CHỤP vào CSDL (ket_qua / tong_ket), ngày cũ xem lại ở tab Lịch sử đúng như lúc chốt.
 // 1 bảng gọn để quản lý nắm đủ mà không mở từng khách; Sale chụp màn hình gửi Zalo được. Monsieur Claude.
 const CV_DAU_MUC=['Gọi / nhắn chăm sóc','Tư vấn, gửi báo giá','Chốt đơn','Chăm sau bán','Thu tiền, cọc'];
-const CV_NGUON=[['tat','Tất cả'],['hen','Đến hẹn'],['moi','Khách mới'],['thang','Mua trong tháng'],['tiem','Tiềm năng'],['vip','VIP'],['lau','Lâu chưa liên hệ']];
+const CV_NGUON=[['hen','Đến hẹn'],['moi','Khách mới'],['thang','Mua trong tháng'],['tiem','Tiềm năng'],['vip','VIP'],['lau','Lâu chưa liên hệ'],['tim','Tìm']];
 const CV_THU=['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
 let cvNgay=[],cvMuc=[],cvMucNgay='',cvLichSu=null;
 function cvE(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -4170,7 +4173,7 @@ function cvToi(){const v=dashViewAs();
   if(v&&dashCanViewAs())return {id:String(v.id),ten:v.name||'',xemNhu:true};
   return {id:String(localStorage.getItem('dashUserId')||''),ten:localStorage.getItem('dashUser')||'',xemNhu:false};}
 function cvXemHet(){return dashToanQuyen();}
-function cvSt(){if(!window._cv)window._cv={ngay:todayISO(),tab:'',nguoi:null,nguon:'tat',q:'',muc:0,loai:''};return window._cv;}
+function cvSt(){if(!window._cv)window._cv={ngay:todayISO(),tab:'',nguoi:null,nguon:'hen',q:'',muc:0,loai:''};return window._cv;}
 // TÁCH LẺ / SỈ (anh Hải 04/11/2026): cả trang xem 1 loại khách 1 lúc, theo loại tài khoản được xem (Phân quyền > loại khách).
 function cvLoaiDuoc(){const a=dashTypes();return ['Lẻ','Sỉ'].filter(t=>!a.length||a.includes(t));}
 function cvLoai(){const st=cvSt(),ds=cvLoaiDuoc();
@@ -4191,7 +4194,7 @@ function cvAccTrongPhamVi(a,loai){
 const CV_A_SI=[['chot','KH có kế hoạch chốt hôm nay'],['hen','KH đến lịch tái chăm sóc'],['moingay','KH mới trong ngày'],['sauban','KH chăm sóc sau bán']];
 const CV_CO_DINH_SI=['Đăng bài Zalo Sỉ / Zalo Lẻ','Đăng bài nhóm CTV','Đăng bài nhóm Sỉ Shidai'];
 const CV_CHIEN_DICH_SI=['Chiến dịch 1 – Hội nhóm CTV','Chiến dịch 2 – Hội chợ KXC'];
-const CV_NGUON_SI=[['tat','Tất cả'],['chot','01 Kế hoạch chốt'],['hen','02 Đến lịch tái chăm'],['moingay','03 Mới trong ngày'],['sauban','04 Sau bán']];
+const CV_NGUON_SI=[['chot','01 Kế hoạch chốt'],['hen','02 Đến lịch tái chăm'],['moingay','03 Mới trong ngày'],['sauban','04 Sau bán'],['vip','VIP'],['tim','Tìm']];
 function cvLaKhach(m){return String(m&&m.lead_id||'').charAt(0)!=='#';}
 function cvNguonCua(){return cvLoai()==='Sỉ'?CV_NGUON_SI:CV_NGUON;}
 function cvDsMuc(){const L=cvLoai(),a=L==='Sỉ'?CV_A_SI.map(x=>x[1]):CV_DAU_MUC.slice();
@@ -4276,10 +4279,7 @@ function cvNguonDs(k,q){
   // ── 4 nhóm khách Sale Sỉ (diễn giải của quản lý, 04/11/2026) ──
   if(k==='chot')return ds.filter(cvLaChotHomNay);
   if(k==='moingay')return ds.filter(x=>!x.r.isChot&&cvNgayTao(x.r)===hom);
-  if(k==='sauban'){const moc=new Date(Date.now()+7*3600e3-30*864e5).toISOString().slice(0,10);
-    return ds.filter(x=>{const dc=x.r.siDonCuoi||'';if(!dc||dc<moc)return false;
-      return !cvVoiLoai(x.loai,()=>rptSlCsRows(x.r)).some(c=>String(c.ngay_cham||'').slice(0,10)>dc);})
-      .sort((a,b)=>String(b.r.siDonCuoi).localeCompare(String(a.r.siDonCuoi)));}
+  if(k==='sauban')return ds.filter(x=>rptSlCanChamSauBan(x.r)).sort((a,b)=>rptSlDonThatCuoi(a.r).localeCompare(rptSlDonThatCuoi(b.r)));   // = bộ lọc "Cần chăm sau bán" ở Master
   return ds;
 }
 // 01 KH CÓ KẾ HOẠCH CHỐT HÔM NAY: chưa chốt + (phiếu tạm Kiot chờ xác nhận / thanh toán, hoặc lượt chăm gần nhất nói báo giá / chốt / cọc / thanh toán)
@@ -4339,7 +4339,7 @@ function cvSuaKH(){if(!cvSuaDuoc())return false;const toi=cvToi(),st=cvSt();
 async function cvThuHoiKH(){
   const st=cvSt(),toi=cvToi(),h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);
   if(!h||!h.gui_luc||!cvSuaDuoc())return;
-  if(!confirm('Thu hồi kế hoạch để sửa? Quản lý sẽ thấy kế hoạch chuyển về "chưa gửi" cho tới khi anh/chị gửi lại.'))return;
+  if(!confirm('Thu hồi kế hoạch để sửa? Quản lý sẽ thấy kế hoạch chuyển về "chưa nộp" cho tới khi anh/chị nộp lại.'))return;
   await motLan('cv-thuhoi-kh',nutDangBam(),async()=>{
     try{const n=(h.thu_hoi_kh||0)+1;await cvGoi('cong_viec_ngay?id=eq.'+h.id,'PATCH',{gui_luc:null,thu_hoi_kh:n,updated_at:new Date().toISOString()},'return=minimal');
       h.gui_luc=null;h.thu_hoi_kh=n;cvLog('U','cong_viec_ngay',st.ngay,toi.ten,'Thu hồi kế hoạch','đã gửi','lần '+n);}
@@ -4379,6 +4379,50 @@ async function cvBC(nhom,i,k,v){
   });
   if(k==='xong')renderCongViec();
 }
+// ĐƯA KHÁCH VÀO BÁO CÁO HÔM NAY từ Master Data / danh sách bên trái (anh Hải 04/11/2026: "thêm 1 nút thứ 3 bên cạnh giao việc, lên lịch:
+// ấn vào cho chọn 1 trong 4 cái kia, xong tự chuyển vào phần hợp báo cáo, Sale sang ấn nộp là xong"). Menu chọn nhóm (Sỉ 01–04, Lẻ đầu mục).
+function cvMenuBC(ev,ids,loai){
+  if(ev){ev.stopPropagation();ev.preventDefault();}
+  if(!ids||!ids.length)return;
+  const L=loai||rptSlType(),ds=L==='Sỉ'?CV_A_SI.map((x,i)=>'0'+(i+1)+' · '+x[1]):CV_DAU_MUC.slice();
+  window._cvMenu={ids:ids.slice(),loai:L};
+  let p=document.getElementById('cvMenu');if(!p){p=document.createElement('div');p.id='cvMenu';document.body.appendChild(p);}
+  const b=ev&&ev.currentTarget&&ev.currentTarget.getBoundingClientRect?ev.currentTarget.getBoundingClientRect():{left:innerWidth/2-130,bottom:120};
+  p.style.cssText='position:fixed;z-index:3000;left:'+Math.max(8,Math.min(b.left,innerWidth-276))+'px;top:'+Math.max(8,Math.min(b.bottom+6,innerHeight-300))+'px;'
+    +'width:268px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:6px;font-family:var(--font)';
+  p.innerHTML='<div class="cv-tieu" style="padding:6px 8px;margin:0">Đưa '+(ids.length>1?ids.length+' khách ':'')+'vào báo cáo hôm nay</div>'
+    +ds.map((t,i)=>'<div class="cv-menu-o" onclick="cvMenuChon('+i+')">'+cvE(t)+'</div>').join('');
+  document.removeEventListener('mousedown',cvMenuNgoai,true);setTimeout(()=>document.addEventListener('mousedown',cvMenuNgoai,true),0);
+}
+function cvMenuDong(){const p=document.getElementById('cvMenu');if(p)p.remove();document.removeEventListener('mousedown',cvMenuNgoai,true);}
+function cvMenuNgoai(e){const p=document.getElementById('cvMenu');if(p&&!p.contains(e.target))cvMenuDong();}
+function cvMenuChon(i){const m=window._cvMenu||{};cvMenuDong();cvDuaVaoBC(m.ids||[],i,m.loai);}
+async function cvDuaVaoBC(ids,i,loai){
+  const toi=cvToi();if(toi.xemNhu||!toi.id)return alert('Đang xem như tài khoản khác — không thêm vào báo cáo được');
+  const L=loai||rptSlType(),d=todayISO(),dm=(L==='Sỉ'?CV_A_SI.map(x=>x[1]):CV_DAU_MUC)[i];if(!dm)return;
+  try{
+    if(cvMucNgay!==d)await cvTaiNgay(d);
+    const h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===d);
+    if(h&&h.chot_luc)return alert('Báo cáo hôm nay đã nộp — vào Báo cáo công việc bấm "Thu hồi để sửa" rồi thêm.');
+    if(h&&h.gui_luc)return alert('Kế hoạch hôm nay đã nộp — vào Báo cáo công việc bấm "Thu hồi để sửa" rồi thêm.');
+    const K=cvKhach(),xs=[...new Set(ids.map(id=>K.theoId[id]).filter(x=>x&&x.loai===L))];
+    const coX=new Set(cvMuc.filter(m=>m.nguoi_id===toi.id&&m.ngay===d).map(m=>K.theoId[m.lead_id]).filter(Boolean));
+    const moi=xs.filter(x=>!coX.has(x));
+    if(!moi.length)return cvBao(xs.length?'Khách đã có trong báo cáo hôm nay':'Không tìm thấy khách');
+    await motLan('cv-dua',null,async()=>{
+      await cvDamBaoNgay(d);
+      const n0=cvMuc.filter(m=>m.nguoi_id===toi.id).length;
+      const kq=await cvGoi('cong_viec_muc?on_conflict=ngay,nguoi_id,lead_id','POST',moi.map((x,j)=>({ngay:d,nguoi_id:toi.id,nguoi:toi.ten,dau_muc:dm,
+        lead_id:x.r.leadId,loai:L,kiot_code:x.r.kh||null,ten_khach:x.r.name||'',phan_loai:rptSlLocTT(x.r),thu_tu:n0+j})),'resolution=ignore-duplicates,return=representation');
+      (kq||[]).forEach(r=>cvMuc.push(r));
+      cvBao('Đã đưa '+moi.length+' khách vào "'+dm+'"'+(xs.length>moi.length?' ('+(xs.length-moi.length)+' khách đã có sẵn)':'')+' — sang Báo cáo công việc để nộp');
+    });
+    if(document.querySelector('#page-congviec.active'))renderCongViec();
+  }catch(e){alert('Chưa đưa vào báo cáo được: '+e.message);}
+}
+function cvBao(t){let b=document.getElementById('cvBao');if(!b){b=document.createElement('div');b.id='cvBao';document.body.appendChild(b);}
+  b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:64px;z-index:4200;background:var(--text);color:var(--surface);border-radius:999px;padding:9px 18px;font:700 12.5px var(--font);box-shadow:0 10px 30px rgba(0,0,0,.25);max-width:90vw';
+  b.textContent=t;clearTimeout(window._cvBaoT);window._cvBaoT=setTimeout(()=>{b.remove();},4000);}
 async function cvDoiMuc(id,iMuc){
   const m=cvMuc.find(x=>x.id===id),dm=cvDsMuc()[iMuc];if(!m||!dm||m.dau_muc===dm||!cvSuaKH())return;
   const cu=m.dau_muc;m.dau_muc=dm;renderCongViec();
@@ -4410,8 +4454,8 @@ async function cvGuiKeHoach(){
     try{await cvDamBaoNgay(st.ngay);const luc=new Date().toISOString();
       await cvGoi('cong_viec_ngay?ngay=eq.'+st.ngay+'&nguoi_id=eq.'+encodeURIComponent(toi.id),'PATCH',{gui_luc:luc,updated_at:luc},'return=minimal');
       const h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);if(h)h.gui_luc=luc;
-      cvLog('U','cong_viec_ngay',st.ngay,toi.ten,'Gửi kế hoạch','',cvMuc.filter(m=>m.nguoi_id===toi.id).length+' việc');
-    }catch(e){alert('Chưa gửi được: '+e.message);}
+      cvLog('U','cong_viec_ngay',st.ngay,toi.ten,'Nộp kế hoạch','',cvMuc.filter(m=>m.nguoi_id===toi.id).length+' việc');
+    }catch(e){alert('Chưa nộp được: '+e.message);}
   });
   renderCongViec();
 }
@@ -4419,14 +4463,14 @@ async function cvChot(mo){
   const st=cvSt(),toi=cvToi();if(toi.xemNhu)return;
   const h=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);
   if(mo){if(!h||!h.chot_luc)return;   // THU HỒI BÁO CÁO để sửa: đếm thu_hoi_bc
-    if(!confirm('Thu hồi báo cáo đã chốt để sửa? Quản lý sẽ thấy báo cáo "chưa chốt" và số lần thu hồi.'))return;
+    if(!confirm('Thu hồi báo cáo đã nộp để sửa? Quản lý sẽ thấy báo cáo "chưa nộp" và số lần thu hồi.'))return;
     try{const n=(h.thu_hoi_bc||0)+1;await cvGoi('cong_viec_ngay?id=eq.'+h.id,'PATCH',{chot_luc:null,thu_hoi_bc:n,updated_at:new Date().toISOString()},'return=minimal');
       h.chot_luc=null;h.thu_hoi_bc=n;cvLog('U','cong_viec_ngay',st.ngay,toi.ten,'Thu hồi báo cáo ngày','đã chốt','lần '+n);}
     catch(e){alert('Chưa thu hồi được: '+e.message);}
     return renderCongViec();}
   if(!cvSuaDuoc())return;
   const K=cvKhach(),d=st.ngay;
-  if(!cvMuc.some(m=>m.nguoi_id===toi.id)&&!confirm('Chưa có việc nào trong kế hoạch. Vẫn chốt báo cáo?'))return;
+  if(!cvMuc.some(m=>m.nguoi_id===toi.id)&&!confirm('Chưa có việc nào trong kế hoạch. Vẫn nộp báo cáo?'))return;
   await motLan('cv-chot',nutDangBam(),async()=>{
     try{await cvDamBaoNgay(d);
       // SỈ: 03 khách mới trong ngày tự vào báo cáo; việc B / C chưa tích -> lưu "chưa làm" (bản chụp đủ cấu trúc)
@@ -4452,7 +4496,7 @@ async function cvChot(mo){
       const h2=cvNgay.find(x=>x.nguoi_id===toi.id&&x.ngay===st.ngay);if(h2){h2.chot_luc=luc;h2.tong_ket=tk;}
       cvLichSu=null;
       cvLog('U','cong_viec_ngay',st.ngay,toi.ten,'Chốt báo cáo ngày','',tk.xu_ly+'/'+tk.ke_hoach+' việc · '+tk.ngoai_n+' ngoài kế hoạch');
-    }catch(e){alert('Chưa chốt được: '+e.message);}
+    }catch(e){alert('Chưa nộp được: '+e.message);}
   });
   renderCongViec();
 }
@@ -4537,41 +4581,39 @@ function cvBoardHtml(){
   const L=cvLoai(),Si=L==='Sỉ',muc=cvMuc.filter(m=>m.nguoi_id===toi.id&&m.loai===L&&cvLaKhach(m)),dsMuc=cvDsMuc();
   const tuDo=Si?cvMoiNgayCua(toi.id,st.ngay):[];   // 03 khách mới trong ngày: tự đổ về, không cần kéo
   const daCo=new Set();cvMuc.filter(m=>m.nguoi_id===toi.id).forEach(m=>{const x=K.theoId[m.lead_id];if(x)daCo.add(x);});
-  // BỘ LỌC Y NHƯ DANH SÁCH KHÁCH BÊN SALE SỈ (quản lý góp ý 04/11/2026: "phần lọc danh sách khách hơi khó dùng, cho lọc theo tag đúng
-  // như màn danh sách khách bên Sales Sỉ"): thanh lọc Master (Sales · Trạng thái · Nguồn · Sản phẩm · Brand, trạng thái lưu riêng tab 'cv')
-  // + ô tìm luôn hiện (gõ là tìm trên mọi khách được xem, bỏ qua nhóm) + nhóm khách (Tất cả / 01–04 hoặc nhóm Lẻ).
-  const q=String(st.q||'').trim(),nhom=cvNguonCua().some(x=>x[0]===st.nguon)?st.nguon:'tat';
-  const loc=a=>{const keep=new Set(rptSlApplyF('cv',a.map(x=>x.r),{tim:!!q}));return a.filter(x=>keep.has(x.r));};
-  const ds=loc(q?cvNguonDs('tim',q):cvNguonDs(nhom)),hien=ds.slice(0,80);
+  // BỎ KÉO THẢ (anh Hải 04/11/2026: "bỏ bảng kéo đi, muốn nó liên kết với Master"): thêm khách vào báo cáo bằng nút "+ Báo cáo" ở Master
+  // Data (từng dòng / chọn nhiều) hoặc bấm khách ở danh sách bên trái -> chọn nhóm (cvMenuBC). Danh sách bên trái giữ DẠNG CŨ
+  // ("trả lại form cũ": chip nhóm có số + Tìm). Mỗi khách trong kế hoạch có ô đổi nhóm, ✕ bỏ, mục tiêu.
+  const ds=cvNguonDs(st.nguon,st.q),hien=ds.slice(0,80);
   const nghi=r=>r.siHenDen?' · <b class="cv-hen">hẹn '+dmy(r.siNgayHen)+'</b>':r.siNgayNghi!=null?' · '+r.siNgayNghi+' ngày chưa liên hệ':' · chưa chăm sóc';
   const theKh=x=>{const r=x.r,co=daCo.has(x),id=cvId(r.leadId);
-    return '<div class="cv-kh'+(co?' cv-co':'')+'" draggable="'+(sua&&!co)+'" ondragstart="cvKeo(event,\'kh\',\''+id+'\')"'
-      +(sua&&!co?' onclick="cvThem(\''+id+'\')"':'')+' title="'+(co?'Đã có trong kế hoạch':'Kéo vào đầu mục, hoặc bấm để thêm vào đầu mục đang chọn')+'">'
+    return '<div class="cv-kh'+(co?' cv-co':'')+'"'+(sua&&!co?' style="cursor:pointer" onclick="cvMenuBC(event,[\''+id+'\'],\''+x.loai+'\')"':'')
+      +' title="'+(co?'Đã có trong báo cáo':'Bấm để chọn nhóm, đưa vào báo cáo hôm nay')+'">'
       +cvTenKhHtml({lead:'',ten:r.name,loai:x.loai,vip:rptSlLaVip(r)})
       +'<div class="cv-phu">'+cvE(r.kh||r.leadId)+' · '+cvE(rptSlLocTT(r))+nghi(r)+'</div></div>';};
-  const trai='<div class="cv-pan"><div class="cv-tieu">Danh sách khách '+L+'</div>'
-    +'<input id="cvTim" class="cv-o" style="margin:0 0 8px" placeholder="Tìm tên, SĐT, Mã KH…" value="'+cvE(st.q)+'" onfocus="window._cvTimGo=true" onblur="window._cvTimGo=false"'
-      +' oninput="clearTimeout(window._cvTimT);const v=this.value;window._cvTimT=setTimeout(()=>{cvSt().q=v;renderCongViec();},350)">'
-    +'<div class="cv-loc">'+rptSlFilterBar('cv')+'</div>'
-    +'<div class="cv-chips"'+(q?' style="opacity:.45" title="Đang tìm: nhóm không áp dụng"':'')+'>'
-    +cvNguonCua().map(([k,t])=>'<button class="cv-chip'+(nhom===k&&!q?' on':'')+'" onclick="cvSt().q=\'\';cvDat(\'nguon\',\''+k+'\')">'+t+'<b>'+num(loc(cvNguonDs(k)).length)+'</b></button>').join('')+'</div>'
-    +'<div class="cv-ds">'+(hien.length?hien.map(theKh).join(''):'<div class="cv-chua" style="padding:14px 4px">'+(q?'Không tìm thấy khách':'Không có khách')+'</div>')
-    +(ds.length>hien.length?'<div class="cv-phu" style="padding:6px 4px">Còn '+num(ds.length-hien.length)+' khách — gõ tìm hoặc lọc thêm</div>':'')+'</div></div>';
+  const trai='<div class="cv-pan"><div class="cv-tieu">Danh sách khách '+L+'</div><div class="cv-chips">'
+    +cvNguonCua().map(([k,t])=>'<button class="cv-chip'+(st.nguon===k?' on':'')+'" onclick="cvDat(\'nguon\',\''+k+'\')">'+t+(k==='tim'?'':'<b>'+num(cvNguonDs(k).length)+'</b>')+'</button>').join('')+'</div>'
+    +(st.nguon==='tim'?'<input id="cvTim" class="cv-o" style="margin:0 0 10px" placeholder="Tên, SĐT, Mã KH…" value="'+cvE(st.q)+'" onfocus="window._cvTimGo=true" onblur="window._cvTimGo=false"'
+      +' oninput="clearTimeout(window._cvTimT);const v=this.value;window._cvTimT=setTimeout(()=>{cvSt().q=v;renderCongViec();},350)">':'')
+    +'<div class="cv-ds">'+(hien.length?hien.map(theKh).join(''):'<div class="cv-chua" style="padding:14px 4px">'+(st.nguon==='tim'?'Gõ để tìm khách':'Không có khách')+'</div>')
+    +(ds.length>hien.length?'<div class="cv-phu" style="padding:6px 4px">Còn '+num(ds.length-hien.length)+' khách — dùng Tìm để lọc</div>':'')+'</div></div>';
   const cot=(dm,i)=>{const vs=muc.filter(m=>m.dau_muc===dm),tu=Si&&i===2?tuDo.filter(x=>!daCo.has(x)):[];
-    return '<div class="cv-cot'+(sua&&st.muc===i?' cv-chon':'')+'"'+(sua?' ondragover="event.preventDefault();this.classList.add(\'cv-tha\')" ondragleave="this.classList.remove(\'cv-tha\')" ondrop="cvTha(event,'+i+')"':'')+'>'
-      +'<div class="cv-cot-dau"'+(sua?' onclick="cvDat(\'muc\','+i+')" title="Chọn làm đầu mục nhận khách khi bấm"':'')+'><span class="cv-cham" style="background:'+cvMau(dm)+'"></span>'
+    return '<div class="cv-cot">'
+      +'<div class="cv-cot-dau" style="cursor:default"><span class="cv-cham" style="background:'+cvMau(dm)+'"></span>'
         +(Si&&i<4?'<b class="cv-stt" style="min-width:0">0'+(i+1)+'</b>':'')+cvE(dm)+'<span class="cv-dem">'+(vs.length+tu.length)+'</span></div>'
       +tu.map(x=>'<div class="cv-viec" style="cursor:default;border-style:dashed">'+cvTenKhHtml({lead:x.r.leadId,ten:x.r.name,loai:'Sỉ',vip:rptSlLaVip(x.r)})
         +'<div class="cv-phu">'+cvE(x.r.kh||x.r.leadId)+' · tự đổ về</div></div>').join('')
       +vs.map(m=>{const x=K.theoId[m.lead_id];
-        return '<div class="cv-viec"'+(sua?' draggable="true" ondragstart="cvKeo(event,\'viec\','+m.id+')"':'')+'>'
+        return '<div class="cv-viec" style="cursor:default">'
           +'<div style="display:flex;align-items:flex-start;gap:6px">'+'<div style="min-width:0;flex:1">'
           +cvTenKhHtml({lead:m.lead_id,ten:x?x.r.name:m.ten_khach,loai:m.loai,vip:x?rptSlLaVip(x.r):false})
           +'<div class="cv-phu">'+cvE(m.kiot_code||m.lead_id)+(m.phan_loai?' · '+cvE(m.phan_loai):'')+'</div></div>'
-          +(sua?'<button class="cv-x" onclick="cvXoa('+m.id+')" title="Bỏ khỏi kế hoạch">✕</button>':'')+'</div>'
-          +(sua?'<textarea class="cv-o" rows="1" placeholder="Mục tiêu hôm nay…" onchange="cvSuaO('+m.id+',\'muc_tieu\',this.value)">'+cvE(m.muc_tieu||'')+'</textarea>'
+          +(sua?'<button class="cv-x" onclick="cvXoa('+m.id+')" title="Bỏ khỏi báo cáo">✕</button>':'')+'</div>'
+          +(sua?'<select class="cv-o" onchange="cvDoiMuc('+m.id+',Number(this.value))" title="Chuyển nhóm">'
+              +dsMuc.map((t,j)=>'<option value="'+j+'"'+(t===dm?' selected':'')+'>'+(Si&&j<4?'0'+(j+1)+' ':'')+cvE(t)+'</option>').join('')+'</select>'
+            +'<textarea class="cv-o" rows="1" placeholder="Mục tiêu hôm nay…" onchange="cvSuaO('+m.id+',\'muc_tieu\',this.value)">'+cvE(m.muc_tieu||'')+'</textarea>'
             :(m.muc_tieu?'<div class="cv-phu" style="color:var(--text2)">'+cvE(m.muc_tieu)+'</div>':''))+'</div>';}).join('')
-      +(vs.length||tu.length?'':'<div class="cv-chua" style="padding:10px 2px;font-size:11px">'+(Si&&i===2?'Chưa có khách mới hôm nay':sua?'Kéo khách vào đây':'Trống')+'</div>')+'</div>';};
+      +(vs.length||tu.length?'':'<div class="cv-chua" style="padding:10px 2px;font-size:11px">'+(Si&&i===2?'Chưa có khách mới hôm nay':'Chưa có khách')+'</div>')+'</div>';};
   // B / C của Sỉ: checklist tích đã làm + ghi chú / link
   const bcHtml=(n,tieu,dmk,stt0)=>{const ds=cvViecBC(n,toi.id,!suaKQ);
     return '<div class="cv-pan" style="box-shadow:none;margin-top:12px;padding:12px 14px"><div class="cv-tieu" style="margin-bottom:4px">'+tieu+dmBut(dmk)
@@ -4585,6 +4627,7 @@ function cvBoardHtml(){
   const phai='<div class="cv-pan"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div class="cv-tieu" style="margin:0">'
       +(Si?'A. Khách hàng · khách Sỉ':'Đầu mục chăm sóc · khách '+L+dmBut('cv_dau_muc'))+'</div>'
       +'<span class="cv-dem">'+(muc.length+(Si?tuDo.filter(x=>!daCo.has(x)).length:0))+' khách</span></div>'
+    +(sua?'<div class="cv-phu" style="margin:-4px 0 10px">Thêm khách: bấm khách ở danh sách bên trái, hoặc ở <b>Master Data</b> bấm <b>+ Báo cáo</b> (chọn nhiều khách: <b>Đưa vào báo cáo</b>).</div>':'')
     +'<div class="cv-cots">'+dsMuc.map(cot).join('')+'</div>'
     +(Si?bcHtml('B','B. Công việc cố định','cv_co_dinh_si',4)+bcHtml('C','C. Công việc chiến dịch · tháng '+st.ngay.slice(5,7),'cv_chien_dich_si',4+cvViecBC('B',toi.id,!suaKQ).length):'')
     +'<div class="cv-cuoi" style="padding:14px 0 0;border:none">'
@@ -4592,10 +4635,10 @@ function cvBoardHtml(){
       +(sua?'<textarea class="cv-o" rows="2" placeholder="Trọng tâm hôm nay, cần quản lý hỗ trợ gì…" onchange="cvSuaNgay(\'ghi_chu_sang\',this.value)">'+cvE(h.ghi_chu_sang||'')+'</textarea>'
         :'<div class="cv-phu" style="color:var(--text2)">'+(cvE(h.ghi_chu_sang||'')||'—')+'</div>')+'</div>'
       +(h.thu_hoi_kh?'<span class="cv-the" style="background:#fef3c7;color:#b45309">Đã thu hồi '+h.thu_hoi_kh+' lần</span>':'')
-      +(h.gui_luc?'<span class="cv-the" style="background:var(--green-l);color:var(--green)">Đã gửi '+cvGio(h.gui_luc)+'</span>':'')
-      +(h.chot_luc?'<span class="cv-the" style="background:var(--accent-l);color:var(--accent)">Đã chốt báo cáo — thu hồi ở tab Báo cáo ngày</span>'
-        :h.gui_luc&&suaKQ?'<button class="cv-nut phu" onclick="cvThuHoiKH()" title="Đã gửi thì khoá; thu hồi để sửa rồi gửi lại">Thu hồi để sửa</button>'
-        :sua?'<button class="cv-nut" onclick="cvGuiKeHoach()">Gửi kế hoạch</button>':'')
+      +(h.gui_luc?'<span class="cv-the" style="background:var(--green-l);color:var(--green)">Đã nộp '+cvGio(h.gui_luc)+'</span>':'')
+      +(h.chot_luc?'<span class="cv-the" style="background:var(--accent-l);color:var(--accent)">Đã nộp báo cáo — thu hồi ở tab Báo cáo ngày</span>'
+        :h.gui_luc&&suaKQ?'<button class="cv-nut phu" onclick="cvThuHoiKH()" title="Đã nộp thì khoá; thu hồi để sửa rồi nộp lại">Thu hồi để sửa</button>'
+        :sua?'<button class="cv-nut" onclick="cvGuiKeHoach()">Nộp kế hoạch</button>':'')
     +'</div></div>';
   return '<div class="cv-wrap">'+(sua?trai:'')+phai+'</div>';
 }
@@ -4647,8 +4690,8 @@ function cvBaoCaoHtml(h,muc,ten,nguoiId){
       +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
       +(h&&h.tong_ket&&h.tong_ket.mau?the('var(--bg2)','var(--text2)','Mẫu từ lịch sử chăm sóc'):'')   // nạp từ lịch sử T10 (04/11/2026)
       +(h&&(h.thu_hoi_kh||h.thu_hoi_bc)?the('#fef3c7','#b45309','Thu hồi '+[h.thu_hoi_kh?'kế hoạch '+h.thu_hoi_kh+' lần':'',h.thu_hoi_bc?'báo cáo '+h.thu_hoi_bc+' lần':''].filter(Boolean).join(' · ')):'')
-      +(h&&h.gui_luc?the('var(--green-l)','var(--green)','Gửi kế hoạch '+cvGio(h.gui_luc)):the('var(--bg2)','var(--muted)','Chưa gửi kế hoạch'))
-      +(chot?the('var(--accent-l)','var(--accent)','Đã chốt '+cvGio(h.chot_luc)):the('#fef3c7','#b45309','Chưa chốt báo cáo'))+'</div></div>'
+      +(h&&h.gui_luc?the('var(--green-l)','var(--green)','Nộp kế hoạch '+cvGio(h.gui_luc)):the('var(--bg2)','var(--muted)','Chưa nộp kế hoạch'))
+      +(chot?the('var(--accent-l)','var(--accent)','Đã nộp báo cáo '+cvGio(h.chot_luc)):the('#fef3c7','#b45309','Chưa nộp báo cáo'))+'</div></div>'
     +'<div class="cv-so">'+so(num(tk.ke_hoach),'Việc kế hoạch')+so(num(tk.xu_ly),'Đã xử lý','#16a34a')
       +so(num(tk.ke_hoach-tk.xu_ly),'Chưa xử lý',tk.ke_hoach-tk.xu_ly?'#d97706':'')+so(num(tk.ngoai_n),'Ngoài kế hoạch')
       +so(num(tk.don),'Đơn chốt',tk.don?'#16a34a':'')+so(vnd(tk.tien),'Tiền chốt',tk.tien?'#16a34a':'')
@@ -4660,7 +4703,7 @@ function cvBaoCaoHtml(h,muc,ten,nguoiId){
       +(sua?'<textarea class="cv-o" rows="2" style="margin:0" placeholder="Kết quả chính, khó khăn, cần hỗ trợ…" onchange="cvSuaNgay(\'ghi_chu_toi\',this.value)">'+cvE(h&&h.ghi_chu_toi||'')+'</textarea>'
         :'<div style="font-size:12px;color:var(--text2);white-space:pre-wrap">'+(cvE(h&&h.ghi_chu_toi||'')||'<span class="cv-chua">—</span>')+'</div>')+'</div>'
       +(h&&h.ghi_chu_sang?'<div style="flex:1;min-width:220px"><div class="cv-tieu">Ghi chú kế hoạch</div><div style="font-size:12px;color:var(--text2);white-space:pre-wrap">'+cvE(h.ghi_chu_sang)+'</div></div>':'')
-      +(nguoiId===toi.id&&!toi.xemNhu?(chot?'<button class="cv-nut phu" onclick="cvChot(true)" title="Đã chốt thì khoá; thu hồi để sửa rồi chốt lại">Thu hồi để sửa</button>':'<button class="cv-nut" onclick="cvChot()">Chốt báo cáo ngày</button>'):'')
+      +(nguoiId===toi.id&&!toi.xemNhu?(chot?'<button class="cv-nut phu" onclick="cvChot(true)" title="Đã nộp thì khoá; thu hồi để sửa rồi nộp lại">Thu hồi để sửa</button>':'<button class="cv-nut" onclick="cvChot()">Nộp báo cáo</button>'):'')
     +'</div></div>';
 }
 // LINK CỐ ĐỊNH CỦA CHIẾN DỊCH (quản lý góp ý 04/11/2026): lưu danh_muc.link, admin gắn 1 lần; Sale chỉ bấm mở, không dán lại mỗi ngày
@@ -4709,7 +4752,7 @@ function cvLichSuHtml(){
   const het=new Set(ds.map(h=>h.nguoi_id)).size>1||cvXemHet();
   if(!ds.length)return '<div class="cv-bc"><div class="cv-chua" style="padding:22px 18px">Chưa có báo cáo nào</div></div>';
   return '<div class="cv-bc"><div style="overflow-x:auto"><table class="cv-bang"><thead><tr><th>Ngày</th>'+(het?'<th>Người</th>':'')
-    +'<th style="text-align:right">Việc kế hoạch</th><th style="text-align:right">Đã xử lý</th><th style="text-align:right">Ngoài kế hoạch</th><th style="text-align:right">Đơn chốt</th><th style="text-align:right">Tiền chốt</th><th>Gửi kế hoạch</th><th>Chốt báo cáo</th></tr></thead><tbody>'
+    +'<th style="text-align:right">Việc kế hoạch</th><th style="text-align:right">Đã xử lý</th><th style="text-align:right">Ngoài kế hoạch</th><th style="text-align:right">Đơn chốt</th><th style="text-align:right">Tiền chốt</th><th>Nộp kế hoạch</th><th>Nộp báo cáo</th></tr></thead><tbody>'
     +ds.map(h=>{const t=tkL(h),kh=dem[h.ngay+'|'+h.nguoi_id]||0,dn=new Date(h.ngay+'T00:00:00');
       return '<tr style="cursor:pointer" onclick="cvMoNgay(\''+h.ngay+'\',\''+cvId(h.nguoi_id)+'\')"><td><b>'+dmy(h.ngay)+'</b> <span class="cv-phu">'+CV_THU[dn.getDay()]+'</span></td>'
         +(het?'<td>'+cvE(h.nguoi||'')+'</td>':'')
@@ -4803,24 +4846,24 @@ function cvQuanTriHtml(){
   return '<div class="cv-bc">'
     +'<div class="cv-bc-dau"><div><div class="cv-bc-ten">Tổng quan Sale · khách '+L+'</div><div class="cv-phu">'
       +(mot?CV_THU[dn.getDay()]+', '+dmy(d):dmy(tu)+' – '+dmy(den)+' · '+ngays.length+' ngày')+' · '+dong.length+' Sale</div></div></div>'
-    +'<div class="cv-so">'+so(num(T.gui)+'<span style="font-size:12px;color:var(--muted)">/'+(mot?coTK:T.ngayCo+' ngày')+'</span>','Đã gửi kế hoạch')
+    +'<div class="cv-so">'+so(num(T.gui)+'<span style="font-size:12px;color:var(--muted)">/'+(mot?coTK:T.ngayCo+' ngày')+'</span>','Đã nộp kế hoạch')
       +so(num(T.ke_hoach),'Việc kế hoạch')+so(num(T.xu_ly),'Đã xử lý','#16a34a')+so(num(T.ngoai_n),'Ngoài kế hoạch')
       +so(num(T.luot),'Lượt chăm sóc')+so(num(T.don),'Đơn chốt',T.don?'#16a34a':'')+so(vnd(T.tien),'Tiền chốt',T.tien?'#16a34a':'')
-      +so(num(T.chot)+'<span style="font-size:12px;color:var(--muted)">/'+(mot?coTK:T.ngayCo+' ngày')+'</span>','Đã chốt báo cáo')+'</div>'
-    +'<div style="overflow-x:auto"><table class="cv-bang"><thead><tr><th>Sale</th><th>Gửi kế hoạch</th><th style="text-align:right">Việc kế hoạch</th><th style="text-align:right">Đã xử lý</th>'
+      +so(num(T.chot)+'<span style="font-size:12px;color:var(--muted)">/'+(mot?coTK:T.ngayCo+' ngày')+'</span>','Đã nộp báo cáo')+'</div>'
+    +'<div style="overflow-x:auto"><table class="cv-bang"><thead><tr><th>Sale</th><th>Nộp kế hoạch</th><th style="text-align:right">Việc kế hoạch</th><th style="text-align:right">Đã xử lý</th>'
       +'<th style="text-align:right">Chưa xử lý</th><th style="text-align:right">Ngoài kế hoạch</th><th style="text-align:right">Lượt chăm sóc</th><th style="text-align:right">Đơn chốt</th><th style="text-align:right">Tiền chốt</th>'
-      +(L==='Sỉ'?'<th style="text-align:right">Việc cố định</th><th style="text-align:right">Việc chiến dịch</th>':'')+'<th>Chốt báo cáo</th></tr></thead><tbody>'
+      +(L==='Sỉ'?'<th style="text-align:right">Việc cố định</th><th style="text-align:right">Việc chiến dịch</th>':'')+'<th>Nộp báo cáo</th></tr></thead><tbody>'
     +dong.map(x=>{const p=tl(x),chua=x.tk.ke_hoach-x.tk.xu_ly,g='<span class="cv-chua">—</span>',kh=!!x.p;
       return '<tr'+(kh?' style="cursor:pointer" onclick="cvMoNgay(\''+d+'\',\''+cvId(x.id)+'\')" title="Xem báo cáo ngày của '+cvE(x.ten)+'"':'')+'><td><b>'+cvE(x.ten)+'</b>'
           +(x.chung?' <span class="cv-loai">tài khoản chung</span>':'')+(x.p&&x.p.mau?' <span class="cv-loai">mẫu</span>':'')
           +(x.chung?'<div class="cv-phu">không tính tiền — chưa biết của Sale nào</div>':kh?(x.p.acc!==x.ten?'<div class="cv-phu">tài khoản: '+cvE(x.p.acc)+'</div>':''):'<div class="cv-phu">chưa có tài khoản riêng</div>')+'</td>'
-        +'<td>'+(!kh?g:mot?gio(x.h&&x.h.gui_luc,'chưa gửi'):x.p.ngayCo?'<b>'+x.p.gui+'</b>/'+x.p.ngayCo+' ngày':'<span class="cv-chua">không có</span>')
+        +'<td>'+(!kh?g:mot?gio(x.h&&x.h.gui_luc,'chưa nộp'):x.p.ngayCo?'<b>'+x.p.gui+'</b>/'+x.p.ngayCo+' ngày':'<span class="cv-chua">không có</span>')
           +(x.p&&x.p.thuHoi?'<div class="cv-phu" style="color:#b45309">thu hồi '+x.p.thuHoi+' lần</div>':'')+'</td>'+r(kh?num(x.tk.ke_hoach):g)
         +r(kh?'<b style="color:#16a34a">'+num(x.tk.xu_ly)+'</b>'+(p==null?'':' <span class="cv-phu" style="display:inline">'+p+'%</span>'):g)
         +r(kh?(chua?'<b style="color:#d97706">'+num(chua)+'</b>':'0'):g)+r(kh?num(x.tk.ngoai_n):g)+r(x.luot==null?g:num(x.luot))
         +r(!x.dt?g:x.dt.don?'<b style="color:#16a34a">'+num(x.dt.don)+'</b>':'0')+r(!x.dt?g:x.dt.tien?'<b style="color:#16a34a">'+vnd(x.dt.tien)+'</b>':'—')
         +(L==='Sỉ'?(x.B?[x.B,x.C].map(v=>r('<b style="color:'+(v.n&&v.x===v.n?'#16a34a':v.x?'var(--text)':'var(--muted)')+'">'+v.x+'</b>/'+v.n)).join(''):r(g)+r(g)):'')
-        +'<td>'+(!kh?g:mot?gio(x.h&&x.h.chot_luc,'chưa chốt'):x.p.ngayCo?'<b>'+x.p.chot+'</b>/'+x.p.ngayCo+' ngày':g)+'</td></tr>';}).join('')
+        +'<td>'+(!kh?g:mot?gio(x.h&&x.h.chot_luc,'chưa nộp'):x.p.ngayCo?'<b>'+x.p.chot+'</b>/'+x.p.ngayCo+' ngày':g)+'</td></tr>';}).join('')
     // tên Sale chưa chuẩn: không tính cho ai, hiện ra để sửa (gán Sale / chuẩn tên ở Nhân sự Sale)
     +(lechDs.length||lechLuot.length?'<tr class="cv-nhom"><td colspan="'+soCot+'" style="font-weight:600;line-height:1.6">'
       +'<b style="color:#b45309">Chưa tính cho ai — tên Sale chưa chuẩn (không có trong Nhân sự Sale) hoặc không thuộc đội '+L+'</b>'
@@ -4925,8 +4968,8 @@ function cvBaoCaoMotNgay(trongKhoang){
     than=(st.nguoi==='*'&&!trongKhoang?'<div class="cv-pan" style="margin-bottom:16px;display:flex;gap:18px;flex-wrap:wrap;font-size:12px">'
         +'<div><span class="cv-tieu" style="margin-right:6px">Đã lên kế hoạch</span><b>'+num(ds.length)+'</b></div>'
         +'<div><span class="cv-tieu" style="margin-right:6px">Chưa lên kế hoạch</span>'+(chua.length?cvE(chua.join(', ')):'<span class="cv-chua">không ai</span>')+'</div>'
-        +'<div><span class="cv-tieu" style="margin-right:6px">Chưa gửi</span>'+(chuaGui.length?cvE(chuaGui.join(', ')):'<span class="cv-chua">không ai</span>')+'</div>'
-        +'<div><span class="cv-tieu" style="margin-right:6px">Chưa chốt</span>'+(chuaChot.length?cvE(chuaChot.join(', ')):'<span class="cv-chua">không ai</span>')+'</div></div>':'')
+        +'<div><span class="cv-tieu" style="margin-right:6px">Chưa nộp kế hoạch</span>'+(chuaGui.length?cvE(chuaGui.join(', ')):'<span class="cv-chua">không ai</span>')+'</div>'
+        +'<div><span class="cv-tieu" style="margin-right:6px">Chưa nộp báo cáo</span>'+(chuaChot.length?cvE(chuaChot.join(', ')):'<span class="cv-chua">không ai</span>')+'</div></div>':'')
       +banThu+(ds.length?ds.map(h=>cvBaoCaoHtml(h,cvMuc.filter(m=>m.nguoi_id===h.nguoi_id),h.nguoi,h.nguoi_id)).join('')
         :trongKhoang?'':'<div class="cv-bc"><div class="cv-chua" style="padding:22px 18px">Chưa ai lên kế hoạch ngày '+dmy(st.ngay)+'</div></div>');
     return {co:!!(ds.length||banThu),html:than};
@@ -6270,6 +6313,7 @@ function rptSlThanhHangLoat(){
       +rptSlSaleOptsHtml('')+'</select>'
       +'<button onclick="rptSlHangLoat(\'sale\',this)" class="refresh-btn" style="margin:0;padding:5px 12px;font-size:11.5px">Áp dụng</button></span>':'')
     +(dashGiaoViec()?'<button onclick="rptSlGiaoViecForm([...rptSlChonDs()])" style="margin:0;padding:5px 12px;font-size:11.5px;border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;font-weight:800;cursor:pointer;font-family:var(--font)">Giao việc</button>':'')
+    +'<button onclick="cvMenuBC(event,[...rptSlChonDs()])" title="Đưa các khách đã chọn vào Báo cáo công việc hôm nay (chọn nhóm)" style="margin:0;padding:5px 12px;font-size:11.5px;border:1.5px solid var(--green);background:var(--surface);color:var(--green);border-radius:7px;font-weight:800;cursor:pointer;font-family:var(--font)">Đưa vào báo cáo</button>'
     +'<button onclick="rptSlBoChon()" class="btn-ghost" style="margin:0 0 0 auto;padding:5px 12px;font-size:11.5px">Bỏ chọn</button></div>';
 }
 async function rptSlHangLoat(loai,el){
@@ -7072,10 +7116,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='04/11 17:13';
+const APP_VERSION='04/11 17:36';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=543;
+const APP_BAN=544;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8045,7 +8089,7 @@ document.addEventListener('click',e=>{
 // bộ lọc (ngày, Sale, trạng thái, brand) -- anh Hải 25/9/2026. Không có bộ lọc nào thì nút ẩn.
 function rptSlCoLoc(){
   const rg=modRange(rptSlMod());
-  return !!(rg.from||rg.to||window._rptSiLoc||rptSlF('master','sale')||rptSlF('master','status')||rptSlF('master','sp')||rptSlF('master','brand')||rptSlF('master','nguon'));
+  return !!(rg.from||rg.to||window._rptSiLoc||rptSlF('master','sale')||rptSlF('master','status')||rptSlF('master','sp')||rptSlF('master','brand')||rptSlF('master','nguon')||rptSlF('master','cham'));
 }
 function rptSlThaoLoc(){
   modRanges[rptSlMod()]={from:'',to:''};
@@ -8199,6 +8243,18 @@ function rptSlLocTT(r){
 //  · opt.tim (đang gõ ô tìm): bộ lọc CHỌN TAY vẫn áp lên kết quả tìm (anh chọn 19/10), nhưng KHÔNG tự ẩn Offline · Kiot
 //    và không lọc ngày -- để khách nào còn trong app cũng tìm ra.
 const RPT_SL_SALE_NGOAI='(Sale ngoài danh sách)';
+// BỘ LỌC CHĂM SÓC ở Master (quản lý góp ý 04/11/2026: "thêm bộ lọc trên 10 ngày chưa chăm, và bộ lọc vừa mới bán cần chăm sóc sau bán
+// (thường đợi vận chuyển đến nơi thì cho TB 5 ngày sau ngày chốt đơn)"). Dùng chung cho nhóm 04 của Báo cáo công việc.
+const RPT_SL_CHAM_DS=['Trên 10 ngày chưa chăm','Cần chăm sau bán'];
+const RPT_SL_SAU_BAN_TU=5,RPT_SL_SAU_BAN_DEN=30;   // đơn đã 5 ngày (hàng tới nơi) tới 30 ngày ("vừa mới bán")
+function rptSlDonThatCuoi(r){return [...(r.kords||[]),...(r.repeatOrds||[])].filter(o=>!o.khongTinh&&o.status!==4&&Number(o.total||0)>0)
+  .map(o=>String(o.purchase_date||'').slice(0,10)).sort().pop()||'';}
+// CẦN CHĂM SAU BÁN: đơn thật cuối cách hôm nay 5–30 ngày và CHƯA có lượt chăm sóc nào SAU ngày đơn đó
+function rptSlCanChamSauBan(r){const d=rptSlDonThatCuoi(r);if(!d)return false;
+  const n=Math.floor((new Date(todayISO())-new Date(d))/86400000);
+  return n>=RPT_SL_SAU_BAN_TU&&n<=RPT_SL_SAU_BAN_DEN&&!((r.siCsThat||'')>d);}
+function rptSlLaLauChuaCham(r){return r.siNgayNghi==null||r.siNgayNghi>10;}
+function rptSlChamLoc(r){const a=[];if(rptSlLaLauChuaCham(r))a.push(RPT_SL_CHAM_DS[0]);if(rptSlCanChamSauBan(r))a.push(RPT_SL_CHAM_DS[1]);return a;}
 // 29/10/2026 anh: "Sale phụ trách data không có giới hạn, gán ai cũng được" -> khách đứng tên Sale ĐỘI KIA vẫn lọc đúng tên người đó
 // (trước rơi vào "Sale ngoài danh sách"). Ngoài danh sách = người không có trong Nhân sự Sale (Sale Kiot, tài khoản chung...).
 function rptSlSaleLoc(r){const t=String(r.staff||'').trim();return !t?'(chưa gán)':rptSlSaleCuaDoi().includes(t)?t:RPT_SL_SALE_NGOAI;}
@@ -8216,7 +8272,8 @@ function rptSlApplyF(tab,list,opt){
   const nguonCua=r=>/offline/i.test(r.nguon||'')?'Offline':(/online/i.test(r.nguon||'')||rptSlType()!=='Sỉ')?'Online':'Chưa rõ nguồn';
   let st=rptSlF(tab,'status');
   if(st){st=st.filter(x=>rptSlLocTTDs().includes(x));if(!st.length)st='';}   // giá trị lọc cũ không còn trong danh sách -> bỏ, đừng lọc ngầm ra 0
-  return list.filter(r=>
+  const cham=rptSlF(tab,'cham');
+  return list.filter(r=>(!cham||rptSlChamLoc(r).some(x=>cham.includes(x)))&&
     (!sale||sale.includes(rptSlSaleLoc(r)))&&
     (ng?ng.includes(rptSlNguonNhan(r)):!(anOffKiot&&rptSlNguonNhan(r)==='Offline · Kiot'))&&
     (!st||st.includes(rptSlLocTT(r))||(st.includes(RPT_SL_TT_VIP)&&rptSlLaVip(r)))&&
@@ -8253,7 +8310,7 @@ function rptSlFilterBar(tab){
   const ip='height:30px;box-sizing:border-box;padding:3px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:700;font-family:var(--font);outline:none;cursor:pointer';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const one=(k,label,opts)=>rptSlMsLoc(tab,k,label,opts);
-  return one('sale','Sales',sales)+one('status','Trạng thái',stats)
+  return one('sale','Sales',sales)+one('status','Trạng thái',stats)+one('cham','Chăm sóc',RPT_SL_CHAM_DS)
     +one('nguon','Nguồn',RPT_SL_NGUON_DS.filter(x=>full.some(r=>rptSlNguonNhan(r)===x)))
     +(rptSlType()==='Sỉ'?one('sp','Sản phẩm',[...new Set(RPT_SI_SPQT_DS),'(chưa rõ)']):'')+one('brand','Brand',brands);
 }
@@ -8790,6 +8847,7 @@ function rptSlBuildMasterRaw(){
       if(ds.length){
         const m=ds[0];
         r.siCSCuoi=String(m.ngay_cham||'').slice(0,10);
+        r.siCsThat=r.siCSCuoi;   // ngày LƯỢT CHĂM SÓC thật cuối (siCSCuoi bên dưới còn nhảy theo đơn) -- lọc "Cần chăm sau bán" (04/11/2026)
         // nội dung = lượt GẦN NHẤT CÓ GHI NỘI DUNG -- dòng Chốt đơn tự tạo từ đơn Kiot không có nội dung,
         // không được đè mất nội dung chăm khách thật (scripts/tu-tao-chot-don-si.js, 25/9/2026)
         r.siNDCuoi=ds.map(x=>x.noi_dung).find(v=>String(v||'').trim())||'';
@@ -8805,7 +8863,7 @@ function rptSlBuildMasterRaw(){
         r.siHenDen=!!(r.siNgayHen&&r.siNgayHen<=todayISO()&&!ds.some(x=>x!==henDong&&String(x.ngay_cham||'').slice(0,10)>=r.siNgayHen));
         const dk=ds.map(x=>Number(x.gia_tri_du_kien||0)).filter(v=>v>0)[0];
         if(dk&&!r.potential)r.potential=dk;
-      }else{r.siCSCuoi='';r.siNDCuoi='';r.siNgayNghi=null;
+      }else{r.siCSCuoi='';r.siCsThat='';r.siNDCuoi='';r.siNgayNghi=null;
         // Lẻ chưa có lượt nào: lấy tạm ngày / nội dung Sale ghi kiểu cũ (ô Nội dung trao đổi) cho khỏi trống
         if(laLe){r.siCSCuoi=String(mn.care_date||'').slice(0,10);r.siNDCuoi=mn.content||r.content||'';}}
       // PHÁT SINH ĐƠN = CÓ CHĂM SÓC (anh Hải 01/10/2026): ngày chăm sóc cuối nhảy theo đơn Kiot gần nhất của khách
@@ -9145,6 +9203,8 @@ function rptSlMasterRowSi(r){
     +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
       +'<button onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\');rptSlCsMoForm()" title="Ghi lượt chăm sóc mới" style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700;font-family:var(--font)">+ Chăm sóc</button>'
       +(dashGiaoViec()?'<button onclick="rptSlGiaoViecForm([\''+String(r.leadId||'').replace(/'/g,"\\'")+'\'])" title="Giao việc cho Sale, không cần ghi lượt chăm sóc" style="margin-left:6px;border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700;font-family:var(--font)">Giao việc</button>':'')
+      // nút thứ 3: đưa khách vào Báo cáo công việc hôm nay, chọn nhóm (anh Hải 04/11/2026)
+      +(r.leadId?'<button onclick="cvMenuBC(event,[\''+cvId(r.leadId)+'\'])" title="Đưa khách vào Báo cáo công việc hôm nay (chọn nhóm)" style="margin-left:6px;border:1.5px solid var(--green);background:var(--surface);color:var(--green);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700;font-family:var(--font)">+ Báo cáo</button>':'')
       +'</td></tr>';
 }
 // ── TRAO ĐỔI GẦN NHẤT (Master Sỉ, anh Hải 01/10/2026): bong bóng chat, bấm ra lượt chăm sóc gần nhất (3 mục) để khỏi mở
