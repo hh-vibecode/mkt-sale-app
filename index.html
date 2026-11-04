@@ -283,6 +283,7 @@ thead th,.grp-table th{color:var(--text2)}
 .cv-pan{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
 .cv-tieu{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
 .cv-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.cv-loc{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .cv-chip{border:1.5px solid var(--border);background:var(--surface);color:var(--text2);border-radius:999px;padding:4px 10px;font:700 11px var(--font);cursor:pointer;line-height:1.3}
 .cv-chip:hover{border-color:var(--accent);color:var(--accent)}
 .cv-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -4159,7 +4160,7 @@ async function renderReportTongHop(){
 //     Sale ghi chú từng việc rồi Chốt -> kết quả CHỤP vào CSDL (ket_qua / tong_ket), ngày cũ xem lại ở tab Lịch sử đúng như lúc chốt.
 // 1 bảng gọn để quản lý nắm đủ mà không mở từng khách; Sale chụp màn hình gửi Zalo được. Monsieur Claude.
 const CV_DAU_MUC=['Gọi / nhắn chăm sóc','Tư vấn, gửi báo giá','Chốt đơn','Chăm sau bán','Thu tiền, cọc'];
-const CV_NGUON=[['hen','Đến hẹn'],['moi','Khách mới'],['thang','Mua trong tháng'],['tiem','Tiềm năng'],['vip','VIP'],['lau','Lâu chưa liên hệ'],['tim','Tìm']];
+const CV_NGUON=[['tat','Tất cả'],['hen','Đến hẹn'],['moi','Khách mới'],['thang','Mua trong tháng'],['tiem','Tiềm năng'],['vip','VIP'],['lau','Lâu chưa liên hệ']];
 const CV_THU=['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
 let cvNgay=[],cvMuc=[],cvMucNgay='',cvLichSu=null;
 function cvE(x){return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -4169,7 +4170,7 @@ function cvToi(){const v=dashViewAs();
   if(v&&dashCanViewAs())return {id:String(v.id),ten:v.name||'',xemNhu:true};
   return {id:String(localStorage.getItem('dashUserId')||''),ten:localStorage.getItem('dashUser')||'',xemNhu:false};}
 function cvXemHet(){return dashToanQuyen();}
-function cvSt(){if(!window._cv)window._cv={ngay:todayISO(),tab:'',nguoi:null,nguon:'hen',q:'',muc:0,loai:''};return window._cv;}
+function cvSt(){if(!window._cv)window._cv={ngay:todayISO(),tab:'',nguoi:null,nguon:'tat',q:'',muc:0,loai:''};return window._cv;}
 // TÁCH LẺ / SỈ (anh Hải 04/11/2026): cả trang xem 1 loại khách 1 lúc, theo loại tài khoản được xem (Phân quyền > loại khách).
 function cvLoaiDuoc(){const a=dashTypes();return ['Lẻ','Sỉ'].filter(t=>!a.length||a.includes(t));}
 function cvLoai(){const st=cvSt(),ds=cvLoaiDuoc();
@@ -4190,7 +4191,7 @@ function cvAccTrongPhamVi(a,loai){
 const CV_A_SI=[['chot','KH có kế hoạch chốt hôm nay'],['hen','KH đến lịch tái chăm sóc'],['moingay','KH mới trong ngày'],['sauban','KH chăm sóc sau bán']];
 const CV_CO_DINH_SI=['Đăng bài Zalo Sỉ / Zalo Lẻ','Đăng bài nhóm CTV','Đăng bài nhóm Sỉ Shidai'];
 const CV_CHIEN_DICH_SI=['Chiến dịch 1 – Hội nhóm CTV','Chiến dịch 2 – Hội chợ KXC'];
-const CV_NGUON_SI=[['chot','01 Kế hoạch chốt'],['hen','02 Đến lịch tái chăm'],['moingay','03 Mới trong ngày'],['sauban','04 Sau bán'],['vip','VIP'],['tim','Tìm']];
+const CV_NGUON_SI=[['tat','Tất cả'],['chot','01 Kế hoạch chốt'],['hen','02 Đến lịch tái chăm'],['moingay','03 Mới trong ngày'],['sauban','04 Sau bán']];
 function cvLaKhach(m){return String(m&&m.lead_id||'').charAt(0)!=='#';}
 function cvNguonCua(){return cvLoai()==='Sỉ'?CV_NGUON_SI:CV_NGUON;}
 function cvDsMuc(){const L=cvLoai(),a=L==='Sỉ'?CV_A_SI.map(x=>x[1]):CV_DAU_MUC.slice();
@@ -4536,18 +4537,26 @@ function cvBoardHtml(){
   const L=cvLoai(),Si=L==='Sỉ',muc=cvMuc.filter(m=>m.nguoi_id===toi.id&&m.loai===L&&cvLaKhach(m)),dsMuc=cvDsMuc();
   const tuDo=Si?cvMoiNgayCua(toi.id,st.ngay):[];   // 03 khách mới trong ngày: tự đổ về, không cần kéo
   const daCo=new Set();cvMuc.filter(m=>m.nguoi_id===toi.id).forEach(m=>{const x=K.theoId[m.lead_id];if(x)daCo.add(x);});
-  const ds=cvNguonDs(st.nguon,st.q),hien=ds.slice(0,80);
+  // BỘ LỌC Y NHƯ DANH SÁCH KHÁCH BÊN SALE SỈ (quản lý góp ý 04/11/2026: "phần lọc danh sách khách hơi khó dùng, cho lọc theo tag đúng
+  // như màn danh sách khách bên Sales Sỉ"): thanh lọc Master (Sales · Trạng thái · Nguồn · Sản phẩm · Brand, trạng thái lưu riêng tab 'cv')
+  // + ô tìm luôn hiện (gõ là tìm trên mọi khách được xem, bỏ qua nhóm) + nhóm khách (Tất cả / 01–04 hoặc nhóm Lẻ).
+  const q=String(st.q||'').trim(),nhom=cvNguonCua().some(x=>x[0]===st.nguon)?st.nguon:'tat';
+  const loc=a=>{const keep=new Set(rptSlApplyF('cv',a.map(x=>x.r),{tim:!!q}));return a.filter(x=>keep.has(x.r));};
+  const ds=loc(q?cvNguonDs('tim',q):cvNguonDs(nhom)),hien=ds.slice(0,80);
   const nghi=r=>r.siHenDen?' · <b class="cv-hen">hẹn '+dmy(r.siNgayHen)+'</b>':r.siNgayNghi!=null?' · '+r.siNgayNghi+' ngày chưa liên hệ':' · chưa chăm sóc';
   const theKh=x=>{const r=x.r,co=daCo.has(x),id=cvId(r.leadId);
     return '<div class="cv-kh'+(co?' cv-co':'')+'" draggable="'+(sua&&!co)+'" ondragstart="cvKeo(event,\'kh\',\''+id+'\')"'
       +(sua&&!co?' onclick="cvThem(\''+id+'\')"':'')+' title="'+(co?'Đã có trong kế hoạch':'Kéo vào đầu mục, hoặc bấm để thêm vào đầu mục đang chọn')+'">'
       +cvTenKhHtml({lead:'',ten:r.name,loai:x.loai,vip:rptSlLaVip(r)})
       +'<div class="cv-phu">'+cvE(r.kh||r.leadId)+' · '+cvE(rptSlLocTT(r))+nghi(r)+'</div></div>';};
-  const trai='<div class="cv-pan"><div class="cv-tieu">Danh sách khách '+L+'</div><div class="cv-chips">'
-    +cvNguonCua().map(([k,t])=>'<button class="cv-chip'+(st.nguon===k?' on':'')+'" onclick="cvDat(\'nguon\',\''+k+'\')">'+t+(k==='tim'?'':'<b>'+num(cvNguonDs(k).length)+'</b>')+'</button>').join('')+'</div>'
-    +(st.nguon==='tim'?'<input id="cvTim" class="cv-o" style="margin:0 0 10px" placeholder="Tên, SĐT, Mã KH…" value="'+cvE(st.q)+'" oninput="clearTimeout(window._cvTimT);const v=this.value;window._cvTimT=setTimeout(()=>{cvSt().q=v;renderCongViec();},350)">':'')
-    +'<div class="cv-ds">'+(hien.length?hien.map(theKh).join(''):'<div class="cv-chua" style="padding:14px 4px">'+(st.nguon==='tim'?'Gõ để tìm khách':'Không có khách')+'</div>')
-    +(ds.length>hien.length?'<div class="cv-phu" style="padding:6px 4px">Còn '+num(ds.length-hien.length)+' khách — dùng Tìm để lọc</div>':'')+'</div></div>';
+  const trai='<div class="cv-pan"><div class="cv-tieu">Danh sách khách '+L+'</div>'
+    +'<input id="cvTim" class="cv-o" style="margin:0 0 8px" placeholder="Tìm tên, SĐT, Mã KH…" value="'+cvE(st.q)+'" onfocus="window._cvTimGo=true" onblur="window._cvTimGo=false"'
+      +' oninput="clearTimeout(window._cvTimT);const v=this.value;window._cvTimT=setTimeout(()=>{cvSt().q=v;renderCongViec();},350)">'
+    +'<div class="cv-loc">'+rptSlFilterBar('cv')+'</div>'
+    +'<div class="cv-chips"'+(q?' style="opacity:.45" title="Đang tìm: nhóm không áp dụng"':'')+'>'
+    +cvNguonCua().map(([k,t])=>'<button class="cv-chip'+(nhom===k&&!q?' on':'')+'" onclick="cvSt().q=\'\';cvDat(\'nguon\',\''+k+'\')">'+t+'<b>'+num(loc(cvNguonDs(k)).length)+'</b></button>').join('')+'</div>'
+    +'<div class="cv-ds">'+(hien.length?hien.map(theKh).join(''):'<div class="cv-chua" style="padding:14px 4px">'+(q?'Không tìm thấy khách':'Không có khách')+'</div>')
+    +(ds.length>hien.length?'<div class="cv-phu" style="padding:6px 4px">Còn '+num(ds.length-hien.length)+' khách — gõ tìm hoặc lọc thêm</div>':'')+'</div></div>';
   const cot=(dm,i)=>{const vs=muc.filter(m=>m.dau_muc===dm),tu=Si&&i===2?tuDo.filter(x=>!daCo.has(x)):[];
     return '<div class="cv-cot'+(sua&&st.muc===i?' cv-chon':'')+'"'+(sua?' ondragover="event.preventDefault();this.classList.add(\'cv-tha\')" ondragleave="this.classList.remove(\'cv-tha\')" ondrop="cvTha(event,'+i+')"':'')+'>'
       +'<div class="cv-cot-dau"'+(sua?' onclick="cvDat(\'muc\','+i+')" title="Chọn làm đầu mục nhận khách khi bấm"':'')+'><span class="cv-cham" style="background:'+cvMau(dm)+'"></span>'
@@ -4815,6 +4824,8 @@ async function renderCongViec(taiLai){
   //  · 04/11/2026 (anh: "cho t đầy đủ tính năng như Sale bt"): Admin cũng có Lên kế hoạch -- ở CHẾ ĐỘ THỬ (cvThu, chỉ lưu trên máy).
   const cuaToi=!het,L=cvLoai();
   if(!st.tab||(st.tab==='quan-tri'&&!het))st.tab=het?'quan-tri':'ke-hoach';
+  // thanh lọc dùng chung với Master (rptSlFilterBar / rptSlApplyF / rptSlSetF) đọc loại khách đang mở -> giữ đúng loại của trang này
+  if(window._rptSlType!==L){window._rptSlType=L;window._kiotOrdByCode=null;}
   try{
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null),dmLoad()]);
     await rptSlLockChot();
@@ -4880,7 +4891,7 @@ async function renderCongViec(taiLai){
   }
   el.innerHTML=modHeader('Báo cáo công việc','','','',modTabBar(tabs.map(t=>[t[0],t[1],st.tab===t[0],"cvDat('tab','"+t[0]+"')"])))
     +'<div style="margin:-4px 0 14px">'+thanh+'</div>'+thuBao+than;
-  if(st.tab==='ke-hoach'&&st.nguon==='tim'){const t=document.getElementById('cvTim');if(t&&document.activeElement!==t&&window._cvTimFocus!==false){t.focus();t.setSelectionRange(t.value.length,t.value.length);}}
+  if(st.tab==='ke-hoach'&&window._cvTimGo){const t=document.getElementById('cvTim');if(t&&document.activeElement!==t){t.focus();t.setSelectionRange(t.value.length,t.value.length);}}
 }
 function cvLui(n){const st=cvSt(),d=new Date(st.ngay+'T12:00:00');d.setDate(d.getDate()+n);
   cvDat('ngay',d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));}
@@ -7022,10 +7033,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='04/11 17:03';
+const APP_VERSION='04/11 17:10';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=541;
+const APP_BAN=542;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8006,6 +8017,7 @@ function rptSlThaoLoc(){
 function rptSlSetF(tab,k,v){
   window['_rptSlF_'+rptSlType()+tab]=Object.assign({},window['_rptSlF_'+rptSlType()+tab],{[k]:Array.isArray(v)?v:(v?[v]:[])});
   window[tab==='master'?'_rptSlMasterPage':'_rptSlCrmPage']=1;
+  if(tab==='cv'){if(typeof renderCongViec==='function')renderCongViec();return;}   // bộ lọc của Báo cáo công việc (04/11/2026)
   rptSlRender();
 }
 // Trạng thái hiển thị của 1 khách: đã chốt thì luôn "Chốt đơn", còn lại lấy trạng thái Sale chọn.
