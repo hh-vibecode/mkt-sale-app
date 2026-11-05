@@ -291,9 +291,14 @@ tr:has(.vip-nhan,.vip-sao):hover>td{background:color-mix(in srgb,var(--vip-vien)
 .hs-dau.hs-vip{background:linear-gradient(90deg,var(--vip-nen),var(--surface) 65%);border-bottom-color:color-mix(in srgb,var(--vip-vien) 45%,var(--border)) !important}
 .hs-vip .hs-ava{border:2px solid var(--vip-vien) !important;color:var(--vip-vien) !important;background:var(--surface) !important;box-shadow:0 0 0 3px var(--vip-nen)}
 /* BÁO CÁO CÔNG VIỆC (04/11/2026) */
-.cv-wrap{display:grid;grid-template-columns:minmax(300px,370px) 1fr;gap:16px;align-items:start}
+.cv-wrap{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
+.cv-trai{position:relative;width:34px;align-self:stretch}
+.cv-trai-tab{position:sticky;top:12px;width:34px;min-height:180px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:var(--shadow);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--accent)}
+.cv-trai-tab span{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.cv-trai>.cv-pan{display:none;position:absolute;left:0;top:0;width:370px;max-width:calc(100vw - 40px);z-index:60;box-shadow:0 16px 44px rgba(0,0,0,.22)}
+.cv-trai:hover>.cv-pan,.cv-trai.mo>.cv-pan,.cv-trai:focus-within>.cv-pan{display:block}
 .cv-kh .cv-phu,.cv-kh .cv-nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}   /* 1 ô khách = 2 dòng (anh Hải 04/11/2026) */
-@media(max-width:900px){.cv-wrap{grid-template-columns:1fr}}
 .cv-pan{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
 .cv-tieu{font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
 .cv-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
@@ -4653,7 +4658,10 @@ function cvBoardHtml(){
         :h.gui_luc&&suaKQ?'<button class="cv-nut phu" onclick="cvThuHoiKH()" title="Đã nộp thì khoá; thu hồi để sửa rồi nộp lại">Thu hồi để sửa</button>'
         :sua?'<button class="cv-nut" onclick="cvGuiKeHoach()">Nộp kế hoạch</button>':'')
     +'</div></div>';
-  return '<div class="cv-wrap">'+(sua?trai:'')+phai+'</div>';
+  // DANH SÁCH KHÁCH TỰ ẨN (anh Hải 05/11/2026): dải dọc mảnh, rê chuột / bấm mới bung ra đè lên; đang gõ tìm thì giữ mở
+  const dai='<div class="cv-trai" onclick="if(event.target.closest(\'.cv-trai-tab\'))this.classList.toggle(\'mo\')">'
+    +'<div class="cv-trai-tab" title="Danh sách khách — rê chuột hoặc bấm để mở"><span>Danh sách khách '+L+'</span></div>'+trai+'</div>';
+  return '<div class="cv-wrap">'+(sua?dai:'')+phai+'</div>';
 }
 // Báo cáo ngày của 1 người: h = dòng cong_viec_ngay (có thể chưa có), muc = việc của người đó.
 function cvBaoCaoHtml(h,muc,ten,nguoiId){
@@ -7132,10 +7140,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/11 15:05';
+const APP_VERSION='05/11 16:35';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=545;
+const APP_BAN=546;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7246,6 +7254,43 @@ async function dxXem(){
 // Nguồn = đúng danh sách bảng đỏ Daily Task (rptSlViecGiaoDs / rptSlViecXongDs, đã lọc phạm vi xem). Số đỏ = tin MỚI sau lần mở
 // chuông gần nhất (localStorage tbDaXem). Bấm 1 tin -> chuyển thẳng tới Daily Task của báo cáo đó + mở hồ sơ khách.
 let _tb={ds:[],tom:[],luc:0,dangTinh:false};
+// ── CẢNH BÁO DỮ LIỆU trong chuông ADMIN (anh Hải 05/11/2026: "không có gì cảnh báo lúc dữ liệu gặp vấn đề à, toàn t tự check ra",
+// "gửi thông báo vào chuông acc của t"). Mỗi lỗi = 1 tin đỏ, tính vào số đỏ cho tới khi hết lỗi:
+//  1. Đồng bộ đứng / lỗi: lượt THÀNH CÔNG gần nhất quá ngưỡng, hoặc 2 lượt gần nhất liền nhau lỗi (sync_log) -- vd 01/11 token Pancake hết hạn.
+//  2. Job tự tạo đơn từ hội thoại (6h & 18h) quá 13 tiếng chưa chạy (job_moc).
+//  3. Token Pancake còn <= 7 ngày là hết hạn (PANCAKE_TOKEN_HET -- ĐỔI TOKEN THÌ SỬA NGÀY Ở ĐÂY).
+//  4. Đơn Pancake 3 ngày gần đây CÓ SĐT hoặc có thẻ đủ điều kiện mà KHÔNG nằm trong khách nào của báo cáo Lẻ / Sỉ (kéo về mà không hiện).
+const DL_NGUON=[['Data Hub - Pancake POS','Đồng bộ Pancake',45],['KiotViet - Đơn đặt hàng','Đồng bộ Kiot (đơn đặt)',60],
+  ['KiotViet - Hoá đơn','Đồng bộ Kiot (hoá đơn)',60],['MKT - Meta Ads','Đồng bộ Meta Ads',26*60]];
+const PANCAKE_TOKEN_HET='2026-12-18T13:26:00+07:00';
+async function dlKiem(){
+  const ra=[],now=Date.now(),phut=t=>Math.round((now-new Date(t).getTime())/60000);
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  try{
+    const log=await sbFetchAll('sync_log','select=source,status,started_at,finished_at,error_message&started_at=gte.'+new Date(now-3*864e5).toISOString()+'&order=started_at.desc');
+    DL_NGUON.forEach(([src,ten,nguong])=>{
+      const l=log.filter(x=>x.source===src&&x.status!=='running'),ok=l.find(x=>x.status==='success'),loi=l.filter(x=>x.status!=='success'&&(!ok||x.started_at>ok.started_at));
+      const ly=loi[0]&&loi[0].error_message?' — lỗi: '+e(String(loi[0].error_message).slice(0,120)):'';
+      if(!ok)ra.push({cau:'<b>'+ten+'</b>: 3 ngày nay không có lượt nào thành công'+ly});
+      else if(phut(ok.finished_at||ok.started_at)>nguong)ra.push({cau:'<b>'+ten+'</b> đứng: lần thành công cuối '+dataMoiTruoc(ok.finished_at||ok.started_at)+(loi.length?' · '+loi.length+' lượt lỗi sau đó':'')+ly});
+      else if(loi.length>=2)ra.push({cau:'<b>'+ten+'</b>: '+loi.length+' lượt gần nhất bị lỗi'+ly});
+    });
+  }catch(x){ra.push({cau:'Không đọc được nhật ký đồng bộ: '+e(x.message)});}
+  try{const j=(await sbFetchAll('job_moc','select=ten,luc,ghi_chu')).find(x=>x.ten==='tu-tao-don-hoi-thoai');
+    if(j&&phut(j.luc)>13*60)ra.push({cau:'<b>Job tự tạo đơn từ hội thoại</b> (6h & 18h) chưa chạy từ '+dataMoiTruoc(j.luc)+' — khách để SĐT trên page có thể chưa vào app'});}catch(x){}
+  const conNgay=Math.floor((new Date(PANCAKE_TOKEN_HET).getTime()-now)/864e5);
+  if(conNgay<=7)ra.push({cau:'<b>Token Pancake '+(conNgay<0?'ĐÃ HẾT HẠN':'còn '+conNgay+' ngày là hết hạn')+'</b> ('+dmy(PANCAKE_TOKEN_HET.slice(0,10))+') — đổi token ở GitHub + Supabase, hết hạn là mọi đồng bộ Pancake dừng'});
+  try{
+    const co=new Set(),tu=new Date(now+7*3600e3-3*864e5).toISOString().slice(0,10);
+    cvKhach().ds.forEach(x=>{(x.r.orders||[]).forEach(o=>co.add(o));(x.r.mergedRows||[]).forEach(m=>(m.orders||[]).forEach(o=>co.add(o)));});
+    const coSdt=o=>String(o.phone||'').replace(/\D/g,'').length>=9;
+    const lac=dhOrders.filter(o=>String(o.order_date||'').slice(0,10)>=tu&&!dhHuy(o)&&!co.has(o)
+      &&(coSdt(o)||dhIsQualified(o)||/TIỀM NĂNG|CHỐT ĐƠN/i.test(String(o.customer_tags||'')))&&!(rptSlManual[rptSlLeadId(o)]||{}).excluded);
+    if(lac.length)ra.push({cau:'<b>'+lac.length+' đơn Pancake</b> 3 ngày gần đây có SĐT / đủ thẻ mà <b>không hiện ở báo cáo Lẻ / Sỉ nào</b>: '
+      +lac.slice(0,4).map(o=>e(o.customer_name||'?')+' ('+e(o.shop_name||'')+')').join(', ')+(lac.length>4?'…':'')});
+  }catch(x){}
+  return ra;
+}
 function tbGioVN(t){return new Date(new Date(t).getTime()+7*3600e3).toISOString().slice(0,10);}
 async function tbTinh(){
   if(!localStorage.getItem('dashUser'))return;
@@ -7276,7 +7321,8 @@ async function tbTinh(){
     ds.sort((a,b)=>String(b.luc).localeCompare(String(a.luc)));
     // admin: việc quá hạn + phiếu tạm TTV mới bị gỡ trong 7 ngày gần nhất (cũ hơn vẫn nằm trong danh sách, không đếm)
     const so=ds.filter(x=>admin?(x.kieu==='qua'||(x.kieu==='tam'&&Date.now()-new Date(x.luc).getTime()<7*86400000)):x.kieu==='giao').length;   // 12/10/2026 bỏ bước Xác nhận -> admin chỉ đếm việc quá hạn
-    const lai=_tb.lai;_tb={ds:ds.slice(0,80),so,nguoi,todo,admin,luc:Date.now(),dangTinh:false};if(lai)setTimeout(tbTinh,50);
+    const dl=admin?await dlKiem():[];   // cảnh báo dữ liệu: chỉ admin, mỗi lỗi tính 1 vào số đỏ (05/11/2026)
+    const lai=_tb.lai;_tb={ds:ds.slice(0,80),so:so+dl.length,nguoi,todo,admin,dl,luc:Date.now(),dangTinh:false};if(lai)setTimeout(tbTinh,50);
     tbVeSo();
     const h=document.getElementById('tbHop');if(h&&h.style.display==='block')tbVe();
   }catch(e){_tb.dangTinh=false;console.warn('[Thông báo]',e.message);}
@@ -7298,7 +7344,10 @@ function tbVe(){
   const tom=Object.entries(_tb.nguoi||{}).filter(([n])=>n).sort((a,b)=>b[1].qh-a[1].qh||b[1].con-a[1].con);
   const khung=(nd)=>'<div style="padding:10px 14px;border-bottom:1px solid var(--border)">'+nd+'</div>';
   let tren='';
-  if(_tb.admin&&tom.length)tren=khung('<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Việc giao theo nhân sự</div>'
+  if((_tb.dl||[]).length)tren+='<div style="padding:10px 14px;border-bottom:1px solid var(--border);background:var(--red-l)">'
+    +'<div style="font-size:10.5px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Cảnh báo dữ liệu · '+_tb.dl.length+'</div>'
+    +_tb.dl.map(x=>'<div style="display:flex;gap:8px;padding:4px 0;font-size:12.5px;line-height:1.45"><span style="flex:0 0 18px;height:18px;border-radius:50%;background:var(--red);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:11px;margin-top:1px">!</span><span>'+x.cau+'</span></div>').join('')+'</div>';
+  if(_tb.admin&&tom.length)tren+=khung('<div style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Việc giao theo nhân sự</div>'
     +tom.map(([n,x])=>'<div style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12.5px"><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e(n)+'</b>'
       +(x.xong?'<span style="color:var(--green);font-weight:800">xong '+x.xong+'</span>':'')
       +'<span style="color:var(--text2);font-weight:700">còn '+x.con+'</span>'+(x.qh?'<span style="color:var(--red);font-weight:800">quá hạn '+x.qh+'</span>':'')+'</div>').join(''));
