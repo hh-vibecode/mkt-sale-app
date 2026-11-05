@@ -2697,11 +2697,13 @@ function dhLoaiTheoSdt(){
 let _dhLoaiSua={khoa:'',lead:{},so:{}};
 function dhLoaiSuaCua(o){
   if(typeof rptSlManual==='undefined'||!rptSlManual)return '';
-  const khoa=Object.keys(rptSlManual).length+'|'+dhOrders.length+'|'+(window._dhLoaiSuaVer||0);
-  if(_dhLoaiSua.khoa!==khoa){const lead={},so={};
+  // khoá RẺ (05/11/2026 sửa lag): trước đếm Object.keys(rptSlManual) ở MỖI đơn -> 4.272 đơn x 2.488 dòng, app chậm hẳn.
+  // Nay chỉ xét lại khi đổi đối tượng rptSlManual (tải lại), số đơn, hoặc vừa chọn tay (_dhLoaiSuaVer).
+  const khoa=dhOrders.length+'|'+(window._dhLoaiSuaVer||0)+'|'+(window._rptSlManualTai||0);
+  if(_dhLoaiSua.khoa!==khoa||_dhLoaiSua.goc!==rptSlManual){const lead={},so={};
     Object.entries(rptSlManual).forEach(([id,m])=>{const v=String((m||{}).loai_sua||'').trim();if(v==='Sỉ'||v==='Lẻ')lead[id]=v;});
     if(Object.keys(lead).length)dhOrders.forEach(x=>{const v=lead[rptSlLeadId(x)];const k=rptSlLast9(x.phone||'');if(v&&k.length===9)so[k]=v;});
-    _dhLoaiSua={khoa,lead,so};}
+    _dhLoaiSua={khoa,lead,so,goc:rptSlManual};}
   if(!Object.keys(_dhLoaiSua.lead).length)return '';
   const k=rptSlLast9(o.phone||'');
   return _dhLoaiSua.lead[rptSlLeadId(o)]||(k.length===9&&_dhLoaiSua.so[k])||'';
@@ -7182,10 +7184,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/11 16:49';
+const APP_VERSION='05/11 17:05';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=548;
+const APP_BAN=549;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7306,7 +7308,7 @@ const DL_NGUON=[['Data Hub - Pancake POS','Đồng bộ Pancake',45],['KiotViet 
   ['KiotViet - Hoá đơn','Đồng bộ Kiot (hoá đơn)',60],['MKT - Meta Ads','Đồng bộ Meta Ads',26*60]];
 const PANCAKE_TOKEN_HET='2026-12-18T13:26:00+07:00';
 async function dlKiem(){
-  const ra=[],now=Date.now(),phut=t=>Math.round((now-new Date(t).getTime())/60000);
+  let ra=[];const now=Date.now(),phut=t=>Math.round((now-new Date(t).getTime())/60000);
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   try{
     const log=await sbFetchAll('sync_log','select=source,status,started_at,finished_at,error_message&started_at=gte.'+new Date(now-3*864e5).toISOString()+'&order=started_at.desc');
@@ -7324,6 +7326,9 @@ async function dlKiem(){
     if(j&&(phut(j.luc)>9*60||(gioVN>=7&&gioVN<=23&&phut(j.luc)>120)))ra.push({cau:'<b>Job tự tạo đơn từ hội thoại</b> (mỗi tiếng 6h–22h) chưa chạy từ '+dataMoiTruoc(j.luc)+' — khách để SĐT trên page có thể chưa vào app'});}catch(x){}
   const conNgay=Math.floor((new Date(PANCAKE_TOKEN_HET).getTime()-now)/864e5);
   if(conNgay<=7)ra.push({cau:'<b>Token Pancake '+(conNgay<0?'ĐÃ HẾT HẠN':'còn '+conNgay+' ngày là hết hạn')+'</b> ('+dmy(PANCAKE_TOKEN_HET.slice(0,10))+') — đổi token ở GitHub + Supabase, hết hạn là mọi đồng bộ Pancake dừng'});
+  // mục 4 + 5 phải dựng danh sách khách (~1,3 giây) -> chỉ tính lại mỗi 15 phút, khi có đơn mới về hoặc vừa chọn tay Lẻ / Sỉ (sửa lag 05/11/2026)
+  const nangKhoa=(window._dhLoaiSuaVer||0)+'|'+dhOrders.length;let nang=window._dlNang;
+  if(!nang||nang.khoa!==nangKhoa||now-nang.luc>15*60000){const raCu=ra,nangDs=[];ra=nangDs;
   try{
     const co=new Set(),tu=new Date(now+7*3600e3-3*864e5).toISOString().slice(0,10);
     cvKhach().ds.forEach(x=>{(x.r.orders||[]).forEach(o=>co.add(o));(x.r.mergedRows||[]).forEach(m=>(m.orders||[]).forEach(o=>co.add(o)));});
@@ -7344,6 +7349,8 @@ async function dlKiem(){
           +nut(cvId(x.r.leadId),'Sỉ','Chuyển sang Sỉ','var(--accent)')+nut(cvId(x.r.leadId),'Lẻ','Đúng là Lẻ','var(--muted)')+'</div>').join('')
         +(ds.length>8?'<div style="color:var(--muted)">… và '+(ds.length-8)+' khách nữa</div>':'')});}
   }catch(x){}
+  ra=raCu;nang=window._dlNang={khoa:nangKhoa,luc:now,ds:nangDs};}
+  ra.push(...nang.ds);
   return ra;
 }
 async function dlLoai(leadId,v,nut){
