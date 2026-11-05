@@ -71,7 +71,7 @@ Hạn mức Pro: egress 250 GB, log 20 GB, CSDL 8 GB / tháng; máy chủ Micro 
 |---|---|---|
 | MKT / Sale | Đồng bộ Pancake | mỗi 10 phút; quét toàn bộ 7h05 · 12h30 · 18h00 |
 | MKT / Sale | Đồng bộ Kiot | 5,20,35,50 phút mỗi giờ; quét toàn bộ 7h20 |
-| MKT / Sale | Tạo đơn từ hội thoại / Phân loại SP | 6h & 18h / 7h & 18h |
+| MKT / Sale | Tạo đơn từ hội thoại / Phân loại SP | mỗi tiếng 6h–22h (từ 05/11) / 7h & 18h |
 | MKT / Sale | Meta Ads · Chốt mốc số liệu · Sao lưu | 7h, 12h, 15h · 0h, 8h, 16h · 1h sáng |
 | QC CSKH | `qc-keo-gio`, `qc-keo-6h` | xem repo qc-cskh |
 

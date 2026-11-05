@@ -81,10 +81,11 @@ async function laRac(h) {
   return t ? t.slice(0, 80) : '';
 }
 
-// CHỈ CHẠY 2 LẦN/NGÀY: 6h và 18h giờ VN (anh Hải 28/9/2026 -- để Sale tự tạo đơn trước, job chỉ vét khách bị sót,
-// tránh trùng với đơn Sale). Workflow gọi mỗi 10 phút; lượt ĐẦU TIÊN sau mỗi mốc mới chạy thật, ghi mốc vào bảng job_moc.
+// LỊCH CHẠY: 28/9/2026 chỉ 6h và 18h giờ VN (để Sale tự tạo đơn trước, job chỉ vét). 05/11/2026 đổi MỖI TIẾNG 6h–22h (anh Hải: ca 1 khách
+// page Shidai để SĐT 11:56, Sale tạo đơn 16:29 -> gần 5 tiếng khách không có trong app vì job phải đợi tới 18h). Sale vẫn có tối đa
+// 1 tiếng tự tạo trước; trùng đơn thì app gộp theo SĐT. Workflow gọi mỗi 10 phút; lượt ĐẦU TIÊN sau mỗi mốc mới chạy thật (job_moc).
 // CHAY_NGAY=1 để chạy ngay (không xét giờ).
-const KHUNG_GIO_VN = [6, 18];
+const KHUNG_GIO_VN = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
 const TEN_JOB = 'tu-tao-don-hoi-thoai';
 function mocGanNhat(now) {                                   // mốc 6h/18h VN gần nhất đã qua, trả về ms UTC
   const vn = new Date(now + 7 * 3600e3);

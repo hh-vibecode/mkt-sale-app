@@ -2692,7 +2692,22 @@ function dhLoaiTheoSdt(){
   _dhTheoSdt={ds:dhOrders,m};
   return m;
 }
+// CHỌN TAY LẺ / SỈ (anh Hải 05/11/2026, saleretail_manual.loai_sua): THẮNG thẻ Pancake. Áp cho mọi đơn của khách đó
+// (theo Lead ID của đơn, hoặc cùng SĐT với đơn của Lead ID được chọn). Đặt từ chuông admin (đơn page Shidai gắn KH LẺ).
+let _dhLoaiSua={khoa:'',lead:{},so:{}};
+function dhLoaiSuaCua(o){
+  if(typeof rptSlManual==='undefined'||!rptSlManual)return '';
+  const khoa=Object.keys(rptSlManual).length+'|'+dhOrders.length+'|'+(window._dhLoaiSuaVer||0);
+  if(_dhLoaiSua.khoa!==khoa){const lead={},so={};
+    Object.entries(rptSlManual).forEach(([id,m])=>{const v=String((m||{}).loai_sua||'').trim();if(v==='Sỉ'||v==='Lẻ')lead[id]=v;});
+    if(Object.keys(lead).length)dhOrders.forEach(x=>{const v=lead[rptSlLeadId(x)];const k=rptSlLast9(x.phone||'');if(v&&k.length===9)so[k]=v;});
+    _dhLoaiSua={khoa,lead,so};}
+  if(!Object.keys(_dhLoaiSua.lead).length)return '';
+  const k=rptSlLast9(o.phone||'');
+  return _dhLoaiSua.lead[rptSlLeadId(o)]||(k.length===9&&_dhLoaiSua.so[k])||'';
+}
 function dhSaleTypeOrder(o){
+  const tay=dhLoaiSuaCua(o);if(tay)return tay;
   const t=(o.customer_tags||'').toUpperCase();
   if(t.includes('KH SỈ'))return'Sỉ';
   if(t.includes('KH LẺ'))return'Lẻ';
@@ -5323,7 +5338,7 @@ function rptMktHtml(){
   // LƯỢT MUA + DOANH THU (anh Hải 30/10/2026: "như Ads Manager", bấm Lượt mua ra khách + link Pancake + phiếu Kiot, giữ doanh thu theo camp).
   // Lượt mua = số Meta đếm (Pancake báo về khi chốt, cột "Lượt mua" Ads Manager). Bấm vào -> danh sách khách ĐÃ CHỐT trong app mang Ad ID
   // của quảng cáo đó (nối bằng ad_id trên đơn Pancake). Doanh thu = doanh thu tính cho MKT của các khách đó.
-  const COT_CS=['Chi phí','Hiển thị','<span title="Cộng tiếp cận từng ngày — xem nhiều ngày sẽ cao hơn số người duy nhất trên Ads Manager">Tiếp cận</span>','CPM','Click','CTR','CPC','Mess','CP/mess',
+  const COT_CS=['Chi phí','Hiển thị','<span title="Cộng tiếp cận từng ngày — xem nhiều ngày sẽ cao hơn số người duy nhất trên Ads Manager">Tiếp cận</span>','CPM','Click','CTR','CPC','<span title="Lượt bắt đầu cuộc trò chuyện = cột Kết quả trên Ads Manager">Mess</span>','<span title="Chi phí ÷ lượt bắt đầu cuộc trò chuyện = Chi phí trên mỗi kết quả (Ads Manager)">CP/mess</span>',
     '<span title="Lượt mua Meta (Pancake báo khi chốt) · bấm số để xem khách trong app">Lượt mua</span>','<span title="Doanh thu tính cho MKT của khách mang Ad ID">Doanh thu</span>'];
   window._rptSlLists=window._rptSlLists||{};
   const KIOT_DON='https://sieuthidotho285.kiotviet.vn/man/#/Order?Code=';
@@ -5762,6 +5777,20 @@ function rptSlSalePageMacDinh(r){
   const ten=rptSlType()==='Sỉ'?RPT_SL_SALE_SI_MAC_DINH:RPT_SL_SALE_PAGE[rptSlBrandCua(r)];
   if(!ten||!rptSlSaleCuaDoi().includes(ten))return;
   r.staffPageCu=r.staff||'';r.staff=ten;
+}
+// KHÁCH SỈ PAGE SHIDAI DO SALE LẺ TẠO ĐƠN (anh Hải chốt 05/11/2026): Vân Ngọc (Sale Lẻ) trực inbox page Shidai, tạo đơn Pancake cho khách
+// hỏi sỉ -> app lấy người tạo đơn làm Sale nên khách Sỉ đứng tên Sale Lẻ, Sale Sỉ lọc theo tên mình không thấy (ca anh báo 05/11).
+// Luật: khách SỈ, có đơn page Shidai, tạo từ 1/10/2026, CHƯA gán tay, CHƯA có người bán Kiot, đang đứng tên Sale chỉ thuộc đội Lẻ
+// -> Nguyễn Khánh Nguyên (leader Sỉ, tự chia lại). Tính lúc dựng, không ghi bảng; r.staffSaleLe = tên Sale Lẻ cũ.
+const RPT_SL_SI_SALE_LE_TU='2026-10-01';
+function rptSlSaleSiTuSaleLe(r){
+  if(rptSlType()!=='Sỉ'||r.vangLai||!r.staff)return;
+  if(!(r.orders||[]).some(o=>/^Thời Đại/i.test(String(o.shop_name||''))||String(o.page_id||'')==='506247572578559'))return;
+  const tao=String((typeof rptSlNgayTao==='function'?rptSlNgayTao(r):r.created)||'').slice(0,10);
+  if(!tao||tao<RPT_SL_SI_SALE_LE_TU)return;
+  const ns=saleNhanSuDS().find(x=>String(x.ten).trim()===String(r.staff).trim());
+  if(!ns||ns.doi!=='Lẻ'||!rptSlSaleCuaDoi().includes(RPT_SL_SALE_SI_MAC_DINH))return;
+  r.staffSaleLe=r.staff;r.staff=RPT_SL_SALE_SI_MAC_DINH;
 }
 // SALE CHÁNH TÂM (anh Hải 24/10/2026: "xử lý sale chánh tâm về chuẩn sale trên pancake, cái nào sale k phân biệt được ms chia cho
 // chị lệ. áp cho tất cả page vs zalo liên quan tới chánh tâm" · "data nạp lên bởi kiot thì vẫn là tính data bt" · "ưu tiên sale chính
@@ -7153,10 +7182,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/11 16:37';
+const APP_VERSION='05/11 16:49';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=547;
+const APP_BAN=548;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7270,7 +7299,7 @@ let _tb={ds:[],tom:[],luc:0,dangTinh:false};
 // ── CẢNH BÁO DỮ LIỆU trong chuông ADMIN (anh Hải 05/11/2026: "không có gì cảnh báo lúc dữ liệu gặp vấn đề à, toàn t tự check ra",
 // "gửi thông báo vào chuông acc của t"). Mỗi lỗi = 1 tin đỏ, tính vào số đỏ cho tới khi hết lỗi:
 //  1. Đồng bộ đứng / lỗi: lượt THÀNH CÔNG gần nhất quá ngưỡng, hoặc 2 lượt gần nhất liền nhau lỗi (sync_log) -- vd 01/11 token Pancake hết hạn.
-//  2. Job tự tạo đơn từ hội thoại (6h & 18h) quá 13 tiếng chưa chạy (job_moc).
+//  2. Job tự tạo đơn từ hội thoại (mỗi tiếng 6h–22h từ 05/11) quá 2 tiếng chưa chạy trong ngày / quá 9 tiếng bất kỳ lúc nào (job_moc).
 //  3. Token Pancake còn <= 7 ngày là hết hạn (PANCAKE_TOKEN_HET -- ĐỔI TOKEN THÌ SỬA NGÀY Ở ĐÂY).
 //  4. Đơn Pancake 3 ngày gần đây CÓ SĐT hoặc có thẻ đủ điều kiện mà KHÔNG nằm trong khách nào của báo cáo Lẻ / Sỉ (kéo về mà không hiện).
 const DL_NGUON=[['Data Hub - Pancake POS','Đồng bộ Pancake',45],['KiotViet - Đơn đặt hàng','Đồng bộ Kiot (đơn đặt)',60],
@@ -7290,7 +7319,9 @@ async function dlKiem(){
     });
   }catch(x){ra.push({cau:'Không đọc được nhật ký đồng bộ: '+e(x.message)});}
   try{const j=(await sbFetchAll('job_moc','select=ten,luc,ghi_chu')).find(x=>x.ten==='tu-tao-don-hoi-thoai');
-    if(j&&phut(j.luc)>13*60)ra.push({cau:'<b>Job tự tạo đơn từ hội thoại</b> (6h & 18h) chưa chạy từ '+dataMoiTruoc(j.luc)+' — khách để SĐT trên page có thể chưa vào app'});}catch(x){}
+    // job chạy mỗi tiếng 6h–22h (05/11/2026): trong giờ đó quá 2 tiếng chưa chạy, hoặc quá 9 tiếng ở bất kỳ lúc nào -> báo
+    const gioVN=new Date(now+7*3600e3).getUTCHours();
+    if(j&&(phut(j.luc)>9*60||(gioVN>=7&&gioVN<=23&&phut(j.luc)>120)))ra.push({cau:'<b>Job tự tạo đơn từ hội thoại</b> (mỗi tiếng 6h–22h) chưa chạy từ '+dataMoiTruoc(j.luc)+' — khách để SĐT trên page có thể chưa vào app'});}catch(x){}
   const conNgay=Math.floor((new Date(PANCAKE_TOKEN_HET).getTime()-now)/864e5);
   if(conNgay<=7)ra.push({cau:'<b>Token Pancake '+(conNgay<0?'ĐÃ HẾT HẠN':'còn '+conNgay+' ngày là hết hạn')+'</b> ('+dmy(PANCAKE_TOKEN_HET.slice(0,10))+') — đổi token ở GitHub + Supabase, hết hạn là mọi đồng bộ Pancake dừng'});
   try{
@@ -7302,7 +7333,24 @@ async function dlKiem(){
     if(lac.length)ra.push({cau:'<b>'+lac.length+' đơn Pancake</b> 3 ngày gần đây có SĐT / đủ thẻ mà <b>không hiện ở báo cáo Lẻ / Sỉ nào</b>: '
       +lac.slice(0,4).map(o=>e(o.customer_name||'?')+' ('+e(o.shop_name||'')+')').join(', ')+(lac.length>4?'…':'')});
   }catch(x){}
+  // 5. ĐƠN PAGE SHIDAI GẮN KH LẺ (anh Hải chốt 05/11/2026: "báo trong chuông, tự soát" -- không tự chuyển, có thể là khách Lẻ thật):
+  //    khách Lẻ có đơn page Shidai gắn thẻ KH LẺ, tạo từ 1/10/2026, chưa chọn tay -> liệt kê + nút Chuyển sang Sỉ / Đúng là Lẻ.
+  try{
+    const ds=cvKhach().ds.filter(x=>x.loai==='Lẻ'&&(x.r.orders||[]).some(o=>(/^Thời Đại/i.test(String(o.shop_name||''))||String(o.page_id||'')==='506247572578559')&&/KH LẺ/i.test(String(o.customer_tags||'')))
+      &&cvNgayTao(x.r)>=RPT_SL_SI_SALE_LE_TU&&![x.r.leadId].concat(rptSlIdsCua(x.r)).some(id=>String((rptSlManual[id]||{}).loai_sua||'').trim()));
+    if(ds.length){const q=String.fromCharCode(39),nut=(id,v,t,mau)=>'<button onclick="event.stopPropagation();dlLoai('+q+id+q+','+q+v+q+',this)" style="border:1px solid '+mau+';background:var(--surface);color:'+mau+';border-radius:6px;padding:1px 7px;font:700 10.5px var(--font);cursor:pointer;margin-left:4px">'+t+'</button>';
+      ra.push({cau:'<b>'+ds.length+' khách page Shidai (tổng kho sỉ) bị gắn KH LẺ</b> — đang nằm ở báo cáo Lẻ, kiểm xem có phải khách sỉ:'
+        +ds.slice(0,8).map(x=>'<div style="margin-top:3px">'+e(x.r.name||'?')+' <span style="color:var(--muted)">· '+e(x.r.kh||x.r.leadId)+' · '+e(x.r.staff||'chưa có Sale')+'</span>'
+          +nut(cvId(x.r.leadId),'Sỉ','Chuyển sang Sỉ','var(--accent)')+nut(cvId(x.r.leadId),'Lẻ','Đúng là Lẻ','var(--muted)')+'</div>').join('')
+        +(ds.length>8?'<div style="color:var(--muted)">… và '+(ds.length-8)+' khách nữa</div>':'')});}
+  }catch(x){}
   return ra;
+}
+async function dlLoai(leadId,v,nut){
+  if(!dashToanQuyen())return alert('Chỉ Admin chuyển được');
+  if(nut){nut.disabled=true;nut.textContent='Đang lưu…';}
+  try{await rptSlSaveManual(leadId,{loai_sua:v});window._dhLoaiSuaVer=(window._dhLoaiSuaVer||0)+1;rptSlXoaCache();_cvKh.khoa='';
+    tbTinh();}catch(x){alert('Chưa lưu được: '+x.message);if(nut){nut.disabled=false;nut.textContent=v==='Sỉ'?'Chuyển sang Sỉ':'Đúng là Lẻ';}}
 }
 function tbGioVN(t){return new Date(new Date(t).getTime()+7*3600e3).toISOString().slice(0,10);}
 async function tbTinh(){
@@ -7395,7 +7443,7 @@ const LOGIC_XU_LY=[
  ['Nguồn dữ liệu & lịch chạy',[
   ['Pancake','Đồng bộ đơn, thẻ, hội thoại về Data Hub khoảng 10 phút/lượt; quét lại toàn bộ 7h05 · 12h30 · 18h00','—'],
   ['Kiot','Đồng bộ đơn đặt hàng, hoá đơn, khách khoảng 15 phút/lượt','—'],
-  ['Meta Ads','Chi phí + Mess (= Tổng số người liên hệ nhắn tin trên Ads Manager), từ 1/6/2026','8/10'],
+  ['Meta Ads','Chi phí + Mess (= Lượt bắt đầu cuộc trò chuyện = cột Kết quả trên Ads Manager), từ 1/6/2026','5/11'],
   ['Data Pancake vào báo cáo','Đơn CÓ SĐT (chưa huỷ) vào luôn, không cần thẻ. Đơn không SĐT phải có thẻ: Sỉ TIỀM NĂNG / CHỐT ĐƠN · Lẻ CHỐT ĐƠN / BÀN GIAO / TIỀM NĂNG','27/9'],
   ['Data Hub','Chỉ để xem số liệu thô, không điền. Thêm / sửa khách ở báo cáo Sale Lẻ / Sỉ','8/10'],
   ['Đối soát Kiot ↔ app','Tự soát từng mã 23:00 hằng đêm; so số THẬT, phiếu tạm không dấu vết tiền tách riêng chỉ để biết','8/10 · 16/10'],
@@ -7473,7 +7521,7 @@ const LOGIC_XU_LY=[
 // [mục, công thức, ghi chú, cập nhật]. ĐỔI CÁCH TÍNH Ô NÀO THÌ SỬA ĐÚNG DÒNG Ở ĐÂY.
 LOGIC_XU_LY.push(['Công thức chỉ số',[
   ['Báo cáo MKT','Tổng chi phí = Σ chi phí Meta Ads trong kỳ','Bỏ chiến dịch tuyển dụng; chỉ tính từ 1/6/2026','—'],
-  ['Báo cáo MKT','Tổng mess = Σ "Tổng số người liên hệ nhắn tin" (Ads Manager)','','8/10'],
+  ['Báo cáo MKT','Tổng mess = Σ "Lượt bắt đầu cuộc trò chuyện" (= Kết quả Ads Manager; số người liên hệ lưu riêng cột nguoi_lien_he)','','5/11'],
   ['Báo cáo MKT','CP / mess = Tổng chi phí ÷ Tổng mess','',''],
   ['Báo cáo MKT','Doanh số = Σ doanh thu các đơn tính cho MKT (Lẻ Online + Sỉ Online)','Đơn mua lại không tính (trừ Shopee); Sỉ Online chỉ tính 1 tháng từ đơn đầu, trừ khi khách còn nhắn Pancake',''],
   ['Báo cáo MKT','ADS / DS = Tổng chi phí ÷ Doanh số × 100%','Màu: ≤ 50% xanh · ≤ 100% vàng · > 100% đỏ. Theo brand: chi phí brand ÷ doanh số brand',''],
@@ -8857,6 +8905,7 @@ function rptSlBuildMasterRaw(){
       r.staff=gan!==null?(gan&&rptSlSaleName(gan)):(ten||r.staff||'');
       rptSlChuyenDoi(r);
       if(gan===null)rptSlSalePageMacDinh(r);   // trống / tài khoản chung -> Nguyễn Khánh Nguyên (24/10/2026)
+      if(gan===null&&!ten)rptSlSaleSiTuSaleLe(r);   // khách Sỉ page Shidai do Sale Lẻ tạo đơn Pancake -> Nguyên (05/11/2026)
     });
   }
   // HỒ SƠ + LỊCH SỬ CHĂM SÓC: dùng CHUNG cho Sỉ và Lẻ (anh Hải 02/10/2026: giao diện Lẻ y như Sỉ)
