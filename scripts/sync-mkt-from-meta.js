@@ -197,9 +197,11 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
         reach: Math.round(Number(r.reach) || 0),
         impressions: Math.round(Number(r.impressions) || 0),
         spend: Number(r.spend) || 0,
-        // MESS = "Tổng số người liên hệ nhắn tin" của Ads Manager (anh Hải chốt 08/10/2026), trước đó lấy "Lượt bắt đầu
-        // cuộc trò chuyện" (messaging_conversation_started_7d) nên lệch Ads Manager. Đo 08/10: cộng theo ngày = số cả kỳ.
-        messages: Math.round(actionValue(r.actions, ['onsite_conversion.total_messaging_connection'])),
+        // MESS = "LƯỢT BẮT ĐẦU CUỘC TRÒ CHUYỆN" = cột Kết quả / Chi phí trên mỗi kết quả của Ads Manager (anh Hải 05/11/2026: "chi phí
+        // mess đang sai so với Ads Manager, CT tháng 11 đang 92k/mess"). Chốt 08/10 dùng "Tổng số người liên hệ nhắn tin" -> CP/mess thấp
+        // hơn Ads Manager (CT T11: 45k so với 92k); số đó nay giữ ở cột nguoi_lien_he.
+        messages: Math.round(actionValue(r.actions, ['onsite_conversion.messaging_conversation_started_7d'])),
+        nguoi_lien_he: Math.round(actionValue(r.actions, ['onsite_conversion.total_messaging_connection'])),
         ctr: Number(r.ctr) || 0,
         cpc: Number(r.cpc) || 0,
         comments: Math.round(actionValue(r.actions, ['comment', 'post_comment'])),
