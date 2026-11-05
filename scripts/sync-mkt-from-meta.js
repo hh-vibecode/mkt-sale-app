@@ -102,7 +102,8 @@ async function upsertMktSpend(rows) {
 // Ghi đè bảng mkt_ads_trang_thai (1 dòng / quảng cáo). Lỗi ở bước này chỉ cảnh báo, KHÔNG làm hỏng việc kéo chi phí.
 async function fetchTrangThai(adAccountId) {
   // creative{thumbnail_url}: ẢNH MẪU quảng cáo cho bảng Chi tiết (30/10/2026). Link CDN Meta có hạn -> làm mới mỗi lượt sync.
-  let url = `https://graph.facebook.com/${META_API_VERSION}/${adAccountId}/ads?fields=id,name,effective_status,adset{id,name,effective_status},campaign{id,name,effective_status},creative{thumbnail_url}&limit=500&access_token=${ACCESS_TOKEN}`;
+  // daily_budget / lifetime_budget: NGÂN SÁCH ĐANG ĐẶT của chiến dịch (CBO) hoặc nhóm (ABO) -- anh Hải 05/11/2026. Tài khoản VND -> đơn vị đồng.
+  let url = `https://graph.facebook.com/${META_API_VERSION}/${adAccountId}/ads?fields=id,name,effective_status,adset{id,name,effective_status,daily_budget,lifetime_budget},campaign{id,name,effective_status,daily_budget,lifetime_budget},creative{thumbnail_url}&limit=500&access_token=${ACCESS_TOKEN}`;
   let all = [], trang = 0;
   while (url && trang < 30) {
     const res = await fetch(url);
@@ -118,7 +119,13 @@ async function fetchTrangThai(adAccountId) {
     campaign_id: (a.campaign || {}).id || null, campaign_name: (a.campaign || {}).name || null, campaign_status: (a.campaign || {}).effective_status || null,
     tai_khoan: adAccountId, cap_nhat: new Date().toISOString(),
     anh: ((a.creative || {}).thumbnail_url) || null,
+    cd_ns_ngay: soNS((a.campaign || {}).daily_budget), cd_ns_tron_doi: soNS((a.campaign || {}).lifetime_budget),
+    nhom_ns_ngay: soNS((a.adset || {}).daily_budget), nhom_ns_tron_doi: soNS((a.adset || {}).lifetime_budget),
   }));
+}
+function soNS(v) {   // Meta trả chuỗi; '0' / rỗng = không đặt ở cấp này
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 async function ghiTrangThai(adAccountIds) {
   let rows = [];

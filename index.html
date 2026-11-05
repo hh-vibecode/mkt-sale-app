@@ -5012,13 +5012,22 @@ let mktLoaded=false;
 // bảng vẫn hiện số liệu, chỉ thiếu chấm trạng thái.
 let mktTT={ad:{},camp:{},nhom:{},luc:'',anh:{}};
 async function mktLoadTrangThai(){
-  try{const ds=await sbFetchAll('mkt_ads_trang_thai','select=ad_id,ad_status,adset_name,adset_status,campaign_name,campaign_status,cap_nhat,anh&order=ad_id');
-    const t={ad:{},camp:{},nhom:{},luc:'',anh:{}};
+  try{const ds=await sbFetchAll('mkt_ads_trang_thai','select=ad_id,ad_status,adset_id,adset_name,adset_status,campaign_name,campaign_status,cap_nhat,anh,cd_ns_ngay,cd_ns_tron_doi,nhom_ns_ngay,nhom_ns_tron_doi&order=ad_id');
+    const t={ad:{},camp:{},nhom:{},luc:'',anh:{},ns:{},nsNhom:{}};
+    // NGÂN SÁCH ĐANG ĐẶT (anh Hải 05/11/2026, "theo ngày, không phải ngân sách tiêu"): nhóm = ngân sách của nhóm; chiến dịch = ngân sách
+    // cấp chiến dịch (CBO), không có thì CỘNG ngân sách các nhóm ĐANG CHẠY (ABO). Trọn đời thì ghi riêng.
+    const nhomCua={};
     ds.forEach(x=>{t.ad[x.ad_id]=x.ad_status;if(x.anh)t.anh[x.ad_id]=x.anh;
       const c=String(x.campaign_name||'').trim(),n=String(x.adset_name||'').trim();
       if(c&&(!t.camp[c]||x.campaign_status==='ACTIVE'))t.camp[c]=x.campaign_status;
       if(c&&n&&(!t.nhom[c+'|'+n]||x.adset_status==='ACTIVE'))t.nhom[c+'|'+n]=x.adset_status;
+      if(c&&n)t.nsNhom[c+'|'+n]={ngay:Number(x.nhom_ns_ngay)||0,tronDoi:Number(x.nhom_ns_tron_doi)||0};
+      if(c){const k=t.ns[c]=t.ns[c]||{ngay:0,tronDoi:0,cap:''};
+        if(Number(x.cd_ns_ngay)||Number(x.cd_ns_tron_doi)){k.ngay=Number(x.cd_ns_ngay)||0;k.tronDoi=Number(x.cd_ns_tron_doi)||0;k.cap='cd';}
+        if(x.adset_id&&x.adset_status==='ACTIVE')(nhomCua[c]=nhomCua[c]||{})[x.adset_id]={ngay:Number(x.nhom_ns_ngay)||0,tronDoi:Number(x.nhom_ns_tron_doi)||0};}
       if(String(x.cap_nhat||'')>t.luc)t.luc=String(x.cap_nhat||'');});
+    Object.entries(t.ns).forEach(([c,k])=>{if(k.cap)return;const ns=Object.values(nhomCua[c]||{});
+      k.ngay=ns.reduce((s,v)=>s+v.ngay,0);k.tronDoi=ns.reduce((s,v)=>s+v.tronDoi,0);k.cap=ns.length?'nhom':'';});
     mktTT=t;}catch(e){console.warn('[MKT] chưa tải được trạng thái quảng cáo:',e.message);}
 }
 async function mktLoadSpend(force){
@@ -5383,10 +5392,14 @@ function rptMktHtml(){
       +'<td class="num">'+(x.mess?num(x.mess):'—')+'</td>'
       +'<td class="num" style="font-weight:800">'+(x.mess>0?vnd(x.spend/x.mess):'—')+'</td>';};
   const adsCamp={};Object.values(d.theoAd||{}).forEach(a=>{(adsCamp[a.camp]=adsCamp[a.camp]||[]).push(a);});
+  // ô NGÂN SÁCH/NGÀY (05/11/2026): v = {ngay, tronDoi, cap}; cap 'nhom' = cộng các nhóm đang chạy (ngân sách đặt ở nhóm)
+  const oNS=v=>'<td class="num" style="white-space:nowrap">'+(!v||(!v.ngay&&!v.tronDoi)?'<span style="color:var(--muted)">—</span>'
+    :(v.ngay?'<b>'+vnd(v.ngay)+'</b>':'')+(v.tronDoi?'<div style="font-size:10.5px;color:var(--muted);font-weight:700">trọn đời '+vnd(v.tronDoi)+'</div>':'')
+      +(v.cap==='nhom'?'<div style="font-size:10px;color:var(--muted);font-weight:600" title="Ngân sách đặt ở từng nhóm — cộng các nhóm đang chạy">tổng nhóm</div>':''))+'</td>';
   const bang=camps.map(function(c,ci){
     const brandTen=(RPT_MKT_BRANDS.filter(x=>x[0]===c.brand)[0]||[null,'—'])[1];
     return '<tr><td class="name">'+chamTT(mktTT.camp[String(c.ten).trim()])+String(c.ten).replace(/</g,'&lt;')+'</td>'
-      +'<td style="font-size:11px">'+brandTen+'</td>'+oCs(c,true)+oMua(c,'muaCamp'+ci,'Lượt mua · '+String(c.ten),adsCamp[String(c.ten).trim()]||[])+'</tr>';
+      +'<td style="font-size:11px">'+brandTen+'</td>'+oNS(mktTT.ns&&mktTT.ns[String(c.ten).trim()])+oCs(c,true)+oMua(c,'muaCamp'+ci,'Lượt mua · '+String(c.ten),adsCamp[String(c.ten).trim()]||[])+'</tr>';
   }).join('');
   // bảng chi tiết theo từng quảng cáo
   const dsAd=Object.values(d.theoAd||{}).sort((a,b)=>b.spend-a.spend);
@@ -5421,21 +5434,21 @@ function rptMktHtml(){
       +'<td class="name" colspan="2"><span id="mkt-mui-c'+ci+'" style="color:var(--muted);font-size:10px;margin-right:6px">▶</span>'
       +String(c.ten).replace(/</g,'&lt;')+'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'
       +num(Object.keys(c.nhom).length)+' nhóm · '+num(c.soQc)+' quảng cáo'+(c.soChay?' · <span style="color:var(--green)">'+num(c.soChay)+' đang chạy</span>':'')+'</div></td>'
-      +oCs(c,true)+oMua(c,'muaCay'+ci,'Lượt mua · '+c.ten,c.dsK)+'</tr>';
+      +oNS(mktTT.ns&&mktTT.ns[String(c.ten).trim()])+oCs(c,true)+oMua(c,'muaCay'+ci,'Lượt mua · '+c.ten,c.dsK)+'</tr>';
     Object.values(c.nhom).filter(n=>!chiChay||n.chay||n.ads.some(a=>a.chay)).sort((x,y)=>(y.chay-x.chay)||(y.spend-x.spend)).forEach((n,ni)=>{
       const kn='c'+ci+'-n'+ni;
       bangAd+='<tr data-cha="c'+ci+'" hidden onclick="rptMktMo('+q+kn+q+')" style="cursor:pointer">'+oTT(ttN(c,n))
         +'<td colspan="2" style="padding-left:26px"><span id="mkt-mui-'+kn+'" style="color:var(--muted);font-size:10px;margin-right:6px">▶</span>'
         +'<span style="font-size:11.5px;font-weight:700">'+String(n.ten).replace(/</g,'&lt;')+'</span>'
         +'<span style="font-size:10.5px;color:var(--muted);font-weight:600"> · '+num(n.ads.length)+' QC</span></td>'
-        +oCs(n,false)+oMua(n,'muaCay'+kn,'Lượt mua · '+n.ten,n.dsK)+'</tr>';
+        +oNS(mktTT.nsNhom&&mktTT.nsNhom[String(c.ten).trim()+'|'+String(n.ten).trim()])+oCs(n,false)+oMua(n,'muaCay'+kn,'Lượt mua · '+n.ten,n.dsK)+'</tr>';
       n.ads.filter(a=>!chiChay||a.chay).sort((x,y)=>(y.chay-x.chay)||(y.spend-x.spend)).forEach(a=>{
         const anh=mktTT.anh&&mktTT.anh[a.id];   // ẢNH MẪU quảng cáo như Ads Manager (30/10/2026)
         bangAd+='<tr data-cha="'+kn+'" hidden>'
           +oTT(ttA(a))+'<td style="padding-left:48px;font-size:11.5px"><span style="display:inline-flex;align-items:center;gap:8px">'
           +(anh?'<img src="'+String(anh).replace(/"/g,'&quot;')+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()" style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex:0 0 auto;border:1px solid var(--border)">':'')
           +'<span>'+String(a.ten||'(không tên)').replace(/</g,'&lt;')+'</span></span></td>'
-          +'<td style="font-size:10.5px;color:var(--muted)">'+a.id+'</td>'
+          +'<td style="font-size:10.5px;color:var(--muted)">'+a.id+'</td><td></td>'
           +oCs(a,false)+oMua(a,'muaAd'+a.id,'Lượt mua · '+(a.ten||a.id),[a])+'</tr>';
       });
     });
@@ -5446,13 +5459,13 @@ function rptMktHtml(){
     +(mktTT.luc?'<span style="font-size:10.5px;color:var(--muted);font-weight:600">trạng thái cập nhật '+dmy(mktTT.luc.slice(0,10))+' '+new Date(mktTT.luc).toTimeString().slice(0,5)+'</span>':'')
     +'<button onclick="window._mktChiChay=false;renderReportMkt()" class="'+(chiChay?'btn-ghost':'refresh-btn')+'" style="margin:0;padding:4px 12px;font-size:11px">Tất cả</button>'
     +'<button onclick="window._mktChiChay=true;renderReportMkt()" class="'+(chiChay?'refresh-btn':'btn-ghost')+'" style="margin:0;padding:4px 12px;font-size:11px">Chỉ đang chạy</button></span></div>'
-    +'<div class="tbl-scroll"><table><thead><tr><th>Trạng thái</th><th colspan="2">Chiến dịch / Nhóm / Quảng cáo</th>'+COT_CS.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'
-    +(bangAd||'<tr><td colspan="14" style="text-align:center;padding:22px;color:var(--muted)">'+(chiChay?'Không có quảng cáo nào đang chạy trong kỳ':'Chưa có dữ liệu quảng cáo trong kỳ')+'</td></tr>')
+    +'<div class="tbl-scroll"><table><thead><tr><th>Trạng thái</th><th colspan="2">Chiến dịch / Nhóm / Quảng cáo</th><th style="text-align:right">Ngân sách/ngày</th>'+COT_CS.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'
+    +(bangAd||'<tr><td colspan="15"style="text-align:center;padding:22px;color:var(--muted)">'+(chiChay?'Không có quảng cáo nào đang chạy trong kỳ':'Chưa có dữ liệu quảng cáo trong kỳ')+'</td></tr>')
     +'</tbody></table></div></div>';
   const cuonBang='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Chiến dịch quảng cáo</div>'
     +'</div>'
-    +'<div class="tbl-scroll"><table><thead><tr><th>Chiến dịch</th><th>Brand</th>'+COT_CS.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'
-    +(bang||'<tr><td colspan="13" style="text-align:center;padding:22px;color:var(--muted)">Chưa có dữ liệu quảng cáo trong kỳ</td></tr>')
+    +'<div class="tbl-scroll"><table><thead><tr><th>Chiến dịch</th><th>Brand</th><th style="text-align:right">Ngân sách/ngày</th>'+COT_CS.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'
+    +(bang||'<tr><td colspan="14"style="text-align:center;padding:22px;color:var(--muted)">Chưa có dữ liệu quảng cáo trong kỳ</td></tr>')
     +'</tbody></table></div></div>';
   const oChart=(id,tieuDe,phu,cao)=>'<div class="tbl-card">'
     +'<div class="tbl-head"><div class="tbl-title" style="font-size:13px">'+tieuDe+'</div>'
@@ -7140,10 +7153,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/11 16:35';
+const APP_VERSION='05/11 16:37';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=546;
+const APP_BAN=547;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
