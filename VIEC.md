@@ -19,6 +19,12 @@
 | 4 | **Soát đơn huỷ / phiếu tạm** — 08/10 anh: CHƯA CẦN. 925/3.029 đơn Kiot đang huỷ (30%), 640 phiếu tạm không cọc (22,6 tỷ). Nghi lỗi quy trình Sale | có dựng mục soát không |
 | 14 | M-0020 (KH007407) gộp với L-HT-0011 theo Mã KH, chưa rõ mã của M-0020 do ai điền — 13/10 anh: "t xử lý" | anh tự xử |
 | 12 | M-0197 (Sỉ "Ngoquoc Duy") và M-0021 (Lẻ "KL ANH DUY") chung SĐT …349764439 — KHÔNG gộp vì khác Lẻ/Sỉ | chỉ để anh biết |
+| 31 | **Link 2 chiến dịch T11** (Báo cáo công việc mục C): 2 link anh gửi 04/11 em không mở được (link 1 báo 404 — có thể đọc nhầm ký tự trong ảnh; link 2 cần đăng nhập; Google Drive connector hết phiên). Anh gắn bằng nút "Gắn link" cạnh chiến dịch, hoặc dán link dạng chữ / mở quyền xem | gắn link / gửi lại link chữ |
+| 32 | **36 lượt chăm sóc T10 ghi dưới tên "Hoàng Hải"** trong salesi_crm — thử hay nhập hộ thật? (đang tính vào lịch sử khách) | giữ hay xoá |
+| 33 | **Tên Sale chưa chuẩn** (tab Quản trị "Chưa tính cho ai"): T10 Sỉ Vũ Hoàng Xuân 71 đơn 860tr, Đỗ Xuân Hoàng 11, Lê Thị Hòa 8 — người bán trên phiếu Kiot, không có trong Nhân sự Sale | gán khách cho Sale nào / thêm vào Nhân sự |
+| 34 | **Tài khoản riêng cho Sale**: Phạm Thị Lệ, Đinh Ngọc Diệp, Anh Tuấn, Minh Oanh chưa có tài khoản riêng (CT dùng chung "Sale Chánh Tâm") -> Quản trị chỉ có tiền, không có số kế hoạch của từng người | có tạo tài khoản riêng không |
+| 35 | **KH005832** (mua 2025 qua Facebook, đơn 30/10 6,3tr được tính MKT tháng đầu vì Lẻ chỉ thấy từ 1/6) | giữ hay bỏ khỏi MKT |
+| 36 | **Đổi khoá Kiot** (KIOT_CLIENT_ID / SECRET từng in ra kết quả lệnh trên máy 30/10, không lên web) | có đổi không |
 
 ## 2. CLAUDE ĐANG NỢ (tự làm, không cần hỏi)
 
