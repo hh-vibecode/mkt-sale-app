@@ -32,6 +32,7 @@
   --cta:#ff7a59;--cta-hover:#ff8f73;--on-accent:#fff;--accent-d:#007a93;
   --sidebar-w:220px;--sidebar-w-col:56px;
   --font:'Montserrat','Inter',sans-serif;
+  --vip-nen:#fffaee;--vip-vien:#e8b33a;--vip-chu:#8a5300;--vip-nhan:linear-gradient(135deg,#fde68a 0%,#f6c343 45%,#e09b12 100%);--vip-nhan-chu:#5c3700;
 }
 [data-theme="dark"]{
   --bg:#0f1923;--bg2:#17232f;--surface:#17232f;--surface2:#1f2e3c;
@@ -44,6 +45,7 @@
   --teal:#45cfe3;--teal-l:rgba(0,164,189,.16);
   --orange:#ff9474;--orange-l:rgba(255,122,89,.16);
   --shadow:0 2px 10px rgba(0,0,0,.3);--shadow-md:0 6px 22px rgba(0,0,0,.4);
+  --vip-nen:rgba(232,179,58,.09);--vip-vien:#e8b33a;--vip-chu:#fcd77a;--vip-nhan:linear-gradient(135deg,#fde68a 0%,#f0b429 50%,#c98410 100%);--vip-nhan-chu:#3d2500;
   --nav-bg:#0b141d;--nav-line:rgba(255,255,255,.08);--nav-text:#b0c1d4;--nav-hover:rgba(255,255,255,.06);--nav-act:rgba(255,255,255,.12);
   --cta:#ff7a59;--cta-hover:#ff8f73;--on-accent:#0b141d;--accent-d:#6fd3e3;
 }
@@ -277,6 +279,17 @@ thead th,.grp-table th{color:var(--text2)}
 .btn-ghost:hover{background:var(--surface);border-color:var(--accent);color:var(--accent)}
 /* hai bảng đứng liền nhau luôn cách 16px (anh Hải 06/10/2026: các bảng dính sát vào nhau) */
 .tbl-card+.tbl-card{margin-top:16px}
+/* KHUNG KHÁCH VIP (05/11/2026): nhãn vàng ánh kim + cả dòng nổi lên ở mọi bảng có tên khách */
+.vip-nhan{display:inline-flex;align-items:center;gap:3px;margin-right:6px;padding:1px 8px 1px 6px;border-radius:999px;background:var(--vip-nhan);
+  color:var(--vip-nhan-chu);font-size:9.5px;font-weight:900;letter-spacing:.08em;vertical-align:1px;box-shadow:0 1px 3px rgba(201,132,16,.35),inset 0 1px 0 rgba(255,255,255,.55)}
+.vip-sao{color:var(--vip-vien);white-space:nowrap}
+tr:has(.vip-nhan,.vip-sao)>td{background:var(--vip-nen)}
+tr:has(.vip-nhan,.vip-sao)>td:first-child{box-shadow:inset 3px 0 0 var(--vip-vien)}
+tr:has(.vip-nhan,.vip-sao):hover>td{background:color-mix(in srgb,var(--vip-vien) 14%,var(--surface))}
+.cv-kh:has(.vip-nhan),.cv-viec:has(.vip-nhan){border-color:color-mix(in srgb,var(--vip-vien) 55%,var(--border));background:var(--vip-nen);box-shadow:inset 3px 0 0 var(--vip-vien)}
+/* đầu hồ sơ khách VIP: dải vàng nhạt + vòng vàng quanh ảnh đại diện có vương miện */
+.hs-dau.hs-vip{background:linear-gradient(90deg,var(--vip-nen),var(--surface) 65%);border-bottom-color:color-mix(in srgb,var(--vip-vien) 45%,var(--border)) !important}
+.hs-vip .hs-ava{border:2px solid var(--vip-vien) !important;color:var(--vip-vien) !important;background:var(--surface) !important;box-shadow:0 0 0 3px var(--vip-nen)}
 /* BÁO CÁO CÔNG VIỆC (04/11/2026) */
 .cv-wrap{display:grid;grid-template-columns:minmax(300px,370px) 1fr;gap:16px;align-items:start}
 .cv-kh .cv-phu,.cv-kh .cv-nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}   /* 1 ô khách = 2 dòng (anh Hải 04/11/2026) */
@@ -5923,9 +5936,12 @@ function rptSlMaDuoiTen(r){
 const RPT_SL_SAO='<svg viewBox="0 0 24 24" width="15" height="15" style="vertical-align:-2px"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>';
 function rptSlLaVip(r){if(!r)return false;if(r.vip===true)return true;try{return rptSlIdsCua(r).some(id=>(rptSlManual[id]||{}).vip);}catch(e){return !!(rptSlManual[r.leadId]||{}).vip;}}
 // Sao vàng NGAY SAU TÊN khách -- gắn ở mọi chỗ in tên (bảng, danh sách bấm xem, việc giao, popup...). x = dòng khách (hoặc dòng có vip:true).
-function rptSlSaoVip(x){return rptSlLaVip(x)?' <span title="Khách VIP — cần để ý" style="color:#f59e0b;white-space:nowrap">'+RPT_SL_SAO.replace('width="15" height="15"','width="12" height="12"')+'</span>':'';}
-function rptSlVipNhan(){return '<span title="Khách VIP — cần để ý" style="display:inline-flex;align-items:center;gap:2px;margin-right:5px;padding:0 6px;border-radius:9px;background:#fef3c7;color:#b45309;font-size:10px;font-weight:800;vertical-align:1px">'
-  +RPT_SL_SAO.replace('width="15" height="15"','width="10" height="10"')+'VIP</span>';}
+// KHUNG VIP (anh Hải 05/11/2026: "highlight đẹp hơn, làm khung riêng cho đội ấy, trông cho VIP"): nhãn vàng ánh kim có vương miện
+// (.vip-nhan) + sao (.vip-sao); CSS `tr:has(.vip-nhan,.vip-sao)` tự tô CẢ DÒNG ở mọi bảng (viền vàng trái, nền vàng nhạt, tên đậm vàng)
+// -> không phải sửa từng bảng. Thẻ khách ở Báo cáo công việc cũng nhận khung (.cv-kh / .cv-viec).
+const RPT_SL_VUONG_MIEN='<svg viewBox="0 0 24 24" width="11" height="11" style="vertical-align:-1px"><path d="M3 8.5l4.5 3.8L12 5l4.5 7.3L21 8.5l-1.8 10H4.8z" fill="currentColor"/></svg>';
+function rptSlSaoVip(x){return rptSlLaVip(x)?' <span class="vip-sao" title="Khách VIP — cần để ý">'+RPT_SL_SAO.replace('width="15" height="15"','width="12" height="12"')+'</span>':'';}
+function rptSlVipNhan(){return '<span class="vip-nhan" title="Khách VIP — cần để ý">'+RPT_SL_VUONG_MIEN+'VIP</span>';}
 function rptSlVipNut(r){const on=rptSlLaVip(r),k=String(r.key||'').replace(/['"\\]/g,'');
   return '<button id="vipNut" onclick="rptSlVipDoi(\''+k+'\')" title="'+(on?'Khách VIP — bấm để bỏ đánh dấu':'Đánh dấu khách VIP cần để ý')+'"'
     +' style="border:none;background:transparent;cursor:pointer;padding:0 2px;vertical-align:middle;color:'+(on?'#f59e0b':'var(--border2,#cbd5e1)')+'">'
@@ -7116,10 +7132,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='04/11 17:36';
+const APP_VERSION='05/11 15:05';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=544;
+const APP_BAN=545;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7951,7 +7967,7 @@ function rptMktKhachAd(a){
       +(it?'<div style="font-size:11px;color:var(--text2);margin-top:2px;line-height:1.45">'+it+'</div>'
           :(k.kh&&!_kiotItemsDaTai[k.kh]?'<div style="font-size:11px;color:var(--muted)">đang tải mặt hàng…</div>':''))+'</div>';}).join('')||'—';
   dataModal({title,cols:['Loại','Ngày','Khách','SĐT','Kênh','Sales','Mã KH','Trạng thái','Doanh thu','Phiếu mua'],
-    rows:a.khach.slice().sort((x,y)=>y.rev-x.rev).map(k=>[k.loai,dmy(k.ngay),k.name,k.phone||'',k.kenh,k.staff,k.kh,
+    rows:a.khach.slice().sort((x,y)=>y.rev-x.rev).map(k=>[k.loai,dmy(k.ngay),e(k.name)+(k.vip?rptSlSaoVip({vip:true}):''),k.phone||'',k.kenh,k.staff,k.kh,
       k.chot?'<span style="color:var(--green);font-weight:700">Chốt đơn</span>':'chưa chốt',k.rev?vnd(k.rev):'',phieu(k)])});
   const can=[...new Set(a.khach.filter(k=>k.don&&k.don.length&&k.kh&&!_kiotItemsDaTai[k.kh]).map(k=>k.kh))];
   if(can.length)Promise.all(can.map(kiotLoadItems)).then(()=>{
@@ -10161,8 +10177,8 @@ function rptSlShowCustomer(key,sua){
   let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
   m.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)qcCloseModal()">
     <div style="background:var(--surface);border-radius:16px;max-width:1320px;width:100%;height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">
-      <div style="display:flex;align-items:center;gap:13px;padding:16px 20px;border-bottom:1px solid var(--border)">
-        <span style="width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:21px;color:var(--muted);flex:0 0 auto"></span>
+      <div class="hs-dau${rptSlLaVip(r)?' hs-vip':''}" style="display:flex;align-items:center;gap:13px;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <span class="hs-ava" style="width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:21px;color:var(--muted);flex:0 0 auto">${rptSlLaVip(r)?RPT_SL_VUONG_MIEN.replace(/width="11" height="11"/,'width="22" height="22"'):''}</span>
         <div style="min-width:0">
           <div style="font-size:16px;font-weight:800;color:var(--text)">${suaSi&&dsSua.ten?'<input id="siO_ten" value="'+esc(r.name).replace(/"/g,'&quot;')+'" onkeydown="if(event.key===\'Escape\')rptSiHuyO();else if(event.key===\'Enter\'){event.preventDefault();rptSiLuuTatCa();}" style="font-size:16px;font-weight:800;height:34px;min-width:280px;padding:2px 10px;border:1.5px solid var(--accent);border-radius:8px;background:var(--accent-l);color:var(--text);font-family:var(--font);outline:none">':esc(r.name)} ${rptSlVipNut(r)} <span style="font-size:12.5px;font-weight:700;color:var(--muted)">· ${esc(r.kh||r.leadId||'')}</span></div>
           <div style="font-size:12px;color:var(--muted);font-weight:600">${[...(r.phones||[]).map(p=>p.so),r.kenh,r.staff].filter(Boolean).map(esc).join(' · ')}</div>
