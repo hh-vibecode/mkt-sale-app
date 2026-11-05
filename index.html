@@ -32,7 +32,7 @@
   --cta:#ff7a59;--cta-hover:#ff8f73;--on-accent:#fff;--accent-d:#007a93;
   --sidebar-w:220px;--sidebar-w-col:56px;
   --font:'Montserrat','Inter',sans-serif;
-  --vip-nen:#fffaee;--vip-vien:#e8b33a;--vip-chu:#8a5300;--vip-nhan:linear-gradient(135deg,#fde68a 0%,#f6c343 45%,#e09b12 100%);--vip-nhan-chu:#5c3700;
+  --vip-nen:#fffaee;--vip-vien:#d9a72e;--vip-thanh:linear-gradient(180deg,#fbe7a1 0%,#e7b93e 45%,#b88618 100%);--vip-chu:#8a5300;--vip-nhan:linear-gradient(135deg,#fde68a 0%,#f6c343 45%,#e09b12 100%);--vip-nhan-chu:#5c3700;
 }
 [data-theme="dark"]{
   --bg:#0f1923;--bg2:#17232f;--surface:#17232f;--surface2:#1f2e3c;
@@ -45,7 +45,7 @@
   --teal:#45cfe3;--teal-l:rgba(0,164,189,.16);
   --orange:#ff9474;--orange-l:rgba(255,122,89,.16);
   --shadow:0 2px 10px rgba(0,0,0,.3);--shadow-md:0 6px 22px rgba(0,0,0,.4);
-  --vip-nen:rgba(232,179,58,.09);--vip-vien:#e8b33a;--vip-chu:#fcd77a;--vip-nhan:linear-gradient(135deg,#fde68a 0%,#f0b429 50%,#c98410 100%);--vip-nhan-chu:#3d2500;
+  --vip-nen:rgba(232,179,58,.09);--vip-vien:#d9a72e;--vip-thanh:linear-gradient(180deg,#fbe7a1 0%,#e7b93e 45%,#b88618 100%);--vip-chu:#fcd77a;--vip-nhan:linear-gradient(135deg,#fde68a 0%,#f0b429 50%,#c98410 100%);--vip-nhan-chu:#3d2500;
   --nav-bg:#0b141d;--nav-line:rgba(255,255,255,.08);--nav-text:#b0c1d4;--nav-hover:rgba(255,255,255,.06);--nav-act:rgba(255,255,255,.12);
   --cta:#ff7a59;--cta-hover:#ff8f73;--on-accent:#0b141d;--accent-d:#6fd3e3;
 }
@@ -283,9 +283,11 @@ thead th,.grp-table th{color:var(--text2)}
 .vip-nhan{display:inline-flex;align-items:center;gap:3px;margin-right:6px;padding:1px 8px 1px 6px;border-radius:999px;background:var(--vip-nhan);
   color:var(--vip-nhan-chu);font-size:9.5px;font-weight:900;letter-spacing:.08em;vertical-align:1px;box-shadow:0 1px 3px rgba(201,132,16,.35),inset 0 1px 0 rgba(255,255,255,.55)}
 .vip-sao{color:var(--vip-vien);white-space:nowrap}
-tr:has(.vip-nhan,.vip-sao)>td{background:var(--vip-nen)}
-tr:has(.vip-nhan,.vip-sao)>td:first-child{box-shadow:inset 3px 0 0 var(--vip-vien)}
-tr:has(.vip-nhan,.vip-sao):hover>td{background:color-mix(in srgb,var(--vip-vien) 14%,var(--surface))}
+/* khung vàng kim bao cả dòng (anh Hải 05/11/2026 "viền gold vương giả tí"): nét trên + dưới, vạch trái 4px đổ vàng kim, viền phải khép khung */
+tr:has(.vip-nhan,.vip-sao)>td{background-color:var(--vip-nen);box-shadow:inset 0 1.5px 0 var(--vip-vien),inset 0 -1.5px 0 var(--vip-vien)}
+tr:has(.vip-nhan,.vip-sao)>td:first-child{background-image:var(--vip-thanh);background-size:4px 100%;background-repeat:no-repeat;background-position:left top}
+tr:has(.vip-nhan,.vip-sao)>td:last-child{box-shadow:inset 0 1.5px 0 var(--vip-vien),inset 0 -1.5px 0 var(--vip-vien),inset -1.5px 0 0 var(--vip-vien)}
+tr:has(.vip-nhan,.vip-sao):hover>td{background-color:color-mix(in srgb,var(--vip-vien) 16%,var(--surface))}
 .cv-kh:has(.vip-nhan),.cv-viec:has(.vip-nhan){border-color:color-mix(in srgb,var(--vip-vien) 55%,var(--border));background:var(--vip-nen);box-shadow:inset 3px 0 0 var(--vip-vien)}
 /* đầu hồ sơ khách VIP: dải vàng nhạt + vòng vàng quanh ảnh đại diện có vương miện */
 .hs-dau.hs-vip{background:linear-gradient(90deg,var(--vip-nen),var(--surface) 65%);border-bottom-color:color-mix(in srgb,var(--vip-vien) 45%,var(--border)) !important}
@@ -7184,10 +7186,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/11 17:05';
+const APP_VERSION='05/11 17:45';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=549;
+const APP_BAN=550;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
