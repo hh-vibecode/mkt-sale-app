@@ -4664,7 +4664,7 @@ function cvBoardHtml(){
   const phai='<div class="cv-pan"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div class="cv-tieu" style="margin:0">'
       +(Si?'A. Khách hàng · khách Sỉ':'Đầu mục chăm sóc · khách '+L+dmBut('cv_dau_muc'))+'</div>'
       +'<span class="cv-dem">'+(muc.length+(Si?tuDo.filter(x=>!daCo.has(x)).length:0))+' khách</span></div>'
-    +(sua?'<div class="cv-phu" style="margin:-4px 0 10px">Thêm khách: bấm khách ở danh sách bên trái, hoặc ở <b>Master Data</b> bấm <b>+ Báo cáo</b> (chọn nhiều khách: <b>Đưa vào báo cáo</b>).</div>':'')
+    +(sua?'<div class="cv-phu" style="margin:-4px 0 10px">Thêm khách: ở <b>Master Data</b> bấm <b>+ Báo cáo</b> (chọn nhiều khách: <b>Đưa vào báo cáo</b>).</div>':'')
     +'<div class="cv-cots">'+dsMuc.map(cot).join('')+'</div>'
     +(Si?bcHtml('B','B. Công việc cố định','cv_co_dinh_si',4)+bcHtml('C','C. Công việc chiến dịch · tháng '+st.ngay.slice(5,7),'cv_chien_dich_si',4+cvViecBC('B',toi.id,!suaKQ).length):'')
     +'<div class="cv-cuoi" style="padding:14px 0 0;border:none">'
@@ -4680,7 +4680,8 @@ function cvBoardHtml(){
   // DANH SÁCH KHÁCH TỰ ẨN (anh Hải 05/11/2026): dải dọc mảnh, rê chuột / bấm mới bung ra đè lên; đang gõ tìm thì giữ mở
   const dai='<div class="cv-trai" onclick="if(event.target.closest(\'.cv-trai-tab\'))this.classList.toggle(\'mo\')">'
     +'<div class="cv-trai-tab" title="Danh sách khách — rê chuột hoặc bấm để mở"><span>Danh sách khách '+L+'</span></div>'+trai+'</div>';
-  return '<div class="cv-wrap">'+(sua?dai:'')+phai+'</div>';
+  // BỎ HẲN cột Danh sách khách (anh Hải 09/11/2026: "bỏ luôn cái bảng này đi") -- thêm khách chỉ từ Master Data (+ Báo cáo / Đưa vào báo cáo)
+  return phai;
 }
 // Báo cáo ngày của 1 người: h = dòng cong_viec_ngay (có thể chưa có), muc = việc của người đó.
 function cvBaoCaoHtml(h,muc,ten,nguoiId){
@@ -7188,10 +7189,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='09/11 10:30';
+const APP_VERSION='09/11 11:58';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=551;
+const APP_BAN=552;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
