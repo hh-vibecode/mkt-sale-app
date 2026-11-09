@@ -7189,10 +7189,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='09/11 11:58';
+const APP_VERSION='09/11 16:39';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=552;
+const APP_BAN=553;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -9023,7 +9023,9 @@ function rptSlBuildMasterRaw(){
     // PHÂN LOẠI ĐỒNG NHẤT (06/10/2026): giá trị cũ "Chăm sóc dài hạn" (sheet Master Sỉ cũ...) quy về "Tiềm năng, chưa ra đơn"
     rows.forEach(r=>{if(/^chăm sóc dài hạn$/i.test(String(r.siPhanLoai||'').trim()))r.siPhanLoai='Tiềm năng, chưa ra đơn';});
     rows.forEach(r=>{if(/^mất kết nối$/i.test(String(r.siPhanLoai||'').trim()))r.siPhanLoai='Không tiềm năng';});   // bỏ Mất kết nối (07/10/2026)
-    rows.forEach(r=>{if(r.isChot&&!String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim()){r.siPhanLoai='Đã ra đơn';r.ttTuDong=true;}});
+    // ĐÃ CÓ ĐƠN -> LUÔN "Đã ra đơn" (anh Hải 09/11/2026, thay luật 05/10 "Sale chọn khác là thắng"): kể cả nhãn cũ Lead cũ / Tiềm năng /
+    // Không tiềm năng (hay gặp ở khách đã gộp: nhãn ở dòng chính, đơn ở dòng gộp vào). Nhãn gốc giữ ở r.siPhanLoaiGoc, không ghi bảng.
+    rows.forEach(r=>{if(r.isChot&&String(r.siPhanLoai||'').trim()!=='Đã ra đơn'){r.siPhanLoaiGoc=r.siPhanLoai||(r.sh||{}).phan_loai||'';r.siPhanLoai='Đã ra đơn';r.ttTuDong=true;}});
     if(laLe)rows.forEach(r=>{
       // LẺ CHƯA CÓ PHÂN LOẠI (anh Hải 02/10/2026): có thẻ TIỀM NĂNG -> "Tiềm năng, chưa ra đơn"; đã gửi SĐT mà chưa gắn thẻ
       // tiềm năng -> "Lead mới". Tính lúc dựng, không ghi bảng -> Sale chọn khác là thắng.
