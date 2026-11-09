@@ -5331,11 +5331,11 @@ function rptMktHtml(){
     return {title,cols:['Loại','Ngày chốt đầu','Khách','Kênh','Brand','Sales','Mã KH','Doanh thu kỳ'],
       rows:x.map(y=>[y.loai,dmy(y.ngay),String(y.name||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')+rptSlSaoVip(y),y.kenh||'',tenBrand(y.brand),y.staff||'',y.kh||'',vnd(y.rev)]),
       keys:x.map(y=>y.key),loais:x.map(y=>y.loai)};};
-  L('mktOnlTong',dsKh('Doanh thu khách Online cả kỳ · '+vnd(tOnl)+' · Lẻ '+vnd(tOnlLe)+' + Sỉ '+vnd(tOnlSi)+' · '+num(onl.length)+' khách',onl));
+  L('mktOnlTong',dsKh('Khách nguồn Online tổng hợp · '+vnd(tOnl)+' · Lẻ '+vnd(tOnlLe)+' + Sỉ '+vnd(tOnlSi)+' · '+num(onl.length)+' khách',onl));
   const kpiSale='<div class="kpi-grid g5">'
-    +bam('mktOnlTong',mkKpi(ic('cash'),'DT khách Online',tOnl>0?vnd(tOnl):'—','Lẻ '+vnd(tOnlLe)+' · Sỉ '+vnd(tOnlSi)+' · cả mua lại','g-blue'),'Mọi đơn trong kỳ của khách nguồn Online, kể cả mua lại · bấm để xem')
-    +'<div onclick="rptMktShowDoanhSo()" style="cursor:pointer" title="Doanh thu Online khách mới (phần MKT tính) · bấm để xem tách Sỉ / Lẻ">'
-      +mkKpi(ic('cash'),'DS khách mới',rev>0?vnd(rev):'—','Lẻ '+vnd(tienLe)+' · Sỉ '+vnd(tienSi)+' · bấm để xem','g-teal')+'</div>'
+    +bam('mktOnlTong',mkKpi(ic('cash'),'Khách Online tổng hợp',tOnl>0?vnd(tOnl):'—','Lẻ '+vnd(tOnlLe)+' · Sỉ '+vnd(tOnlSi)+' · cả mua lại','g-blue'),'Mọi đơn trong kỳ của khách nguồn Online, kể cả mua lại · bấm để xem')
+    +'<div onclick="rptMktShowDoanhSo()" style="cursor:pointer" title="Doanh thu khách Online mới (phần MKT tính) · bấm để xem tách Sỉ / Lẻ">'
+      +mkKpi(ic('cash'),'Khách Online mới',rev>0?vnd(rev):'—','Lẻ '+vnd(tienLe)+' · Sỉ '+vnd(tienSi)+' · bấm để xem','g-teal')+'</div>'
     +'<div onclick="rptMktShowDoanhSo()" style="cursor:pointer" title="Bấm để xem tách Sỉ / Lẻ">'
       +mkKpi(ic('box'),'Số đơn chốt',don>0?num(don):'—',num(le.length)+' lẻ · '+num(si.length)+' sỉ · bấm để xem','g-orange')+'</div>'
     +mkKpi(ic('clipboard'),'DS TB / đơn',don>0?vnd(rev/don):'—','trung bình mỗi đơn chốt','g-pink')
@@ -7206,10 +7206,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='09/11 16:45';
+const APP_VERSION='09/11 17:05';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=554;
+const APP_BAN=555;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7554,7 +7554,7 @@ LOGIC_XU_LY.push(['Công thức chỉ số',[
   ['Báo cáo MKT','CP / mess = Tổng chi phí ÷ Tổng mess','',''],
   ['Báo cáo MKT','Doanh số = Σ doanh thu các đơn tính cho MKT (Lẻ Online + Sỉ Online)','Đơn mua lại không tính (trừ Shopee); Sỉ Online chỉ tính 1 tháng từ đơn đầu, trừ khi khách còn nhắn Pancake',''],
   ['Báo cáo MKT','ADS / DS = Tổng chi phí ÷ Doanh số × 100%','Màu: ≤ 50% xanh · ≤ 100% vàng · > 100% đỏ. Theo brand: chi phí brand ÷ doanh số brand',''],
-  ['Báo cáo MKT','DT khách Online = Σ mọi đơn trong kỳ của khách nguồn Online (Lẻ + Sỉ), KỂ CẢ mua lại / Sỉ ngoài tháng đầu','Khác ô "DS khách mới" (= Doanh số, phần MKT tính). Vẫn cắt từ 1/6/2026, theo bộ lọc brand','9/11'],
+  ['Báo cáo MKT','Khách Online tổng hợp = Σ mọi đơn trong kỳ của khách nguồn Online (Lẻ + Sỉ), KỂ CẢ mua lại / Sỉ ngoài tháng đầu','Khác ô "Khách Online mới" (= Doanh số, phần MKT tính). Vẫn cắt từ 1/6/2026, theo bộ lọc brand','9/11'],
   ['Báo cáo MKT','DS TB / đơn = Doanh số ÷ Số đơn chốt','',''],
   ['Báo cáo MKT','Tỷ lệ chốt = Số đơn chốt ÷ Tổng mess × 100%','',''],
   ['MKT · tab Chi tiết','Hiển thị = Σ lượt hiển thị · Tiếp cận = Σ tiếp cận từng ngày','Xem nhiều ngày thì Tiếp cận cao hơn số người duy nhất trên Ads Manager (Meta không cho cộng người duy nhất)','16/10'],
