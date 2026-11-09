@@ -139,6 +139,7 @@ input[type="date"]::-webkit-calendar-picker-indicator,input[type="month"]::-webk
    (thay vì phủ gradient kín cả thẻ như trước). Class .g-* giữ nguyên tên (JS mkKpi() không đổi gì) nhưng
    giờ chỉ set 2 biến màu cho ô icon, không set background của cả thẻ nữa. */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+.kpi-grid.g5{grid-template-columns:repeat(5,minmax(0,1fr))}
 [hidden]{display:none!important}
 .va-item:hover{background:var(--bg2)}   /* phần tử đánh dấu hidden luôn ẩn, kể cả khi có display inline */
 .tq-o{display:flex}.tq-o>.kpi{flex:1;min-width:0}
@@ -5143,11 +5144,18 @@ function rptMktData(){
   // Lọc kỳ bằng rptSlPeriod() -- nó cắt theo NGÀY TỪNG ĐƠN KIOT và tính lại doanh thu chỉ của đơn trong
   // kỳ. Trước đây lọc bằng closeDate (ngày đơn ĐẦU TIÊN) nên khách mua lại nhiều lần bị loại oan: đơn
   // tháng 9 của Mai Quy / ĐỒ THỜ CÚNG THUỶ MAI có đơn đầu từ 10/2025 nên rớt khỏi báo cáo (lỗi 22/9/2026).
-  const cu=window._rptSlType,cuMod=window._rptSlMod;const sale=[];
+  const cu=window._rptSlType,cuMod=window._rptSlMod;const sale=[],onl=[];
   window._rptSlMod='mkt';
   ['Lẻ','Sỉ'].forEach(t=>{
     window._rptSlType=t;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
     rptSlPeriod().forEach(r=>{
+      // DOANH THU KHÁCH ONLINE ĐỦ KỲ (anh Hải 09/11/2026: "doanh thu online full cả tháng miễn là khách onl"): mọi đơn trong kỳ
+      // của khách nguồn Online, KỂ CẢ mua lại / Sỉ ngoài tháng đầu (khác ô Doanh số = phần MKT tính, khách mới).
+      if(r.isChot&&!/offline/i.test(r.nguon||'')){
+        const full=r.revenue+(r.repeatRevenue||0),bR=t==='Sỉ'?'Shidai':(rptSlBrandCua(r)||'');
+        if(full>0&&!(brandLoc&&bR!==brandLoc))onl.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',brand:bR,adId:r.adId||'',
+          rev:full,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||'',key:r.key,vip:rptSlLaVip(r)});
+      }
       // Shopee: MKT tính đủ mọi đơn (cả phần "mua lại"), nguồn Online (anh Hải 02/10/2026)
       const rev=rptSlDoanhThuMkt(r);   // MKT không tính đơn mua lại (kể cả khách Lẻ Online "tính hết" của Sale)
       if(!r.isChot||rev<=0)return;
@@ -5224,7 +5232,7 @@ function rptMktData(){
      const d=String(o.order_date||'').slice(0,10);if(!rptMktInRange(d))return;if(typeof dhHuy==='function'&&dhHuy(o))return;
      const m=ban[o.shop_id+'_'+o.order_id];theoAd[id].donPc.push({o,r:m&&m.r,t:m&&m.t});});}
   const rev=sale.reduce((a,x)=>a+x.rev,0);
-  return{ads,kpi,spendBrand,spendNgay,camp,sale,revBrand,plat,rev,don:sale.length,theoAd};
+  return{ads,kpi,spendBrand,spendNgay,camp,sale,onl,revBrand,plat,rev,don:sale.length,theoAd};
 }
 function isoNgay(d){const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);}
 // Bấm ô Doanh số -> tầng 1 hiện 2 khối SỈ / LẺ (như dashboard cũ), bấm tiếp vào khối nào mới mở
@@ -5316,9 +5324,18 @@ function rptMktHtml(){
     +mkKpi(ic('target'),'CP / mess',kpi.totalMess>0?vnd(kpi.costPerMess):'—','trung bình mỗi tin nhắn','g-yellow')
     +mkKpi(ic('diamond'),'ADS / DS',adsDs===null?'—':pct(adsDs),'chi phí / doanh số (Sỉ+Lẻ)','g-purple')
     +'</div>';
-  const kpiSale='<div class="kpi-grid">'
-    +'<div onclick="rptMktShowDoanhSo()" style="cursor:pointer" title="Bấm để xem tách Sỉ / Lẻ">'
-      +mkKpi(ic('cash'),'Doanh số',rev>0?vnd(rev):'—','Lẻ '+vnd(tienLe)+' · Sỉ '+vnd(tienSi)+' · bấm để xem','g-teal')+'</div>'
+  // ô đầu: doanh thu ĐỦ KỲ của khách Online (cả mua lại) -- anh Hải 09/11/2026; ô Doanh số cũ = doanh thu Online khách mới (phần MKT tính)
+  const onl=d.onl||[],onlLe=onl.filter(x=>x.loai==='Lẻ'),onlSi=onl.filter(x=>x.loai==='Sỉ');
+  const tOnl=onl.reduce((a,x)=>a+x.rev,0),tOnlLe=onlLe.reduce((a,x)=>a+x.rev,0),tOnlSi=onlSi.reduce((a,x)=>a+x.rev,0);
+  const dsKh=(title,l)=>{const x=l.slice().sort((a,b)=>b.rev-a.rev);
+    return {title,cols:['Loại','Ngày chốt đầu','Khách','Kênh','Brand','Sales','Mã KH','Doanh thu kỳ'],
+      rows:x.map(y=>[y.loai,dmy(y.ngay),String(y.name||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')+rptSlSaoVip(y),y.kenh||'',tenBrand(y.brand),y.staff||'',y.kh||'',vnd(y.rev)]),
+      keys:x.map(y=>y.key),loais:x.map(y=>y.loai)};};
+  L('mktOnlTong',dsKh('Doanh thu khách Online cả kỳ · '+vnd(tOnl)+' · Lẻ '+vnd(tOnlLe)+' + Sỉ '+vnd(tOnlSi)+' · '+num(onl.length)+' khách',onl));
+  const kpiSale='<div class="kpi-grid g5">'
+    +bam('mktOnlTong',mkKpi(ic('cash'),'DT khách Online',tOnl>0?vnd(tOnl):'—','Lẻ '+vnd(tOnlLe)+' · Sỉ '+vnd(tOnlSi)+' · cả mua lại','g-blue'),'Mọi đơn trong kỳ của khách nguồn Online, kể cả mua lại · bấm để xem')
+    +'<div onclick="rptMktShowDoanhSo()" style="cursor:pointer" title="Doanh thu Online khách mới (phần MKT tính) · bấm để xem tách Sỉ / Lẻ">'
+      +mkKpi(ic('cash'),'DS khách mới',rev>0?vnd(rev):'—','Lẻ '+vnd(tienLe)+' · Sỉ '+vnd(tienSi)+' · bấm để xem','g-teal')+'</div>'
     +'<div onclick="rptMktShowDoanhSo()" style="cursor:pointer" title="Bấm để xem tách Sỉ / Lẻ">'
       +mkKpi(ic('box'),'Số đơn chốt',don>0?num(don):'—',num(le.length)+' lẻ · '+num(si.length)+' sỉ · bấm để xem','g-orange')+'</div>'
     +mkKpi(ic('clipboard'),'DS TB / đơn',don>0?vnd(rev/don):'—','trung bình mỗi đơn chốt','g-pink')
@@ -7189,10 +7206,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='09/11 16:39';
+const APP_VERSION='09/11 16:45';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=553;
+const APP_BAN=554;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7537,6 +7554,7 @@ LOGIC_XU_LY.push(['Công thức chỉ số',[
   ['Báo cáo MKT','CP / mess = Tổng chi phí ÷ Tổng mess','',''],
   ['Báo cáo MKT','Doanh số = Σ doanh thu các đơn tính cho MKT (Lẻ Online + Sỉ Online)','Đơn mua lại không tính (trừ Shopee); Sỉ Online chỉ tính 1 tháng từ đơn đầu, trừ khi khách còn nhắn Pancake',''],
   ['Báo cáo MKT','ADS / DS = Tổng chi phí ÷ Doanh số × 100%','Màu: ≤ 50% xanh · ≤ 100% vàng · > 100% đỏ. Theo brand: chi phí brand ÷ doanh số brand',''],
+  ['Báo cáo MKT','DT khách Online = Σ mọi đơn trong kỳ của khách nguồn Online (Lẻ + Sỉ), KỂ CẢ mua lại / Sỉ ngoài tháng đầu','Khác ô "DS khách mới" (= Doanh số, phần MKT tính). Vẫn cắt từ 1/6/2026, theo bộ lọc brand','9/11'],
   ['Báo cáo MKT','DS TB / đơn = Doanh số ÷ Số đơn chốt','',''],
   ['Báo cáo MKT','Tỷ lệ chốt = Số đơn chốt ÷ Tổng mess × 100%','',''],
   ['MKT · tab Chi tiết','Hiển thị = Σ lượt hiển thị · Tiếp cận = Σ tiếp cận từng ngày','Xem nhiều ngày thì Tiếp cận cao hơn số người duy nhất trên Ads Manager (Meta không cho cộng người duy nhất)','16/10'],
