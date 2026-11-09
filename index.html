@@ -5452,7 +5452,7 @@ function rptMktHtml(){
     bangAd+='<tr onclick="rptMktMo('+q+'c'+ci+q+')" style="cursor:pointer;background:var(--bg2)">'+oTT(ttC(c))
       +'<td class="name" colspan="2"><span id="mkt-mui-c'+ci+'" style="color:var(--muted);font-size:10px;margin-right:6px">▶</span>'
       +String(c.ten).replace(/</g,'&lt;')+'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'
-      +num(Object.keys(c.nhom).length)+' nhóm · '+num(c.soQc)+' quảng cáo'+(c.soChay?' · <span style="color:var(--green)">'+num(c.soChay)+' đang chạy</span>':'')+'</div></td>'
+      +(RPT_MKT_BRANDS.filter(x=>x[0]===detectBrand(c.ten))[0]||[null,''])[1]+(detectBrand(c.ten)&&RPT_MKT_BRANDS.some(x=>x[0]===detectBrand(c.ten))?' · ':'')+num(Object.keys(c.nhom).length)+' nhóm · '+num(c.soQc)+' quảng cáo'+(c.soChay?' · <span style="color:var(--green)">'+num(c.soChay)+' đang chạy</span>':'')+'</div></td>'
       +oNS(mktTT.ns&&mktTT.ns[String(c.ten).trim()])+oCs(c,true)+oMua(c,'muaCay'+ci,'Lượt mua · '+c.ten,c.dsK)+'</tr>';
     Object.values(c.nhom).filter(n=>!chiChay||n.chay||n.ads.some(a=>a.chay)).sort((x,y)=>(y.chay-x.chay)||(y.spend-x.spend)).forEach((n,ni)=>{
       const kn='c'+ci+'-n'+ni;
@@ -5472,7 +5472,7 @@ function rptMktHtml(){
       });
     });
   });
-  const cuonAd='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Chi tiết quảng cáo</div>'
+  const cuonAd='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Chiến dịch quảng cáo</div>'
     +'<div class="tbl-count">'+num(dsCamp.length)+' chiến dịch</div>'
     +'<span style="margin-left:auto;display:inline-flex;gap:6px;align-items:center">'
     +(mktTT.luc?'<span style="font-size:10.5px;color:var(--muted);font-weight:600">trạng thái cập nhật '+dmy(mktTT.luc.slice(0,10))+' '+new Date(mktTT.luc).toTimeString().slice(0,5)+'</span>':'')
@@ -5492,7 +5492,9 @@ function rptMktHtml(){
     +'<div style="padding:14px 16px"><div style="height:'+(cao||200)+'px;position:relative"><canvas id="'+id+'"></canvas></div></div></div>';
   // Tách 2 tab cho đỡ dài: Tổng quan (chỉ số + biểu đồ) và Chi tiết (bảng chiến dịch + từng quảng cáo).
   const tab=rptMktTab();
-  if(tab==='ct')return cuonBang+cuonAd;
+  // GỘP 2 BẢNG (anh Hải 09/11/2026: "chuyển cái dưới thành tiêu đề bảng trên rồi xoá cái trên, 2 bảng giống nhau"): chỉ còn cây
+  // Chiến dịch / Nhóm / Quảng cáo, mang tên "Chiến dịch quảng cáo"; brand ghi ở dòng phụ của chiến dịch (bảng cũ cuonBang không vẽ nữa).
+  if(tab==='ct')return cuonAd;
   return '<div class="sec-label">Ads Performance</div>'+kpiAds
     +'<div class="sec-label">Sale Performance</div>'+kpiSale
     +'<div class="sec-label">Phân tích</div>'
@@ -7186,10 +7188,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='05/11 17:45';
+const APP_VERSION='09/11 10:30';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=550;
+const APP_BAN=551;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
