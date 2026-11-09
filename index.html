@@ -3990,12 +3990,12 @@ async function rptThNhomNap(){
   // trên đơn; Online = có kênh và KHÁC "Bán trực tiếp" (Chùa Vẻn, Website… đều Online), không ghi kênh = Offline.
   const kenhHD={};(typeof kiotInvoices!=='undefined'?kiotInvoices:[]).forEach(i=>{if(!i.order_code||!i.sale_channel)return;
     const cu=kenhHD[i.order_code];if(!cu||/^bán trực tiếp$/i.test(String(cu).trim()))kenhHD[i.order_code]=i.sale_channel;});
-  // 30/10/2026 (lần 3, anh: "nguồn tổng online phải bằng báo cáo MKT, các báo cáo phải đồng bộ"): Online = ĐÚNG các đơn báo cáo MKT tính
+  // [ĐÃ THAY 09/11/2026: Online theo NGUỒN KHÁCH, xem rptSlDonOnl] 30/10/2026 (lần 3, anh: "nguồn tổng online phải bằng báo cáo MKT, các báo cáo phải đồng bộ"): Online = ĐÚNG các đơn báo cáo MKT tính
   // (rptSlDonMkt) -> tổng Online thẻ này = doanh thu báo cáo MKT = Online ô Doanh thu Sale Lẻ + Sỉ. Kênh bán trên phiếu chỉ còn để xem.
   const kenhPhieu=o=>(!o.direct&&kenhHD[o.code])||o.sale_channel||'';
   window._thKenhPhieu=kenhPhieu;
-  ds.forEach(({r,doi})=>{const mk=rptSlDonMkt(r);
-    [...(r.kords||[]),...(r.repeatOrds||[])].forEach(o=>{const tien=Number(o.total||0);if(!(tien>0))return;
+  ds.forEach(({r,doi})=>{const mk=rptSlDonOnl(r);   // 09/11/2026: Online theo NGUỒN KHÁCH (rptSlDonOnl)
+    [...(r.kords||[]),...(r.repeatOrds||[])].forEach(o=>{const tien=Number(o.total||0);if(!(tien>0)||o.khongTinh)return;
       const off=!mk.has(o.code);
       const items=o.items||IT[o.code]||[];const sum=items.reduce((s,x)=>s+Number(x.qty||0)*Number(x.price||0),0);
       const phan=sum>0?items.map(x=>({n:NH[x.code]||'(chưa rõ nhóm)',v:Number(x.qty||0)*Number(x.price||0)*tien/sum})):[{n:'(chưa rõ nhóm)',v:tien}];
@@ -4061,7 +4061,7 @@ function rptThNhomMo(k,t){
     +ds.map(y=>'<tr onclick="rptMoKhachLoai('+q+y.doi+q+','+q+String(y.r.key).replace(/[\'"\\]/g,'')+q+')" style="cursor:pointer;border-bottom:1px solid var(--border)"><td style="padding:6px 8px;white-space:nowrap">'+(dmy(String(y.o.purchase_date).slice(0,10))||'—').slice(0,5)+'</td>'
       +'<td style="padding:6px 8px">'+link(y.o.code)+'</td><td style="padding:6px 8px">'+e(y.r.name)+rptSlSaoVip(y.r)+'<div style="font-size:10.5px;color:var(--muted)">'+e(y.r.kh||y.r.leadId||'')+' · '+y.doi+'</div></td>'
       +'<td style="padding:6px 8px">'+e(y.o.branch_name||'—')+'</td><td style="padding:6px 8px">'+e(kenh(y))+'</td><td style="padding:6px 8px;text-align:right;font-weight:800">'+vnd(y.v)+'</td></tr>').join('')
-    +'</tbody></table><div style="font-size:11px;color:var(--muted);margin-top:10px">Online = đúng các đơn báo cáo MKT tính doanh thu (khách nguồn Online đã chốt; không gồm đơn mua lại, đơn Sỉ ngoài tháng đầu khi khách đã thôi nhắn Pancake) nên tổng Online khớp báo cáo MKT; còn lại Offline. Kênh bán lấy trên hoá đơn của đơn, chỉ để xem. Doanh số theo NGÀY CHỐT nên hoá đơn tháng này của đơn đặt tháng trước nằm ở tháng trước (Kế toán tính theo tháng hoá đơn). DS nhóm = phần dòng hàng thuộc nhóm này trong phiếu (giảm giá cả phiếu chia theo tỉ lệ). Bấm dòng để mở hồ sơ khách.</div>'
+    +'</tbody></table><div style="font-size:11px;color:var(--muted);margin-top:10px">Online = mọi đơn của khách nguồn Online (kể cả mua lại; = ô Khách Online tổng hợp của báo cáo MKT); khách nguồn Offline = Offline. Kênh bán lấy trên hoá đơn của đơn, chỉ để xem. Doanh số theo NGÀY CHỐT nên hoá đơn tháng này của đơn đặt tháng trước nằm ở tháng trước (Kế toán tính theo tháng hoá đơn). DS nhóm = phần dòng hàng thuộc nhóm này trong phiếu (giảm giá cả phiếu chia theo tỉ lệ). Bấm dòng để mở hồ sơ khách.</div>'
     +'</div></div>';
 }
 function rptThTongHtml(){
@@ -5109,6 +5109,16 @@ function rptSlDonMkt(r){
 }
 function rptSlTienOnl(r){const s=rptSlDonMkt(r);if(!s.size)return 0;
   return (r.kords||[]).concat(r.repeatOrds||[]).filter(o=>s.has(o.code)&&!o.khongTinh).reduce((x,o)=>x+Number(o.total||0),0);}
+// ONLINE Ở BÁO CÁO SALE = THEO NGUỒN KHÁCH (anh Hải 09/11/2026, THAY luật 30/10 "Online = phần MKT tính" cho mọi báo cáo Sale):
+// khách nguồn Online (r.nguon: bất kỳ phiếu Kiot nào kênh online / khách Pancake) -> MỌI đơn trong kỳ là Online, kể cả mua lại / Sỉ ngoài
+// tháng đầu; khách nguồn Offline -> Offline. T10/2026: 564tr (phần MKT) -> 817tr. Báo cáo MKT vẫn có cả 2 ô (Khách Online tổng hợp / mới).
+function rptSlDonOnl(r){
+  const s=new Set();if(!r||/offline/i.test(r.nguon||''))return s;
+  (r.kords||[]).concat(r.repeatOrds||[]).forEach(o=>{if(!o.khongTinh)s.add(o.code);});
+  return s;
+}
+function rptSlTienOnlNguon(r){const s=rptSlDonOnl(r);if(!s.size)return 0;
+  return (r.kords||[]).concat(r.repeatOrds||[]).filter(o=>s.has(o.code)&&!o.khongTinh).reduce((x,o)=>x+Number(o.total||0),0);}
 function rptMktDuocTinh(r){
   if(!String(r.adId||'').trim())return false;
   return /ch\u1ed1t/i.test(r.tagStatus||'');
@@ -5149,13 +5159,6 @@ function rptMktData(){
   ['Lẻ','Sỉ'].forEach(t=>{
     window._rptSlType=t;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
     rptSlPeriod().forEach(r=>{
-      // DOANH THU KHÁCH ONLINE ĐỦ KỲ (anh Hải 09/11/2026: "doanh thu online full cả tháng miễn là khách onl"): mọi đơn trong kỳ
-      // của khách nguồn Online, KỂ CẢ mua lại / Sỉ ngoài tháng đầu (khác ô Doanh số = phần MKT tính, khách mới).
-      if(r.isChot&&!/offline/i.test(r.nguon||'')){
-        const full=r.revenue+(r.repeatRevenue||0),bR=t==='Sỉ'?'Shidai':(rptSlBrandCua(r)||'');
-        if(full>0&&!(brandLoc&&bR!==brandLoc))onl.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',brand:bR,adId:r.adId||'',
-          rev:full,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||'',key:r.key,vip:rptSlLaVip(r)});
-      }
       // Shopee: MKT tính đủ mọi đơn (cả phần "mua lại"), nguồn Online (anh Hải 02/10/2026)
       const rev=rptSlDoanhThuMkt(r);   // MKT không tính đơn mua lại (kể cả khách Lẻ Online "tính hết" của Sale)
       if(!r.isChot||rev<=0)return;
@@ -5167,6 +5170,19 @@ function rptMktData(){
         rev,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||'',key:r.key,vip:rptSlLaVip(r)});
     });
   });
+  // DOANH THU KHÁCH ONLINE TỔNG HỢP (anh Hải 09/11/2026: "doanh thu online full cả tháng miễn là khách onl"; "tổng onl bên MKT phải bằng
+  // tổng onl bên báo cáo tổng hợp"): mọi đơn trong kỳ của khách nguồn Online (rptSlTienOnlNguon, cùng hàm Online của báo cáo Sale), KỂ CẢ
+  // khách CHỈ có đơn mua lại trong kỳ (cờ _rptSlCaMuaLai -- trước rơi 3 khách Sỉ / 53tr T10/2026). Vẫn cắt kỳ MKT (từ 1/6) + bộ lọc brand.
+  window._rptSlCaMuaLai=true;
+  try{['Lẻ','Sỉ'].forEach(t=>{
+    window._rptSlType=t;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
+    rptSlPeriod().forEach(r=>{
+      if(/offline/i.test(r.nguon||''))return;
+      const full=rptSlTienOnlNguon(r),bR=t==='Sỉ'?'Shidai':(rptSlBrandCua(r)||'');
+      if(full>0&&!(brandLoc&&bR!==brandLoc))onl.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',brand:bR,adId:r.adId||'',
+        rev:full,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||'',key:r.key,vip:rptSlLaVip(r)});
+    });});}
+  finally{window._rptSlCaMuaLai=false;}
   window._rptSlType=cu||'Lẻ';window._rptSlMod=cuMod||null;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
   const revBrand={};RPT_MKT_BRANDS.forEach(([k])=>revBrand[k]=0);revBrand.Khac=0;
   const plat={Facebook:0,TikTok:0,Shopee:0,'Khác':0};
@@ -7206,10 +7222,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='09/11 17:05';
+const APP_VERSION='09/11 17:13';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=555;
+const APP_BAN=556;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7503,6 +7519,7 @@ const LOGIC_XU_LY=[
   ['Khách Kiot đổi nhóm','Kiot đổi nhóm lẻ ↔ buôn → dòng khách job tự tạo tự chuyển Lẻ / Sỉ theo (lượt chăm sóc chuyển theo, có nhật ký). Dòng Sale nhập tay / khách Pancake không tự chuyển','16/10'],
   ['Sỉ / Lẻ bên Pancake','Theo thẻ KH SỈ / KH LẺ; không thẻ thì theo đơn khác cùng SĐT; vẫn không có thì page Shidai = Sỉ, còn lại Lẻ. Khách mua dùng gia đình = KH LẺ','27/9'],
   ['Online / Offline','Kênh quyết định: Facebook / TikTok / Shopee / Zalo / Web = Online, bất kể hoá đơn hay đơn đặt hàng','9/10'],
+  ['Doanh thu Online ở báo cáo Sale','Theo NGUỒN KHÁCH: khách nguồn Online -> mọi đơn trong kỳ là Online (kể cả mua lại / Sỉ ngoài tháng đầu); thay luật 30/10 "= phần MKT tính". Phần MKT tính xem ô Khách Online mới (Báo cáo MKT)','9/11'],
   ['Nguồn / Kênh của khách','Chỉ Admin sửa; Sale chọn lúc tạo khách mới','8/10'],
   ['Master','Mặc định ẩn Offline · Kiot, chọn ở ô Nguồn để xem','8/10'],
   ['Brand khách Sỉ','Doanh thu theo chi nhánh Kiot từng đơn (như Lẻ); chưa có đơn thì kênh ghi rõ brand khác theo kênh, còn lại = Shidai','26/10']]],
@@ -7809,13 +7826,13 @@ function rptSlOverviewHtml(){
   const coRev=master.filter(r=>tien(r)>0).sort((a,b)=>tien(b)-tien(a));
   L('ovRev',{title:'Khách đã có doanh thu · '+vnd(rev),cols:custCols,rows:custRows(coRev)});
   // SỈ tách doanh thu ONLINE / OFFLINE thành 2 thẻ, mỗi thẻ bấm ra bảng khách đã chốt riêng (anh Hải 28/9/2026)
-  // 30/10/2026 (anh: "online phải bằng báo cáo MKT, các báo cáo phải đồng bộ"): Online = phần báo cáo MKT tính (rptSlTienOnl), còn lại Offline.
-  const tOnl=r=>rptSlTienOnl(r),tOffl=r=>Math.max(0,tien(r)-rptSlTienOnl(r));
-  const demD=(r,on)=>{const st=rptSlDonMkt(r);return (r.kords||[]).concat(r.repeatOrds||[]).filter(o=>!o.khongTinh&&st.has(o.code)===on).length;};
+  // [ĐÃ THAY 09/11/2026: Online theo NGUỒN KHÁCH, rptSlTienOnlNguon] 30/10/2026 (anh: "online phải bằng báo cáo MKT, các báo cáo phải đồng bộ"): Online = phần báo cáo MKT tính (rptSlTienOnl), còn lại Offline.
+  const tOnl=r=>rptSlTienOnlNguon(r),tOffl=r=>Math.max(0,tien(r)-rptSlTienOnlNguon(r));   // 09/11/2026: Online theo NGUỒN KHÁCH
+  const demD=(r,on)=>{const st=rptSlDonOnl(r);return (r.kords||[]).concat(r.repeatOrds||[]).filter(o=>!o.khongTinh&&st.has(o.code)===on).length;};
   const onl=coRev.filter(r=>tOnl(r)>0),off=coRev.filter(r=>tOffl(r)>0);
   const revOn=onl.reduce((x,r)=>x+tOnl(r),0),revOff=rev-revOn;
   const ordOn=onl.reduce((x,r)=>x+demD(r,true),0),ordOff=off.reduce((x,r)=>x+demD(r,false),0);
-  L('ovRevOn',{title:'Khách Online đã chốt (= báo cáo MKT) · '+vnd(revOn),cols:custCols,rows:custRows(onl,tOnl)});
+  L('ovRevOn',{title:'Khách nguồn Online đã chốt · '+vnd(revOn),cols:custCols,rows:custRows(onl,tOnl)});
   L('ovRevOff',{title:'Khách Offline đã chốt · '+vnd(revOff),cols:custCols,rows:custRows(off,tOffl)});
   {   // cả Lẻ (từ 2/10/2026, Lẻ đã có nguồn Offline cửa hàng) lẫn Sỉ
     L('ovRevTatCa',window._rptSlLists.ovRev);
@@ -8352,7 +8369,7 @@ function rptSlInRange(r){
   // ĐƠN 0Đ KHÔNG TÍNH LÀ PHÁT SINH (anh Hải chốt 01/10/2026): tài khoản nội bộ xuất hàng / chuyển kho bằng đơn 0đ gần như
   // mỗi ngày (KH000330 "KB SẾP OANH THỊNH-HP" 88 đơn 0đ) -> khách cứ hiện ở kỳ lọc. Chỉ đơn có tiền mới kéo khách vào kỳ.
   // MKT bỏ đơn mua lại -- TRỪ kênh SHOPEE: mỗi đơn Shopee là 1 lượt mua từ sàn, MKT tính đủ (anh Hải 02/10/2026)
-  const don=(r.kords||[]).concat(M==='mkt'&&!rptLaShopee(r)?[]:(r.repeatOrds||[])).filter(i=>Number(i.total||0)>0);
+  const don=(r.kords||[]).concat(M==='mkt'&&!rptLaShopee(r)&&!window._rptSlCaMuaLai?[]:(r.repeatOrds||[])).filter(i=>Number(i.total||0)>0);   // _rptSlCaMuaLai: ô Khách Online tổng hợp (09/11/2026)
   if(don.length)return don.some(i=>modInRange(M,String(i.purchase_date).slice(0,10)));
   return modInRange(M,r.isChot&&r.closeDate?r.closeDate:r.created);
 }
@@ -8362,7 +8379,7 @@ function rptSlPeriod(){
   const rows=rptSlBuildMaster().filter(rptSlInRange);
   if(!rg.from&&!rg.to)return rows;
   const trong=i=>modInRange(M,String(i.purchase_date).slice(0,10));
-  const tong=a=>a.reduce((x,i)=>x+Number(i.total||0),0);
+  const tong=a=>a.reduce((x,i)=>x+(i.khongTinh?0:Number(i.total||0)),0);   // 09/11/2026: bỏ phiếu khongTinh (báo giá / huỷ) như doanh thu đủ kỳ -- trước cắt kỳ là cộng cả (T10 Sỉ +26,66tr)
   return rows.map(r=>{
     const kords=(r.kords||[]).filter(trong),rep=(r.repeatOrds||[]).filter(trong);
     if(kords.length===(r.kords||[]).length&&rep.length===(r.repeatOrds||[]).length)return r;
@@ -9580,9 +9597,9 @@ function rptSlTongQuanHtml(){
   const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px';
   const tieuDe=x=>'<div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px 2px">'+x+'</div>';
   // DOANH THU chia ONLINE / OFFLINE (anh Hải 12/10/2026: bấm ô Doanh thu ra phần chia) + ô nào cũng có dòng số phụ, cao bằng nhau
-  // 30/10/2026 (anh: "online phải bằng báo cáo MKT, các báo cáo phải đồng bộ"): Online = phần doanh thu báo cáo MKT tính (rptSlTienOnl),
+  // [ĐÃ THAY 09/11/2026: Online theo NGUỒN KHÁCH, rptSlTienOnlNguon] 30/10/2026 (anh: "online phải bằng báo cáo MKT, các báo cáo phải đồng bộ"): Online = phần doanh thu báo cáo MKT tính (rptSlTienOnl),
   // phần còn lại (mua lại, Sỉ ngoài tháng đầu, khách nguồn Offline...) = Offline. 1 khách có thể nằm cả 2 bên với 2 phần tiền.
-  const tOnl=r=>rptSlTienOnl(r),tOffl=r=>Math.max(0,tien(r)-rptSlTienOnl(r));
+  const tOnl=r=>rptSlTienOnlNguon(r),tOffl=r=>Math.max(0,tien(r)-rptSlTienOnlNguon(r));   // 09/11/2026: Online theo NGUỒN KHÁCH
   const dtOn=coDt.reduce((s,r)=>s+tOnl(r),0),dtOff=dt-dtOn;
   const onl=r=>!/offline/i.test(r.nguon||'');   // nguồn khách -- chỉ để đếm khách mới online
   const donMuaLai=P.reduce((s,r)=>s+(r.repeatOrds||[]).length,0);
@@ -9591,9 +9608,9 @@ function rptSlTongQuanHtml(){
   // CÁCH CHIA DASHBOARD (anh Hải 12/10/2026 -- nhớ cho mọi ô): bấm ô -> ra 2 Ô DASHBOARD NHỎ (Online / Offline),
   // bấm ô nhỏ -> ra DANH SÁCH CHI TIẾT (bấm khách mở hồ sơ). KHÔNG đổ thẳng ra bảng số.
   {const nhomOn=coDt.filter(r=>tOnl(r)>0),nhomOff=coDt.filter(r=>tOffl(r)>0);
-   const mkS=r=>rptSlDonMkt(r),dem=(r,on)=>{const s=mkS(r);return (r.kords||[]).concat(r.repeatOrds||[]).filter(o=>!o.khongTinh&&s.has(o.code)===on).length;};
+   const mkS=r=>rptSlDonOnl(r),dem=(r,on)=>{const s=mkS(r);return (r.kords||[]).concat(r.repeatOrds||[]).filter(o=>!o.khongTinh&&s.has(o.code)===on).length;};
    const tOn={dt:dtOn,kh:nhomOn.length,don:nhomOn.reduce((x,r)=>x+dem(r,true),0)},tOff={dt:dtOff,kh:nhomOff.length,don:nhomOff.reduce((x,r)=>x+dem(r,false),0)};
-   const aOn=L('tqDtOn','Khách Online có doanh thu (= báo cáo MKT)',nhomOn,tOnl),aOff=L('tqDtOff','Khách Offline có doanh thu',nhomOff,tOffl);
+   const aOn=L('tqDtOn','Khách nguồn Online có doanh thu',nhomOn,tOnl),aOff=L('tqDtOff','Khách Offline có doanh thu',nhomOff,tOffl);
    window._rptSlLists.tqDtNguon={lam:()=>{
      let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
      const o2=(attr,html)=>'<div '+attr.replace('rptSlShow(','qcCloseModal();rptSlShow(')+' class="tq-o">'+html+'</div>';
