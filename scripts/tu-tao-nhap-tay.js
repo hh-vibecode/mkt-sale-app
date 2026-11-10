@@ -65,7 +65,7 @@ async function ghiLog(body, id) {
   const logId = CHI_XEM ? null : await ghiLog({ status: 'running' }).catch(() => null);
   try {
     const [don, kh, hd, dm, dh] = await Promise.all([
-      doc('kiot_orders', 'code,customer_code,customer_name,purchase_date,total,total_payment,status,branch_name,sale_channel,sold_by_name'),
+      doc('kiot_orders', 'code,customer_code,customer_name,purchase_date,total,total_payment,status,branch_name,sale_channel,sold_by_name&kiot_da_xoa=is.null'),
       doc('kiot_customers', 'code,name,phone,debt,customer_group'),
       doc('kiot_invoices', 'code,customer_code,customer_name,purchase_date,total,total_payment,status,branch_name,sale_channel,sold_by_name,order_code'),
       doc('datahub_manual', 'id,kiot_code,sale_type,note,customer_name'),

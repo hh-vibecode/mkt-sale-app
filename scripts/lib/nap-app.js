@@ -74,6 +74,7 @@ async function napApp() {
   ctx.__d = { dh, hd, dat, kh, dm, sm, crm, giu, dmuc };
   vm.runInContext(`
     dhOrders=__d.dh;kiotInvoices=__d.hd;kiotOrders=__d.dat;kiotCustomers=__d.kh;dhManual=__d.dm;
+    if(typeof kiotLamSach==='function')kiotLamSach();   // bỏ đơn / hoá đơn Kiot đã xoá (10/11/2026)
     siCrmRows=__d.crm;
     kiotGiuTinh=new Set((__d.giu||[]).map(x=>String(x.code).toUpperCase()));
     dhLoaded=kiotLoaded=dhManualLoaded=rptSlManualLoaded=siCrmLoaded=true;

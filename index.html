@@ -438,6 +438,7 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
         <div class="nav-item" onclick="sbAdminGo('settings')" id="nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9.5 12 1.8 1.8L15 10"/></svg></span><span class="nav-label">Phân quyền</span></div>
         <div class="nav-item" onclick="sbAdminGo('log')" id="nav-log"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg></span><span class="nav-label">Nhật ký chỉnh sửa</span></div>
         <div class="nav-item" onclick="sbAdminGo('logic')" id="nav-logic"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/><circle cx="19" cy="19" r="2"/></svg></span><span class="nav-label">Logic xử lý</span></div>
+        <div class="nav-item" onclick="sbAdminGo('sokhop')" id="nav-sokhop"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M7 17l-3-3M7 17l3-3M17 20V7M17 7l-3 3M17 7l3 3"/></svg></span><span class="nav-label">So khớp Kiot</span></div>
       </div>
       <div id="appVer" title="Bấm để tải lại bản mới nhất" onclick="location.reload(true)"
         style="margin:6px 14px 2px;font-size:10px;color:var(--muted);font-weight:700;cursor:pointer;letter-spacing:.02em"></div>
@@ -467,6 +468,7 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
     <div class="tab-page" id="page-congviec"></div>
     <div class="tab-page" id="page-log"></div>
     <div class="tab-page" id="page-logic"></div>
+    <div class="tab-page" id="page-sokhop"></div>
     <div class="tab-page" id="page-settings">
       <div style="padding:60px;text-align:center;color:var(--muted)">Đang chờ tải dữ liệu...</div>
     </div>
@@ -794,7 +796,7 @@ function applyRole(){
   document.querySelectorAll('.nav-item[id^="nav-"]').forEach(el=>{
     const id=el.id.replace('nav-','');
     // Data Hub có 2 mức quyền -> chỉ cần 1 trong 2 là hiện mục trên thanh bên.
-    const ok=id==='congviec'?true:id==='logic'?dashToanQuyenXem():(!allowed||allowed.indexOf(id)>=0||(id==='datahub'&&allowed.indexOf('datahub-manual')>=0));
+    const ok=id==='congviec'?true:(id==='logic'||id==='sokhop')?dashToanQuyenXem():(!allowed||allowed.indexOf(id)>=0||(id==='datahub'&&allowed.indexOf('datahub-manual')>=0));
     el.style.display=ok?'':'none';
   });
   [['sec-report-label','sec-report'],['sec-qt-label','sec-qt']].forEach(([lab,nav])=>{
@@ -1031,20 +1033,21 @@ function switchPage(p){
   // Data Hub mở được nếu có 1 trong 2 mức quyền; bên trong renderDataHub sẽ khoá tiếp tab data thô.
   // Logic xử lý: chỉ tài khoản toàn quyền (Admin / Supreme), không theo tick quyền trang (19/10/2026)
   // Báo cáo công việc: trang chung của MỌI tài khoản, không cần tick quyền (anh Hải 04/11/2026) -- ai thấy gì do CSDL chặn
-  if(p==='congviec'?false:p==='logic'?!dashToanQuyenXem():(!dashCan(p)&&!(p==='datahub'&&dashCan('datahub-manual'))))return;
+  if(p==='congviec'?false:(p==='logic'||p==='sokhop')?!dashToanQuyenXem():(!dashCan(p)&&!(p==='datahub'&&dashCan('datahub-manual'))))return;
   // Rời trang Sale Lẻ / Sale Sỉ thì XOÁ SẠCH trang đó: 2 trang vẽ cùng bộ id (thanh Hợp nhất, ô tích...),
   // để lại trang ẩn thì thao tác ở trang kia bấm nhầm vào phần tử của trang ẩn (anh Hải 25/9/2026:
   // chuyển trang rồi quay lại thì tích không hiện thanh gộp). Quay lại là vẽ mới, ô tích trống như thường.
   ['report-saleretail','report-salesi'].forEach(x=>{
     if(x===p)return;const el=document.getElementById('page-'+x);if(el&&el.innerHTML)el.innerHTML='';
   });
-  ['datahub','settings','report-saleretail','report-salesi','report-mkt','report-tonghop','congviec','log','logic'].forEach(x=>{
+  ['datahub','settings','report-saleretail','report-salesi','report-mkt','report-tonghop','congviec','log','logic','sokhop'].forEach(x=>{
     const el=document.getElementById('page-'+x);if(el)el.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);if(nav)nav.classList.toggle('active',x===p);
   });
   if(p==='settings')renderSettings();
   if(p==='log')renderLog();
   if(p==='logic')renderLogic();
+  if(p==='sokhop')renderSoKhop();
   if(p==='datahub')renderDataHub();
   if(p==='report-saleretail')renderReportSaleLe();
   if(p==='report-salesi')renderReportSaleSi();
@@ -2531,15 +2534,26 @@ function dhRenderTable(){
 // kiotInvoices = HOÁ ĐƠN (HD…) -> CHỈ dùng cho đối soát tiền về, KHÔNG dùng cho báo cáo Sale
 // (hoá đơn xuất lúc giao/thu tiền, trễ nhiều ngày so với lúc khách chốt).
 let kiotInvoices=[],kiotOrders=[],kiotCustomers=[],kiotLoaded=false,kiotGiuTinh=new Set();
+// ĐƠN / HOÁ ĐƠN ĐÃ XOÁ TRÊN KIOT (anh Hải 10/11/2026, job so khớp scripts/so-khop-kiot.js hỏi lại Kiot từng mã rồi đánh dấu kiot_da_xoa):
+// bỏ khỏi app; hoá đơn còn sống của đơn đã xoá -> tính như HĐ BÁN THẲNG (tiền thật vẫn còn, vd DH002643 xoá mà HD059385 hoàn thành 13,5tr).
+// Mã đơn gốc giữ ở order_code_goc. Gọi ngay sau mỗi lần nạp kiotOrders / kiotInvoices (app + máy ảo của script).
+function kiotLamSach(){
+  const xoa=new Set();
+  kiotOrders=(kiotOrders||[]).filter(o=>{if(o&&o.kiot_da_xoa){xoa.add(o.code);return false;}return true;});
+  kiotInvoices=(kiotInvoices||[]).filter(i=>!(i&&i.kiot_da_xoa));
+  kiotInvoices.forEach(i=>{if(i.order_code&&xoa.has(i.order_code)){i.order_code_goc=i.order_code;i.order_code=null;}});
+  window._kiotDonDaXoa=xoa;window._kiotOrdByCode=null;
+}
 async function kiotLoadInvoices(force){
   if(kiotLoaded&&!force)return;
   [kiotInvoices,kiotOrders,kiotCustomers]=await Promise.all([
     // Bỏ cột items khỏi hoá đơn: nặng gấp 3,7 lần phần còn lại mà chỉ dùng lúc xem chi tiết 1 hoá đơn.
-    sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,order_code,total,status,sale_channel'),
+    sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,order_code,total,status,sale_channel,kiot_da_xoa'),
     // items (danh sách mặt hàng) chiếm 3/4 dung lượng mà chỉ cần lúc mở chi tiết 1 khách -> tải riêng
-    sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,total_payment,status,status_value,sale_channel,giao_dia_chi,giao_khu_vuc'),
+    sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,total_payment,status,status_value,sale_channel,giao_dia_chi,giao_khu_vuc,kiot_da_xoa'),
     sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name,address,debt'),
   ]);
+  kiotLamSach();
   // đơn từng được tính nhờ khách có cọc -> giữ tính dù công nợ đổi về sau (bảng kiot_don_giu_tinh, 25/9/2026)
   try{kiotGiuTinh=new Set((await sbFetchAll('kiot_don_giu_tinh','select=code')).map(x=>String(x.code).toUpperCase()));}catch(e){}
   kiotLoaded=true;
@@ -3012,8 +3026,11 @@ const DH_CRON=[
    viec:['Kéo đơn + thẻ khách + ghi chú nội bộ về bảng datahub_orders',
          'Tự đổi trạng thái đơn (bước B3): khách tiềm năng → Đã xác nhận · khách chốt → Đã gửi hàng']},
   {job:'kiot',ten:'KiotViet → đơn đặt hàng',src:'KiotViet - Đơn đặt hàng',
-   lich:'mỗi 15 phút · quét lại toàn bộ 7h20',
+   lich:'mỗi 15 phút · quét lại toàn bộ 7h20 · 22h20',
    viec:['Kéo đơn đặt hàng (DH…) từ 1/6 — đây là nguồn DOANH THU và NGÀY CHỐT của báo cáo Sale']},
+  {job:'kiot',ten:'So khớp Kiot ↔ App',src:'Đối soát Kiot (tuần)',
+   lich:'7h20 · 22h20 (cuối lượt quét lại toàn bộ)',
+   viec:['So từng mã đơn đặt hàng + hoá đơn 2026 với Kiot; tự kéo bù mã thiếu / lệch, đánh dấu mã Kiot đã xoá','Kết quả: Cài đặt nâng cao › So khớp Kiot · còn lệch thì báo chuông admin']},
   {job:'kiot',ten:'KiotViet → hoá đơn + khách',src:'KiotViet - Hoá đơn',
    lich:'chạy cùng lượt với đơn đặt hàng',
    viec:['Kéo hoá đơn (HD…) và danh sách khách Kiot','Hoá đơn CHỈ dùng cho đối soát tiền về, không tính vào doanh số Sale']},
@@ -7222,10 +7239,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='09/11 17:13';
+const APP_VERSION='10/11 15:14';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=556;
+const APP_BAN=557;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7362,6 +7379,11 @@ async function dlKiem(){
     // job chạy mỗi tiếng 6h–22h (05/11/2026): trong giờ đó quá 2 tiếng chưa chạy, hoặc quá 9 tiếng ở bất kỳ lúc nào -> báo
     const gioVN=new Date(now+7*3600e3).getUTCHours();
     if(j&&(phut(j.luc)>9*60||(gioVN>=7&&gioVN<=23&&phut(j.luc)>120)))ra.push({cau:'<b>Job tự tạo đơn từ hội thoại</b> (mỗi tiếng 6h–22h) chưa chạy từ '+dataMoiTruoc(j.luc)+' — khách để SĐT trên page có thể chưa vào app'});}catch(x){}
+  // 6. SO KHỚP KIOT ↔ APP (10/11/2026): lượt gần nhất còn lệch / lỗi, hoặc quá 16 tiếng chưa có lượt nào (lịch 07:20 + 22:20 VN)
+  try{const r=await fetch(SUPABASE_URL+'/rest/v1/kiot_so_khop?select=chay_luc,trang_thai,so_lech,ghi_chu&trang_thai=neq.running&order=chay_luc.desc&limit=1&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    const x=r.ok?(await r.json())[0]:null,xem=' <button onclick="event.stopPropagation();sbAdminGo(\'sokhop\')" style="border:1px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:6px;padding:1px 7px;font:700 11px inherit;cursor:pointer">Xem So khớp</button>';
+    if(x&&(x.trang_thai==='lech'||x.trang_thai==='loi'))ra.push({cau:'<b>So khớp Kiot ↔ App '+(x.trang_thai==='loi'?'bị lỗi':'còn lệch')+'</b> (lượt '+dataMoiTruoc(x.chay_luc)+'): '+e(String(x.ghi_chu||'').slice(0,160))+xem});
+    else if(x&&phut(x.chay_luc)>16*60)ra.push({cau:'<b>So khớp Kiot ↔ App</b> chưa chạy từ '+dataMoiTruoc(x.chay_luc)+' (lịch 07:20 + 22:20)'+xem});}catch(x){}
   const conNgay=Math.floor((new Date(PANCAKE_TOKEN_HET).getTime()-now)/864e5);
   if(conNgay<=7)ra.push({cau:'<b>Token Pancake '+(conNgay<0?'ĐÃ HẾT HẠN':'còn '+conNgay+' ngày là hết hạn')+'</b> ('+dmy(PANCAKE_TOKEN_HET.slice(0,10))+') — đổi token ở GitHub + Supabase, hết hạn là mọi đồng bộ Pancake dừng'});
   // mục 4 + 5 phải dựng danh sách khách (~1,3 giây) -> chỉ tính lại mỗi 15 phút, khi có đơn mới về hoặc vừa chọn tay Lẻ / Sỉ (sửa lag 05/11/2026)
@@ -7598,6 +7620,69 @@ LOGIC_XU_LY.push(['Công thức chỉ số',[
 function logicDong(d){return d.length>=4?{muc:d[0],qt:d[1],gc:d[2],ngay:d[3]}:{muc:d[0],qt:d[1],gc:'',ngay:d[2]};}
 // TRANG "LOGIC XỬ LÝ" trong menu Cài đặt nâng cao (anh Hải 19/10/2026: "phải cho vào cài đặt nâng cao, bánh răng chỉ cho các nút
 // chức năng") -- trang riêng như Phân quyền / Nhật ký, không còn là cửa sổ bật lên từ bánh răng.
+// ════════ SO KHỚP KIOT ↔ APP (anh Hải 10/11/2026: "nhét vào cài đặt nâng cao, tạo phần so khớp, định kỳ ngày 2 lần sáng tối check cho t
+// xong report vô đó"). Job scripts/so-khop-kiot.js chạy cuối lượt quét lại Kiot 07:20 + 22:20 VN: so TỪNG MÃ đơn đặt hàng + hoá đơn 2026,
+// tự kéo bù mã app thiếu / khác, đánh dấu mã Kiot đã xoá (kiot_da_xoa), rồi ghi 1 dòng vào bảng kiot_so_khop. Trang này chỉ ĐỌC bảng đó.
+let _sk={ds:[],chon:0,tai:false};
+async function renderSoKhop(){
+  const el=document.getElementById('page-sokhop');if(!el)return;
+  if(!dashToanQuyenXem()){el.innerHTML='<div class="tbl-card" style="padding:16px 18px;color:var(--muted)">Chỉ Admin xem được So khớp</div>';return;}
+  el.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">Đang tải kết quả so khớp…</div>';
+  try{
+    const r=await fetch(SUPABASE_URL+'/rest/v1/kiot_so_khop?select=*&order=chay_luc.desc&limit=40&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    if(!r.ok)throw new Error('lỗi '+r.status);_sk.ds=await r.json();
+  }catch(e){el.innerHTML='<div class="tbl-card" style="padding:16px 18px;color:var(--red)">Chưa đọc được bảng kiot_so_khop: '+String(e.message).replace(/</g,'&lt;')+'</div>';return;}
+  _sk.chon=Math.max(0,_sk.ds.findIndex(x=>x.trang_thai!=='running'));
+  soKhopVe();
+}
+function soKhopVe(){
+  const el=document.getElementById('page-sokhop');if(!el)return;
+  const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const gio=t=>{if(!t)return '—';const d=new Date(new Date(t).getTime()+7*3600e3).toISOString();return d.slice(8,10)+'/'+d.slice(5,7)+' '+d.slice(11,16);};
+  const pill=tt=>{const m={khop:['Khớp','var(--green)'],lech:['Còn lệch','var(--red)'],loi:['Lỗi','var(--red)'],running:['Đang chạy','var(--yellow)']}[tt]||[tt||'—','var(--muted)'];
+    return '<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:800;color:#fff;background:'+m[1]+'">'+m[0]+'</span>';};
+  const x=_sk.ds[_sk.chon];
+  let h='<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
+    +'<div style="font-size:20px;font-weight:800">So khớp Kiot ↔ App</div>'
+    +'<span class="tbl-count">2 lần / ngày · 07:20 + 22:20</span>'
+    +(x?pill(x.trang_thai)+'<span style="font-size:12px;color:var(--muted);font-weight:700">lượt '+gio(x.chay_luc)+(x.buoi?' · '+e(x.buoi):'')+'</span>':'')
+    +'<button class="refresh-btn" style="margin:0 0 0 auto" onclick="soKhopChay(this)" title="Kích lượt quét lại Kiot + so khớp ngay (2-4 phút)">▶ So khớp ngay</button>'
+    +'<button class="btn-ghost" style="margin:0" onclick="renderSoKhop()">Tải lại</button></div>';
+  if(!x){el.innerHTML=h+'<div class="tbl-card" style="padding:18px;color:var(--muted)">Chưa có lượt so khớp nào. Bấm So khớp ngay hoặc đợi lượt 07:20 / 22:00.</div>';return;}
+  if(x.ghi_chu)h+='<div class="tbl-card" style="padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:700;border-left:4px solid '+(x.trang_thai==='khop'?'var(--green)':'var(--red)')+'">'+e(x.ghi_chu)
+    +(x.so_ma?' <span style="color:var(--muted);font-weight:600">· đã so '+num(x.so_ma)+' mã</span>':'')+'</div>';
+  // bảng theo tháng
+  const T=(x.thang||[]).slice().reverse();
+  if(T.length){
+    const o=(k,v,tien)=>{const a=v.kiot[k],b=v.app[k],f=tien?vnd:num;
+      return '<td style="text-align:right">'+f(a)+(Math.round(a)!==Math.round(b)?'<div style="font-size:11px;color:var(--red);font-weight:800">app '+f(b)+'</div>':'')+'</td>';};
+    h+='<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head"><div class="tbl-title">Theo tháng</div><span class="tbl-count">'
+      +T.filter(t=>t.khop).length+' / '+T.length+' tháng khớp</span></div><div class="tbl-scroll"><table><thead><tr>'
+      +'<th>Tháng</th><th style="text-align:right">Số đơn đặt</th><th style="text-align:right" title="Tổng tiền phiếu đặt hàng không huỷ, KỂ CẢ phiếu tạm chưa tiền (báo giá) -- không phải doanh thu Sale">Tiền đơn đặt (cả phiếu tạm)</th><th style="text-align:right">Số hoá đơn</th><th style="text-align:right">Doanh thu hoá đơn</th><th>Kết quả</th></tr></thead><tbody>'
+      +T.map(t=>'<tr><td style="font-weight:700">'+t.thang.slice(5)+'/'+t.thang.slice(0,4)+'</td>'+o('don',t)+o('tienDon',t,1)+o('hd',t)+o('tienHd',t,1)
+        +'<td>'+(t.khop?'<span style="color:var(--green);font-weight:800">✓ Khớp</span>':'<span style="color:var(--red);font-weight:800">Lệch</span>')+'</td></tr>').join('')
+      +'</tbody></table></div><div style="padding:8px 16px 12px;font-size:11px;color:var(--muted)">Số Kiot; dòng đỏ = số app khi khác. Đơn đặt = không tính đơn huỷ · Hoá đơn = hoá đơn hoàn thành · theo ngày trên phiếu (giờ VN).</div></div>';
+  }
+  const bang=(tieu,ds,mau,cot)=>ds&&ds.length?'<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head" style="border-left:4px solid '+mau+'"><div class="tbl-title">'+tieu+'</div><div class="tbl-count" style="background:'+mau+';color:#fff">'+ds.length+'</div></div>'
+    +'<div class="tbl-scroll"><table><thead><tr><th>Loại</th><th>Mã</th><th>'+cot+'</th></tr></thead><tbody>'
+    +ds.map(d=>'<tr><td>'+e(d.loai)+'</td><td style="font-weight:700">'+e(d.code)+'</td><td>'+e(d.kieu||((d.ly||'')+(d.xu_ly?' → '+d.xu_ly:'')))+'</td></tr>').join('')+'</tbody></table></div></div>':'';
+  h+=bang('Còn lệch',x.lech,'var(--red)','Chi tiết')+bang('Đã tự sửa lượt này',x.da_sua,'var(--green)','Lý do → xử lý');
+  // lịch sử
+  h+='<div class="tbl-card"><div class="tbl-head"><div class="tbl-title">Các lượt gần đây</div><span class="tbl-count">'+_sk.ds.length+'</span></div><div class="tbl-scroll"><table><thead><tr><th>Lúc</th><th>Buổi</th><th>Kết quả</th><th style="text-align:right">Số mã</th><th style="text-align:right">Đã sửa</th><th>Ghi chú</th></tr></thead><tbody>'
+    +_sk.ds.map((y,i)=>'<tr onclick="_sk.chon='+i+';soKhopVe();window.scrollTo(0,0)" style="cursor:pointer'+(i===_sk.chon?';background:var(--bg2)':'')+'"><td>'+gio(y.chay_luc)+'</td><td>'+e(y.buoi||'')+'</td><td>'+pill(y.trang_thai)+'</td>'
+      +'<td style="text-align:right">'+(y.so_ma?num(y.so_ma):'—')+'</td><td style="text-align:right">'+((y.da_sua||[]).length||'—')+'</td><td style="font-size:12px;color:var(--muted)">'+e(y.ghi_chu||'')+'</td></tr>').join('')
+    +'</tbody></table></div></div>';
+  el.innerHTML=h;if(typeof tblAlign==='function')tblAlign(el);
+}
+async function soKhopChay(btn){
+  btn.disabled=true;btn.textContent='Đang gọi…';
+  try{
+    const res=await fetch(SUPABASE_URL+'/functions/v1/sync-now',{method:'POST',headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify({job:'kiot',backfill:true})});
+    const d=await res.json().catch(()=>({}));if(!res.ok)throw new Error(d.error||('lỗi '+res.status));
+    logAct('U','kiot_so_khop',null,null,'chạy tay',null,'kích quét lại Kiot + so khớp');
+    btn.textContent='✓ Đã kích — 3-5 phút nữa bấm Tải lại';
+  }catch(e){alert('Chưa chạy được: '+e.message);btn.disabled=false;btn.textContent='▶ So khớp ngay';}
+}
 function renderLogic(){
   const el=document.getElementById('page-logic');if(!el)return;
   if(!dashToanQuyenXem()){el.innerHTML='<div class="tbl-card" style="padding:16px 18px;color:var(--muted)">Chỉ Admin xem được Logic xử lý</div>';return;}

@@ -87,7 +87,7 @@ async function dongSo(fileHtml, duLieu) {
   const ctx = moiTruong(fileHtml);
   ctx.__d = duLieu || await taiDuLieu();
   vm.runInContext(`
-    dhOrders=__d.dh;kiotInvoices=__d.hd;kiotOrders=__d.dat;kiotCustomers=__d.kh;dhManual=__d.dm;
+    dhOrders=__d.dh;kiotInvoices=__d.hd;kiotOrders=__d.dat;kiotCustomers=__d.kh;dhManual=__d.dm;if(typeof kiotLamSach==='function')kiotLamSach();
     siCrmRows=__d.crm;
     kiotGiuTinh=new Set((__d.giu||[]).map(x=>String(x.code).toUpperCase()));
     dhLoaded=kiotLoaded=dhManualLoaded=rptSlManualLoaded=siCrmLoaded=true;

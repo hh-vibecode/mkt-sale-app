@@ -187,7 +187,9 @@ async function logSyncEnd(id, { status, recordsCreated, errorMessage }) {
   }).catch(e => console.warn('Ghi sync_log lỗi (bỏ qua, không chặn job chính):', e.message));
 }
 
-(async () => {
+// Job so khớp (scripts/so-khop-kiot.js, 10/11/2026) dùng lại các hàm này; chạy thẳng file thì vẫn như cũ.
+module.exports = { mapInvoice, danhMucKenh, upsertRows };
+if (require.main === module) (async () => {
   if (!CLIENT_ID || !CLIENT_SECRET || !SERVICE_ROLE_KEY) {
     console.error('Thiếu KIOT_CLIENT_ID / KIOT_CLIENT_SECRET / SUPABASE_SERVICE_ROLE_KEY');
     process.exit(1);

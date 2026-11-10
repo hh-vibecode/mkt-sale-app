@@ -21,6 +21,7 @@ Soạn 29/9/2026 bởi Monsieur Claude.
 - **MKT / Sale (lõi, nhiều app đọc):** `datahub_orders`, `datahub_manual`, `saleretail_manual`, `salesi_crm`, `salesi_crm_note`, `mkt_ads_trang_thai`, `dang_xem`, `kiot_orders`,
   `kiot_invoices`, `kiot_customers`, `kiot_don_giu_tinh`, `mkt_spend`, `danh_muc`, `sale_nhan_su`, `pancake_tu_tao_don`, `job_moc`,
   `activity_log`, `sync_log`, `datahub_sync_log`, `backup_snapshots`, `kiot_hang` (danh mục hàng + nhóm cha, 30/10/2026),
+  `kiot_so_khop` (nhật ký so khớp Kiot ↔ app 2 lần / ngày, 10/11/2026). **Cột `kiot_da_xoa` trên `kiot_orders` / `kiot_invoices` (10/11/2026): mã đã bị xoá trên Kiot -- dòng GIỮ LẠI, app nào đọc 2 bảng này nên lọc `kiot_da_xoa is null`.**
   `cong_viec_ngay` / `cong_viec_muc` + hàm `cv_toi()` / `cv_xem_het()` (Báo cáo công việc, 04/11/2026 — RLS theo `app_user_id` trong thẻ phiên: mỗi người chỉ thấy của mình, admin / supreme / '*' xem hết).
   Trigger `chan_trung` (13/10/2026) trên `salesi_crm` + `datahub_manual`: INSERT dòng giống hệt 1 dòng vừa ghi trong 2 phút sẽ bị BỎ QUA (không lỗi) — app khác ghi vào 2 bảng này cần biết.
 - **Tài khoản & đăng nhập (dùng chung, MKT / Sale giữ):** `sales_users`, `sales_user_credentials`, Edge Function `dang-nhap`,
