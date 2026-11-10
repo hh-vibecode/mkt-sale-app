@@ -15,6 +15,10 @@
 //  4) So lại lần 2 sau khi sửa -> phần còn lệch + bảng theo tháng (số đơn đặt, tiền đơn đặt, số hoá đơn hoàn thành, doanh thu hoá đơn;
 //     Kiot vs app) ghi vào bảng kiot_so_khop -> Cài đặt nâng cao > So khớp. Còn lệch -> chuông Cảnh báo dữ liệu của admin.
 //  Ghi kèm 1 dòng sync_log 'Đối soát Kiot (tuần)' như job cũ (Data Hub > Đối soát vẫn đọc).
+//  5) CHECK CHÉO APP KẾ TOÁN (anh Hải 10/11/2026: "so khớp của m so vs cả của kế toán nữa, nhiều lúc nó sai t cũng cần m check chéo"):
+//     CHỈ ĐỌC bảng thô kt_kiot_dat_hang / kt_kiot_hoa_don (từ 1/1/2026) -> so từng mã với Kiot như app MKT (bỏ mã Kiot vừa sửa < 60 phút:
+//     2 bên kéo lệch giờ), + đọc kết luận tự soát của Kế toán (kt_kiot_doi_chieu, loai 'thang') để biết họ tự báo đúng không.
+//     Kết quả vào cột ke_toan. KHÔNG sửa gì bên Kế toán -- lệch thì báo anh chuyển lời.
 const { fetchLai } = require('./lib/fetch-lai.js');
 const fetch = (u, o) => fetchLai(u, o, { ten: require('path').basename(__filename) });
 const SUPABASE_URL = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
@@ -65,10 +69,10 @@ async function danhDau(bang, code, xoa) {
 }
 
 const chuanDon = (x, api) => api
-  ? { code: x.code, total: Number(x.total || 0), status: x.status, customer_code: x.customerCode || '', ngay: vnNgay(x.purchaseDate) }
+  ? { code: x.code, total: Number(x.total || 0), status: x.status, customer_code: x.customerCode || '', ngay: vnNgay(x.purchaseDate), sua: x.modifiedDate || x.createdDate || '' }
   : { code: x.code, total: Number(x.total || 0), status: x.status, customer_code: x.customer_code || '', ngay: vnNgay(x.purchase_date), xoa: !!x.kiot_da_xoa };
 const chuanHd = (x, api) => api
-  ? { code: x.code, total: Number(x.total || 0), status: x.status, customer_code: x.customerCode || '', order_code: x.orderCode || '', ngay: vnNgay(x.purchaseDate) }
+  ? { code: x.code, total: Number(x.total || 0), status: x.status, customer_code: x.customerCode || '', order_code: x.orderCode || '', ngay: vnNgay(x.purchaseDate), sua: x.modifiedDate || x.createdDate || '' }
   : { code: x.code, total: Number(x.total || 0), status: x.status, customer_code: x.customer_code || '', order_code: x.order_code || '', ngay: vnNgay(x.purchase_date), xoa: !!x.kiot_da_xoa };
 function so(api, db, truong) {   // db: dòng chưa đánh dấu xoá
   const A = new Map(api.map((x) => [x.code, x])), D = new Map(db.filter((x) => !x.xoa).map((x) => [x.code, x]));
@@ -81,17 +85,18 @@ function so(api, db, truong) {   // db: dòng chưa đánh dấu xoá
   const coLai = db.filter((x) => x.xoa && A.has(x.code)).map((x) => x.code);   // đã đánh dấu xoá mà Kiot có lại
   return { thieu, thua, khac, coLai };
 }
-function theoThang(donA, donD, hdA, hdD) {
+function theoThang(donA, donD, hdA, hdD, kt) {
   const homNay = vnNgay(new Date().toISOString()), m = {};
   for (let d = new Date(MOC_HD + 'T00:00:00Z'); d.toISOString().slice(0, 7) <= homNay.slice(0, 7); d.setUTCMonth(d.getUTCMonth() + 1)) {
-    m[d.toISOString().slice(0, 7)] = { kiot: { don: 0, tienDon: 0, hd: 0, tienHd: 0 }, app: { don: 0, tienDon: 0, hd: 0, tienHd: 0 } };
+    m[d.toISOString().slice(0, 7)] = { kiot: { don: 0, tienDon: 0, hd: 0, tienHd: 0 }, app: { don: 0, tienDon: 0, hd: 0, tienHd: 0 }, kt: kt ? { don: 0, tienDon: 0, hd: 0, tienHd: 0 } : null };
   }
   const cong = (ds, ben, loai) => ds.forEach((x) => { const t = m[x.ngay.slice(0, 7)]; if (!t || x.xoa) return;
     if (loai === 'don' && x.status !== 4) { t[ben].don++; t[ben].tienDon += x.total; }
     if (loai === 'hd' && x.status === 1) { t[ben].hd++; t[ben].tienHd += x.total; } });
   cong(donA, 'kiot', 'don'); cong(donD, 'app', 'don'); cong(hdA, 'kiot', 'hd'); cong(hdD, 'app', 'hd');
-  return Object.entries(m).map(([thang, v]) => ({ thang, ...v,
-    khop: ['don', 'tienDon', 'hd', 'tienHd'].every((k) => Math.round(v.kiot[k]) === Math.round(v.app[k])) }));
+  if (kt) { cong(kt.don, 'kt', 'don'); cong(kt.hd, 'kt', 'hd'); }
+  const bang = (v, b) => ['don', 'tienDon', 'hd', 'tienHd'].every((k) => Math.round(v.kiot[k]) === Math.round(v[b][k]));
+  return Object.entries(m).map(([thang, v]) => ({ thang, ...v, khop: bang(v, 'app'), khopKt: kt ? bang(v, 'kt') : null }));
 }
 async function ghi(bang, body, id) {
   if (KHO) return null;
@@ -164,14 +169,42 @@ async function ghi(bang, body, id) {
       s2[k].thua.forEach((c) => lech.push({ loai: ten, code: c, kieu: 'app thừa (Kiot không trả trong danh sách)' }));
       s2[k].khac.forEach((x) => lech.push({ loai: ten, code: x.code, kieu: 'khác · ' + x.truong }));
     });
-    const thang = theoThang(K.don, A.don, K.hd, A.hd);
+    // ── CHECK CHÉO KẾ TOÁN (chỉ đọc) ──
+    let KT = null, keToan = null;
+    try {
+      KT = {
+        don: (await dbAll('kt_kiot_dat_hang', 'ma,tong,trang_thai,khach_ma,ngay', '&ngay=gte.' + MOC_HD)).map((x) => ({ code: x.ma, total: Number(x.tong || 0), status: x.trang_thai, customer_code: x.khach_ma || '', ngay: vnNgay(x.ngay) })),
+        hd: (await dbAll('kt_kiot_hoa_don', 'ma,tong,trang_thai,khach_ma,ma_dat_hang,ngay', '&ngay=gte.' + MOC_HD)).map((x) => ({ code: x.ma, total: Number(x.tong || 0), status: x.trang_thai, customer_code: x.khach_ma || '', order_code: x.ma_dat_hang || '', ngay: vnNgay(x.ngay) })),
+      };
+      const moi = (x) => x.sua && Date.now() - new Date(/[zZ]|[+-]\d\d:\d\d$/.test(x.sua) ? x.sua : x.sua + '+07:00').getTime() < 60 * 60000;
+      const vuaSua = new Set(K.don.concat(K.hd).filter(moi).map((x) => x.code));
+      const daXoa = new Set(A.don.concat(A.hd).filter((x) => x.xoa).map((x) => x.code));
+      const kDon = K.don.filter((x) => x.ngay >= MOC_HD);
+      const sk = { don: so(kDon, KT.don, ['total', 'status', 'customer_code']), hd: so(K.hd, KT.hd, ['total', 'status', 'customer_code', 'order_code']) };
+      const lk = [];
+      [['don', 'Đơn đặt hàng'], ['hd', 'Hoá đơn']].forEach(([k, ten]) => {
+        sk[k].thieu.filter((c) => !vuaSua.has(c)).forEach((c) => lk.push({ loai: ten, code: c, kieu: 'Kế toán thiếu' }));
+        sk[k].thua.forEach((c) => lk.push({ loai: ten, code: c, kieu: daXoa.has(c) ? 'Kế toán còn giữ mã Kiot đã xoá' : 'Kế toán thừa (Kiot không có)' }));
+        sk[k].khac.filter((x) => !vuaSua.has(x.code)).forEach((x) => lk.push({ loai: ten, code: x.code, kieu: 'khác · ' + x.truong.replace(/: app /g, ': Kế toán ') }));
+      });
+      let tuSoat = {};
+      try {
+        (await dbAll('kt_kiot_doi_chieu', 'luc,loai,thang,khop,so_lech', '&loai=eq.thang')).forEach((x) => {
+          const c = tuSoat[x.thang]; if (!c || String(x.luc) > String(c.luc)) tuSoat[x.thang] = { luc: x.luc, khop: x.khop, so_lech: x.so_lech }; });
+      } catch (e) { tuSoat = { loi: e.message.slice(0, 120) }; }
+      keToan = { so_ma: KT.don.length + KT.hd.length, so_lech: lk.length, lech: lk.slice(0, 300), tu_soat: tuSoat, bo_qua_vua_sua: vuaSua.size };
+      console.log('Kế toán: ' + lk.length + ' mã lệch Kiot (bỏ ' + vuaSua.size + ' mã vừa sửa < 60 phút)');
+      lk.slice(0, 30).forEach((x) => console.log('  KT', x.loai, x.code, x.kieu));
+    } catch (e) { keToan = { loi: 'Không đọc được bảng Kế toán: ' + e.message.slice(0, 150) }; KT = null; console.log(keToan.loi); }
+    const thang = theoThang(K.don, A.don, K.hd, A.hd, KT);
     const thangLech = thang.filter((t) => !t.khop).map((t) => t.thang);
     const soMa = K.don.length + K.hd.length;
     const tt = lech.length || thangLech.length ? 'lech' : 'khop';
     const ghiChu = (tt === 'khop' ? 'Khớp từng mã' : 'Còn ' + lech.length + ' mã lệch' + (thangLech.length ? ' · tháng lệch ' + thangLech.join(', ') : ''))
-      + (daSua.length ? ' · đã tự sửa ' + daSua.length + ' mã' : '') + (loi.length ? ' · ' + loi.length + ' mã chưa sửa được' : '');
+      + (daSua.length ? ' · đã tự sửa ' + daSua.length + ' mã' : '') + (loi.length ? ' · ' + loi.length + ' mã chưa sửa được' : '')
+      + (keToan ? (keToan.loi ? ' · Kế toán: chưa đọc được' : keToan.so_lech ? ' · Kế toán lệch Kiot ' + keToan.so_lech + ' mã' : ' · Kế toán khớp Kiot') : '');
     await ghi('kiot_so_khop', { trang_thai: tt, so_ma: soMa, so_lech: lech.length, thang, lech: lech.slice(0, 300).concat(loi.slice(0, 50).map((x) => ({ loai: x.loai === 'don' ? 'Đơn đặt hàng' : 'Hoá đơn', code: x.code, kieu: 'chưa sửa được · ' + x.ly }))),
-      da_sua: daSua.slice(0, 300).map((x) => ({ ...x, loai: x.loai === 'don' ? 'Đơn đặt hàng' : 'Hoá đơn' })), ghi_chu: ghiChu }, id);
+      da_sua: daSua.slice(0, 300).map((x) => ({ ...x, loai: x.loai === 'don' ? 'Đơn đặt hàng' : 'Hoá đơn' })), ghi_chu: ghiChu, ke_toan: keToan }, id);
     await ghi('sync_log', { finished_at: new Date().toISOString(), status: 'success', records_created: soMa, records_updated: lech.length,
       error_message: lech.length ? lech.slice(0, 20).map((x) => x.loai + ' ' + x.kieu.split(' ·')[0] + ' ' + x.code).join(' | ').slice(0, 1500) : null }, idLog);
     console.log(ghiChu);

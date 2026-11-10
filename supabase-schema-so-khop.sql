@@ -23,3 +23,6 @@ create index if not exists kiot_so_khop_chay_luc on kiot_so_khop (chay_luc desc)
 alter table kiot_so_khop enable row level security;
 drop policy if exists kiot_so_khop_doc on kiot_so_khop;
 create policy kiot_so_khop_doc on kiot_so_khop for select to anon, authenticated using (true);   -- app đọc; chỉ service_role ghi
+
+-- 3) Check chéo app Kế toán (10/11/2026): kết quả so bảng thô kt_kiot_* với Kiot + kết luận tự soát của họ.
+alter table kiot_so_khop add column if not exists ke_toan jsonb;

@@ -7239,10 +7239,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='10/11 15:14';
+const APP_VERSION='10/11 15:30';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=557;
+const APP_BAN=558;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7380,10 +7380,12 @@ async function dlKiem(){
     const gioVN=new Date(now+7*3600e3).getUTCHours();
     if(j&&(phut(j.luc)>9*60||(gioVN>=7&&gioVN<=23&&phut(j.luc)>120)))ra.push({cau:'<b>Job tự tạo đơn từ hội thoại</b> (mỗi tiếng 6h–22h) chưa chạy từ '+dataMoiTruoc(j.luc)+' — khách để SĐT trên page có thể chưa vào app'});}catch(x){}
   // 6. SO KHỚP KIOT ↔ APP (10/11/2026): lượt gần nhất còn lệch / lỗi, hoặc quá 16 tiếng chưa có lượt nào (lịch 07:20 + 22:20 VN)
-  try{const r=await fetch(SUPABASE_URL+'/rest/v1/kiot_so_khop?select=chay_luc,trang_thai,so_lech,ghi_chu&trang_thai=neq.running&order=chay_luc.desc&limit=1&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+  try{const r=await fetch(SUPABASE_URL+'/rest/v1/kiot_so_khop?select=chay_luc,trang_thai,so_lech,ghi_chu,ke_toan&trang_thai=neq.running&order=chay_luc.desc&limit=1&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
     const x=r.ok?(await r.json())[0]:null,xem=' <button onclick="event.stopPropagation();sbAdminGo(\'sokhop\')" style="border:1px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:6px;padding:1px 7px;font:700 11px inherit;cursor:pointer">Xem So khớp</button>';
     if(x&&(x.trang_thai==='lech'||x.trang_thai==='loi'))ra.push({cau:'<b>So khớp Kiot ↔ App '+(x.trang_thai==='loi'?'bị lỗi':'còn lệch')+'</b> (lượt '+dataMoiTruoc(x.chay_luc)+'): '+e(String(x.ghi_chu||'').slice(0,160))+xem});
-    else if(x&&phut(x.chay_luc)>16*60)ra.push({cau:'<b>So khớp Kiot ↔ App</b> chưa chạy từ '+dataMoiTruoc(x.chay_luc)+' (lịch 07:20 + 22:20)'+xem});}catch(x){}
+    else if(x&&phut(x.chay_luc)>16*60)ra.push({cau:'<b>So khớp Kiot ↔ App</b> chưa chạy từ '+dataMoiTruoc(x.chay_luc)+' (lịch 07:20 + 22:20)'+xem});
+    const kt=x&&x.ke_toan;if(kt&&(kt.loi||kt.so_lech))ra.push({cau:'<b>App Kế toán '+(kt.loi?'— chưa đọc được dữ liệu':'lệch Kiot '+kt.so_lech+' mã')+'</b> (check chéo lượt '+dataMoiTruoc(x.chay_luc)+'): '
+      +e((kt.lech||[]).slice(0,4).map(y=>y.code+' '+y.kieu.split(' ·')[0]).join(', '))+((kt.lech||[]).length>4?'…':'')+' — chuyển lời Kế toán'+xem});}catch(x){}
   const conNgay=Math.floor((new Date(PANCAKE_TOKEN_HET).getTime()-now)/864e5);
   if(conNgay<=7)ra.push({cau:'<b>Token Pancake '+(conNgay<0?'ĐÃ HẾT HẠN':'còn '+conNgay+' ngày là hết hạn')+'</b> ('+dmy(PANCAKE_TOKEN_HET.slice(0,10))+') — đổi token ở GitHub + Supabase, hết hạn là mọi đồng bộ Pancake dừng'});
   // mục 4 + 5 phải dựng danh sách khách (~1,3 giây) -> chỉ tính lại mỗi 15 phút, khi có đơn mới về hoặc vừa chọn tay Lẻ / Sỉ (sửa lag 05/11/2026)
@@ -7631,6 +7633,7 @@ async function renderSoKhop(){
   try{
     const r=await fetch(SUPABASE_URL+'/rest/v1/kiot_so_khop?select=*&order=chay_luc.desc&limit=40&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
     if(!r.ok)throw new Error('lỗi '+r.status);_sk.ds=await r.json();
+    try{const l=await fetch(SUPABASE_URL+'/rest/v1/danh_muc?select=link&loai=eq.so_khop_link_kt&limit=1&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});_sk.linkKt=l.ok?((await l.json())[0]||{}).link||'':'';}catch(e){_sk.linkKt='';}   // link Log so khớp của Kế toán (lưu CSDL, không để trong code public)
   }catch(e){el.innerHTML='<div class="tbl-card" style="padding:16px 18px;color:var(--red)">Chưa đọc được bảng kiot_so_khop: '+String(e.message).replace(/</g,'&lt;')+'</div>';return;}
   _sk.chon=Math.max(0,_sk.ds.findIndex(x=>x.trang_thai!=='running'));
   soKhopVe();
@@ -7644,9 +7647,10 @@ function soKhopVe(){
   const x=_sk.ds[_sk.chon];
   let h='<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
     +'<div style="font-size:20px;font-weight:800">So khớp Kiot ↔ App</div>'
-    +'<span class="tbl-count">2 lần / ngày · 07:20 + 22:20</span>'
+    +'<span class="tbl-count">Kiot · app MKT · app Kế toán · 2 lần / ngày 07:20 + 22:20</span>'
     +(x?pill(x.trang_thai)+'<span style="font-size:12px;color:var(--muted);font-weight:700">lượt '+gio(x.chay_luc)+(x.buoi?' · '+e(x.buoi):'')+'</span>':'')
     +'<button class="refresh-btn" style="margin:0 0 0 auto" onclick="soKhopChay(this)" title="Kích lượt quét lại Kiot + so khớp ngay (2-4 phút)">▶ So khớp ngay</button>'
+    +(_sk.linkKt?'<a class="btn-ghost" style="margin:0;text-decoration:none" href="'+e(_sk.linkKt)+'" target="_blank" rel="noopener" title="Trang Log so khớp của app Kế toán (họ tự soát)">Log bên Kế toán ↗</a>':'')
     +'<button class="btn-ghost" style="margin:0" onclick="renderSoKhop()">Tải lại</button></div>';
   if(!x){el.innerHTML=h+'<div class="tbl-card" style="padding:18px;color:var(--muted)">Chưa có lượt so khớp nào. Bấm So khớp ngay hoặc đợi lượt 07:20 / 22:00.</div>';return;}
   if(x.ghi_chu)h+='<div class="tbl-card" style="padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:700;border-left:4px solid '+(x.trang_thai==='khop'?'var(--green)':'var(--red)')+'">'+e(x.ghi_chu)
@@ -7655,18 +7659,26 @@ function soKhopVe(){
   const T=(x.thang||[]).slice().reverse();
   if(T.length){
     const o=(k,v,tien)=>{const a=v.kiot[k],b=v.app[k],f=tien?vnd:num;
-      return '<td style="text-align:right">'+f(a)+(Math.round(a)!==Math.round(b)?'<div style="font-size:11px;color:var(--red);font-weight:800">app '+f(b)+'</div>':'')+'</td>';};
+      const c=v.kt?v.kt[k]:null;
+      return '<td style="text-align:right">'+f(a)+(Math.round(a)!==Math.round(b)?'<div style="font-size:11px;color:var(--red);font-weight:800">app '+f(b)+'</div>':'')
+        +(c!=null&&Math.round(a)!==Math.round(c)?'<div style="font-size:11px;color:var(--orange,#f97316);font-weight:800">kế toán '+f(c)+'</div>':'')+'</td>';};
+    const ts=(x.ke_toan&&x.ke_toan.tu_soat)||{};
+    const kq=t=>{const a=t.khop,k=t.khopKt;const ds=[];if(!a)ds.push('<span style="color:var(--red);font-weight:800">App lệch</span>');if(k===false)ds.push('<span style="color:var(--orange,#f97316);font-weight:800">Kế toán lệch</span>');
+      const tu=ts[t.thang];const tuH=tu?'<div style="font-size:10.5px;color:var(--muted);font-weight:700" title="Kết luận Log so khớp của chính app Kế toán">KT tự soát: '+(tu.khop?'khớp':'lệch '+(tu.so_lech||''))+(k===false&&tu.khop?' <span style="color:var(--orange,#f97316)">(dữ liệu thô lệch)</span>':'')+'</div>':'';
+      return (ds.length?ds.join(' · '):'<span style="color:var(--green);font-weight:800">✓ Khớp'+(k===true?' 3 bên':'')+'</span>')+tuH;};
     h+='<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head"><div class="tbl-title">Theo tháng</div><span class="tbl-count">'
-      +T.filter(t=>t.khop).length+' / '+T.length+' tháng khớp</span></div><div class="tbl-scroll"><table><thead><tr>'
+      +T.filter(t=>t.khop&&t.khopKt!==false).length+' / '+T.length+' tháng khớp'+(T.some(t=>t.khopKt!=null)?' 3 bên':'')+'</span></div><div class="tbl-scroll"><table><thead><tr>'
       +'<th>Tháng</th><th style="text-align:right">Số đơn đặt</th><th style="text-align:right" title="Tổng tiền phiếu đặt hàng không huỷ, KỂ CẢ phiếu tạm chưa tiền (báo giá) -- không phải doanh thu Sale">Tiền đơn đặt (cả phiếu tạm)</th><th style="text-align:right">Số hoá đơn</th><th style="text-align:right">Doanh thu hoá đơn</th><th>Kết quả</th></tr></thead><tbody>'
       +T.map(t=>'<tr><td style="font-weight:700">'+t.thang.slice(5)+'/'+t.thang.slice(0,4)+'</td>'+o('don',t)+o('tienDon',t,1)+o('hd',t)+o('tienHd',t,1)
-        +'<td>'+(t.khop?'<span style="color:var(--green);font-weight:800">✓ Khớp</span>':'<span style="color:var(--red);font-weight:800">Lệch</span>')+'</td></tr>').join('')
-      +'</tbody></table></div><div style="padding:8px 16px 12px;font-size:11px;color:var(--muted)">Số Kiot; dòng đỏ = số app khi khác. Đơn đặt = không tính đơn huỷ · Hoá đơn = hoá đơn hoàn thành · theo ngày trên phiếu (giờ VN).</div></div>';
+        +'<td>'+kq(t)+'</td></tr>').join('')
+      +'</tbody></table></div><div style="padding:8px 16px 12px;font-size:11px;color:var(--muted)">Số Kiot; dòng đỏ = app MKT khác, dòng cam = app Kế toán khác (đọc bảng thô của Kế toán, bỏ mã Kiot vừa sửa &lt; 60 phút). Đơn đặt = không tính đơn huỷ · Hoá đơn = hoá đơn hoàn thành · theo ngày trên phiếu (giờ VN).</div></div>';
   }
   const bang=(tieu,ds,mau,cot)=>ds&&ds.length?'<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head" style="border-left:4px solid '+mau+'"><div class="tbl-title">'+tieu+'</div><div class="tbl-count" style="background:'+mau+';color:#fff">'+ds.length+'</div></div>'
     +'<div class="tbl-scroll"><table><thead><tr><th>Loại</th><th>Mã</th><th>'+cot+'</th></tr></thead><tbody>'
     +ds.map(d=>'<tr><td>'+e(d.loai)+'</td><td style="font-weight:700">'+e(d.code)+'</td><td>'+e(d.kieu||((d.ly||'')+(d.xu_ly?' → '+d.xu_ly:'')))+'</td></tr>').join('')+'</tbody></table></div></div>':'';
   h+=bang('Còn lệch',x.lech,'var(--red)','Chi tiết')+bang('Đã tự sửa lượt này',x.da_sua,'var(--green)','Lý do → xử lý');
+  if(x.ke_toan&&x.ke_toan.loi)h+='<div class="tbl-card" style="padding:12px 16px;margin-bottom:14px;color:var(--orange,#f97316);font-weight:700">'+e(x.ke_toan.loi)+'</div>';
+  else if(x.ke_toan)h+=bang('Bên Kế toán lệch Kiot — chuyển lời Kế toán',x.ke_toan.lech,'var(--orange,#f97316)','Chi tiết');
   // lịch sử
   h+='<div class="tbl-card"><div class="tbl-head"><div class="tbl-title">Các lượt gần đây</div><span class="tbl-count">'+_sk.ds.length+'</span></div><div class="tbl-scroll"><table><thead><tr><th>Lúc</th><th>Buổi</th><th>Kết quả</th><th style="text-align:right">Số mã</th><th style="text-align:right">Đã sửa</th><th>Ghi chú</th></tr></thead><tbody>'
     +_sk.ds.map((y,i)=>'<tr onclick="_sk.chon='+i+';soKhopVe();window.scrollTo(0,0)" style="cursor:pointer'+(i===_sk.chon?';background:var(--bg2)':'')+'"><td>'+gio(y.chay_luc)+'</td><td>'+e(y.buoi||'')+'</td><td>'+pill(y.trang_thai)+'</td>'
