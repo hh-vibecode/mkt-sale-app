@@ -7239,10 +7239,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='10/11 16:01';
+const APP_VERSION='10/11 16:26';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=559;
+const APP_BAN=560;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7400,23 +7400,22 @@ async function dlKiem(){
     if(lac.length)ra.push({cau:'<b>'+lac.length+' đơn Pancake</b> 3 ngày gần đây có SĐT / đủ thẻ mà <b>không hiện ở báo cáo Lẻ / Sỉ nào</b>: '
       +lac.slice(0,4).map(o=>e(o.customer_name||'?')+' ('+e(o.shop_name||'')+')').join(', ')+(lac.length>4?'…':'')});
   }catch(x){}
-  // 5. ĐƠN PAGE SHIDAI GẮN KH LẺ (anh Hải chốt 05/11/2026: "báo trong chuông, tự soát" -- không tự chuyển, có thể là khách Lẻ thật):
-  //    khách Lẻ có đơn page Shidai gắn thẻ KH LẺ, tạo từ 1/10/2026, chưa chọn tay -> liệt kê + nút Chuyển sang Sỉ / Đúng là Lẻ.
-  try{
-    const ds=cvKhach().ds.filter(x=>x.loai==='Lẻ'&&(x.r.orders||[]).some(o=>(/^Thời Đại/i.test(String(o.shop_name||''))||String(o.page_id||'')==='506247572578559')&&/KH LẺ/i.test(String(o.customer_tags||'')))
-      &&cvNgayTao(x.r)>=RPT_SL_SI_SALE_LE_TU&&![x.r.leadId].concat(rptSlIdsCua(x.r)).some(id=>String((rptSlManual[id]||{}).loai_sua||'').trim()));
-    if(ds.length){const q=String.fromCharCode(39),nut=(id,v,t,mau)=>'<button onclick="event.stopPropagation();dlLoai('+q+id+q+','+q+v+q+',this)" style="border:1px solid '+mau+';background:var(--surface);color:'+mau+';border-radius:6px;padding:1px 7px;font:700 10.5px var(--font);cursor:pointer;margin-left:4px">'+t+'</button>';
-      ra.push({cau:'<b>'+ds.length+' khách page Shidai (tổng kho sỉ) bị gắn KH LẺ</b> — đang nằm ở báo cáo Lẻ, kiểm xem có phải khách sỉ:'
-        +ds.slice(0,8).map(x=>'<div style="margin-top:3px">'+e(x.r.name||'?')+' <span style="color:var(--muted)">· '+e(x.r.kh||x.r.leadId)+' · '+e(x.r.staff||'chưa có Sale')+'</span>'
-          +nut(cvId(x.r.leadId),'Sỉ','Chuyển sang Sỉ','var(--accent)')+nut(cvId(x.r.leadId),'Lẻ','Đúng là Lẻ','var(--muted)')+'</div>').join('')
-        +(ds.length>8?'<div style="color:var(--muted)">… và '+(ds.length-8)+' khách nữa</div>':'')});}
-  }catch(x){}
+  // 5. ĐƠN PAGE SHIDAI GẮN KH LẺ: 10/11/2026 CHUYỂN SANG CHUÔNG CỦA SALE PHỤ TRÁCH (anh Hải: "ý t là gắn nhầm khách sỉ lẻ nữa ấy, m cứ gửi hoài")
+  //    -> xem dlNghiSiLe() + tbTinh. Chuông admin không báo mục này nữa.
   ra=raCu;nang=window._dlNang={khoa:nangKhoa,luc:now,ds:nangDs};}
   ra.push(...nang.ds);
   return ra;
 }
+// KHÁCH PAGE SHIDAI (TỔNG KHO SỈ) GẮN THẺ KH LẺ (05/11/2026 "báo trong chuông, tự soát" -- không tự chuyển, có thể là khách Lẻ thật):
+// khách đang ở báo cáo Lẻ, có đơn page Shidai gắn KH LẺ, tạo từ 1/10/2026, chưa ai chọn tay Lẻ / Sỉ (loai_sua).
+// 10/11/2026: báo vào chuông CỦA CHÍNH SALE PHỤ TRÁCH (tbTinh), Sale tự bấm Chuyển sang Sỉ / Đúng là Lẻ.
+function dlNghiSiLe(r){
+  return (r.orders||[]).some(o=>(/^Thời Đại/i.test(String(o.shop_name||''))||String(o.page_id||'')==='506247572578559')&&/KH LẺ/i.test(String(o.customer_tags||'')))
+    &&cvNgayTao(r)>=RPT_SL_SI_SALE_LE_TU&&![r.leadId].concat(rptSlIdsCua(r)).some(id=>String((rptSlManual[id]||{}).loai_sua||'').trim());
+}
 async function dlLoai(leadId,v,nut){
-  if(!dashToanQuyen())return alert('Chỉ Admin chuyển được');
+  // Admin, hoặc Sale đang nhận đúng khách này trong chuông (khách đứng tên mình) -- 10/11/2026
+  if(!dashToanQuyen()&&!(window._tbSiLeCua||new Set()).has(leadId))return alert('Chỉ Admin hoặc Sale phụ trách khách này chuyển được');
   if(nut){nut.disabled=true;nut.textContent='Đang lưu…';}
   try{await rptSlSaveManual(leadId,{loai_sua:v});window._dhLoaiSuaVer=(window._dhLoaiSuaVer||0)+1;rptSlXoaCache();_cvKh.khoa='';
     tbTinh();}catch(x){alert('Chưa lưu được: '+x.message);if(nut){nut.disabled=false;nut.textContent=v==='Sỉ'?'Chuyển sang Sỉ':'Đúng là Lẻ';}}
@@ -7435,6 +7434,7 @@ async function tbTinh(){
     let saleToi=null;try{saleToi=admin?null:cvSaleCuaAcc(cvAccCua(cvToi().id));}catch(e){}
     const boDau=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[đĐ]/g,'d').toLowerCase().trim();
     const laToi=st=>{const a=boDau(st),b=boDau(saleToi);return !!(a&&b&&(a===b||a.includes(b)||b.includes(a)));};
+    const siLe=new Set();
     const cu=window._rptSlType,cuK=window._kiotOrdByCode;
     try{['Lẻ','Sỉ'].forEach(t=>{
       if(!dashSeeType(t)||!dashCan(t==='Sỉ'?'report-salesi':'report-saleretail'))return;
@@ -7447,6 +7447,8 @@ async function tbTinh(){
         ds.push({loai:t,key:x.r.key,luc:x.kq.created_at||(String(x.kq.ngay_cham||'').slice(0,10)+'T12:00:00+07:00'),kieu:'xong',ten:x.r.name,viec:x.giao.viec_tiep,nguoi:ng});});
       const bk=(rptSlManualLoaded&&dhLoaded&&kiotLoaded)?rptSlTodoBuckets():null;
       todo[t]=bk?rptSlTongViec(bk):0;
+      if(saleToi&&t==='Lẻ')rptSlBuildMaster().filter(r=>laToi(r.staff)&&dlNghiSiLe(r)).forEach(r=>{siLe.add(cvId(r.leadId));
+        ds.push({loai:t,key:r.key,kieu:'sile',ten:r.name,ma:r.kh||r.leadId,id:cvId(r.leadId),nguoi:r.staff,luc:String(cvNgayTao(r)||hom).slice(0,10)+'T08:00:00+07:00'});});
       if(bk&&saleToi)(bk.maNgo||[]).filter(r=>laToi(r.staff)).forEach(r=>ds.push({loai:t,key:r.key,kieu:'ngo',ten:r.name,viec:r.ngoVi||'',ma:r.kh||'',nguoi:r.staff,
         luc:(String(r.lastKiotDate||r.closeDate||rptSlNgayTao(r)||hom).slice(0,10))+'T08:00:00+07:00'}));
       if(admin){const kc=kiotCustByCode();
@@ -7456,9 +7458,10 @@ async function tbTinh(){
               viec:o.code+' · '+vnd(Number(o.total||0)),han:String(o.purchase_date).slice(0,10),nguoi:o.sold_by_name||''});});}
     });}
     finally{window._rptSlType=cu;window._kiotOrdByCode=cuK;rptSlXoaCache();}
+    window._tbSiLeCua=siLe;
     ds.sort((a,b)=>String(b.luc).localeCompare(String(a.luc)));
     // admin: việc quá hạn + phiếu tạm TTV mới bị gỡ trong 7 ngày gần nhất (cũ hơn vẫn nằm trong danh sách, không đếm)
-    const so=ds.filter(x=>admin?(x.kieu==='qua'||(x.kieu==='tam'&&Date.now()-new Date(x.luc).getTime()<7*86400000)):(x.kieu==='giao'||x.kieu==='ngo')).length;   // 12/10/2026 bỏ bước Xác nhận -> admin chỉ đếm việc quá hạn
+    const so=ds.filter(x=>admin?(x.kieu==='qua'||(x.kieu==='tam'&&Date.now()-new Date(x.luc).getTime()<7*86400000)):(x.kieu==='giao'||x.kieu==='ngo'||x.kieu==='sile')).length;   // 12/10/2026 bỏ bước Xác nhận -> admin chỉ đếm việc quá hạn
     const dl=admin?await dlKiem():[];   // cảnh báo dữ liệu: chỉ admin, mỗi lỗi tính 1 vào số đỏ (05/11/2026)
     const lai=_tb.lai;_tb={ds:ds.slice(0,80),so:so+dl.length,nguoi,todo,admin,dl,luc:Date.now(),dangTinh:false};if(lai)setTimeout(tbTinh,50);
     tbVeSo();
@@ -7491,9 +7494,11 @@ function tbVe(){
       +'<span style="color:var(--text2);font-weight:700">còn '+x.con+'</span>'+(x.qh?'<span style="color:var(--red);font-weight:800">quá hạn '+x.qh+'</span>':'')+'</div>').join(''));
   const dt=Object.entries(_tb.todo||{}).filter(([t,n])=>n>0);
   if(dt.length)tren+=khung(dt.map(([t,n])=>'<div onclick="tbMo('+q+t+q+','+q+q+')" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px;cursor:pointer"><span style="flex:1">Daily Task Sale '+t+'</span><b style="color:var(--red)">'+n+' việc cần làm</b></div>').join(''));
-  const icon={xong:['#16a34a','✓'],giao:['#0091ae','▶'],nay:['#f59e0b','!'],qua:['#e11d48','!'],tam:['#7c3aed','!'],ngo:['#e11d48','?']};
+  const icon={xong:['#16a34a','✓'],giao:['#0091ae','▶'],nay:['#f59e0b','!'],qua:['#e11d48','!'],tam:['#7c3aed','!'],ngo:['#e11d48','?'],sile:['#7c3aed','?']};
   const cau=x=>x.kieu==='xong'?'<b>'+e(dxTen(x.nguoi))+'</b> đã xong việc “'+e(x.viec)+'” · '+e(x.ten)
     :x.kieu==='giao'?'<b>Admin</b> giao việc: “'+e(x.viec)+'” · '+e(x.ten)+(x.han?' · hạn '+dmy(x.han):'')
+    :x.kieu==='sile'?'<b style="color:#7c3aed">Nghi gắn nhầm Sỉ / Lẻ</b>: '+e(x.ten)+' · '+e(x.ma)+' — đơn page Shidai (tổng kho sỉ) gắn thẻ KH LẺ, đang ở báo cáo Lẻ. Khách sỉ thật?'
+      +'<div style="margin-top:5px">'+[['Sỉ','Chuyển sang Sỉ','var(--accent)'],['Lẻ','Đúng là Lẻ','var(--muted)']].map(([v,t,mau])=>'<button onclick="event.stopPropagation();dlLoai('+q+x.id+q+','+q+v+q+',this)" style="border:1px solid '+mau+';background:var(--surface);color:'+mau+';border-radius:6px;padding:2px 9px;font:700 11px var(--font);cursor:pointer;margin-right:6px">'+t+'</button>').join('')+'</div>'
     :x.kieu==='ngo'?'<b style="color:var(--red)">Mã KH nghi gán nhầm</b>: '+e(x.ten)+(x.ma?' · mã '+e(x.ma):'')+(x.viec?' — '+e(x.viec):'')+' · bấm để kiểm, sai thì dán lại mã đúng'
     :x.kieu==='tam'?'<b>Phiếu tạm Tự Tại Viên quá '+RPT_TTV_HAN_NGAY+' ngày chưa ra hoá đơn</b> — đã gỡ doanh thu: '+e(x.viec)+' · '+e(x.ten)+(x.nguoi?' · '+e(x.nguoi):'')
     :x.kieu==='nay'?'<b>Hôm nay hết hạn</b>: “'+e(x.viec)+'” · '+e(x.ten)+(_tb.admin?' · '+e(dxTen(x.nguoi)):'')
@@ -7502,7 +7507,7 @@ function tbVe(){
     return '<div onclick="tbMo('+q+x.loai+q+','+q+String(x.key).replace(/'/g,'')+q+(x.kieu==='ngo'?','+q+'s2b'+q:'')+')" style="display:flex;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);'+(moi?'background:var(--accent-l)':'')+'" onmouseover="this.style.filter=\'brightness(.97)\'" onmouseout="this.style.filter=\'\'">'
       +'<div style="flex:0 0 30px;height:30px;border-radius:50%;background:'+ic[0]+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">'+ic[1]+'</div>'
       +'<div style="min-width:0;flex:1"><div style="font-size:12.5px;line-height:1.45">'+cau(x)+'</div>'
-      +'<div style="font-size:11px;color:'+(moi?'var(--accent)':'var(--muted)')+';font-weight:700;margin-top:2px">Sale '+x.loai+' · '+(x.kieu==='nay'?'hạn hôm nay':x.kieu==='qua'?'hạn '+dmy(x.han):x.kieu==='tam'?'tạo '+dmy(x.han):x.kieu==='ngo'?'Daily Task · Mã KH nghi gán nhầm khách':dataMoiTruoc(x.luc))+'</div></div>'
+      +'<div style="font-size:11px;color:'+(moi?'var(--accent)':'var(--muted)')+';font-weight:700;margin-top:2px">Sale '+x.loai+' · '+(x.kieu==='nay'?'hạn hôm nay':x.kieu==='qua'?'hạn '+dmy(x.han):x.kieu==='tam'?'tạo '+dmy(x.han):x.kieu==='ngo'?'Daily Task · Mã KH nghi gán nhầm khách':x.kieu==='sile'?'chọn 1 trong 2 nút':dataMoiTruoc(x.luc))+'</div></div>'
       +(moi?'<span style="flex:0 0 9px;height:9px;border-radius:50%;background:var(--accent);margin-top:11px"></span>':'')+'</div>';}).join('');
   h.innerHTML='<div style="display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)"><b style="font-size:15px">Thông báo</b>'
     +'<span style="margin-left:auto;font-size:11px;color:var(--muted)">cập nhật '+dataMoiTruoc(_tb.luc)+'</span></div>'
