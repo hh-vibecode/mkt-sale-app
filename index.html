@@ -7239,10 +7239,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='10/11 15:30';
+const APP_VERSION='10/11 16:01';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=558;
+const APP_BAN=559;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7430,6 +7430,11 @@ async function tbTinh(){
   try{
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null)]);
     const admin=dashToanQuyenXem(),hom=tbGioVN(Date.now()),ds=[],nguoi={},todo={};
+    // MÃ KH NGHI GÁN NHẦM -> chuông của CHÍNH Sale phụ trách khách đó (anh Hải 10/11/2026: "khách nào nghi gắn nhầm m báo chuông cho chính
+    // ng sale phụ trách data ấy, để họ tự click"). Tài khoản = đúng 1 Sale (cvSaleCuaAcc, luật gộp tên); admin / tài khoản chung -> không nhận.
+    let saleToi=null;try{saleToi=admin?null:cvSaleCuaAcc(cvAccCua(cvToi().id));}catch(e){}
+    const boDau=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[đĐ]/g,'d').toLowerCase().trim();
+    const laToi=st=>{const a=boDau(st),b=boDau(saleToi);return !!(a&&b&&(a===b||a.includes(b)||b.includes(a)));};
     const cu=window._rptSlType,cuK=window._kiotOrdByCode;
     try{['Lẻ','Sỉ'].forEach(t=>{
       if(!dashSeeType(t)||!dashCan(t==='Sỉ'?'report-salesi':'report-saleretail'))return;
@@ -7440,7 +7445,10 @@ async function tbTinh(){
         if(han&&han<=hom)ds.push({loai:t,key:r.key,luc:han+'T00:00:00+07:00',kieu:han<hom?'qua':'nay',ten:r.name,viec:v.viec_tiep,han,nguoi:ng});});
       if(admin)rptSlViecDaXongDs().filter(x=>new Date(x.kq.created_at||x.kq.ngay_cham||0).getTime()>Date.now()-7*86400000).forEach(x=>{const ng=String(x.giao.nguoi_xu_ly||'').trim();(nguoi[ng]=nguoi[ng]||{con:0,qh:0,xong:0}).xong++;
         ds.push({loai:t,key:x.r.key,luc:x.kq.created_at||(String(x.kq.ngay_cham||'').slice(0,10)+'T12:00:00+07:00'),kieu:'xong',ten:x.r.name,viec:x.giao.viec_tiep,nguoi:ng});});
-      todo[t]=rptSlTodoCount();
+      const bk=(rptSlManualLoaded&&dhLoaded&&kiotLoaded)?rptSlTodoBuckets():null;
+      todo[t]=bk?rptSlTongViec(bk):0;
+      if(bk&&saleToi)(bk.maNgo||[]).filter(r=>laToi(r.staff)).forEach(r=>ds.push({loai:t,key:r.key,kieu:'ngo',ten:r.name,viec:r.ngoVi||'',ma:r.kh||'',nguoi:r.staff,
+        luc:(String(r.lastKiotDate||r.closeDate||rptSlNgayTao(r)||hom).slice(0,10))+'T08:00:00+07:00'}));
       if(admin){const kc=kiotCustByCode();
         kiotOrders.filter(o=>o.customer_code&&String(o.purchase_date||'')>='2026-01-01'&&rptSlTTVQuaHan(o)&&(KIOT_CN_SI.test(o.branch_name||'')?'Sỉ':'Lẻ')===t)
           .forEach(o=>{const d=new Date(String(o.purchase_date).slice(0,10));d.setDate(d.getDate()+RPT_TTV_HAN_NGAY+1);
@@ -7450,7 +7458,7 @@ async function tbTinh(){
     finally{window._rptSlType=cu;window._kiotOrdByCode=cuK;rptSlXoaCache();}
     ds.sort((a,b)=>String(b.luc).localeCompare(String(a.luc)));
     // admin: việc quá hạn + phiếu tạm TTV mới bị gỡ trong 7 ngày gần nhất (cũ hơn vẫn nằm trong danh sách, không đếm)
-    const so=ds.filter(x=>admin?(x.kieu==='qua'||(x.kieu==='tam'&&Date.now()-new Date(x.luc).getTime()<7*86400000)):x.kieu==='giao').length;   // 12/10/2026 bỏ bước Xác nhận -> admin chỉ đếm việc quá hạn
+    const so=ds.filter(x=>admin?(x.kieu==='qua'||(x.kieu==='tam'&&Date.now()-new Date(x.luc).getTime()<7*86400000)):(x.kieu==='giao'||x.kieu==='ngo')).length;   // 12/10/2026 bỏ bước Xác nhận -> admin chỉ đếm việc quá hạn
     const dl=admin?await dlKiem():[];   // cảnh báo dữ liệu: chỉ admin, mỗi lỗi tính 1 vào số đỏ (05/11/2026)
     const lai=_tb.lai;_tb={ds:ds.slice(0,80),so:so+dl.length,nguoi,todo,admin,dl,luc:Date.now(),dangTinh:false};if(lai)setTimeout(tbTinh,50);
     tbVeSo();
@@ -7483,17 +7491,18 @@ function tbVe(){
       +'<span style="color:var(--text2);font-weight:700">còn '+x.con+'</span>'+(x.qh?'<span style="color:var(--red);font-weight:800">quá hạn '+x.qh+'</span>':'')+'</div>').join(''));
   const dt=Object.entries(_tb.todo||{}).filter(([t,n])=>n>0);
   if(dt.length)tren+=khung(dt.map(([t,n])=>'<div onclick="tbMo('+q+t+q+','+q+q+')" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px;cursor:pointer"><span style="flex:1">Daily Task Sale '+t+'</span><b style="color:var(--red)">'+n+' việc cần làm</b></div>').join(''));
-  const icon={xong:['#16a34a','✓'],giao:['#0091ae','▶'],nay:['#f59e0b','!'],qua:['#e11d48','!'],tam:['#7c3aed','!']};
+  const icon={xong:['#16a34a','✓'],giao:['#0091ae','▶'],nay:['#f59e0b','!'],qua:['#e11d48','!'],tam:['#7c3aed','!'],ngo:['#e11d48','?']};
   const cau=x=>x.kieu==='xong'?'<b>'+e(dxTen(x.nguoi))+'</b> đã xong việc “'+e(x.viec)+'” · '+e(x.ten)
     :x.kieu==='giao'?'<b>Admin</b> giao việc: “'+e(x.viec)+'” · '+e(x.ten)+(x.han?' · hạn '+dmy(x.han):'')
+    :x.kieu==='ngo'?'<b style="color:var(--red)">Mã KH nghi gán nhầm</b>: '+e(x.ten)+(x.ma?' · mã '+e(x.ma):'')+(x.viec?' — '+e(x.viec):'')+' · bấm để kiểm, sai thì dán lại mã đúng'
     :x.kieu==='tam'?'<b>Phiếu tạm Tự Tại Viên quá '+RPT_TTV_HAN_NGAY+' ngày chưa ra hoá đơn</b> — đã gỡ doanh thu: '+e(x.viec)+' · '+e(x.ten)+(x.nguoi?' · '+e(x.nguoi):'')
     :x.kieu==='nay'?'<b>Hôm nay hết hạn</b>: “'+e(x.viec)+'” · '+e(x.ten)+(_tb.admin?' · '+e(dxTen(x.nguoi)):'')
     :'<b style="color:var(--red)">Quá hạn</b> '+Math.round((new Date(tbGioVN(Date.now()))-new Date(x.han))/86400000)+' ngày: “'+e(x.viec)+'” · '+e(x.ten)+(_tb.admin?' · '+e(dxTen(x.nguoi)):'');
   const dong=(_tb.ds||[]).map(x=>{const moi=new Date(x.luc).getTime()>m,ic=icon[x.kieu];
-    return '<div onclick="tbMo('+q+x.loai+q+','+q+String(x.key).replace(/'/g,'')+q+')" style="display:flex;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);'+(moi?'background:var(--accent-l)':'')+'" onmouseover="this.style.filter=\'brightness(.97)\'" onmouseout="this.style.filter=\'\'">'
+    return '<div onclick="tbMo('+q+x.loai+q+','+q+String(x.key).replace(/'/g,'')+q+(x.kieu==='ngo'?','+q+'s2b'+q:'')+')" style="display:flex;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);'+(moi?'background:var(--accent-l)':'')+'" onmouseover="this.style.filter=\'brightness(.97)\'" onmouseout="this.style.filter=\'\'">'
       +'<div style="flex:0 0 30px;height:30px;border-radius:50%;background:'+ic[0]+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px">'+ic[1]+'</div>'
       +'<div style="min-width:0;flex:1"><div style="font-size:12.5px;line-height:1.45">'+cau(x)+'</div>'
-      +'<div style="font-size:11px;color:'+(moi?'var(--accent)':'var(--muted)')+';font-weight:700;margin-top:2px">Sale '+x.loai+' · '+(x.kieu==='nay'?'hạn hôm nay':x.kieu==='qua'?'hạn '+dmy(x.han):x.kieu==='tam'?'tạo '+dmy(x.han):dataMoiTruoc(x.luc))+'</div></div>'
+      +'<div style="font-size:11px;color:'+(moi?'var(--accent)':'var(--muted)')+';font-weight:700;margin-top:2px">Sale '+x.loai+' · '+(x.kieu==='nay'?'hạn hôm nay':x.kieu==='qua'?'hạn '+dmy(x.han):x.kieu==='tam'?'tạo '+dmy(x.han):x.kieu==='ngo'?'Daily Task · Mã KH nghi gán nhầm khách':dataMoiTruoc(x.luc))+'</div></div>'
       +(moi?'<span style="flex:0 0 9px;height:9px;border-radius:50%;background:var(--accent);margin-top:11px"></span>':'')+'</div>';}).join('');
   h.innerHTML='<div style="display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)"><b style="font-size:15px">Thông báo</b>'
     +'<span style="margin-left:auto;font-size:11px;color:var(--muted)">cập nhật '+dataMoiTruoc(_tb.luc)+'</span></div>'
@@ -7737,10 +7746,10 @@ function tbCaiDatBam(ev){if(ev)ev.stopPropagation();const mn=document.getElement
 document.addEventListener('click',ev=>{['tbHop','tbMenu'].forEach(id=>{const el=document.getElementById(id);if(el&&el.style.display==='block'&&!el.contains(ev.target))el.style.display='none';});});
 // BẤM TIN -> CHUYỂN TRANG tới Daily Task của báo cáo đó, cuộn tới bảng "Việc được giao" (tin Daily Task: lên đầu trang).
 // Không mở hồ sơ khách (anh Hải 08/10/2026: "chuyển hẳn sang trang có phần đấy, không phải mở ra việc").
-function tbMo(loai,key){
+function tbMo(loai,key,sec){
   const h=document.getElementById('tbHop');if(h)h.style.display='none';
   try{localStorage.setItem('rptSlViewMode_'+loai,'input');}catch(e){}
-  window._tbMoKhach={loai,cuon:!!key};
+  window._tbMoKhach={loai,cuon:!!key,sec:sec||''};
   const p=loai==='Sỉ'?'report-salesi':'report-saleretail';
   if(window._trangHienTai===p){window._rptSlType=loai;rptSlRender();}else switchPage(p);
 }
@@ -7868,8 +7877,8 @@ async function rptSlRenderPage(type){
   }
   try{if(typeof tblAlign==='function')tblAlign();}catch(e){}
   // đến từ chuông thông báo -> mở hồ sơ khách, tab Lịch sử chăm sóc (08/10/2026)
-  if(window._tbMoKhach&&window._tbMoKhach.loai===rptSlType()){const cuon=window._tbMoKhach.cuon;window._tbMoKhach=null;
-    try{const bang=cuon&&el.querySelector('[data-sec="sGiao"]');
+  if(window._tbMoKhach&&window._tbMoKhach.loai===rptSlType()){const cuon=window._tbMoKhach.cuon,sec=window._tbMoKhach.sec||'sGiao';window._tbMoKhach=null;
+    try{const bang=cuon&&el.querySelector('[data-sec="'+sec+'"]');
       if(bang){bang.scrollIntoView({behavior:'smooth',block:'start'});bang.style.transition='box-shadow .3s';bang.style.boxShadow='0 0 0 3px var(--red)';setTimeout(()=>{bang.style.boxShadow='';},1800);}
       else window.scrollTo({top:0,behavior:'smooth'});}catch(e){}}
 }
