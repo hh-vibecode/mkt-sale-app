@@ -4,7 +4,7 @@ name: Đối soát Kiot (chạy tay)
 # chốt 08/10). Lịch GitHub hay trễ 1-4 tiếng (lượt 11/10 hẹn 23:00 chạy 03:03 sáng). source sync_log GIỮ tên 'Đối soát Kiot (tuần)' vì app đọc tên đó.
 # 1) kéo lại TOÀN BỘ hoá đơn từ 1/1/2026 + đơn đặt hàng  2) so từng mã Kiot API vs CSDL app -> ghi sync_log
 #    (source 'Đối soát Kiot (tuần)'), tab Data Hub > Đối soát hiện kết quả. Không tự xoá gì.
-# 10/11/2026: BỎ LỊCH 23:00 -- so khớp tự động đã chuyển vào sync-kiot.yml (07:20 + 22:20 VN, scripts/so-khop-kiot.js có tự sửa).
+# 10/11/2026: BỎ LỊCH 23:00 -- so khớp tự động đã chuyển vào sync-kiot.yml (lượt 15 phút đầu khung 7h + 22h VN, scripts/so-khop-kiot.js có tự sửa).
 # Workflow này giữ để bấm chạy tay: kéo lại toàn bộ rồi so khớp.
 on:
   workflow_dispatch:

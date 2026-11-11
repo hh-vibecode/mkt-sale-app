@@ -26,15 +26,35 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '20'}
+      # LƯỢT QUÉT LẠI TOÀN BỘ + SO KHỚP (11/11/2026): trước đây do pg_cron gọi riêng goi_sync('kiot', true) lúc 00:20 UTC -- TRÙNG PHÚT với lượt
+      # 15 phút nên Edge Function sync-now từ chối 1 trong 2 ("Job đang chạy rồi") -> 11/11 mất lượt 07:20. Nay KHÔNG gọi riêng nữa: lượt 15 phút
+      # nào chạy trong khung 7h hoặc 22h giờ VN mà 3 tiếng qua CHƯA có lượt so khớp (bảng kiot_so_khop) thì tự làm lượt toàn bộ; lỡ lượt này thì
+      # lượt 15 phút kế tiếp trong giờ làm thay. Bấm chạy tay có tick backfill thì luôn là lượt toàn bộ.
+      - name: Xác định lượt (quét lại toàn bộ + so khớp?)
+        id: luot
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TAY: ${{ inputs.backfill && '1' || '0' }}
+        run: |
+          GIO=$(TZ=Asia/Ho_Chi_Minh date +%H)
+          DAY=0
+          if [ "$TAY" = "1" ]; then DAY=1
+          elif [ "$GIO" = "07" ] || [ "$GIO" = "22" ]; then
+            TU=$(date -u -d '-3 hours' +%Y-%m-%dT%H:%M:%SZ)
+            N=$(curl -s "https://bcrpxfvvjsjpvbksqzls.supabase.co/rest/v1/kiot_so_khop?select=id&chay_luc=gte.$TU&limit=1&offset=0" -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" | grep -c '"id"' || true)
+            [ "$N" = "0" ] && DAY=1
+          fi
+          echo "day_du=$DAY" >> "$GITHUB_OUTPUT"
+          echo "Giờ VN $GIO -> lượt quét lại toàn bộ + so khớp: $DAY"
       - name: Sync hoá đơn KiotViet -> Supabase
         env:
           KIOT_CLIENT_ID: ${{ secrets.KIOT_CLIENT_ID }}
           KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          BACKFILL: ${{ (github.event.schedule == '5 0 * * *' || inputs.backfill) && '1' || '0' }}
+          BACKFILL: ${{ steps.luot.outputs.day_du }}
         run: node scripts/sync-kiot-invoices.js
       # Đơn đặt hàng = nguồn doanh số + ngày chốt của báo cáo Sale (hoá đơn phía trên chỉ để đối soát).
-      # 30/10/2026: lượt 15 phút chỉ lấy đơn VỪA SỬA (lastModifiedFrom 3 giờ); lượt backfill hằng ngày (07:20 VN) quét lại TOÀN BỘ.
+      # 30/10/2026: lượt 15 phút chỉ lấy đơn VỪA SỬA (lastModifiedFrom 3 giờ); lượt toàn bộ (lượt 15 phút đầu khung 7h + 22h VN, 11/11) quét lại TOÀN BỘ.
       # Hoá đơn: lượt 15 phút lấy hoá đơn + khách vừa sửa 6 giờ; backfill = hoá đơn tháng hiện tại + toàn bộ khách, Chủ nhật toàn bộ hoá đơn.
       # 10/11/2026: TRƯỚC ĐÂY bước này KHÔNG nhận BACKFILL -> từ 31/10 không lượt nào quét lại toàn bộ đơn đặt hàng (chỉ đơn sửa 3 giờ) ->
       # đơn Kiot xoá / phiếu hiện lại với ngày sửa cũ không bao giờ về app (DH001689.03.02, DH002643...). Giờ lượt backfill quét toàn bộ.
@@ -44,23 +64,23 @@ jobs:
           KIOT_CLIENT_ID: ${{ secrets.KIOT_CLIENT_ID }}
           KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          BACKFILL: ${{ (github.event.schedule == '5 0 * * *' || inputs.backfill) && '1' || '0' }}
+          BACKFILL: ${{ steps.luot.outputs.day_du }}
         run: node scripts/sync-kiot-orders.js
 
-      # SO KHỚP KIOT ↔ APP (anh Hải 10/11/2026: "ngày 2 lần sáng tối check cho t xong report vô đó"): chỉ lượt backfill = 07:20 VN
-      # (pg_cron sync-backfill-kiot) + 22:20 VN (pg_cron so-khop-toi). So từng mã, tự kéo bù / đánh dấu Kiot đã xoá, ghi bảng kiot_so_khop
+      # SO KHỚP KIOT ↔ APP (anh Hải 10/11/2026: "ngày 2 lần sáng tối check cho t xong report vô đó"): chỉ lượt toàn bộ = lượt 15 phút đầu
+      # tiên khung 7h + 22h VN (bước 'Xác định lượt'). So từng mã, tự kéo bù / đánh dấu Kiot đã xoá, ghi bảng kiot_so_khop
       # -> Cài đặt nâng cao > So khớp Kiot. Chạy NGAY sau 2 bước kéo để các bước tự tạo phía dưới dùng dữ liệu đã sửa.
       - name: So khớp Kiot ↔ app (tự sửa)
-        if: always() && (github.event.schedule == '5 0 * * *' || inputs.backfill)
+        if: always() && steps.luot.outputs.day_du == '1'
         env:
           KIOT_CLIENT_ID: ${{ secrets.KIOT_CLIENT_ID }}
           KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/so-khop-kiot.js
 
-      # Danh mục hàng (nhóm cha) cho thẻ "Doanh số theo nhóm hàng" ở Báo cáo tổng hợp (30/10/2026) -- chỉ lượt quét lại hằng ngày (07:20 VN).
+      # Danh mục hàng (nhóm cha) cho thẻ "Doanh số theo nhóm hàng" ở Báo cáo tổng hợp (30/10/2026) -- chỉ lượt quét lại toàn bộ (khung 7h + 22h VN).
       - name: Sync danh mục hàng KiotViet (nhóm cha)
-        if: always() && (github.event.schedule == '5 0 * * *' || inputs.backfill)
+        if: always() && steps.luot.outputs.day_du == '1'
         env:
           KIOT_CLIENT_ID: ${{ secrets.KIOT_CLIENT_ID }}
           KIOT_CLIENT_SECRET: ${{ secrets.KIOT_CLIENT_SECRET }}

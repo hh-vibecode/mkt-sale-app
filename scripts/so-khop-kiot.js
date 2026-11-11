@@ -1,8 +1,8 @@
 // SO KHỚP KIOT ↔ APP MKT, 2 LẦN / NGÀY (anh Hải 10/11/2026: "nhét vào cài đặt nâng cao, tạo phần so khớp, định kỳ ngày 2 lần sáng tối
 // check cho t xong report vô đó"). Monsieur Claude. Thay scripts/doi-soat-kiot.js (chỉ báo, không sửa -- lệch nằm đó từ 03/11 không ai biết).
 //
-// Lịch: chạy CUỐI lượt quét lại toàn bộ Kiot (workflow sync-kiot.yml, backfill): sáng 07:20 VN (pg_cron sync-backfill-kiot) + tối 22:20 VN
-// (pg_cron so-khop-toi). Chạy tay: Actions > Sync KiotViet > Run workflow (tick backfill), hoặc `node scripts/so-khop-kiot.js`.
+// Lịch (11/11/2026): lượt 15 phút ĐẦU TIÊN trong khung 7h + 22h giờ VN mà 3 tiếng qua chưa có lượt so khớp -> workflow sync-kiot.yml tự làm lượt toàn bộ
+// (bước 'Xác định lượt'; bỏ 2 lịch pg_cron riêng vì trùng phút bị sync-now từ chối). Chạy tay: Actions > Sync KiotViet > Run workflow (tick backfill), hoặc `node scripts/so-khop-kiot.js`.
 //
 // Từng bước:
 //  1) Lấy TOÀN BỘ đơn đặt hàng Kiot + hoá đơn từ 1/1/2026 (theo tháng), và bảng kiot_orders / kiot_invoices của app.

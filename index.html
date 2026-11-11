@@ -3026,10 +3026,10 @@ const DH_CRON=[
    viec:['Kéo đơn + thẻ khách + ghi chú nội bộ về bảng datahub_orders',
          'Tự đổi trạng thái đơn (bước B3): khách tiềm năng → Đã xác nhận · khách chốt → Đã gửi hàng']},
   {job:'kiot',ten:'KiotViet → đơn đặt hàng',src:'KiotViet - Đơn đặt hàng',
-   lich:'mỗi 15 phút · quét lại toàn bộ 7h20 · 22h20',
+   lich:'mỗi 15 phút · quét lại toàn bộ khoảng 7h05 · 22h05',
    viec:['Kéo đơn đặt hàng (DH…) từ 1/6 — đây là nguồn DOANH THU và NGÀY CHỐT của báo cáo Sale']},
   {job:'kiot',ten:'So khớp Kiot ↔ App',src:'Đối soát Kiot (tuần)',
-   lich:'7h20 · 22h20 (cuối lượt quét lại toàn bộ)',
+   lich:'khoảng 7h05 · 22h05 (lượt 15 phút đầu khung 7h / 22h)',
    viec:['So từng mã đơn đặt hàng + hoá đơn 2026 với Kiot; tự kéo bù mã thiếu / lệch, đánh dấu mã Kiot đã xoá','Kết quả: Cài đặt nâng cao › So khớp Kiot · còn lệch thì báo chuông admin']},
   {job:'kiot',ten:'KiotViet → hoá đơn + khách',src:'KiotViet - Hoá đơn',
    lich:'chạy cùng lượt với đơn đặt hàng',
@@ -7239,10 +7239,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='10/11 16:26';
+const APP_VERSION='11/11 14:18';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=560;
+const APP_BAN=561;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7379,11 +7379,11 @@ async function dlKiem(){
     // job chạy mỗi tiếng 6h–22h (05/11/2026): trong giờ đó quá 2 tiếng chưa chạy, hoặc quá 9 tiếng ở bất kỳ lúc nào -> báo
     const gioVN=new Date(now+7*3600e3).getUTCHours();
     if(j&&(phut(j.luc)>9*60||(gioVN>=7&&gioVN<=23&&phut(j.luc)>120)))ra.push({cau:'<b>Job tự tạo đơn từ hội thoại</b> (mỗi tiếng 6h–22h) chưa chạy từ '+dataMoiTruoc(j.luc)+' — khách để SĐT trên page có thể chưa vào app'});}catch(x){}
-  // 6. SO KHỚP KIOT ↔ APP (10/11/2026): lượt gần nhất còn lệch / lỗi, hoặc quá 16 tiếng chưa có lượt nào (lịch 07:20 + 22:20 VN)
+  // 6. SO KHỚP KIOT ↔ APP (10/11/2026): lượt gần nhất còn lệch / lỗi, hoặc quá 17 tiếng chưa có lượt nào (khung 7h + 22h VN)
   try{const r=await fetch(SUPABASE_URL+'/rest/v1/kiot_so_khop?select=chay_luc,trang_thai,so_lech,ghi_chu,ke_toan&trang_thai=neq.running&order=chay_luc.desc&limit=1&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
     const x=r.ok?(await r.json())[0]:null,xem=' <button onclick="event.stopPropagation();sbAdminGo(\'sokhop\')" style="border:1px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:6px;padding:1px 7px;font:700 11px inherit;cursor:pointer">Xem So khớp</button>';
     if(x&&(x.trang_thai==='lech'||x.trang_thai==='loi'))ra.push({cau:'<b>So khớp Kiot ↔ App '+(x.trang_thai==='loi'?'bị lỗi':'còn lệch')+'</b> (lượt '+dataMoiTruoc(x.chay_luc)+'): '+e(String(x.ghi_chu||'').slice(0,160))+xem});
-    else if(x&&phut(x.chay_luc)>16*60)ra.push({cau:'<b>So khớp Kiot ↔ App</b> chưa chạy từ '+dataMoiTruoc(x.chay_luc)+' (lịch 07:20 + 22:20)'+xem});
+    else if(x&&phut(x.chay_luc)>17*60)ra.push({cau:'<b>So khớp Kiot ↔ App</b> chưa chạy từ '+dataMoiTruoc(x.chay_luc)+' (khung 7h + 22h)'+xem});
     const kt=x&&x.ke_toan;if(kt&&(kt.loi||kt.so_lech))ra.push({cau:'<b>App Kế toán '+(kt.loi?'— chưa đọc được dữ liệu':'lệch Kiot '+kt.so_lech+' mã')+'</b> (check chéo lượt '+dataMoiTruoc(x.chay_luc)+'): '
       +e((kt.lech||[]).slice(0,4).map(y=>y.code+' '+y.kieu.split(' ·')[0]).join(', '))+((kt.lech||[]).length>4?'…':'')+' — chuyển lời Kế toán'+xem});}catch(x){}
   const conNgay=Math.floor((new Date(PANCAKE_TOKEN_HET).getTime()-now)/864e5);
@@ -7637,7 +7637,7 @@ function logicDong(d){return d.length>=4?{muc:d[0],qt:d[1],gc:d[2],ngay:d[3]}:{m
 // TRANG "LOGIC XỬ LÝ" trong menu Cài đặt nâng cao (anh Hải 19/10/2026: "phải cho vào cài đặt nâng cao, bánh răng chỉ cho các nút
 // chức năng") -- trang riêng như Phân quyền / Nhật ký, không còn là cửa sổ bật lên từ bánh răng.
 // ════════ SO KHỚP KIOT ↔ APP (anh Hải 10/11/2026: "nhét vào cài đặt nâng cao, tạo phần so khớp, định kỳ ngày 2 lần sáng tối check cho t
-// xong report vô đó"). Job scripts/so-khop-kiot.js chạy cuối lượt quét lại Kiot 07:20 + 22:20 VN: so TỪNG MÃ đơn đặt hàng + hoá đơn 2026,
+// xong report vô đó"). Job scripts/so-khop-kiot.js chạy cuối lượt quét lại Kiot khung 7h + 22h VN: so TỪNG MÃ đơn đặt hàng + hoá đơn 2026,
 // tự kéo bù mã app thiếu / khác, đánh dấu mã Kiot đã xoá (kiot_da_xoa), rồi ghi 1 dòng vào bảng kiot_so_khop. Trang này chỉ ĐỌC bảng đó.
 let _sk={ds:[],chon:0,tai:false};
 async function renderSoKhop(){
@@ -7661,12 +7661,12 @@ function soKhopVe(){
   const x=_sk.ds[_sk.chon];
   let h='<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">'
     +'<div style="font-size:20px;font-weight:800">So khớp Kiot ↔ App</div>'
-    +'<span class="tbl-count">Kiot · app MKT · app Kế toán · 2 lần / ngày 07:20 + 22:20</span>'
+    +'<span class="tbl-count">Kiot · app MKT · app Kế toán · 2 lần / ngày khung 7h + 22h</span>'
     +(x?pill(x.trang_thai)+'<span style="font-size:12px;color:var(--muted);font-weight:700">lượt '+gio(x.chay_luc)+(x.buoi?' · '+e(x.buoi):'')+'</span>':'')
     +'<button class="refresh-btn" style="margin:0 0 0 auto" onclick="soKhopChay(this)" title="Kích lượt quét lại Kiot + so khớp ngay (2-4 phút)">▶ So khớp ngay</button>'
     +(_sk.linkKt?'<a class="btn-ghost" style="margin:0;text-decoration:none" href="'+e(_sk.linkKt)+'" target="_blank" rel="noopener" title="Trang Log so khớp của app Kế toán (họ tự soát)">Log bên Kế toán ↗</a>':'')
     +'<button class="btn-ghost" style="margin:0" onclick="renderSoKhop()">Tải lại</button></div>';
-  if(!x){el.innerHTML=h+'<div class="tbl-card" style="padding:18px;color:var(--muted)">Chưa có lượt so khớp nào. Bấm So khớp ngay hoặc đợi lượt 07:20 / 22:00.</div>';return;}
+  if(!x){el.innerHTML=h+'<div class="tbl-card" style="padding:18px;color:var(--muted)">Chưa có lượt so khớp nào. Bấm So khớp ngay hoặc đợi lượt khung 7h / 22h.</div>';return;}
   if(x.ghi_chu)h+='<div class="tbl-card" style="padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:700;border-left:4px solid '+(x.trang_thai==='khop'?'var(--green)':'var(--red)')+'">'+e(x.ghi_chu)
     +(x.so_ma?' <span style="color:var(--muted);font-weight:600">· đã so '+num(x.so_ma)+' mã</span>':'')+'</div>';
   // bảng theo tháng
