@@ -4966,6 +4966,7 @@ function cvMoNgay(d,nguoiId){const st=cvSt();st.ngay=st.tu=st.den=d;cvKhoang=nul
 // Sale thấy của mình; Admin thấy mọi Sale có việc trong ngày.
 const BCN_TT={'Phân loại KH':'Đổi phân loại','Thẻ khách':'Gắn thẻ Pancake','Ảnh / tài liệu':'Thêm ảnh','Khách VIP':'Khách VIP','Chuyển loại khách':'Chuyển Sỉ / Lẻ',
   'Loại khách':'Chuyển Sỉ / Lẻ','Lượt chăm sóc':'Sửa lượt chăm sóc','Giao việc':'Giao việc','Sales phụ trách':'Đổi Sale','Mã KH':'Gắn Mã KH'};
+const BCN_NGUOI=['Nguyễn Khánh Nguyên','Bùi Thị Kim Oanh'];   // tab của Admin (12/11/2026), đúng tên ở Phân quyền > Nhân sự Sale
 async function bcnTaiLog(d){
   if(window._bcnLog&&window._bcnLog.d===d)return window._bcnLog.rows;
   const t=new Date(d+'T12:00:00');t.setDate(t.getDate()+1);const sau=t.toISOString().slice(0,10);
@@ -5024,18 +5025,18 @@ async function renderCongViec(taiLai){
     +'<button class="cv-chip" onclick="renderCongViec(true)" title="Tải lại dữ liệu">Làm mới</button></div>';
   let ds;
   if(het){
-    ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten&&x.ten!==RPT_SL_BOT_SI)
+    // CHỈ 2 NHÂN SỰ (anh Hải 12/11/2026: "t chỉ cần của Nguyên vs Oanh thôi" -- Oanh = Kim Oanh). Thêm người: thêm tên vào BCN_NGUOI.
+    ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&BCN_NGUOI.includes(String(x.ten||'').trim()))
+      .sort((p,q)=>BCN_NGUOI.indexOf(p.ten.trim())-BCN_NGUOI.indexOf(q.ten.trim()))
       .map(x=>({sale:x.ten,acc:((window._rptSlAccs||[]).find(a=>cvSaleCuaAcc(a)===x.ten)||{}).name||''}));
   }else{const sale=cvSaleCuaAcc(cvAccCua(toi.id));ds=sale?[{sale,acc:toi.ten}]:[];}
-  const the=ds.map(p=>({p,so:cvCuoiNgaySoLieu(p.sale,p.acc,d),tt:bcnThaoTac(log,p.acc)}))
-    .sort((x,y)=>y.so.tien-x.so.tien||(y.so.moi.length+y.so.cu.length)-(x.so.moi.length+x.so.cu.length));
+  const the=ds.map(p=>({p,so:cvCuoiNgaySoLieu(p.sale,p.acc,d),tt:bcnThaoTac(log,p.acc)}));   // thứ tự cố định theo BCN_NGUOI
   const rong=t=>'<div class="bcn"><div style="padding:22px 20px;color:var(--muted);font-size:12.5px">'+t+'</div></div>';
   // MỖI NHÂN SỰ 1 TAB (anh Hải 12/11/2026: "mỗi nhân sự là 1 tab đi, cho dễ nhìn"): Admin thấy hàng tab tên Sale (người có việc trước,
   // người chưa có việc chữ mờ), bấm tab xem thẻ của người đó; Sale thường chỉ có thẻ của mình nên không hiện tab.
   const coViec=t=>!!(t.so.moi.length||t.so.cu.length||t.so.chot.length||t.tt.length);
   let tabs='',xem=the;
   if(het&&the.length){
-    the.sort((x,y)=>(coViec(y)?1:0)-(coViec(x)?1:0));
     if(!the.some(t=>t.p.sale===st.bcnSale))st.bcnSale=the[0].p.sale;
     // tên gọi: chữ cuối (Lệ, Nguyên); trùng thì 2 chữ cuối (Minh Oanh / Kim Oanh); vẫn trùng thì tên đầy đủ
     const cuoi=(t,n)=>t.trim().split(/\s+/).slice(-n).join(' '),ngan=t=>{for(const n of [1,2])if(the.filter(x=>cuoi(x.p.sale,n)===cuoi(t,n)).length===1)return cuoi(t,n);return t;};
@@ -7366,10 +7367,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/11 14:16';
+const APP_VERSION='12/11 14:31';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=564;
+const APP_BAN=565;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
