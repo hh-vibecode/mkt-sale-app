@@ -347,9 +347,10 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
 .bcn-dau{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:16px 20px 4px;flex-wrap:wrap}
 .bcn-ten{font-size:16px;font-weight:800;color:var(--text)}
 .bcn-ngay{font-size:12px;color:var(--muted);font-weight:600}
-.bcn-so{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:10px 20px 16px}
+.bcn-so{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:10px 20px 16px}
 .bcn-so .n{font-size:22px;font-weight:800;color:var(--text);line-height:1.2}
 .bcn-so .l{font-size:11px;color:var(--muted);font-weight:600}
+.bcn-ngay-tieu{padding:9px 20px;font-size:12.5px;font-weight:800;color:var(--text);background:var(--bg2);border-top:1px solid var(--border)}
 .bcn-nhom{padding:4px 20px 14px;border-top:1px solid var(--border)}
 .bcn-nhom h4{margin:12px 0 4px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .bcn-dong{display:flex;gap:16px;padding:9px 0;border-bottom:1px solid var(--bg2);font-size:12.5px;line-height:1.55}
@@ -366,7 +367,7 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
 .bcn-tt summary b{color:var(--text);margin-left:4px}
 .bcn-tt details[open]{flex-basis:100%}
 .bcn-tt .ct{padding:2px 11px 8px;color:var(--text2);line-height:1.6}
-@media(max-width:640px){.bcn-so{grid-template-columns:repeat(2,minmax(0,1fr))}.bcn-dong{flex-direction:column;gap:2px}.bcn-kh{flex-basis:auto}.bcn-dau,.bcn-so,.bcn-nhom{padding-left:14px;padding-right:14px}}
+@media(max-width:640px){.bcn-so{grid-template-columns:repeat(2,minmax(0,1fr))}.bcn-dong{flex-direction:column;gap:2px}.bcn-kh{flex-basis:auto}.bcn-dau,.bcn-so,.bcn-nhom,.bcn-ngay-tieu{padding-left:14px;padding-right:14px}}
 .cv-bc{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
 .cv-bc-dau{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--border)}
 .cv-bc-ten{font-size:15px;font-weight:800;color:var(--text)}
@@ -4967,11 +4968,18 @@ function cvMoNgay(d,nguoiId){const st=cvSt();st.ngay=st.tu=st.den=d;cvKhoang=nul
 const BCN_TT={'Phân loại KH':'Đổi phân loại','Thẻ khách':'Gắn thẻ Pancake','Ảnh / tài liệu':'Thêm ảnh','Khách VIP':'Khách VIP','Chuyển loại khách':'Chuyển Sỉ / Lẻ',
   'Loại khách':'Chuyển Sỉ / Lẻ','Lượt chăm sóc':'Sửa lượt chăm sóc','Giao việc':'Giao việc','Sales phụ trách':'Đổi Sale','Mã KH':'Gắn Mã KH'};
 const BCN_NGUOI=['Nguyễn Khánh Nguyên','Bùi Thị Kim Oanh'];   // tab của Admin (12/11/2026), đúng tên ở Phân quyền > Nhân sự Sale
-async function bcnTaiLog(d){
-  if(window._bcnLog&&window._bcnLog.d===d)return window._bcnLog.rows;
-  const t=new Date(d+'T12:00:00');t.setDate(t.getDate()+1);const sau=t.toISOString().slice(0,10);
-  const rows=await sbFetchAll('activity_log','select=who,act,tbl,ref,label,fld,old_v,new_v,at&at=gte.'+d+'T00:00:00%2B07:00&at=lt.'+sau+'T00:00:00%2B07:00&order=at');
-  window._bcnLog={d,rows};return rows;
+// KHOẢNG NGÀY (anh Hải 12/11/2026: "thêm cái lọc nhiều ngày nữa, ví dụ t muốn xem làm việc trong 1 tuần") + "lead ra data mới chưa xử lý":
+// Từ – Đến + nút nhanh; số trên cùng = cộng cả khoảng; dưới là TỪNG NGÀY (mới nhất trước, ngày trống bỏ qua), mỗi ngày y như xem riêng ngày đó.
+// DATA MỚI CHƯA XỬ LÝ = khách đứng tên Sale tạo trong khoảng, TỚI GIỜ chưa có lượt chăm sóc nào (mọi ngày) và chưa ra đơn.
+function bcnNgays(tu,den){const out=[];
+  for(let t=new Date(den+'T12:00:00');out.length<62;t.setDate(t.getDate()-1)){const s=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');if(s<tu)break;out.push(s);}
+  return out;}
+function bcnCong(d,n){const t=new Date(d+'T12:00:00');t.setDate(t.getDate()+n);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
+async function bcnTaiLog(tu,den){
+  const k=tu+'|'+den;if(window._bcnLog&&window._bcnLog.k===k)return window._bcnLog.rows;
+  const rows=await sbFetchAll('activity_log','select=who,act,tbl,ref,label,fld,old_v,new_v,at&at=gte.'+tu+'T00:00:00%2B07:00&at=lt.'+bcnCong(den,1)+'T00:00:00%2B07:00&order=at');
+  rows.forEach(x=>{x._ngay=new Date(new Date(x.at).getTime()+7*3600e3).toISOString().slice(0,10);});
+  window._bcnLog={k,rows};return rows;
 }
 // thao tác khác của 1 tài khoản: bỏ lượt chăm mới (đã hiện ở trên), bỏ cột kỹ thuật (si_phan_loai, vip_luc…) -- chỉ giữ dòng có tên dễ đọc
 function bcnThaoTac(rows,acc){
@@ -4981,47 +4989,65 @@ function bcnThaoTac(rows,acc){
     const ten=BCN_TT[fld]||fld;if(!nhom.has(ten))nhom.set(ten,[]);nhom.get(ten).push(x);});
   return [...nhom.entries()].map(([ten,ds])=>({ten,ds})).sort((p,q)=>q.ds.length-p.ds.length);
 }
-function bcnThe(sale,so_,tt,d){
-  const dn=new Date(d+'T00:00:00'),n=v=>num(v);
+function bcnSoLieu(p,ngays,log){
+  const ngay=ngays.map(d=>({d,so:cvCuoiNgaySoLieu(p.sale,p.acc,d),tt:bcnThaoTac(log.filter(x=>x._ngay===d),p.acc)}));
+  const chua=[],seen=new Set(),T={moi:0,cu:0,chot:0,tien:0,tt:0};
+  ngay.forEach(n=>{T.moi+=n.so.moi.length;T.cu+=n.so.cu.length;T.chot+=n.so.chot.length;T.tien+=n.so.tien;T.tt+=n.tt.length;
+    n.so.moi.forEach(z=>{const r=z.x.r;if(seen.has(r.leadId))return;seen.add(r.leadId);
+      if(!r.isChot&&!cvVoiLoai(z.x.loai,()=>rptSlCsRows(r)).length)chua.push({o:z.o,d:n.d});});});
+  return {ngay,chua,T};
+}
+function bcnThe(sale,S,tu,den){
+  const mot=tu===den,n=v=>num(v),T=S.T,dm=d=>{const t=new Date(d+'T00:00:00');return CV_THU[t.getDay()]+' · '+dmy(d);};
   const kh=z=>'<div class="bcn-kh">'+cvTenKhHtml(z.o)+'<div class="ma">'+cvE(z.o.ma)+'</div></div>';
   const cham=z=>'<div class="bcn-dong">'+kh(z)+'<div class="bcn-nd">'+((z.kq.cs||[]).length?cvKqHtml({cs:z.kq.cs,don:[]}):'<span class="bcn-cam">Chưa chăm</span>')+'</div></div>';
-  const nhom=(tieu,body)=>body?'<div class="bcn-nhom"><h4>'+tieu+'</h4>'+body+'</div>':'';
+  const nhom=(tieu,body,mau)=>body?'<div class="bcn-nhom"><h4'+(mau?' style="color:'+mau+'"':'')+'>'+tieu+'</h4>'+body+'</div>':'';
   const gio=t=>t?new Date(t).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Ho_Chi_Minh'}):'';
+  const ngayHtml=x=>{const so_=x.so,tt=x.tt;if(!(so_.moi.length||so_.cu.length||so_.chot.length||tt.length))return '';
+    return (mot?'':'<div class="bcn-ngay-tieu">'+dm(x.d)+'</div>')
+      +nhom('Data mới',so_.moi.map(cham).join(''))
+      +nhom('Chăm lại',so_.cu.map(cham).join(''))
+      +nhom('Chốt đơn',so_.chot.map(z=>'<div class="bcn-dong">'+kh(z)+'<div class="bcn-nd">'
+        +z.kq.don.map(o=>cvE(o.ma)+' · <span class="bcn-tien">'+vnd(o.tien)+'</span>').join('<br>')+'</div></div>').join(''))
+      +nhom('Thao tác khác',tt.length?'<div class="bcn-tt">'+tt.map(g=>'<details><summary>'+cvE(g.ten)+'<b>'+g.ds.length+'</b></summary><div class="ct">'
+        +g.ds.map(x=>'<span style="color:var(--muted)">'+gio(x.at)+'</span> '+cvE(((cvKhach().theoId[x.ref]||{}).r||{}).name||x.label||x.ref||'')+(x.new_v||x.old_v?' → '+cvE(x.new_v||'(bỏ)'):'')).join('<br>')
+        +'</div></details>').join('')+'</div>':'');};
+  const than=S.ngay.map(ngayHtml).join('');
   return '<div class="bcn">'
-    +'<div class="bcn-dau"><div class="bcn-ten">'+cvE(sale)+'</div><div class="bcn-ngay">'+CV_THU[dn.getDay()]+' · '+dmy(d)+'</div></div>'
-    +'<div class="bcn-so">'+[[n(so_.moi.length),'Data mới'],[n(so_.cu.length),'Chăm lại'],[n(so_.chot.length),'Chốt đơn'],[so_.tien?vnd(so_.tien):'0','Tiền chốt']]
-      .map(([v,l],i)=>'<div><div class="n"'+(i>=2&&so_.tien?' style="color:#16a34a"':'')+'>'+v+'</div><div class="l">'+l+'</div></div>').join('')+'</div>'
-    +nhom('Data mới',so_.moi.map(cham).join(''))
-    +nhom('Chăm lại',so_.cu.map(cham).join(''))
-    +nhom('Chốt đơn',so_.chot.map(z=>'<div class="bcn-dong">'+kh(z)+'<div class="bcn-nd">'
-      +z.kq.don.map(o=>cvE(o.ma)+' · <span class="bcn-tien">'+vnd(o.tien)+'</span>').join('<br>')+'</div></div>').join(''))
-    +nhom('Thao tác khác',tt.length?'<div class="bcn-tt">'+tt.map(g=>'<details><summary>'+cvE(g.ten)+'<b>'+g.ds.length+'</b></summary><div class="ct">'
-      +g.ds.map(x=>'<span style="color:var(--muted)">'+gio(x.at)+'</span> '+cvE(((cvKhach().theoId[x.ref]||{}).r||{}).name||x.label||x.ref||'')+(x.new_v||x.old_v?' → '+cvE(x.new_v||'(bỏ)'):'')).join('<br>')
-      +'</div></details>').join('')+'</div>':'')
-    +(so_.moi.length||so_.cu.length||so_.chot.length||tt.length?'':'<div class="bcn-nhom" style="color:var(--muted);font-size:12px;padding:14px 20px">Chưa có việc nào trong ngày</div>')
+    +'<div class="bcn-dau"><div class="bcn-ten">'+cvE(sale)+'</div><div class="bcn-ngay">'+(mot?dm(tu):dmy(tu).slice(0,5)+' – '+dmy(den)+' · '+S.ngay.length+' ngày')+'</div></div>'
+    +'<div class="bcn-so">'+[[n(T.moi),'Data mới'],[n(S.chua.length),'Chưa xử lý',S.chua.length?'#d97706':''],[n(T.cu),'Chăm lại'],
+        [n(T.chot),'Chốt đơn',T.chot?'#16a34a':''],[T.tien?vnd(T.tien):'0','Tiền chốt',T.tien?'#16a34a':'']]
+      .map(([v,l,mau])=>'<div><div class="n"'+(mau?' style="color:'+mau+'"':'')+'>'+v+'</div><div class="l">'+l+'</div></div>').join('')+'</div>'
+    +nhom('Data mới chưa xử lý',S.chua.map(z=>'<div class="bcn-dong">'+kh(z)+'<div class="bcn-nd"><span class="bcn-cam">Nhận '+dmy(z.d).slice(0,5)+' · chưa chăm, chưa đơn</span></div></div>').join(''),'#d97706')
+    +(than||'<div class="bcn-nhom" style="color:var(--muted);font-size:12px;padding:14px 20px">Chưa có việc nào'+(mot?' trong ngày':' trong khoảng này')+'</div>')
     +'</div>';
 }
-function bcnLui(n){const st=cvSt(),t=new Date(st.ngay+'T12:00:00');t.setDate(t.getDate()+n);
-  st.ngay=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');renderCongViec();}
+function bcnDat(tu,den){const st=cvSt();if(!tu||!den)return;if(tu>den)[tu,den]=[den,tu];
+  const ds=bcnNgays(tu,den);if(ds.length>=62)tu=ds[ds.length-1];st.bTu=tu;st.bDen=den;renderCongViec();}
+function bcnNhanh(k){const h=todayISO();
+  if(k==='hom')bcnDat(h,h);else if(k==='qua'){const q=bcnCong(h,-1);bcnDat(q,q);}else if(k==='7')bcnDat(bcnCong(h,-6),h);else if(k==='thang')bcnDat(h.slice(0,8)+'01',h);}
 async function renderCongViec(taiLai){
   const el=document.getElementById('page-congviec');if(!el)return;
   if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo công việc');
-  const st=cvSt(),toi=cvToi(),het=cvXemHet(),d=st.ngay||todayISO();st.ngay=d;
+  const st=cvSt(),toi=cvToi(),het=cvXemHet(),h=todayISO();
+  if(!st.bTu||!st.bDen){st.bTu=st.bDen=h;}
+  const tu=st.bTu,den=st.bDen,ngays=bcnNgays(tu,den);
   if(taiLai)window._bcnLog=null;
   let log=[];
   try{
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null),dmLoad(),
       het&&!window._rptSlAccs?rptSlLoadAccs().catch(()=>null):null]);
     await rptSlLockChot();
-    log=await bcnTaiLog(d).catch(()=>[]);
+    log=await bcnTaiLog(tu,den).catch(()=>[]);
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo công việc',e,'renderCongViec');return;}
   if(!document.getElementById('page-congviec').classList.contains('active'))return;
   const ip='height:30px;box-sizing:border-box;padding:2px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px;font-weight:600;font-family:var(--font);outline:none';
+  const q=bcnCong(h,-1),dang=[['hom','Hôm nay',tu===h&&den===h],['qua','Hôm qua',tu===q&&den===q],['7','7 ngày',tu===bcnCong(h,-6)&&den===h],['thang','Tháng này',tu===h.slice(0,8)+'01'&&den===h&&tu!==den]];
   const thanh='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 16px">'
-    +'<button class="cv-chip" onclick="bcnLui(-1)" title="Ngày trước">◀</button>'
-    +'<input type="date" value="'+d+'" onchange="if(this.value){cvSt().ngay=this.value;renderCongViec();}" style="'+ip+'">'
-    +'<button class="cv-chip" onclick="bcnLui(1)" title="Ngày sau">▶</button>'
-    +(d!==todayISO()?'<button class="cv-chip" onclick="cvSt().ngay=todayISO();renderCongViec()">Hôm nay</button>':'')
+    +'<input type="date" value="'+tu+'" onchange="bcnDat(this.value,cvSt().bDen)" style="'+ip+'" title="Từ ngày">'
+    +'<span style="color:var(--muted);font-weight:700">–</span>'
+    +'<input type="date" value="'+den+'" onchange="bcnDat(cvSt().bTu,this.value)" style="'+ip+'" title="Đến ngày">'
+    +dang.map(([k,t,on])=>'<button class="cv-chip'+(on?' on':'')+'" onclick="bcnNhanh(\''+k+'\')">'+t+'</button>').join('')
     +'<button class="cv-chip" onclick="renderCongViec(true)" title="Tải lại dữ liệu">Làm mới</button></div>';
   let ds;
   if(het){
@@ -5030,24 +5056,21 @@ async function renderCongViec(taiLai){
       .sort((p,q)=>BCN_NGUOI.indexOf(p.ten.trim())-BCN_NGUOI.indexOf(q.ten.trim()))
       .map(x=>({sale:x.ten,acc:((window._rptSlAccs||[]).find(a=>cvSaleCuaAcc(a)===x.ten)||{}).name||''}));
   }else{const sale=cvSaleCuaAcc(cvAccCua(toi.id));ds=sale?[{sale,acc:toi.ten}]:[];}
-  const the=ds.map(p=>({p,so:cvCuoiNgaySoLieu(p.sale,p.acc,d),tt:bcnThaoTac(log,p.acc)}));   // thứ tự cố định theo BCN_NGUOI
   const rong=t=>'<div class="bcn"><div style="padding:22px 20px;color:var(--muted);font-size:12.5px">'+t+'</div></div>';
-  // MỖI NHÂN SỰ 1 TAB (anh Hải 12/11/2026: "mỗi nhân sự là 1 tab đi, cho dễ nhìn"): Admin thấy hàng tab tên Sale (người có việc trước,
-  // người chưa có việc chữ mờ), bấm tab xem thẻ của người đó; Sale thường chỉ có thẻ của mình nên không hiện tab.
-  const coViec=t=>!!(t.so.moi.length||t.so.cu.length||t.so.chot.length||t.tt.length);
-  let tabs='',xem=the;
-  if(het&&the.length){
-    if(!the.some(t=>t.p.sale===st.bcnSale))st.bcnSale=the[0].p.sale;
+  // MỖI NHÂN SỰ 1 TAB (anh Hải 12/11/2026: "mỗi nhân sự là 1 tab đi, cho dễ nhìn"): Admin thấy hàng tab tên Sale (người chưa có việc chữ mờ),
+  // bấm tab xem thẻ của người đó; Sale thường chỉ có thẻ của mình nên không hiện tab. Chỉ tính số cho người đang xem (đỡ nặng khi chọn cả tháng).
+  let tabs='',xem=ds;
+  if(het&&ds.length){
+    if(!ds.some(p=>p.sale===st.bcnSale))st.bcnSale=ds[0].sale;
     // tên gọi: chữ cuối (Lệ, Nguyên); trùng thì 2 chữ cuối (Minh Oanh / Kim Oanh); vẫn trùng thì tên đầy đủ
-    const cuoi=(t,n)=>t.trim().split(/\s+/).slice(-n).join(' '),ngan=t=>{for(const n of [1,2])if(the.filter(x=>cuoi(x.p.sale,n)===cuoi(t,n)).length===1)return cuoi(t,n);return t;};
-    tabs='<div class="bcn-tabs">'+the.map(t=>{const k=ngan(t.p.sale);
-      return '<button class="'+(t.p.sale===st.bcnSale?'on':coViec(t)?'':'mo')+'" title="'+cvE(t.p.sale)+'" onclick="cvSt().bcnSale=\''+cvId(t.p.sale)+'\';renderCongViec()">'
-        +cvE(k)+'</button>';}).join('')+'</div>';
-    xem=the.filter(t=>t.p.sale===st.bcnSale);
+    const cuoi=(t,n)=>t.trim().split(/\s+/).slice(-n).join(' '),ngan=t=>{for(const n of [1,2])if(ds.filter(x=>cuoi(x.sale,n)===cuoi(t,n)).length===1)return cuoi(t,n);return t;};
+    tabs='<div class="bcn-tabs">'+ds.map(p=>'<button class="'+(p.sale===st.bcnSale?'on':'')+'" title="'+cvE(p.sale)+'" onclick="cvSt().bcnSale=\''+cvId(p.sale)+'\';renderCongViec()">'
+        +cvE(ngan(p.sale))+'</button>').join('')+'</div>';
+    xem=ds.filter(p=>p.sale===st.bcnSale);
   }
   el.innerHTML=modHeader('Báo cáo công việc','','','','')+thanh+tabs
     +(!het&&!ds.length?rong('Tài khoản này chưa gắn với đúng 1 Sale (tài khoản chung?) nên chưa có báo cáo')
-      :xem.length?xem.map(t=>bcnThe(t.p.sale,t.so,t.tt,d)).join(''):rong('Chưa có Sale nào'));
+      :xem.length?xem.map(p=>bcnThe(p.sale,bcnSoLieu(p,ngays,log),tu,den)).join(''):rong('Chưa có Sale nào'));
 }
 // TAB BÁO CÁO NGÀY: 1 ngày -> như cũ; khoảng ngày -> từng ngày (mới nhất trên), mỗi ngày tính y như chọn riêng ngày đó
 // (tạm đổi cvNgay / cvMuc / st.ngay sang dữ liệu ngày đó rồi trả lại). Bỏ qua ngày không có gì.
@@ -5119,7 +5142,7 @@ function cvCuoiNgaySoLieu(sale,acc,d){
   const moi=[],cu=[],chot=[];
   K.ds.forEach(x=>{if(!loais.includes(x.loai))return;const minh=String(x.r.staff||'').trim()===sale;
     const laMoi=minh&&cvNgayTao(x.r)===d;
-    if(laMoi)moi.push({o:oX(x),kq:cvKetQua(x,d)});else if(coLog.has(x))cu.push({o:oX(x),kq:cvKetQua(x,d)});
+    if(laMoi)moi.push({o:oX(x),kq:cvKetQua(x,d),x});else if(coLog.has(x))cu.push({o:oX(x),kq:cvKetQua(x,d)});
     if(!minh)return;const co=new Set(),don=[];
     [...(x.r.kords||[]),...(x.r.repeatOrds||[])].forEach(o=>{
       if(co.has(o.code)||o.khongTinh||o.status===4||Number(o.total||0)<=0||String(o.purchase_date||'').slice(0,10)!==d)return;co.add(o.code);
@@ -7367,10 +7390,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/11 14:31';
+const APP_VERSION='12/11 15:07';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=565;
+const APP_BAN=566;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
