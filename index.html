@@ -347,18 +347,21 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
 .bcn-dau{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:16px 20px 4px;flex-wrap:wrap}
 .bcn-ten{font-size:16px;font-weight:800;color:var(--text)}
 .bcn-ngay{font-size:12px;color:var(--muted);font-weight:600}
-.bcn-so{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:10px 20px 16px}
-.bcn-so .n{font-size:22px;font-weight:800;color:var(--text);line-height:1.2}
+.bcn-so{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;padding:10px 20px 16px}
+.bcn-so>div{border:1px solid var(--border);border-radius:10px;padding:10px 14px;box-shadow:inset 3px 0 0 var(--c,var(--border));background:color-mix(in srgb,var(--c,#888) 6%,var(--surface))}
+.bcn-so .n{font-size:20px;font-weight:800;color:var(--c,var(--text));line-height:1.2}
 .bcn-so .l{font-size:11px;color:var(--muted);font-weight:600}
 .bcn-ngay-tieu{padding:9px 20px;font-size:12.5px;font-weight:800;color:var(--text);background:var(--bg2);border-top:1px solid var(--border)}
 .bcn-luoi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:16px 20px 20px;border-top:1px solid var(--border);align-items:start}
 .bcn-ngay-the{border:1px solid var(--border);border-radius:12px;overflow:hidden;min-width:0}
-.bcn-nt-dau{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:10px 14px;background:var(--bg2);font-size:13px;color:var(--text)}
+.bcn-nt-dau{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:10px 14px;background:color-mix(in srgb,var(--accent) 9%,var(--surface));font-size:13px;color:var(--text);border-bottom:1px solid var(--border)}
+.bcn-ngay-the.hom{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .bcn-bang{width:100%;border-collapse:collapse;font-size:12px;line-height:1.5;table-layout:fixed}
-.bcn-bang td{padding:8px 14px;border-top:1px solid var(--bg2);vertical-align:top;text-align:left;word-wrap:break-word}
-.bcn-bang td.k{width:38%}
+.bcn-bang td{padding:8px 14px;border-top:1px solid var(--bg2);vertical-align:top;text-align:left;white-space:normal;overflow-wrap:anywhere;font-weight:400}
+.bcn-bang td .cv-nm{white-space:normal}
+.bcn-bang td.k{width:34%}
 .bcn-bang td.k .ma{font-size:10.5px;color:var(--muted);font-weight:600}
-.bcn-bang tr.nh td{padding:11px 14px 5px;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--border)}
+.bcn-bang tr.nh td{padding:7px 14px;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--c,var(--muted));border-top:1px solid var(--border);background:color-mix(in srgb,var(--c,#888) 8%,transparent);box-shadow:inset 3px 0 0 var(--c,var(--border))}
 .bcn-bang tr.nh:first-child td{border-top:0}
 .bcn-bang tr.nh td b{margin-left:3px}
 .bcn-trong{padding:18px 14px;color:var(--muted);font-size:12px}
@@ -380,7 +383,7 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
 .bcn-tt summary b{color:var(--text);margin-left:4px}
 .bcn-tt details[open]{flex-basis:100%}
 .bcn-tt .ct{padding:2px 11px 8px;color:var(--text2);line-height:1.6}
-@media(max-width:640px){.bcn-so{grid-template-columns:repeat(2,minmax(0,1fr))}.bcn-dong{flex-direction:column;gap:2px}.bcn-kh{flex-basis:auto}.bcn-dau,.bcn-so,.bcn-nhom,.bcn-ngay-tieu{padding-left:14px;padding-right:14px}}
+@media(max-width:640px){.bcn-so{grid-template-columns:repeat(2,minmax(0,1fr))}.bcn-so>div:last-child{grid-column:1/-1}.bcn-dong{flex-direction:column;gap:2px}.bcn-kh{flex-basis:auto}.bcn-dau,.bcn-so,.bcn-nhom,.bcn-ngay-tieu{padding-left:14px;padding-right:14px}}
 .cv-bc{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
 .cv-bc-dau{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--border)}
 .cv-bc-ten{font-size:15px;font-weight:800;color:var(--text)}
@@ -5012,29 +5015,30 @@ function bcnSoLieu(p,ngays,log){
 }
 // DẠNG BẢNG, MỖI NGÀY 1 BẢNG, 3 BẢNG / HÀNG (anh Hải 12/11/2026: "dạng bảng và auto mặc định theo 3 ngày gần nhất, kiểu 1 hàng 3 ngày 3 bảng,
 // thêm ngày thì thêm bảng"). Ngày mới nhất bên trái. Trên lưới: 5 số cộng cả khoảng + danh sách Data mới chưa xử lý.
+const BCN_MAU={moi:'#2563eb',chua:'#d97706',cu:'#7c3aed',chot:'#16a34a',tt:'#64748b'};
 function bcnThe(sale,S,tu,den){
   const mot=tu===den,n=v=>num(v),T=S.T,thu=d=>{const t=new Date(d+'T00:00:00');return CV_THU[t.getDay()];};
   const kh=z=>'<td class="k">'+cvTenKhHtml(z.o)+'<div class="ma">'+cvE(z.o.ma)+'</div></td>';
   const cham=z=>'<tr>'+kh(z)+'<td>'+((z.kq.cs||[]).length?cvKqHtml({cs:z.kq.cs,don:[]}):'<span class="bcn-cam">Chưa chăm</span>')+'</td></tr>';
-  const nh=(t,so,mau)=>'<tr class="nh"><td colspan="2"'+(mau?' style="color:'+mau+'"':'')+'>'+t+' <b>'+so+'</b></td></tr>';
+  const nh=(t,so,mau)=>'<tr class="nh" style="--c:'+mau+'"><td colspan="2">'+t+' <b>'+so+'</b></td></tr>';
   const gio=t=>t?new Date(t).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Ho_Chi_Minh'}):'';
   const bangNgay=x=>{const so_=x.so,tt=x.tt,co=so_.moi.length||so_.cu.length||so_.chot.length||tt.length;
     let b='';
-    if(so_.moi.length)b+=nh('Data mới',so_.moi.length)+so_.moi.map(cham).join('');
-    if(so_.cu.length)b+=nh('Chăm lại',so_.cu.length)+so_.cu.map(cham).join('');
-    if(so_.chot.length)b+=nh('Chốt đơn',so_.chot.length,'#16a34a')+so_.chot.map(z=>'<tr>'+kh(z)+'<td>'
+    if(so_.moi.length)b+=nh('Data mới',so_.moi.length,BCN_MAU.moi)+so_.moi.map(cham).join('');
+    if(so_.cu.length)b+=nh('Chăm lại',so_.cu.length,BCN_MAU.cu)+so_.cu.map(cham).join('');
+    if(so_.chot.length)b+=nh('Chốt đơn',so_.chot.length,BCN_MAU.chot)+so_.chot.map(z=>'<tr>'+kh(z)+'<td>'
       +z.kq.don.map(o=>cvE(o.ma)+' · <span class="bcn-tien">'+vnd(o.tien)+'</span>').join('<br>')+'</td></tr>').join('');
-    if(tt.length)b+=nh('Thao tác khác',tt.reduce((a,g)=>a+g.ds.length,0))+'<tr><td colspan="2"><div class="bcn-tt">'+tt.map(g=>'<details><summary>'+cvE(g.ten)+'<b>'+g.ds.length+'</b></summary><div class="ct">'
+    if(tt.length)b+=nh('Thao tác khác',tt.reduce((a,g)=>a+g.ds.length,0),BCN_MAU.tt)+'<tr><td colspan="2"><div class="bcn-tt">'+tt.map(g=>'<details><summary>'+cvE(g.ten)+'<b>'+g.ds.length+'</b></summary><div class="ct">'
       +g.ds.map(y=>'<span style="color:var(--muted)">'+gio(y.at)+'</span> '+cvE(((cvKhach().theoId[y.ref]||{}).r||{}).name||y.label||y.ref||'')+(y.new_v||y.old_v?' → '+cvE(y.new_v||'(bỏ)'):'')).join('<br>')
       +'</div></details>').join('')+'</div></td></tr>';
-    return '<div class="bcn-ngay-the"><div class="bcn-nt-dau"><b>'+thu(x.d)+' · '+dmy(x.d).slice(0,5)+'</b>'
+    return '<div class="bcn-ngay-the'+(x.d===todayISO()?' hom':'')+'"><div class="bcn-nt-dau"><b>'+thu(x.d)+' · '+dmy(x.d).slice(0,5)+'</b>'
       +(so_.tien?'<span class="bcn-tien">'+vnd(so_.tien)+'</span>':'')+'</div>'
       +(co?'<table class="bcn-bang"><tbody>'+b+'</tbody></table>':'<div class="bcn-trong">Chưa có việc</div>')+'</div>';};
   return '<div class="bcn">'
     +'<div class="bcn-dau"><div class="bcn-ten">'+cvE(sale)+'</div><div class="bcn-ngay">'+(mot?thu(tu)+' · '+dmy(tu):dmy(tu).slice(0,5)+' – '+dmy(den)+' · '+S.ngay.length+' ngày')+'</div></div>'
-    +'<div class="bcn-so">'+[[n(T.moi),'Data mới'],[n(S.chua.length),'Chưa xử lý',S.chua.length?'#d97706':''],[n(T.cu),'Chăm lại'],
-        [n(T.chot),'Chốt đơn',T.chot?'#16a34a':''],[T.tien?vnd(T.tien):'0','Tiền chốt',T.tien?'#16a34a':'']]
-      .map(([v,l,mau])=>'<div><div class="n"'+(mau?' style="color:'+mau+'"':'')+'>'+v+'</div><div class="l">'+l+'</div></div>').join('')+'</div>'
+    +'<div class="bcn-so">'+[[n(T.moi),'Data mới',BCN_MAU.moi],[n(S.chua.length),'Chưa xử lý',BCN_MAU.chua],[n(T.cu),'Chăm lại',BCN_MAU.cu],
+        [n(T.chot),'Chốt đơn',BCN_MAU.chot],[T.tien?vnd(T.tien):'0','Tiền chốt',BCN_MAU.chot]]
+      .map(([v,l,mau])=>'<div style="--c:'+mau+'"><div class="n">'+v+'</div><div class="l">'+l+'</div></div>').join('')+'</div>'
     +(S.chua.length?'<div class="bcn-nhom"><h4 style="color:#d97706">Data mới chưa xử lý</h4>'
       +S.chua.map(z=>'<div class="bcn-dong"><div class="bcn-kh">'+cvTenKhHtml(z.o)+'<div class="ma">'+cvE(z.o.ma)+'</div></div><div class="bcn-nd"><span class="bcn-cam">Nhận '+dmy(z.d).slice(0,5)+' · chưa chăm, chưa đơn</span></div></div>').join('')+'</div>':'')
     +'<div class="bcn-luoi">'+S.ngay.map(bangNgay).join('')+'</div>'
@@ -7408,10 +7412,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/11 15:14';
+const APP_VERSION='12/11 15:21';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=567;
+const APP_BAN=568;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
