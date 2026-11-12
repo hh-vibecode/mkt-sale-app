@@ -339,6 +339,30 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
 .cv-x:hover{color:var(--red)}
 .cv-nut{border:none;background:var(--accent);color:#fff;border-radius:9px;padding:8px 16px;font:800 12px var(--font);cursor:pointer;white-space:nowrap}
 .cv-nut.phu{background:var(--surface);color:var(--text2);border:1.5px solid var(--border)}
+.bcn{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:18px;overflow:hidden}
+.bcn-dau{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:16px 20px 4px;flex-wrap:wrap}
+.bcn-ten{font-size:16px;font-weight:800;color:var(--text)}
+.bcn-ngay{font-size:12px;color:var(--muted);font-weight:600}
+.bcn-so{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:10px 20px 16px}
+.bcn-so .n{font-size:22px;font-weight:800;color:var(--text);line-height:1.2}
+.bcn-so .l{font-size:11px;color:var(--muted);font-weight:600}
+.bcn-nhom{padding:4px 20px 14px;border-top:1px solid var(--border)}
+.bcn-nhom h4{margin:12px 0 4px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.bcn-dong{display:flex;gap:16px;padding:9px 0;border-bottom:1px solid var(--bg2);font-size:12.5px;line-height:1.55}
+.bcn-dong:last-child{border-bottom:0}
+.bcn-kh{flex:0 0 210px;min-width:0}
+.bcn-kh .ma{font-size:11px;color:var(--muted);font-weight:600}
+.bcn-nd{flex:1;min-width:0;color:var(--text2)}
+.bcn-tien{font-weight:800;color:#16a34a;white-space:nowrap}
+.bcn-cam{color:#d97706;font-weight:700}
+.bcn-tt{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0 4px}
+.bcn-tt details{border:1px solid var(--border);border-radius:9px;font-size:12px}
+.bcn-tt summary{cursor:pointer;padding:5px 11px;font-weight:700;color:var(--text2);list-style:none}
+.bcn-tt summary::-webkit-details-marker{display:none}
+.bcn-tt summary b{color:var(--text);margin-left:4px}
+.bcn-tt details[open]{flex-basis:100%}
+.bcn-tt .ct{padding:2px 11px 8px;color:var(--text2);line-height:1.6}
+@media(max-width:640px){.bcn-so{grid-template-columns:repeat(2,minmax(0,1fr))}.bcn-dong{flex-direction:column;gap:2px}.bcn-kh{flex-basis:auto}.bcn-dau,.bcn-so,.bcn-nhom{padding-left:14px;padding-right:14px}}
 .cv-bc{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
 .cv-bc-dau{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--border)}
 .cv-bc-ten{font-size:15px;font-weight:800;color:var(--text)}
@@ -4931,62 +4955,81 @@ function cvQuanTriHtml(){
     +'</tbody></table></div></div>';
 }
 function cvMoNgay(d,nguoiId){const st=cvSt();st.ngay=st.tu=st.den=d;cvKhoang=null;st.tab='bao-cao';st.nguoi=cvXemHet()?nguoiId:'';renderCongViec();}
+// BÁO CÁO CÔNG VIỆC = 1 BÁO CÁO NGÀY DUY NHẤT (anh Hải 12/11/2026: "clear hết các tab đi, chỉ có 1 báo cáo ngày thôi, cái báo cáo ấy tự tổng hợp
+// hết data, thao tác với lịch sử mà Sale đã xử lý trong ngày hôm ấy"; "trình bày dễ nhìn, thoáng, ít chữ nhất, cái cần nhiều chữ duy nhất là
+// nội dung chăm sóc"). Bỏ Quản trị / Lên kế hoạch / Lịch sử / Cuối ngày (code cũ cv* giữ lại, không còn gọi; bảng cong_viec_* giữ nguyên dữ liệu).
+// Mỗi Sale 1 thẻ: 4 số · Data mới · Chăm lại · Chốt đơn · Thao tác khác (activity_log của tài khoản, gom theo loại, bấm mới mở chi tiết).
+// Sale thấy của mình; Admin thấy mọi Sale có việc trong ngày.
+const BCN_TT={'Phân loại KH':'Đổi phân loại','Thẻ khách':'Gắn thẻ Pancake','Ảnh / tài liệu':'Thêm ảnh','Khách VIP':'Khách VIP','Chuyển loại khách':'Chuyển Sỉ / Lẻ',
+  'Loại khách':'Chuyển Sỉ / Lẻ','Lượt chăm sóc':'Sửa lượt chăm sóc','Giao việc':'Giao việc','Sales phụ trách':'Đổi Sale','Mã KH':'Gắn Mã KH'};
+async function bcnTaiLog(d){
+  if(window._bcnLog&&window._bcnLog.d===d)return window._bcnLog.rows;
+  const t=new Date(d+'T12:00:00');t.setDate(t.getDate()+1);const sau=t.toISOString().slice(0,10);
+  const rows=await sbFetchAll('activity_log','select=who,act,tbl,ref,label,fld,old_v,new_v,at&at=gte.'+d+'T00:00:00%2B07:00&at=lt.'+sau+'T00:00:00%2B07:00&order=at');
+  window._bcnLog={d,rows};return rows;
+}
+// thao tác khác của 1 tài khoản: bỏ lượt chăm mới (đã hiện ở trên), bỏ cột kỹ thuật (si_phan_loai, vip_luc…) -- chỉ giữ dòng có tên dễ đọc
+function bcnThaoTac(rows,acc){
+  const nhom=new Map();if(!acc)return [];
+  rows.forEach(x=>{if(String(x.who||'').trim()!==acc)return;const fld=String(x.fld||'');
+    if(!fld||/^[a-z0-9_]+$/.test(fld)||(x.act==='C'&&fld==='Lượt chăm sóc'))return;
+    const ten=BCN_TT[fld]||fld;if(!nhom.has(ten))nhom.set(ten,[]);nhom.get(ten).push(x);});
+  return [...nhom.entries()].map(([ten,ds])=>({ten,ds})).sort((p,q)=>q.ds.length-p.ds.length);
+}
+function bcnThe(sale,so_,tt,d){
+  const dn=new Date(d+'T00:00:00'),n=v=>num(v);
+  const kh=z=>'<div class="bcn-kh">'+cvTenKhHtml(z.o)+'<div class="ma">'+cvE(z.o.ma)+'</div></div>';
+  const cham=z=>'<div class="bcn-dong">'+kh(z)+'<div class="bcn-nd">'+((z.kq.cs||[]).length?cvKqHtml({cs:z.kq.cs,don:[]}):'<span class="bcn-cam">Chưa chăm</span>')+'</div></div>';
+  const nhom=(tieu,body)=>body?'<div class="bcn-nhom"><h4>'+tieu+'</h4>'+body+'</div>':'';
+  const gio=t=>t?new Date(t).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Ho_Chi_Minh'}):'';
+  return '<div class="bcn">'
+    +'<div class="bcn-dau"><div class="bcn-ten">'+cvE(sale)+'</div><div class="bcn-ngay">'+CV_THU[dn.getDay()]+' · '+dmy(d)+'</div></div>'
+    +'<div class="bcn-so">'+[[n(so_.moi.length),'Data mới'],[n(so_.cu.length),'Chăm lại'],[n(so_.chot.length),'Chốt đơn'],[so_.tien?vnd(so_.tien):'0','Tiền chốt']]
+      .map(([v,l],i)=>'<div><div class="n"'+(i>=2&&so_.tien?' style="color:#16a34a"':'')+'>'+v+'</div><div class="l">'+l+'</div></div>').join('')+'</div>'
+    +nhom('Data mới',so_.moi.map(cham).join(''))
+    +nhom('Chăm lại',so_.cu.map(cham).join(''))
+    +nhom('Chốt đơn',so_.chot.map(z=>'<div class="bcn-dong">'+kh(z)+'<div class="bcn-nd">'
+      +z.kq.don.map(o=>cvE(o.ma)+' · <span class="bcn-tien">'+vnd(o.tien)+'</span>').join('<br>')+'</div></div>').join(''))
+    +nhom('Thao tác khác',tt.length?'<div class="bcn-tt">'+tt.map(g=>'<details><summary>'+cvE(g.ten)+'<b>'+g.ds.length+'</b></summary><div class="ct">'
+      +g.ds.map(x=>'<span style="color:var(--muted)">'+gio(x.at)+'</span> '+cvE(((cvKhach().theoId[x.ref]||{}).r||{}).name||x.label||x.ref||'')+(x.new_v||x.old_v?' → '+cvE(x.new_v||'(bỏ)'):'')).join('<br>')
+      +'</div></details>').join('')+'</div>':'')
+    +(so_.moi.length||so_.cu.length||so_.chot.length||tt.length?'':'<div class="bcn-nhom" style="color:var(--muted);font-size:12px;padding:14px 20px">Chưa có việc nào trong ngày</div>')
+    +'</div>';
+}
+function bcnLui(n){const st=cvSt(),t=new Date(st.ngay+'T12:00:00');t.setDate(t.getDate()+n);
+  st.ngay=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');renderCongViec();}
 async function renderCongViec(taiLai){
   const el=document.getElementById('page-congviec');if(!el)return;
   if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo công việc');
-  const st=cvSt(),toi=cvToi(),het=cvXemHet();
-  // BỎ NÚT "Cả đội / Của tôi" (anh Hải 04/11/2026: "sale bt thì k cần, t có việc đâu, t xem mn làm"):
-  //  · Admin / Supreme: KHÔNG lên kế hoạch, luôn xem cả đội (bấm 1 dòng Lịch sử thì xem riêng người đó, ✕ để quay lại).
-  //  · Tài khoản khác: lên kế hoạch của mình; Báo cáo ngày = của mình trước, rồi người trong phạm vi Sale (CSDL lọc: cv_xem_duoc).
-  if(het){if(!st.nguoi)st.nguoi='*';}else st.nguoi='';
-  //  · 04/11/2026 (anh: "cho t đầy đủ tính năng như Sale bt"): Admin cũng có Lên kế hoạch -- ở CHẾ ĐỘ THỬ (cvThu, chỉ lưu trên máy).
-  const cuaToi=!het,L=cvLoai();
-  // nhớ tab mở gần nhất trên máy (12/11/2026: Nguyên chỉ dùng "Cuối ngày", khỏi bấm lại mỗi lần)
-  if(!st.tab){try{const t=localStorage.getItem('cvTab')||'';if(['quan-tri','ke-hoach','bao-cao','cuoi-ngay','lich-su'].includes(t))st.tab=t;}catch(e){}}
-  if(!st.tab||(st.tab==='quan-tri'&&!het))st.tab=het?'quan-tri':'ke-hoach';
-  // thanh lọc dùng chung với Master (rptSlFilterBar / rptSlApplyF / rptSlSetF) đọc loại khách đang mở -> giữ đúng loại của trang này
-  if(window._rptSlType!==L){window._rptSlType=L;window._kiotOrdByCode=null;}
+  const st=cvSt(),toi=cvToi(),het=cvXemHet(),d=st.ngay||todayISO();st.ngay=d;
+  if(taiLai)window._bcnLog=null;
+  let log=[];
   try{
-    await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null),dmLoad()]);
+    await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null),dmLoad(),
+      het&&!window._rptSlAccs?rptSlLoadAccs().catch(()=>null):null]);
     await rptSlLockChot();
-    if(!st.tu)st.tu=st.den=st.ngay;
-    if(!st.lsTu){st.lsTu=todayISO().slice(0,8)+'01';st.lsDen=todayISO();}
-    if(st.tab==='bao-cao'&&st.tu===st.den)st.ngay=st.tu;
-    if(taiLai||cvMucNgay!==st.ngay)await cvTaiNgay(st.ngay);
-    if(st.tab==='lich-su'&&(taiLai||!cvLichSu))await cvTaiLichSu();
-    if((st.tab==='quan-tri'||(st.tab==='bao-cao'&&st.tu!==st.den))&&(taiLai||!cvKhoang||cvKhoang.tu!==st.tu||cvKhoang.den!==st.den))await cvTaiKhoang(st.tu,st.den);
-    if(!window._rptSlAccs)rptSlLoadAccs().then(()=>{if(['bao-cao','quan-tri','cuoi-ngay'].includes(st.tab))renderCongViec();});
+    log=await bcnTaiLog(d).catch(()=>[]);
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo công việc',e,'renderCongViec');return;}
   if(!document.getElementById('page-congviec').classList.contains('active'))return;
-  const ip='height:28px;box-sizing:border-box;padding:2px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:11px;font-weight:600;font-family:var(--font);outline:none';
-  const tabs=[het&&['quan-tri','Quản trị'],['ke-hoach','Lên kế hoạch'],['bao-cao','Báo cáo ngày'],['cuoi-ngay','Cuối ngày'],['lich-su','Lịch sử']].filter(Boolean);
-  const thuBao=cvThu()&&['ke-hoach','bao-cao'].includes(st.tab)?'<div class="cv-pan" style="margin-bottom:14px;border-color:#f59e0b;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;padding:10px 14px">'
-    +'<span class="cv-the" style="background:#fef3c7;color:#b45309">Chế độ thử của Admin</span>'
-    +'<span style="flex:1;min-width:240px;color:var(--text2)">Kế hoạch / báo cáo của anh chỉ lưu trên trình duyệt máy này — không ai khác thấy, không vào số liệu chung. '
-    +'<b>Riêng ghi lượt chăm sóc trong hồ sơ khách vẫn là dữ liệu thật.</b></span>'
-    +'<button class="cv-chip" onclick="cvXoaThu()">Xoá dữ liệu thử</button></div>':'';
-  const ten=x=>(cvNgay.find(h=>h.nguoi_id===x)||{}).nguoi||((window._rptSlAccs||[]).find(a=>a.user_id===x)||{}).name||x;
-  const chonNguoi=het&&st.nguoi!=='*'?'<button class="cv-chip on" onclick="cvDat(\'nguoi\',\'*\')" title="Quay lại xem cả đội">'+cvE(ten(st.nguoi))+' ✕</button>':'';
-  const lds=cvLoaiDuoc();
-  const chonLoai=lds.length>1?modTabBar(lds.map(t=>[t,'Khách '+t,L===t,"cvDoiLoai('"+t+"')"]))
-    :'<span class="cv-the" style="background:var(--accent-l);color:var(--accent)">Khách '+L+'</span>';
-  // KHOẢNG NGÀY (anh Hải 04/11/2026: "vẫn không có range ngày à"): Quản trị + Báo cáo ngày + Lịch sử chọn Từ – Đến; Lên kế hoạch theo từng ngày
-  const thanh='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+(st.tab==='cuoi-ngay'?'':chonLoai+chonNguoi)
-    +(['quan-tri','bao-cao'].includes(st.tab)?cvThanhKhoang('')
-    :st.tab==='lich-su'?cvThanhKhoang('ls'):'<button class="cv-chip" onclick="cvLui(-1)" title="Ngày trước">◀</button>'
-      +'<input type="date" value="'+st.ngay+'" onchange="if(this.value)cvDat(\'ngay\',this.value)" style="'+ip+'">'
-      +'<button class="cv-chip" onclick="cvLui(1)" title="Ngày sau">▶</button>'
-      +(st.ngay!==todayISO()?'<button class="cv-chip" onclick="cvDat(\'ngay\',todayISO())">Hôm nay</button>':''))
+  const ip='height:30px;box-sizing:border-box;padding:2px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px;font-weight:600;font-family:var(--font);outline:none';
+  const thanh='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 16px">'
+    +'<button class="cv-chip" onclick="bcnLui(-1)" title="Ngày trước">◀</button>'
+    +'<input type="date" value="'+d+'" onchange="if(this.value){cvSt().ngay=this.value;renderCongViec();}" style="'+ip+'">'
+    +'<button class="cv-chip" onclick="bcnLui(1)" title="Ngày sau">▶</button>'
+    +(d!==todayISO()?'<button class="cv-chip" onclick="cvSt().ngay=todayISO();renderCongViec()">Hôm nay</button>':'')
     +'<button class="cv-chip" onclick="renderCongViec(true)" title="Tải lại dữ liệu">Làm mới</button></div>';
-  let than='';
-  if(st.tab==='ke-hoach')than=cvBoardHtml();
-  else if(st.tab==='quan-tri')than=cvQuanTriHtml();
-  else if(st.tab==='lich-su')than=cvLichSuHtml();
-  else if(st.tab==='cuoi-ngay')than=cvCuoiNgayHtml();
-  else than=cvBaoCaoTab();
-  el.innerHTML=modHeader('Báo cáo công việc','','','',modTabBar(tabs.map(t=>[t[0],t[1],st.tab===t[0],"cvDat('tab','"+t[0]+"')"])))
-    +'<div style="margin:-4px 0 14px">'+thanh+'</div>'+thuBao+than;
-  if(st.tab==='ke-hoach'&&window._cvTimGo){const t=document.getElementById('cvTim');if(t&&document.activeElement!==t){t.focus();t.setSelectionRange(t.value.length,t.value.length);}}
+  let ds;
+  if(het){
+    ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten&&x.ten!==RPT_SL_BOT_SI)
+      .map(x=>({sale:x.ten,acc:((window._rptSlAccs||[]).find(a=>cvSaleCuaAcc(a)===x.ten)||{}).name||''}));
+  }else{const sale=cvSaleCuaAcc(cvAccCua(toi.id));ds=sale?[{sale,acc:toi.ten}]:[];}
+  const the=ds.map(p=>({p,so:cvCuoiNgaySoLieu(p.sale,p.acc,d),tt:bcnThaoTac(log,p.acc)}))
+    .filter(t=>!het||t.so.moi.length||t.so.cu.length||t.so.chot.length||t.tt.length)
+    .sort((x,y)=>y.so.tien-x.so.tien||(y.so.moi.length+y.so.cu.length)-(x.so.moi.length+x.so.cu.length));
+  const rong=t=>'<div class="bcn"><div style="padding:22px 20px;color:var(--muted);font-size:12.5px">'+t+'</div></div>';
+  el.innerHTML=modHeader('Báo cáo công việc','','','','')+thanh
+    +(!het&&!ds.length?rong('Tài khoản này chưa gắn với đúng 1 Sale (tài khoản chung?) nên chưa có báo cáo')
+      :the.length?the.map(t=>bcnThe(t.p.sale,t.so,t.tt,d)).join(''):rong('Chưa Sale nào có việc ngày '+dmy(d)));
 }
 // TAB BÁO CÁO NGÀY: 1 ngày -> như cũ; khoảng ngày -> từng ngày (mới nhất trên), mỗi ngày tính y như chọn riêng ngày đó
 // (tạm đổi cvNgay / cvMuc / st.ngay sang dữ liệu ngày đó rồi trả lại). Bỏ qua ngày không có gì.
@@ -6504,7 +6547,6 @@ function rptSlThanhHangLoat(){
       +rptSlSaleOptsHtml('')+'</select>'
       +'<button onclick="rptSlHangLoat(\'sale\',this)" class="refresh-btn" style="margin:0;padding:5px 12px;font-size:11.5px">Áp dụng</button></span>':'')
     +(dashGiaoViec()?'<button onclick="rptSlGiaoViecForm([...rptSlChonDs()])" style="margin:0;padding:5px 12px;font-size:11.5px;border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;font-weight:800;cursor:pointer;font-family:var(--font)">Giao việc</button>':'')
-    +'<button onclick="cvMenuBC(event,[...rptSlChonDs()])" title="Đưa các khách đã chọn vào Báo cáo công việc hôm nay (chọn nhóm)" style="margin:0;padding:5px 12px;font-size:11.5px;border:1.5px solid var(--green);background:var(--surface);color:var(--green);border-radius:7px;font-weight:800;cursor:pointer;font-family:var(--font)">Đưa vào báo cáo</button>'
     +'<button onclick="rptSlBoChon()" class="btn-ghost" style="margin:0 0 0 auto;padding:5px 12px;font-size:11.5px">Bỏ chọn</button></div>';
 }
 async function rptSlHangLoat(loai,el){
@@ -7307,10 +7349,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/11 14:03';
+const APP_VERSION='12/11 14:09';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=562;
+const APP_BAN=563;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -9558,8 +9600,7 @@ function rptSlMasterRowSi(r){
     +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
       +'<button onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\');rptSlCsMoForm()" title="Ghi lượt chăm sóc mới" style="border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700;font-family:var(--font)">+ Chăm sóc</button>'
       +(dashGiaoViec()?'<button onclick="rptSlGiaoViecForm([\''+String(r.leadId||'').replace(/'/g,"\\'")+'\'])" title="Giao việc cho Sale, không cần ghi lượt chăm sóc" style="margin-left:6px;border:1.5px solid var(--red);background:var(--surface);color:var(--red);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700;font-family:var(--font)">Giao việc</button>':'')
-      // nút thứ 3: đưa khách vào Báo cáo công việc hôm nay, chọn nhóm (anh Hải 04/11/2026)
-      +(r.leadId?'<button onclick="cvMenuBC(event,[\''+cvId(r.leadId)+'\'])" title="Đưa khách vào Báo cáo công việc hôm nay (chọn nhóm)" style="margin-left:6px;border:1.5px solid var(--green);background:var(--surface);color:var(--green);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700;font-family:var(--font)">+ Báo cáo</button>':'')
+      // (12/11/2026 bỏ nút "+ Báo cáo": Báo cáo công việc nay tự tổng hợp, không còn kế hoạch)
       +'</td></tr>';
 }
 // ── TRAO ĐỔI GẦN NHẤT (Master Sỉ, anh Hải 01/10/2026): bong bóng chat, bấm ra lượt chăm sóc gần nhất (3 mục) để khỏi mở
