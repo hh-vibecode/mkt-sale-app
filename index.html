@@ -4992,7 +4992,9 @@ function cvMoNgay(d,nguoiId){const st=cvSt();st.ngay=st.tu=st.den=d;cvKhoang=nul
 // Sale thấy của mình; Admin thấy mọi Sale có việc trong ngày.
 const BCN_TT={'Phân loại KH':'Đổi phân loại','Thẻ khách':'Gắn thẻ Pancake','Ảnh / tài liệu':'Thêm ảnh','Khách VIP':'Khách VIP','Chuyển loại khách':'Chuyển Sỉ / Lẻ',
   'Loại khách':'Chuyển Sỉ / Lẻ','Lượt chăm sóc':'Sửa lượt chăm sóc','Giao việc':'Giao việc','Sales phụ trách':'Đổi Sale','Mã KH':'Gắn Mã KH'};
-const BCN_NGUOI=['Nguyễn Khánh Nguyên','Bùi Thị Kim Oanh'];   // tab của Admin (12/11/2026), đúng tên ở Phân quyền > Nhân sự Sale
+// tab của Admin (12/11/2026), đúng tên ở Phân quyền > Nhân sự Sale. Minh Oanh: 12/11 anh cho chuyển hết khách sang Nguyên + bỏ khỏi ô chọn
+// (sale_nhan_su nghỉ, bàn giao Nguyên) -> không còn tab.
+const BCN_NGUOI=['Nguyễn Khánh Nguyên','Bùi Thị Kim Oanh'];
 // KHOẢNG NGÀY (anh Hải 12/11/2026: "thêm cái lọc nhiều ngày nữa, ví dụ t muốn xem làm việc trong 1 tuần") + "lead ra data mới chưa xử lý":
 // Từ – Đến + nút nhanh; số trên cùng = cộng cả khoảng; dưới là TỪNG NGÀY (mới nhất trước, ngày trống bỏ qua), mỗi ngày y như xem riêng ngày đó.
 // DATA MỚI CHƯA XỬ LÝ = khách đứng tên Sale tạo trong khoảng, TỚI GIỜ chưa có lượt chăm sóc nào (mọi ngày) và chưa ra đơn.
@@ -5000,6 +5002,8 @@ function bcnNgays(tu,den){const out=[];
   for(let t=new Date(den+'T12:00:00');out.length<62;t.setDate(t.getDate()-1)){const s=t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');if(s<tu)break;out.push(s);}
   return out;}
 function bcnCong(d,n){const t=new Date(d+'T12:00:00');t.setDate(t.getDate()+n);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');}
+// mọi tài khoản đăng nhập gắn với 1 Sale (vd Đặng Thị Minh Oanh = "Minh Oanh" + "Sale Sỉ 1")
+function bcnAccCua(sale){return (window._rptSlAccs||[]).filter(a=>cvSaleCuaAcc(a)===sale).map(a=>String(a.name||'').trim()).filter(Boolean);}
 async function bcnTaiLog(tu,den){
   const k=tu+'|'+den;if(window._bcnLog&&window._bcnLog.k===k)return window._bcnLog.rows;
   const rows=await sbFetchAll('activity_log','select=who,act,tbl,ref,label,fld,old_v,new_v,at&at=gte.'+tu+'T00:00:00%2B07:00&at=lt.'+bcnCong(den,1)+'T00:00:00%2B07:00&order=at');
@@ -5008,8 +5012,8 @@ async function bcnTaiLog(tu,den){
 }
 // thao tác khác của 1 tài khoản: bỏ lượt chăm mới (đã hiện ở trên), bỏ cột kỹ thuật (si_phan_loai, vip_luc…) -- chỉ giữ dòng có tên dễ đọc
 function bcnThaoTac(rows,acc){
-  const nhom=new Map();if(!acc)return [];
-  rows.forEach(x=>{if(String(x.who||'').trim()!==acc)return;const fld=String(x.fld||'');
+  const accs=[].concat(acc||[]).map(s=>String(s).trim()).filter(Boolean),nhom=new Map();if(!accs.length)return [];   // mọi tài khoản của Sale (12/11)
+  rows.forEach(x=>{if(!accs.includes(String(x.who||'').trim()))return;const fld=String(x.fld||'');
     if(!fld||/^[a-z0-9_]+$/.test(fld)||(x.act==='C'&&fld==='Lượt chăm sóc'))return;
     const ten=BCN_TT[fld]||fld;if(!nhom.has(ten))nhom.set(ten,[]);nhom.get(ten).push(x);});
   return [...nhom.entries()].map(([ten,ds])=>({ten,ds})).sort((p,q)=>q.ds.length-p.ds.length);
@@ -5061,9 +5065,11 @@ async function renderCongViec(taiLai){
   const st=cvSt(),toi=cvToi(),het=cvXemHet(),h=todayISO();
   if(!st.bTu||!st.bDen){st.bTu=bcnCong(h,-2);st.bDen=h;}   // mặc định 3 ngày gần nhất
   const tu=st.bTu,den=st.bDen,ngays=bcnNgays(tu,den);
-  if(taiLai)window._bcnLog=null;
   let log=[];
   try{
+    // nút "Làm mới": nạp lại THẬT mọi nguồn (trước 12/11 chỉ nạp lại thao tác)
+    if(taiLai){window._bcnLog=null;await Promise.all([dhLoadOrders(true),kiotLoadInvoices(true),dhLoadManual(true),rptSlLoadManual(true),siCrmLoad(true)]);
+      window._kiotOrdByCode=null;rptSlXoaCache();_cvKh={khoa:'',ds:[],theoId:{}};bcnLanNang=Date.now();}
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null),dmLoad(),
       het&&!window._rptSlAccs?rptSlLoadAccs().catch(()=>null):null]);
     await rptSlLockChot();
@@ -5083,24 +5089,40 @@ async function renderCongViec(taiLai){
     // CHỈ 2 NHÂN SỰ (anh Hải 12/11/2026: "t chỉ cần của Nguyên vs Oanh thôi" -- Oanh = Kim Oanh). Thêm người: thêm tên vào BCN_NGUOI.
     ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&BCN_NGUOI.includes(String(x.ten||'').trim()))
       .sort((p,q)=>BCN_NGUOI.indexOf(p.ten.trim())-BCN_NGUOI.indexOf(q.ten.trim()))
-      .map(x=>({sale:x.ten,acc:((window._rptSlAccs||[]).find(a=>cvSaleCuaAcc(a)===x.ten)||{}).name||''}));
-  }else{const sale=cvSaleCuaAcc(cvAccCua(toi.id));ds=sale?[{sale,acc:toi.ten}]:[];}
+      .map(x=>({sale:x.ten,acc:bcnAccCua(x.ten)}));
+  }else{const sale=cvSaleCuaAcc(cvAccCua(toi.id));ds=sale?[{sale,acc:[toi.ten].concat(bcnAccCua(sale))}]:[];}
   const rong=t=>'<div class="bcn"><div style="padding:22px 20px;color:var(--muted);font-size:12.5px">'+t+'</div></div>';
   // MỖI NHÂN SỰ 1 TAB (anh Hải 12/11/2026: "mỗi nhân sự là 1 tab đi, cho dễ nhìn"): Admin thấy hàng tab tên Sale (người chưa có việc chữ mờ),
   // bấm tab xem thẻ của người đó; Sale thường chỉ có thẻ của mình nên không hiện tab. Chỉ tính số cho người đang xem (đỡ nặng khi chọn cả tháng).
   let tabs='',xem=ds;
   if(het&&ds.length){
     if(!ds.some(p=>p.sale===st.bcnSale))st.bcnSale=ds[0].sale;
-    // tên gọi: chữ cuối (Lệ, Nguyên); trùng thì 2 chữ cuối (Minh Oanh / Kim Oanh); vẫn trùng thì tên đầy đủ
-    const cuoi=(t,n)=>t.trim().split(/\s+/).slice(-n).join(' '),ngan=t=>{for(const n of [1,2])if(ds.filter(x=>cuoi(x.sale,n)===cuoi(t,n)).length===1)return cuoi(t,n);return t;};
-    tabs='<div class="bcn-tabs">'+ds.map(p=>'<button class="'+(p.sale===st.bcnSale?'on':'')+'" title="'+cvE(p.sale)+'" onclick="cvSt().bcnSale=\''+cvId(p.sale)+'\';renderCongViec()">'
-        +cvE(ngan(p.sale))+'</button>').join('')+'</div>';
+    // tab ghi TÊN ĐẦY ĐỦ của Sale (anh Hải 12/11/2026: "tab báo cáo để tên đầy đủ của sale")
+    tabs='<div class="bcn-tabs">'+ds.map(p=>'<button class="'+(p.sale===st.bcnSale?'on':'')+'" onclick="cvSt().bcnSale=\''+cvId(p.sale)+'\';renderCongViec()">'
+        +cvE(p.sale)+'</button>').join('')+'</div>';
     xem=ds.filter(p=>p.sale===st.bcnSale);
   }
-  el.innerHTML=modHeader('Báo cáo công việc','','','','')+thanh+tabs
+  const html=modHeader('Báo cáo công việc','','','','')+thanh+tabs
     +(!het&&!ds.length?rong('Tài khoản này chưa gắn với đúng 1 Sale (tài khoản chung?) nên chưa có báo cáo')
       :xem.length?xem.map(p=>bcnThe(p.sale,bcnSoLieu(p,ngays,log),tu,den)).join(''):rong('Chưa có Sale nào'));
+  if(html!==window._bcnHtml||!el.querySelector('.bcn')){window._bcnHtml=html;el.innerHTML=html;}   // không đổi gì thì không vẽ lại (giữ ô đang mở)
 }
+// TỰ LÀM MỚI (anh Hải 12/11/2026: "thao tác trên app nó sẽ cập nhật real time về báo cáo nhỉ"). Chỉ chạy khi đang mở trang này + tab trình duyệt
+// đang xem. Mỗi 2 phút: lượt chăm sóc mới / sửa (siCrmNapMoi, vài KB) + thao tác (activity_log). Mỗi 15 phút (khớp nhịp job đồng bộ Kiot /
+// Pancake 15 phút): nạp lại đơn Kiot, data Pancake, gán tay (Sale phụ trách / phân loại). Quay lại tab sau khi rời -> làm mới ngay.
+let bcnLanNang=Date.now();
+async function bcnTuLamMoi(){
+  const el=document.getElementById('page-congviec');if(!el||!el.classList.contains('active')||document.hidden||window._bcnDangTai)return;
+  window._bcnDangTai=true;
+  try{
+    if(Date.now()-bcnLanNang>=15*60000){bcnLanNang=Date.now();await Promise.all([dhLoadOrders(true),kiotLoadInvoices(true),dhLoadManual(true),rptSlLoadManual(true)]);}
+    await siCrmNapMoi();
+    window._bcnLog=null;window._kiotOrdByCode=null;rptSlXoaCache();_cvKh={khoa:'',ds:[],theoId:{}};
+    await renderCongViec();
+  }catch(e){console.warn('[Báo cáo công việc] tự làm mới lỗi',e);}finally{window._bcnDangTai=false;}
+}
+setInterval(bcnTuLamMoi,2*60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)bcnTuLamMoi();});
 // TAB BÁO CÁO NGÀY: 1 ngày -> như cũ; khoảng ngày -> từng ngày (mới nhất trên), mỗi ngày tính y như chọn riêng ngày đó
 // (tạm đổi cvNgay / cvMuc / st.ngay sang dữ liệu ngày đó rồi trả lại). Bỏ qua ngày không có gì.
 function cvBaoCaoTab(){
@@ -5158,7 +5180,10 @@ function cvBaoCaoMotNgay(trongKhoang){
 //  3. Khách chốt đơn = đơn Kiot tạo trong ngày, có dấu vết tiền, của khách đứng tên Sale (= Tiền chốt ở Quản trị)
 function cvCuoiNgaySoLieu(sale,acc,d){
   const K=cvKhach(),loais=cvLoaiDuoc(),coLog=new Set(),le=new Map();
-  const cuaSale=c=>{const t=rptSlSaleName(c.sales||'');return t?t===sale:!!acc&&String(c.created_by||'').trim()===String(acc).trim();};
+  // lượt chăm của Sale = cột sales là Sale này HOẶC người ghi là 1 tài khoản của Sale (12/11/2026 "đảm bảo đủ lượt chăm sóc của sale": Nguyên ghi
+  // hộ khách của Vân Ngọc thì hiện ở CẢ 2 báo cáo; Sale có nhiều tài khoản -- Minh Oanh / Sale Sỉ 1 -- gom đủ)
+  const accs=[].concat(acc||[]).map(s=>String(s).trim()).filter(Boolean);
+  const cuaSale=c=>rptSlSaleName(c.sales||'')===sale||accs.includes(String(c.created_by||'').trim());
   siCrmRows.forEach(c=>{
     if(String(c.ngay_cham||'').slice(0,10)!==d||rptSlLaGiaoViec(c)||/^(Monsieur Claude|Hệ thống)$/.test(String(c.created_by||'').trim())||!cuaSale(c))return;   // bỏ dòng job tự tạo (Chốt đơn từ Kiot)
     const x=c.lead_id?K.theoId[c.lead_id]:null;
@@ -7419,10 +7444,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/11 15:33';
+const APP_VERSION='12/11 15:52';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=569;
+const APP_BAN=570;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
