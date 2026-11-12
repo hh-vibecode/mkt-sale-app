@@ -339,6 +339,10 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
 .cv-x:hover{color:var(--red)}
 .cv-nut{border:none;background:var(--accent);color:#fff;border-radius:9px;padding:8px 16px;font:800 12px var(--font);cursor:pointer;white-space:nowrap}
 .cv-nut.phu{background:var(--surface);color:var(--text2);border:1.5px solid var(--border)}
+.bcn-tabs{display:flex;gap:4px;overflow-x:auto;margin:0 0 14px;border-bottom:1px solid var(--border);scrollbar-width:thin}
+.bcn-tabs button{flex:0 0 auto;border:0;background:none;padding:8px 14px;font:700 12.5px var(--font);color:var(--text2);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.bcn-tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.bcn-tabs button.mo{color:var(--muted);font-weight:600;opacity:.7}
 .bcn{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:18px;overflow:hidden}
 .bcn-dau{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:16px 20px 4px;flex-wrap:wrap}
 .bcn-ten{font-size:16px;font-weight:800;color:var(--text)}
@@ -5024,12 +5028,25 @@ async function renderCongViec(taiLai){
       .map(x=>({sale:x.ten,acc:((window._rptSlAccs||[]).find(a=>cvSaleCuaAcc(a)===x.ten)||{}).name||''}));
   }else{const sale=cvSaleCuaAcc(cvAccCua(toi.id));ds=sale?[{sale,acc:toi.ten}]:[];}
   const the=ds.map(p=>({p,so:cvCuoiNgaySoLieu(p.sale,p.acc,d),tt:bcnThaoTac(log,p.acc)}))
-    .filter(t=>!het||t.so.moi.length||t.so.cu.length||t.so.chot.length||t.tt.length)
     .sort((x,y)=>y.so.tien-x.so.tien||(y.so.moi.length+y.so.cu.length)-(x.so.moi.length+x.so.cu.length));
   const rong=t=>'<div class="bcn"><div style="padding:22px 20px;color:var(--muted);font-size:12.5px">'+t+'</div></div>';
-  el.innerHTML=modHeader('Báo cáo công việc','','','','')+thanh
+  // MỖI NHÂN SỰ 1 TAB (anh Hải 12/11/2026: "mỗi nhân sự là 1 tab đi, cho dễ nhìn"): Admin thấy hàng tab tên Sale (người có việc trước,
+  // người chưa có việc chữ mờ), bấm tab xem thẻ của người đó; Sale thường chỉ có thẻ của mình nên không hiện tab.
+  const coViec=t=>!!(t.so.moi.length||t.so.cu.length||t.so.chot.length||t.tt.length);
+  let tabs='',xem=the;
+  if(het&&the.length){
+    the.sort((x,y)=>(coViec(y)?1:0)-(coViec(x)?1:0));
+    if(!the.some(t=>t.p.sale===st.bcnSale))st.bcnSale=the[0].p.sale;
+    // tên gọi: chữ cuối (Lệ, Nguyên); trùng thì 2 chữ cuối (Minh Oanh / Kim Oanh); vẫn trùng thì tên đầy đủ
+    const cuoi=(t,n)=>t.trim().split(/\s+/).slice(-n).join(' '),ngan=t=>{for(const n of [1,2])if(the.filter(x=>cuoi(x.p.sale,n)===cuoi(t,n)).length===1)return cuoi(t,n);return t;};
+    tabs='<div class="bcn-tabs">'+the.map(t=>{const k=ngan(t.p.sale);
+      return '<button class="'+(t.p.sale===st.bcnSale?'on':coViec(t)?'':'mo')+'" title="'+cvE(t.p.sale)+'" onclick="cvSt().bcnSale=\''+cvId(t.p.sale)+'\';renderCongViec()">'
+        +cvE(k)+'</button>';}).join('')+'</div>';
+    xem=the.filter(t=>t.p.sale===st.bcnSale);
+  }
+  el.innerHTML=modHeader('Báo cáo công việc','','','','')+thanh+tabs
     +(!het&&!ds.length?rong('Tài khoản này chưa gắn với đúng 1 Sale (tài khoản chung?) nên chưa có báo cáo')
-      :the.length?the.map(t=>bcnThe(t.p.sale,t.so,t.tt,d)).join(''):rong('Chưa Sale nào có việc ngày '+dmy(d)));
+      :xem.length?xem.map(t=>bcnThe(t.p.sale,t.so,t.tt,d)).join(''):rong('Chưa có Sale nào'));
 }
 // TAB BÁO CÁO NGÀY: 1 ngày -> như cũ; khoảng ngày -> từng ngày (mới nhất trên), mỗi ngày tính y như chọn riêng ngày đó
 // (tạm đổi cvNgay / cvMuc / st.ngay sang dữ liệu ngày đó rồi trả lại). Bỏ qua ngày không có gì.
@@ -7349,10 +7366,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/11 14:09';
+const APP_VERSION='12/11 14:16';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=563;
+const APP_BAN=564;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
