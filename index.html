@@ -351,6 +351,19 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
 .bcn-so .n{font-size:22px;font-weight:800;color:var(--text);line-height:1.2}
 .bcn-so .l{font-size:11px;color:var(--muted);font-weight:600}
 .bcn-ngay-tieu{padding:9px 20px;font-size:12.5px;font-weight:800;color:var(--text);background:var(--bg2);border-top:1px solid var(--border)}
+.bcn-luoi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:16px 20px 20px;border-top:1px solid var(--border);align-items:start}
+.bcn-ngay-the{border:1px solid var(--border);border-radius:12px;overflow:hidden;min-width:0}
+.bcn-nt-dau{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:10px 14px;background:var(--bg2);font-size:13px;color:var(--text)}
+.bcn-bang{width:100%;border-collapse:collapse;font-size:12px;line-height:1.5;table-layout:fixed}
+.bcn-bang td{padding:8px 14px;border-top:1px solid var(--bg2);vertical-align:top;text-align:left;word-wrap:break-word}
+.bcn-bang td.k{width:38%}
+.bcn-bang td.k .ma{font-size:10.5px;color:var(--muted);font-weight:600}
+.bcn-bang tr.nh td{padding:11px 14px 5px;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--border)}
+.bcn-bang tr.nh:first-child td{border-top:0}
+.bcn-bang tr.nh td b{margin-left:3px}
+.bcn-trong{padding:18px 14px;color:var(--muted);font-size:12px}
+@media(max-width:1200px){.bcn-luoi{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.bcn-luoi{grid-template-columns:minmax(0,1fr);padding:12px 14px 16px}}
 .bcn-nhom{padding:4px 20px 14px;border-top:1px solid var(--border)}
 .bcn-nhom h4{margin:12px 0 4px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .bcn-dong{display:flex;gap:16px;padding:9px 0;border-bottom:1px solid var(--bg2);font-size:12.5px;line-height:1.55}
@@ -4997,40 +5010,45 @@ function bcnSoLieu(p,ngays,log){
       if(!r.isChot&&!cvVoiLoai(z.x.loai,()=>rptSlCsRows(r)).length)chua.push({o:z.o,d:n.d});});});
   return {ngay,chua,T};
 }
+// DẠNG BẢNG, MỖI NGÀY 1 BẢNG, 3 BẢNG / HÀNG (anh Hải 12/11/2026: "dạng bảng và auto mặc định theo 3 ngày gần nhất, kiểu 1 hàng 3 ngày 3 bảng,
+// thêm ngày thì thêm bảng"). Ngày mới nhất bên trái. Trên lưới: 5 số cộng cả khoảng + danh sách Data mới chưa xử lý.
 function bcnThe(sale,S,tu,den){
-  const mot=tu===den,n=v=>num(v),T=S.T,dm=d=>{const t=new Date(d+'T00:00:00');return CV_THU[t.getDay()]+' · '+dmy(d);};
-  const kh=z=>'<div class="bcn-kh">'+cvTenKhHtml(z.o)+'<div class="ma">'+cvE(z.o.ma)+'</div></div>';
-  const cham=z=>'<div class="bcn-dong">'+kh(z)+'<div class="bcn-nd">'+((z.kq.cs||[]).length?cvKqHtml({cs:z.kq.cs,don:[]}):'<span class="bcn-cam">Chưa chăm</span>')+'</div></div>';
-  const nhom=(tieu,body,mau)=>body?'<div class="bcn-nhom"><h4'+(mau?' style="color:'+mau+'"':'')+'>'+tieu+'</h4>'+body+'</div>':'';
+  const mot=tu===den,n=v=>num(v),T=S.T,thu=d=>{const t=new Date(d+'T00:00:00');return CV_THU[t.getDay()];};
+  const kh=z=>'<td class="k">'+cvTenKhHtml(z.o)+'<div class="ma">'+cvE(z.o.ma)+'</div></td>';
+  const cham=z=>'<tr>'+kh(z)+'<td>'+((z.kq.cs||[]).length?cvKqHtml({cs:z.kq.cs,don:[]}):'<span class="bcn-cam">Chưa chăm</span>')+'</td></tr>';
+  const nh=(t,so,mau)=>'<tr class="nh"><td colspan="2"'+(mau?' style="color:'+mau+'"':'')+'>'+t+' <b>'+so+'</b></td></tr>';
   const gio=t=>t?new Date(t).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Ho_Chi_Minh'}):'';
-  const ngayHtml=x=>{const so_=x.so,tt=x.tt;if(!(so_.moi.length||so_.cu.length||so_.chot.length||tt.length))return '';
-    return (mot?'':'<div class="bcn-ngay-tieu">'+dm(x.d)+'</div>')
-      +nhom('Data mới',so_.moi.map(cham).join(''))
-      +nhom('Chăm lại',so_.cu.map(cham).join(''))
-      +nhom('Chốt đơn',so_.chot.map(z=>'<div class="bcn-dong">'+kh(z)+'<div class="bcn-nd">'
-        +z.kq.don.map(o=>cvE(o.ma)+' · <span class="bcn-tien">'+vnd(o.tien)+'</span>').join('<br>')+'</div></div>').join(''))
-      +nhom('Thao tác khác',tt.length?'<div class="bcn-tt">'+tt.map(g=>'<details><summary>'+cvE(g.ten)+'<b>'+g.ds.length+'</b></summary><div class="ct">'
-        +g.ds.map(x=>'<span style="color:var(--muted)">'+gio(x.at)+'</span> '+cvE(((cvKhach().theoId[x.ref]||{}).r||{}).name||x.label||x.ref||'')+(x.new_v||x.old_v?' → '+cvE(x.new_v||'(bỏ)'):'')).join('<br>')
-        +'</div></details>').join('')+'</div>':'');};
-  const than=S.ngay.map(ngayHtml).join('');
+  const bangNgay=x=>{const so_=x.so,tt=x.tt,co=so_.moi.length||so_.cu.length||so_.chot.length||tt.length;
+    let b='';
+    if(so_.moi.length)b+=nh('Data mới',so_.moi.length)+so_.moi.map(cham).join('');
+    if(so_.cu.length)b+=nh('Chăm lại',so_.cu.length)+so_.cu.map(cham).join('');
+    if(so_.chot.length)b+=nh('Chốt đơn',so_.chot.length,'#16a34a')+so_.chot.map(z=>'<tr>'+kh(z)+'<td>'
+      +z.kq.don.map(o=>cvE(o.ma)+' · <span class="bcn-tien">'+vnd(o.tien)+'</span>').join('<br>')+'</td></tr>').join('');
+    if(tt.length)b+=nh('Thao tác khác',tt.reduce((a,g)=>a+g.ds.length,0))+'<tr><td colspan="2"><div class="bcn-tt">'+tt.map(g=>'<details><summary>'+cvE(g.ten)+'<b>'+g.ds.length+'</b></summary><div class="ct">'
+      +g.ds.map(y=>'<span style="color:var(--muted)">'+gio(y.at)+'</span> '+cvE(((cvKhach().theoId[y.ref]||{}).r||{}).name||y.label||y.ref||'')+(y.new_v||y.old_v?' → '+cvE(y.new_v||'(bỏ)'):'')).join('<br>')
+      +'</div></details>').join('')+'</div></td></tr>';
+    return '<div class="bcn-ngay-the"><div class="bcn-nt-dau"><b>'+thu(x.d)+' · '+dmy(x.d).slice(0,5)+'</b>'
+      +(so_.tien?'<span class="bcn-tien">'+vnd(so_.tien)+'</span>':'')+'</div>'
+      +(co?'<table class="bcn-bang"><tbody>'+b+'</tbody></table>':'<div class="bcn-trong">Chưa có việc</div>')+'</div>';};
   return '<div class="bcn">'
-    +'<div class="bcn-dau"><div class="bcn-ten">'+cvE(sale)+'</div><div class="bcn-ngay">'+(mot?dm(tu):dmy(tu).slice(0,5)+' – '+dmy(den)+' · '+S.ngay.length+' ngày')+'</div></div>'
+    +'<div class="bcn-dau"><div class="bcn-ten">'+cvE(sale)+'</div><div class="bcn-ngay">'+(mot?thu(tu)+' · '+dmy(tu):dmy(tu).slice(0,5)+' – '+dmy(den)+' · '+S.ngay.length+' ngày')+'</div></div>'
     +'<div class="bcn-so">'+[[n(T.moi),'Data mới'],[n(S.chua.length),'Chưa xử lý',S.chua.length?'#d97706':''],[n(T.cu),'Chăm lại'],
         [n(T.chot),'Chốt đơn',T.chot?'#16a34a':''],[T.tien?vnd(T.tien):'0','Tiền chốt',T.tien?'#16a34a':'']]
       .map(([v,l,mau])=>'<div><div class="n"'+(mau?' style="color:'+mau+'"':'')+'>'+v+'</div><div class="l">'+l+'</div></div>').join('')+'</div>'
-    +nhom('Data mới chưa xử lý',S.chua.map(z=>'<div class="bcn-dong">'+kh(z)+'<div class="bcn-nd"><span class="bcn-cam">Nhận '+dmy(z.d).slice(0,5)+' · chưa chăm, chưa đơn</span></div></div>').join(''),'#d97706')
-    +(than||'<div class="bcn-nhom" style="color:var(--muted);font-size:12px;padding:14px 20px">Chưa có việc nào'+(mot?' trong ngày':' trong khoảng này')+'</div>')
+    +(S.chua.length?'<div class="bcn-nhom"><h4 style="color:#d97706">Data mới chưa xử lý</h4>'
+      +S.chua.map(z=>'<div class="bcn-dong"><div class="bcn-kh">'+cvTenKhHtml(z.o)+'<div class="ma">'+cvE(z.o.ma)+'</div></div><div class="bcn-nd"><span class="bcn-cam">Nhận '+dmy(z.d).slice(0,5)+' · chưa chăm, chưa đơn</span></div></div>').join('')+'</div>':'')
+    +'<div class="bcn-luoi">'+S.ngay.map(bangNgay).join('')+'</div>'
     +'</div>';
 }
 function bcnDat(tu,den){const st=cvSt();if(!tu||!den)return;if(tu>den)[tu,den]=[den,tu];
   const ds=bcnNgays(tu,den);if(ds.length>=62)tu=ds[ds.length-1];st.bTu=tu;st.bDen=den;renderCongViec();}
 function bcnNhanh(k){const h=todayISO();
-  if(k==='hom')bcnDat(h,h);else if(k==='qua'){const q=bcnCong(h,-1);bcnDat(q,q);}else if(k==='7')bcnDat(bcnCong(h,-6),h);else if(k==='thang')bcnDat(h.slice(0,8)+'01',h);}
+  if(k==='hom')bcnDat(h,h);else if(k==='3')bcnDat(bcnCong(h,-2),h);else if(k==='7')bcnDat(bcnCong(h,-6),h);else if(k==='thang')bcnDat(h.slice(0,8)+'01',h);}
 async function renderCongViec(taiLai){
   const el=document.getElementById('page-congviec');if(!el)return;
   if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo công việc');
   const st=cvSt(),toi=cvToi(),het=cvXemHet(),h=todayISO();
-  if(!st.bTu||!st.bDen){st.bTu=st.bDen=h;}
+  if(!st.bTu||!st.bDen){st.bTu=bcnCong(h,-2);st.bDen=h;}   // mặc định 3 ngày gần nhất
   const tu=st.bTu,den=st.bDen,ngays=bcnNgays(tu,den);
   if(taiLai)window._bcnLog=null;
   let log=[];
@@ -5042,7 +5060,7 @@ async function renderCongViec(taiLai){
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo công việc',e,'renderCongViec');return;}
   if(!document.getElementById('page-congviec').classList.contains('active'))return;
   const ip='height:30px;box-sizing:border-box;padding:2px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px;font-weight:600;font-family:var(--font);outline:none';
-  const q=bcnCong(h,-1),dang=[['hom','Hôm nay',tu===h&&den===h],['qua','Hôm qua',tu===q&&den===q],['7','7 ngày',tu===bcnCong(h,-6)&&den===h],['thang','Tháng này',tu===h.slice(0,8)+'01'&&den===h&&tu!==den]];
+  const dang=[['3','3 ngày',tu===bcnCong(h,-2)&&den===h],['hom','Hôm nay',tu===h&&den===h],['7','7 ngày',tu===bcnCong(h,-6)&&den===h],['thang','Tháng này',tu===h.slice(0,8)+'01'&&den===h&&tu!==den]];
   const thanh='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 16px">'
     +'<input type="date" value="'+tu+'" onchange="bcnDat(this.value,cvSt().bDen)" style="'+ip+'" title="Từ ngày">'
     +'<span style="color:var(--muted);font-weight:700">–</span>'
@@ -7390,10 +7408,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/11 15:07';
+const APP_VERSION='12/11 15:14';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=566;
+const APP_BAN=567;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
