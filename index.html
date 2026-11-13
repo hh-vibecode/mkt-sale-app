@@ -5088,11 +5088,17 @@ function bcnZlNoi(z){const I=bcnZlIdx(),K=cvKhach(),kz=z.khach_id||z.conv_id,tay
   for(const p of so)if(I.sdt[p])return {o:tuApp(I.sdt[p]),cach:'sdt'};
   for(const p of so)if(I.kiot[p])return {o:tuKiot(I.kiot[p]),cach:'kiot'};
   return null;}
+// Sale ĐÃ NGHỈ có người nhận bàn giao -> dòng Zalo tính cho người nhận, đi hết chuỗi (Toàn -> Minh Oanh -> Nguyên), giống khách
+// (anh Hải 13/11/2026: Tuấn nghỉ, "từ 2/11 tất cả data của anh Tuấn đều là của Diệp", chọn chuyển hết).
+function bcnSaleNhan(ten){let t=String(ten||'').trim();
+  for(let i=0;i<6&&t;i++){const ns=saleNhanSuDS().find(x=>String(x.ten||'').trim()===t);
+    if(!(ns&&ns.dang_lam===false&&ns.ban_giao_cho))break;t=String(ns.ban_giao_cho).trim();}
+  return t;}
 function bcnZaloKhach(rows,sale,d){
   if(!rows)return null;const gom=new Map();window._bcnZlMuc=window._bcnZlMuc||{};
   // CHỈ khách Sale ĐÃ NHẮN trong ngày (anh Hải 13/11/2026: "chỉ quan tâm tới việc trả lời khách nào trong hôm ấy thôi, không quan tâm nhắn trước
   // hay chưa trả lời gì đâu, clear hết đi") -- trả lời hoặc nhắn trước đều tính, khách nhắn mà Sale chưa trả lời thì bỏ, không nhãn gì.
-  rows.forEach(z=>{if(z.ngay!==d||String(z.sale||'').trim()!==sale)return;
+  rows.forEach(z=>{if(z.ngay!==d||bcnSaleNhan(z.sale)!==sale)return;
     const coCot=('da_tra_loi' in z)||('khach_nhan' in z);if(coCot&&!(z.khach_nhan===false||z.da_tra_loi))return;
     const kz=z.khach_id||z.conv_id,n=bcnZlNoi(z);
     const k=n?(n.o.lead?'app:'+n.o.lead:'kh:'+n.o.ma):'zl:'+kz;if(gom.has(k))return;
@@ -7614,10 +7620,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/11 14:52';
+const APP_VERSION='13/11 15:46';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=577;
+const APP_BAN=578;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
