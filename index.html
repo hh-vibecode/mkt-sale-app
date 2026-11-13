@@ -403,6 +403,12 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
 .bcn-zl-dong .tt{font-size:11px;margin-left:auto}.bcn-zl-dong .tt.mo{color:var(--muted)}
 .bcn-noi{border:1px solid var(--border);background:var(--surface);color:var(--accent);font:700 10.5px var(--font);padding:1px 8px;border-radius:6px;cursor:pointer}
 .bcn-noi:hover{background:var(--bg2)}
+/* 2 nút popup Nối (13/11/2026: "chữ Lưu form gớm") -- cùng cỡ, Lưu nền màu chính, chưa chọn khách thì mờ */
+.bcn-nut{min-width:84px;height:34px;padding:0 18px;border-radius:8px;font:700 12.5px var(--font);cursor:pointer;border:1.5px solid var(--border2,var(--border));background:var(--surface);color:var(--text)}
+.bcn-nut:hover{border-color:var(--accent);color:var(--accent)}
+.bcn-nut.chinh{background:var(--accent);border-color:var(--accent);color:#fff}
+.bcn-nut.chinh:hover{filter:brightness(.94);color:#fff}
+.bcn-nut.chinh:disabled{background:var(--bg2);border-color:var(--border);color:var(--muted);cursor:not-allowed;filter:none}
 .bcn-noi-dong{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-top:1px solid var(--bg2);cursor:pointer}
 .bcn-noi-dong input{margin-top:3px}
 .bcn-tt details{border:1px solid var(--border);border-radius:8px;font-size:11.5px;background:var(--surface)}
@@ -5106,8 +5112,8 @@ function bcnNoiMo(kz){const m0=(window._bcnZlMuc||{})[kz];if(!m0)return;window._
    +' style="width:100%;box-sizing:border-box;height:36px;padding:5px 12px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-size:13px;font-family:var(--font);outline:none"></div>'
    +'<div id="bcnNoiKq" style="overflow:auto;padding:0 18px;flex:1;min-height:120px"></div>'
    +'<div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border)">'
-   +'<button class="btn-ghost" style="margin:0" onclick="qcCloseModal()">Huỷ</button>'
-   +'<button id="bcnNoiLuu" class="btn-primary" style="margin:0" disabled onclick="bcnNoiLuu()">Lưu</button></div></div></div>';
+   +'<button class="bcn-nut" onclick="qcCloseModal()">Huỷ</button>'
+   +'<button id="bcnNoiLuu" class="bcn-nut chinh" disabled onclick="bcnNoiLuu()">Lưu</button></div></div></div>';
   bcnNoiTim();setTimeout(()=>{const i=document.getElementById('bcnNoiQ');if(i)i.focus();},30);}
 function bcnNoiTim(){const el=document.getElementById('bcnNoiKq'),q=String((document.getElementById('bcnNoiQ')||{}).value||'').trim();if(!el)return;
   window._bcnNoi.chon=null;const nut=document.getElementById('bcnNoiLuu');if(nut)nut.disabled=true;
@@ -7606,10 +7612,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/11 14:36';
+const APP_VERSION='13/11 14:44';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=575;
+const APP_BAN=576;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
