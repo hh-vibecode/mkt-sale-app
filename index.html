@@ -255,6 +255,7 @@ td.name{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:700;f
 .nav-item{color:var(--nav-text);border-radius:6px;border-color:transparent}
 .nav-item:hover{background:var(--nav-hover);color:#fff}
 .nav-item.active{background:var(--nav-act);color:#fff;border-color:transparent;box-shadow:inset 3px 0 0 var(--cta)}
+#nav-congviec.active{background:transparent;box-shadow:none}   /* mục cha của menu xổ: chỉ tô mục con */
 .nav-badge{background:var(--cta)}
 .sb-admin{background:var(--nav-bg);border-top:1px solid var(--nav-line)}
 .sb-admin-btn{color:var(--nav-text);border-radius:6px}
@@ -339,6 +340,13 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
 .cv-x:hover{color:var(--red)}
 .cv-nut{border:none;background:var(--accent);color:#fff;border-radius:9px;padding:8px 16px;font:800 12px var(--font);cursor:pointer;white-space:nowrap}
 .cv-nut.phu{background:var(--surface);color:var(--text2);border:1.5px solid var(--border)}
+/* menu xổ Báo cáo công việc -> Sale Lẻ / Sale Sỉ (13/11/2026) */
+.nav-mui{margin-left:auto;font-size:10px;opacity:.7;transition:transform .18s;flex-shrink:0}
+.nav-mui.mo{transform:rotate(90deg)}
+.sidebar.collapsed .nav-mui{display:none}
+.nav-con{display:none}.nav-con.mo{display:block}
+.nav-item.nav-sub{padding:7px 13px 7px 46px;font-size:12.5px}
+.sidebar.collapsed .nav-item.nav-sub{padding:7px 13px}
 .bcn-tabs{display:flex;gap:4px;overflow-x:auto;margin:0 0 14px;border-bottom:1px solid var(--border);scrollbar-width:thin}
 .bcn-tabs button{flex:0 0 auto;border:0;background:none;padding:8px 14px;font:700 12.5px var(--font);color:var(--text2);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px;white-space:nowrap}
 .bcn-tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
@@ -476,7 +484,12 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
     <nav id="sec-qt">
       <div class="nav-item" onclick="switchPage('report-tonghop')" id="nav-report-tonghop"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span><span class="nav-label">Báo cáo tổng hợp</span></div>
       <!-- Báo cáo công việc: nhóm Quản trị (anh Hải 04/11/2026), mọi tài khoản đều thấy -->
-      <div class="nav-item" onclick="switchPage('congviec')" id="nav-congviec"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4"/><path d="M9 12.5l2 2 4-4.5"/></svg></span><span class="nav-label">Báo cáo công việc</span></div>
+      <div class="nav-item" onclick="bcnMenu()" id="nav-congviec"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4"/><path d="M9 12.5l2 2 4-4.5"/></svg></span><span class="nav-label">Báo cáo công việc</span><span class="nav-mui" id="bcnMui">▸</span></div>
+      <!-- 13/11/2026 anh Hải: "báo cáo hằng ngày click vào dropdown chia đôi ra ở thanh công cụ, giống kế toán, 1 cái của Sale Lẻ, 1 cái của Sale Sỉ" -->
+      <div class="nav-con" id="bcnMenuCon">
+        <div class="nav-item nav-sub" id="bcnSub-Lẻ" data-tat="L" onclick="bcnMo('Lẻ')"><span class="nav-label">Sale Lẻ</span></div>
+        <div class="nav-item nav-sub" id="bcnSub-Sỉ" data-tat="S" onclick="bcnMo('Sỉ')"><span class="nav-label">Sale Sỉ</span></div>
+      </div>
     </nav>
     <div class="sb-section" id="sec-report-label" style="margin-top:12px">Báo cáo</div>
     <nav id="sec-report">
@@ -1098,6 +1111,7 @@ function switchPage(p){
     const el=document.getElementById('page-'+x);if(el)el.classList.toggle('active',x===p);
     const nav=document.getElementById('nav-'+x);if(nav)nav.classList.toggle('active',x===p);
   });
+  if(typeof bcnMenuVe==='function')bcnMenuVe(p==='congviec'?true:null);   // menu xổ Sale Lẻ / Sale Sỉ: mở + tô mục đang xem
   if(p==='settings')renderSettings();
   if(p==='log')renderLog();
   if(p==='logic')renderLogic();
@@ -5011,15 +5025,18 @@ async function bcnTaiLog(tu,den){
   window._bcnLog={k,rows};return rows;
 }
 // thao tác khác của 1 tài khoản: bỏ lượt chăm mới (đã hiện ở trên), bỏ cột kỹ thuật (si_phan_loai, vip_luc…) -- chỉ giữ dòng có tên dễ đọc
-function bcnThaoTac(rows,acc){
+function bcnThaoTac(rows,acc,loai){
   const accs=[].concat(acc||[]).map(s=>String(s).trim()).filter(Boolean),nhom=new Map();if(!accs.length)return [];   // mọi tài khoản của Sale (12/11)
+  const K=cvKhach();
   rows.forEach(x=>{if(!accs.includes(String(x.who||'').trim()))return;const fld=String(x.fld||'');
+    // menu Sale Lẻ / Sale Sỉ: thao tác trên khách loại kia thì bỏ (khách không tìm thấy trong app thì vẫn hiện ở cả 2)
+    const kx=K.theoId[x.ref];if(loai&&kx&&kx.loai!==loai)return;
     if(!fld||/^[a-z0-9_]+$/.test(fld)||(x.act==='C'&&fld==='Lượt chăm sóc'))return;
     const ten=BCN_TT[fld]||fld;if(!nhom.has(ten))nhom.set(ten,[]);nhom.get(ten).push(x);});
   return [...nhom.entries()].map(([ten,ds])=>({ten,ds})).sort((p,q)=>q.ds.length-p.ds.length);
 }
 function bcnSoLieu(p,ngays,log){
-  const ngay=ngays.map(d=>({d,so:cvCuoiNgaySoLieu(p.sale,p.acc,d),tt:bcnThaoTac(log.filter(x=>x._ngay===d),p.acc)}));
+  const ngay=ngays.map(d=>({d,so:cvCuoiNgaySoLieu(p.sale,p.acc,d,p.loai),tt:bcnThaoTac(log.filter(x=>x._ngay===d),p.acc,p.loai)}));
   const chua=[],seen=new Set(),T={moi:0,cu:0,chot:0,tien:0,tt:0};
   ngay.forEach(n=>{T.moi+=n.so.moi.length;T.cu+=n.so.cu.length;T.chot+=n.so.chot.length;T.tien+=n.so.tien;T.tt+=n.tt.length;
     n.so.moi.forEach(z=>{const r=z.x.r;if(seen.has(r.leadId))return;seen.add(r.leadId);
@@ -5055,6 +5072,23 @@ function bcnThe(sale,S,tu,den){
       +S.chua.map(z=>'<div class="bcn-dong"><div class="bcn-kh">'+cvTenKhHtml(z.o)+'<div class="ma">'+cvE(z.o.ma)+'</div></div><div class="bcn-nd"><span class="bcn-cam">Nhận '+dmy(z.d).slice(0,5)+' · chưa chăm, chưa đơn</span></div></div>').join('')+'</div>':'')
     +'<div class="bcn-luoi">'+luoi+'</div></div>';
 }
+// MENU XỔ Sale Lẻ / Sale Sỉ ở thanh bên (anh Hải 13/11/2026, giống app Kế toán). Bấm "Báo cáo công việc" = mở / gập menu con; bấm mục con = mở
+// báo cáo chỉ khách loại đó. Mục con chỉ hiện loại tài khoản được xem (cvLoaiDuoc). Mặc định: Sale thường = đội của mình (Cả 2 -> Sỉ), Admin = Sỉ.
+function bcnLoai(){const st=cvSt(),duoc=cvLoaiDuoc();
+  if(!duoc.includes(st.bcnLoai)){let l='Sỉ';
+    if(!cvXemHet()){const sale=cvSaleCuaAcc(cvAccCua(cvToi().id)),ns=saleNhanSuDS().find(x=>x.ten===sale);if(ns&&ns.doi==='Lẻ')l='Lẻ';}
+    st.bcnLoai=duoc.includes(l)?l:(duoc[0]||'Sỉ');}
+  return st.bcnLoai;}
+function bcnMenuVe(mo){
+  const con=document.getElementById('bcnMenuCon'),mui=document.getElementById('bcnMui');if(!con)return;
+  if(mo!=null){con.classList.toggle('mo',mo);if(mui)mui.classList.toggle('mo',mo);}
+  const duoc=cvLoaiDuoc(),dang=document.getElementById('page-congviec').classList.contains('active');
+  ['Lẻ','Sỉ'].forEach(l=>{const it=document.getElementById('bcnSub-'+l);if(!it)return;it.style.display=duoc.includes(l)?'':'none';
+    it.classList.toggle('active',dang&&cvSt().bcnLoai===l);});}
+function bcnMenu(){const con=document.getElementById('bcnMenuCon');bcnMenuVe(!(con&&con.classList.contains('mo')));}
+function bcnMo(l){const st=cvSt();if(st.bcnLoai!==l){st.bcnLoai=l;window._bcnHtml='';}
+  const dang=document.getElementById('page-congviec').classList.contains('active');
+  if(dang)renderCongViec();else switchPage('congviec');}
 function bcnDat(tu,den){const st=cvSt();if(!tu||!den)return;if(tu>den)[tu,den]=[den,tu];
   const ds=bcnNgays(tu,den);if(ds.length>=62)tu=ds[ds.length-1];st.bTu=tu;st.bDen=den;renderCongViec();}
 function bcnNhanh(k){const h=todayISO();
@@ -5084,13 +5118,17 @@ async function renderCongViec(taiLai){
     +'<input type="date" value="'+den+'" onchange="bcnDat(cvSt().bTu,this.value)" style="'+ip+'" title="Đến ngày">'
     +dang.map(([k,t,on])=>'<button class="cv-chip'+(on?' on':'')+'" onclick="bcnNhanh(\''+k+'\')">'+t+'</button>').join('')
     +'<button class="cv-chip" onclick="renderCongViec(true)" title="Tải lại dữ liệu">Làm mới</button></div>';
+  const loai=bcnLoai();bcnMenuVe();
   let ds;
   if(het){
-    // CHỈ 2 NHÂN SỰ (anh Hải 12/11/2026: "t chỉ cần của Nguyên vs Oanh thôi" -- Oanh = Kim Oanh). Thêm người: thêm tên vào BCN_NGUOI.
-    ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&BCN_NGUOI.includes(String(x.ten||'').trim()))
-      .sort((p,q)=>BCN_NGUOI.indexOf(p.ten.trim())-BCN_NGUOI.indexOf(q.ten.trim()))
-      .map(x=>({sale:x.ten,acc:bcnAccCua(x.ten)}));
-  }else{const sale=cvSaleCuaAcc(cvAccCua(toi.id));ds=sale?[{sale,acc:[toi.ten].concat(bcnAccCua(sale))}]:[];}
+    // 12/11 chỉ Nguyên + Kim Oanh; 13/11 tách menu Sale Lẻ / Sale Sỉ -> tab = Sale ĐANG LÀM của đội đó (cột Đội ở Phân quyền > Nhân sự Sale,
+    // "Cả 2" hiện ở cả 2 menu). Sỉ = Nguyên + Kim Oanh như cũ. BCN_NGUOI xếp lên đầu, còn lại theo tên.
+    // menu Lẻ: Sale riêng đội Lẻ trước, người "Cả 2" (Nguyên, gần như toàn khách Sỉ) xếp cuối
+    const thu=x=>{if(loai!=='Sỉ')return x.doi==='Cả 2'?1:0;const i=BCN_NGUOI.indexOf(String(x.ten).trim());return i<0?99:i;};
+    ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten&&x.ten!==RPT_SL_BOT_SI&&(x.doi===loai||x.doi==='Cả 2'))
+      .sort((p,q)=>thu(p)-thu(q)||String(p.ten).localeCompare(String(q.ten),'vi'))
+      .map(x=>({sale:x.ten,acc:bcnAccCua(x.ten),loai}));
+  }else{const sale=cvSaleCuaAcc(cvAccCua(toi.id));ds=sale?[{sale,acc:[toi.ten].concat(bcnAccCua(sale)),loai}]:[];}
   const rong=t=>'<div class="bcn"><div style="padding:22px 20px;color:var(--muted);font-size:12.5px">'+t+'</div></div>';
   // MỖI NHÂN SỰ 1 TAB (anh Hải 12/11/2026: "mỗi nhân sự là 1 tab đi, cho dễ nhìn"): Admin thấy hàng tab tên Sale (người chưa có việc chữ mờ),
   // bấm tab xem thẻ của người đó; Sale thường chỉ có thẻ của mình nên không hiện tab. Chỉ tính số cho người đang xem (đỡ nặng khi chọn cả tháng).
@@ -5102,7 +5140,7 @@ async function renderCongViec(taiLai){
         +cvE(p.sale)+'</button>').join('')+'</div>';
     xem=ds.filter(p=>p.sale===st.bcnSale);
   }
-  const html=modHeader('Báo cáo công việc','','','','')+thanh+tabs
+  const html=modHeader('Báo cáo công việc · Sale '+loai,'','','','')+thanh+tabs
     +(!het&&!ds.length?rong('Tài khoản này chưa gắn với đúng 1 Sale (tài khoản chung?) nên chưa có báo cáo')
       :xem.length?xem.map(p=>bcnThe(p.sale,bcnSoLieu(p,ngays,log),tu,den)).join(''):rong('Chưa có Sale nào'));
   if(html!==window._bcnHtml||!el.querySelector('.bcn')){window._bcnHtml=html;el.innerHTML=html;}   // không đổi gì thì không vẽ lại (giữ ô đang mở)
@@ -5178,8 +5216,9 @@ function cvBaoCaoMotNgay(trongKhoang){
 //  1. Data mới nhận = khách đứng tên Sale, ngày tạo = ngày xem (kèm lượt chăm trong ngày, chưa chăm thì báo)
 //  2. Khách cũ chăm lại = khách khác có lượt chăm sóc CỦA SALE NÀY trong ngày (cột sales; trống thì người ghi = tài khoản)
 //  3. Khách chốt đơn = đơn Kiot tạo trong ngày, có dấu vết tiền, của khách đứng tên Sale (= Tiền chốt ở Quản trị)
-function cvCuoiNgaySoLieu(sale,acc,d){
-  const K=cvKhach(),loais=cvLoaiDuoc(),coLog=new Set(),le=new Map();
+function cvCuoiNgaySoLieu(sale,acc,d,loaiChi){
+  // loaiChi = 'Lẻ' / 'Sỉ': chỉ khách loại đó (menu Sale Lẻ / Sale Sỉ, 13/11/2026); bỏ trống = cả 2
+  const K=cvKhach(),loais=cvLoaiDuoc().filter(l=>!loaiChi||l===loaiChi),coLog=new Set(),le=new Map();
   // lượt chăm của Sale = cột sales là Sale này HOẶC người ghi là 1 tài khoản của Sale (12/11/2026 "đảm bảo đủ lượt chăm sóc của sale": Nguyên ghi
   // hộ khách của Vân Ngọc thì hiện ở CẢ 2 báo cáo; Sale có nhiều tài khoản -- Minh Oanh / Sale Sỉ 1 -- gom đủ)
   const accs=[].concat(acc||[]).map(s=>String(s).trim()).filter(Boolean);
@@ -7444,10 +7483,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='12/11 15:52';
+const APP_VERSION='13/11 14:01';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=570;
+const APP_BAN=571;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
