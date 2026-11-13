@@ -5028,11 +5028,13 @@ async function bcnTaiLog(tu,den){
 // tin rác ... đưa tin đã qua lọc, của Zalo", "mục phản hồi khách hàng: xem ngày phản hồi bao nhiêu khách, là các khách nào, không cần nội dung,
 // mục tiêu thống kê"). Nguồn: view qc_zalo_phan_hoi_ngay do APP QC dựng (kéo Zalo mỗi giờ, đã bỏ rác / nội bộ / nhóm, tên Sale đúng
 // sale_nhan_su.ten) -- app MKT CHỈ ĐỌC, không có cột nội dung tin. Chưa có view / lỗi -> null: ô hiện "—" (chờ QC), không vỡ báo cáo.
-// 1 dòng view = 1 khách Zalo x 1 Sale x 1 ngày (giờ VN); da_tra_loi = Sale đã trả lời sau tin cuối của khách trong ngày.
+// 1 dòng view = 1 khách Zalo x 1 Sale x 1 ngày (giờ VN); da_tra_loi = Sale đã trả lời sau tin cần trả lời cuối của khách (QC tính cả trả lời
+// sang ngày sau; "ok / vâng / ảnh / sticker" không cần trả lời); khach_nhan=false = Sale nhắn chủ động, khách không nhắn (da_tra_loi null).
+// View QC dựng xong 13/11/2026 (sale khớp sale_nhan_su.ten qua qc_sale_ten; ma_kh tạm luôn null -> nối khách bằng SĐT / số trong tên Zalo).
 async function bcnTaiZalo(tu,den){
   const k=tu+'|'+den;if(window._bcnZalo&&window._bcnZalo.k===k)return window._bcnZalo.rows;
   let rows=null;
-  try{rows=await sbFetchAll('qc_zalo_phan_hoi_ngay','select=ngay,sale,conv_id,khach_id,ten_khach,sdt,ma_kh,da_tra_loi&ngay=gte.'+tu+'&ngay=lte.'+den+'&order=ngay,conv_id');}
+  try{rows=await sbFetchAll('qc_zalo_phan_hoi_ngay','select=ngay,sale,conv_id,khach_id,ten_khach,sdt,ma_kh,da_tra_loi,khach_nhan&ngay=gte.'+tu+'&ngay=lte.'+den+'&order=ngay,conv_id');}
   catch(e){rows=null;}
   window._bcnZalo={k,rows};return rows;
 }
@@ -5050,8 +5052,9 @@ function bcnZaloKhach(rows,sale,d){
     // thiếu SĐT thì lấy số trong tên Zalo (Sale hay lưu danh bạ "tên + SĐT + tỉnh")
     const p9=String(z.sdt||(String(z.ten_khach||'').replace(/[.\s]/g,'').match(/(?:\+?84|0)\d{9}/)||[''])[0]).replace(/\D/g,'').slice(-9),x=(z.ma_kh&&K._zl.ma[z.ma_kh])||(p9.length===9&&K._zl.sdt[p9])||null;
     const k=x?'app:'+x.r.leadId:'zl:'+(z.khach_id||z.conv_id);const cu=gom.get(k);
-    if(cu){cu.tl=cu.tl||!!z.da_tra_loi;return;}
-    gom.set(k,{o:x?{lead:x.r.leadId,ten:x.r.name,ma:x.r.kh||x.r.leadId,loai:x.loai,vip:rptSlLaVip(x.r)}:{lead:'',ten:z.ten_khach||'(khách Zalo)',ma:z.ma_kh||'',loai:''},tl:!!z.da_tra_loi});});
+    const chuDong=z.khach_nhan===false,tl=chuDong||!!z.da_tra_loi;
+    if(cu){cu.tl=cu.tl||tl;cu.cd=cu.cd&&chuDong;return;}
+    gom.set(k,{o:x?{lead:x.r.leadId,ten:x.r.name,ma:x.r.kh||x.r.leadId,loai:x.loai,vip:rptSlLaVip(x.r)}:{lead:'',ten:z.ten_khach||'(khách Zalo)',ma:z.ma_kh||'',loai:''},tl,cd:chuDong});});
   return [...gom.values()].sort((a,b)=>(a.tl?1:0)-(b.tl?1:0)||String(a.o.ten||'').localeCompare(String(b.o.ten||''),'vi'));
 }
 // thao tác khác của 1 tài khoản: bỏ lượt chăm mới (đã hiện ở trên), bỏ cột kỹ thuật (si_phan_loai, vip_luc…) -- chỉ giữ dòng có tên dễ đọc
@@ -5086,9 +5089,9 @@ function bcnThe(sale,S,tu,den){
   const COT=[
     ['Data mới',x=>x.so.moi.length,x=>x.so.moi.map(cham).join('')],
     ['Chăm lại',x=>x.so.cu.length,x=>x.so.cu.map(cham).join('')],
-    // Phản hồi Zalo: số = khách Sale đã trả lời trong ngày; khách nhắn mà chưa trả lời vẫn liệt kê (chữ cam). Không có nội dung tin.
+    // Phản hồi Zalo: số = khách Sale đã nhắn trong ngày (trả lời + nhắn trước, chữ mờ "nhắn trước"); khách nhắn mà chưa trả lời vẫn liệt kê (chữ cam). Không có nội dung tin.
     ['Phản hồi Zalo',x=>x.zl?x.zl.filter(z=>z.tl).length:0,x=>(x.zl||[]).map(z=>'<div class="bcn-muc"><div class="ten">'+cvTenKhHtml(z.o)
-      +'<span class="ma">'+cvE(z.o.ma||'chưa nối KH')+'</span></div>'+(z.tl?'':'<div><span class="bcn-cam">Chưa trả lời</span></div>')+'</div>').join(''),x=>(x.zl||[]).length],
+      +'<span class="ma">'+cvE(z.o.ma||'chưa nối KH')+'</span></div>'+(!z.tl?'<div><span class="bcn-cam">Chưa trả lời</span></div>':z.cd?'<div><span style="color:var(--muted);font-size:11.5px">Nhắn trước</span></div>':'')+'</div>').join(''),x=>(x.zl||[]).length],
     ['Chốt đơn',x=>x.so.chot.length,x=>x.so.chot.map(z=>muc(z,z.kq.don.map(o=>cvE(o.ma)+' · <span class="bcn-tien">'+vnd(o.tien)+'</span>').join('<br>'))).join('')],
     ['Thao tác khác',x=>x.tt.reduce((a,g)=>a+g.ds.length,0),x=>'<div class="bcn-tt">'+x.tt.map(g=>'<details><summary>'+cvE(g.ten)+'<b>'+g.ds.length+'</b></summary><div class="ct">'
       +g.ds.map(y=>'<span style="color:var(--muted)">'+gio(y.at)+'</span> '+cvE(((cvKhach().theoId[y.ref]||{}).r||{}).name||y.label||y.ref||'')+(y.new_v||y.old_v?' → '+cvE(y.new_v||'(bỏ)'):'')).join('<br>')
@@ -7521,10 +7524,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/11 14:12';
+const APP_VERSION='13/11 14:26';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=573;
+const APP_BAN=574;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
