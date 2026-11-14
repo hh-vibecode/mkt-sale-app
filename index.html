@@ -33,6 +33,7 @@
   --sidebar-w:220px;--sidebar-w-col:56px;
   --font:'Montserrat','Inter',sans-serif;
   --vip-nen:#fffaee;--vip-vien:#d9a72e;--vip-thanh:linear-gradient(180deg,#fbe7a1 0%,#e7b93e 45%,#b88618 100%);--vip-chu:#8a5300;--vip-nhan:linear-gradient(135deg,#fde68a 0%,#f6c343 45%,#e09b12 100%);--vip-nhan-chu:#5c3700;
+  --bl-nen:#fdeeee;--bl-vien:#c81e1e;--bl-thanh:linear-gradient(180deg,#1a1a1a 0%,#5a0d0d 50%,#dc2626 100%);--bl-chu:#991b1b;--bl-nhan:linear-gradient(135deg,#111111 0%,#3a0a0a 50%,#b91c1c 100%);--bl-nhan-chu:#ffffff;
 }
 [data-theme="dark"]{
   --bg:#0f1923;--bg2:#17232f;--surface:#17232f;--surface2:#1f2e3c;
@@ -46,6 +47,7 @@
   --orange:#ff9474;--orange-l:rgba(255,122,89,.16);
   --shadow:0 2px 10px rgba(0,0,0,.3);--shadow-md:0 6px 22px rgba(0,0,0,.4);
   --vip-nen:rgba(232,179,58,.09);--vip-vien:#d9a72e;--vip-thanh:linear-gradient(180deg,#fbe7a1 0%,#e7b93e 45%,#b88618 100%);--vip-chu:#fcd77a;--vip-nhan:linear-gradient(135deg,#fde68a 0%,#f0b429 50%,#c98410 100%);--vip-nhan-chu:#3d2500;
+  --bl-nen:rgba(220,38,38,.12);--bl-vien:#ef4444;--bl-thanh:linear-gradient(180deg,#000000 0%,#5a0d0d 50%,#ef4444 100%);--bl-chu:#fca5a5;--bl-nhan:linear-gradient(135deg,#000000 0%,#3a0a0a 50%,#dc2626 100%);--bl-nhan-chu:#ffffff;
   --nav-bg:#0b141d;--nav-line:rgba(255,255,255,.08);--nav-text:#b0c1d4;--nav-hover:rgba(255,255,255,.06);--nav-act:rgba(255,255,255,.12);
   --cta:#ff7a59;--cta-hover:#ff8f73;--on-accent:#0b141d;--accent-d:#6fd3e3;
 }
@@ -294,6 +296,21 @@ tr:has(.vip-nhan,.vip-sao):hover>td{background-color:color-mix(in srgb,var(--vip
 /* đầu hồ sơ khách VIP: dải vàng nhạt + vòng vàng quanh ảnh đại diện có vương miện */
 .hs-dau.hs-vip{background:linear-gradient(90deg,var(--vip-nen),var(--surface) 65%);border-bottom-color:color-mix(in srgb,var(--vip-vien) 45%,var(--border)) !important}
 .hs-vip .hs-ava{border:2px solid var(--vip-vien) !important;color:var(--vip-vien) !important;background:var(--surface) !important;box-shadow:0 0 0 3px var(--vip-nen)}
+/* KHUNG KHÁCH BLACKLIST (14/11/2026): đen đỏ, cùng cách tô như VIP (tr:has nhãn / dấu) -- đứng sau VIP nên khách có cả 2 thì hiện Blacklist */
+.bl-nhan{display:inline-flex;align-items:center;gap:3px;margin-right:6px;padding:1px 8px 1px 6px;border-radius:999px;background:var(--bl-nhan);
+  color:var(--bl-nhan-chu);font-size:9.5px;font-weight:900;letter-spacing:.08em;vertical-align:1px;box-shadow:0 1px 3px rgba(185,28,28,.4),inset 0 1px 0 rgba(255,255,255,.18)}
+.bl-dau{color:var(--bl-vien);white-space:nowrap}
+tr:has(.bl-nhan,.bl-dau)>td{background-color:var(--bl-nen);box-shadow:inset 0 1.5px 0 var(--bl-vien),inset 0 -1.5px 0 var(--bl-vien)}
+tr:has(.bl-nhan,.bl-dau)>td:first-child{background-image:var(--bl-thanh);background-size:4px 100%;background-repeat:no-repeat;background-position:left top}
+tr:has(.bl-nhan,.bl-dau)>td:last-child{box-shadow:inset 0 1.5px 0 var(--bl-vien),inset 0 -1.5px 0 var(--bl-vien),inset -1.5px 0 0 var(--bl-vien)}
+tr:has(.bl-nhan,.bl-dau):hover>td{background-color:color-mix(in srgb,var(--bl-vien) 16%,var(--surface))}
+.cv-kh:has(.bl-nhan),.cv-viec:has(.bl-nhan){border-color:color-mix(in srgb,var(--bl-vien) 55%,var(--border));background:var(--bl-nen);box-shadow:inset 3px 0 0 var(--bl-vien)}
+.hs-dau.hs-bl{background:linear-gradient(90deg,var(--bl-nen),var(--surface) 65%);border-bottom-color:color-mix(in srgb,var(--bl-vien) 45%,var(--border)) !important}
+.hs-bl .hs-ava{border:2px solid var(--bl-vien) !important;color:var(--bl-vien) !important;background:var(--surface) !important;box-shadow:0 0 0 3px var(--bl-nen)}
+.bl-thanh{display:flex;align-items:center;gap:10px;padding:9px 20px;background:var(--bl-nhan);color:var(--bl-nhan-chu);font-size:12.5px;font-weight:700}
+.bl-thanh input{flex:1;min-width:200px;height:32px;padding:2px 10px;border:1.5px solid var(--bl-vien);border-radius:8px;background:var(--surface);color:var(--text);font-size:12.5px;font-weight:600;font-family:var(--font);outline:none}
+.bl-thanh button{height:30px;padding:0 13px;border-radius:7px;font-size:12px;font-weight:800;font-family:var(--font);cursor:pointer;border:1.5px solid rgba(255,255,255,.55);background:transparent;color:var(--bl-nhan-chu)}
+.bl-thanh button.bl-luu{background:#fff;color:#991b1b;border-color:#fff}
 /* BÁO CÁO CÔNG VIỆC (04/11/2026) */
 .cv-wrap{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
 .cv-trai{position:relative;width:34px;align-self:stretch}
@@ -4462,7 +4479,7 @@ function cvNgoai(ten,d,muc){
     const k=x?'x'+x.r.leadId:'c'+(c.kiot_code||c.lead_id||c.customer_name);
     if(!nhom.has(k)){const kq=x?cvKetQua(x,d):null;
       nhom.set(k,{lead:x?x.r.leadId:(c.lead_id||''),ten:x?x.r.name:(c.customer_name||''),ma:x?(x.r.kh||x.r.leadId):(c.kiot_code||c.lead_id||''),
-        loai:x?x.loai:(c.loai||'Sỉ'),vip:x?rptSlLaVip(x.r):false,pl:kq?kq.pl:'',cs:kq?kq.cs:[],don:kq?kq.don:[]});
+        loai:x?x.loai:(c.loai||'Sỉ'),vip:x?rptSlLaVip(x.r):false,bl:x?rptSlLaBl(x.r):false,pl:kq?kq.pl:'',cs:kq?kq.cs:[],don:kq?kq.don:[]});
       if(x)return;}
     nhom.get(k).cs.push(cvCs(c));
   });
@@ -4703,9 +4720,9 @@ function cvMoKhach(leadId){
 }
 function cvDat(k,v){const st=cvSt();st[k]=v;if(k==='tab')try{localStorage.setItem('cvTab',v);}catch(e){}if(k==='ngay'||k==='nguoi')st.muc=0;if(k==='tab')cvKhoang=null;renderCongViec();}
 // ── vẽ ──
-function cvTenKhHtml(o){   // o: {lead,ten,ma,loai,vip}
+function cvTenKhHtml(o){   // o: {lead,ten,ma,loai,vip,bl}
   const coHoSo=o.lead&&cvKhach().theoId[o.lead];
-  return '<div class="cv-ten">'+(o.vip?rptSlVipNhan():'')
+  return '<div class="cv-ten">'+(o.bl?rptSlBlNhan({}):'')+(o.vip?rptSlVipNhan():'')
     +(coHoSo?'<a class="cv-nm cv-lk" onclick="event.stopPropagation();cvMoKhach(\''+cvId(o.lead)+'\')" title="Mở hồ sơ, ghi lượt chăm sóc">'+cvE(o.ten||'(không tên)')+'</a>'
       :'<span class="cv-nm">'+cvE(o.ten||'(không tên)')+'</span>')
     +(o.loai?'<span class="cv-loai">'+cvE(o.loai)+'</span>':'')+'</div>';
@@ -4734,7 +4751,7 @@ function cvBoardHtml(){
   const theKh=x=>{const r=x.r,co=daCo.has(x),id=cvId(r.leadId);
     return '<div class="cv-kh'+(co?' cv-co':'')+'"'+(sua&&!co?' style="cursor:pointer" onclick="cvMenuBC(event,[\''+id+'\'],\''+x.loai+'\')"':'')
       +' title="'+(co?'Đã có trong báo cáo':'Bấm để chọn nhóm, đưa vào báo cáo hôm nay')+'">'
-      +cvTenKhHtml({lead:'',ten:r.name,loai:x.loai,vip:rptSlLaVip(r)})
+      +cvTenKhHtml({lead:'',ten:r.name,loai:x.loai,vip:rptSlLaVip(r),bl:rptSlLaBl(r)})
       +'<div class="cv-phu">'+cvE(r.kh||r.leadId)+' · '+cvE(rptSlLocTT(r))+nghi(r)+'</div></div>';};
   const trai='<div class="cv-pan"><div class="cv-tieu">Danh sách khách '+L+'</div><div class="cv-chips">'
     +cvNguonCua().map(([k,t])=>'<button class="cv-chip'+(st.nguon===k?' on':'')+'" onclick="cvDat(\'nguon\',\''+k+'\')">'+t+(k==='tim'?'':'<b>'+num(cvNguonDs(k).length)+'</b>')+'</button>').join('')+'</div>'
@@ -4746,12 +4763,12 @@ function cvBoardHtml(){
     return '<div class="cv-cot">'
       +'<div class="cv-cot-dau" style="cursor:default"><span class="cv-cham" style="background:'+cvMau(dm)+'"></span>'
         +(Si&&i<4?'<b class="cv-stt" style="min-width:0">0'+(i+1)+'</b>':'')+cvE(dm)+'<span class="cv-dem">'+(vs.length+tu.length)+'</span></div>'
-      +tu.map(x=>'<div class="cv-viec" style="cursor:default;border-style:dashed">'+cvTenKhHtml({lead:x.r.leadId,ten:x.r.name,loai:'Sỉ',vip:rptSlLaVip(x.r)})
+      +tu.map(x=>'<div class="cv-viec" style="cursor:default;border-style:dashed">'+cvTenKhHtml({lead:x.r.leadId,ten:x.r.name,loai:'Sỉ',vip:rptSlLaVip(x.r),bl:rptSlLaBl(x.r)})
         +'<div class="cv-phu">'+cvE(x.r.kh||x.r.leadId)+' · tự đổ về</div></div>').join('')
       +vs.map(m=>{const x=K.theoId[m.lead_id];
         return '<div class="cv-viec" style="cursor:default">'
           +'<div style="display:flex;align-items:flex-start;gap:6px">'+'<div style="min-width:0;flex:1">'
-          +cvTenKhHtml({lead:m.lead_id,ten:x?x.r.name:m.ten_khach,loai:m.loai,vip:x?rptSlLaVip(x.r):false})
+          +cvTenKhHtml({lead:m.lead_id,ten:x?x.r.name:m.ten_khach,loai:m.loai,vip:x?rptSlLaVip(x.r):false,bl:x?rptSlLaBl(x.r):false})
           +'<div class="cv-phu">'+cvE(m.kiot_code||m.lead_id)+(m.phan_loai?' · '+cvE(m.phan_loai):'')+'</div></div>'
           +(sua?'<button class="cv-x" onclick="cvXoa('+m.id+')" title="Bỏ khỏi báo cáo">✕</button>':'')+'</div>'
           +(sua?'<select class="cv-o" onchange="cvDoiMuc('+m.id+',Number(this.value))" title="Chuyển nhóm">'
@@ -4808,7 +4825,7 @@ function cvBaoCaoHtml(h,muc,ten,nguoiId){
       +' <span style="font-weight:700;color:var(--muted)">· '+(vs.length?vs.filter(x=>cvDaXuLy(x.kq)).length+'/'+vs.length+' đã xử lý':'không có')+(Si&&i===2?' · tự đổ về':'')+'</span></td></tr>';
     vs.forEach(({m,x,kq})=>{const xong=cvDaXuLy(kq),plMoi=kq.pl&&m.phan_loai&&kq.pl!==m.phan_loai?' → <b>'+cvE(kq.pl)+'</b>':'';
       bang+='<tr><td style="width:18px;padding-right:0">'+cham(xong?'#16a34a':'var(--border)',1)+'</td>'
-        +'<td style="min-width:170px">'+cvTenKhHtml({lead:m.lead_id,ten:x?x.r.name:m.ten_khach,loai:m.loai,vip:x?rptSlLaVip(x.r):false})
+        +'<td style="min-width:170px">'+cvTenKhHtml({lead:m.lead_id,ten:x?x.r.name:m.ten_khach,loai:m.loai,vip:x?rptSlLaVip(x.r):false,bl:x?rptSlLaBl(x.r):false})
           +'<div class="cv-phu">'+cvE(m.kiot_code||m.lead_id)+(m.phan_loai?' · '+cvE(m.phan_loai):'')+plMoi+'</div></td>'
         +'<td style="min-width:140px;color:var(--text2)">'+(cvE(m.muc_tieu||'')||'<span class="cv-chua">—</span>')+'</td>'
         +'<td style="min-width:260px">'+cvKqHtml(kq)+'</td>'
@@ -5026,7 +5043,7 @@ function cvMoNgay(d,nguoiId){const st=cvSt();st.ngay=st.tu=st.den=d;cvKhoang=nul
 // nội dung chăm sóc"). Bỏ Quản trị / Lên kế hoạch / Lịch sử / Cuối ngày (code cũ cv* giữ lại, không còn gọi; bảng cong_viec_* giữ nguyên dữ liệu).
 // Mỗi Sale 1 thẻ: 4 số · Data mới · Chăm lại · Chốt đơn · Thao tác khác (activity_log của tài khoản, gom theo loại, bấm mới mở chi tiết).
 // Sale thấy của mình; Admin thấy mọi Sale có việc trong ngày.
-const BCN_TT={'Phân loại KH':'Đổi phân loại','Thẻ khách':'Gắn thẻ Pancake','Ảnh / tài liệu':'Thêm ảnh','Khách VIP':'Khách VIP','Chuyển loại khách':'Chuyển Sỉ / Lẻ',
+const BCN_TT={'Phân loại KH':'Đổi phân loại','Thẻ khách':'Gắn thẻ Pancake','Ảnh / tài liệu':'Thêm ảnh','Khách VIP':'Khách VIP','Khách Blacklist':'Khách Blacklist','Chuyển loại khách':'Chuyển Sỉ / Lẻ',
   'Loại khách':'Chuyển Sỉ / Lẻ','Lượt chăm sóc':'Sửa lượt chăm sóc','Giao việc':'Giao việc','Sales phụ trách':'Đổi Sale','Mã KH':'Gắn Mã KH'};
 // tab của Admin (12/11/2026), đúng tên ở Phân quyền > Nhân sự Sale. Minh Oanh: 12/11 anh cho chuyển hết khách sang Nguyên + bỏ khỏi ô chọn
 // (sale_nhan_su nghỉ, bàn giao Nguyên) -> không còn tab.
@@ -5091,7 +5108,7 @@ function bcnZlIdx(){const K=cvKhach();
     K._zl={ma,sdt,kiot,conv,dh};}
   return K._zl;}
 function bcnZlNoi(z){const I=bcnZlIdx(),K=cvKhach(),kz=z.khach_id||z.conv_id,tay=(window._zlNoi||{})[kz];
-  const tuApp=x=>({lead:x.r.leadId,ten:x.r.name,ma:x.r.kh||x.r.leadId,loai:x.loai,vip:rptSlLaVip(x.r)});
+  const tuApp=x=>({lead:x.r.leadId,ten:x.r.name,ma:x.r.kh||x.r.leadId,loai:x.loai,vip:rptSlLaVip(x.r),bl:rptSlLaBl(x.r)});
   const tuKiot=c=>{const x=I.ma[c.code];return x?tuApp(x):{lead:'',ten:c.name||z.ten_khach||'',ma:c.code,loai:''};};
   if(tay){const x=(tay.lead_id&&K.theoId[tay.lead_id])||(tay.ma_kh&&I.ma[tay.ma_kh]);if(x)return {o:tuApp(x),cach:'tay'};
     if(tay.ma_kh)return {o:{lead:'',ten:z.ten_khach||'',ma:tay.ma_kh,loai:''},cach:'tay'};}
@@ -5395,7 +5412,7 @@ function cvCuoiNgaySoLieu(sale,acc,d,loaiChi){
     const k=c.kiot_code||c.lead_id||c.customer_name||'';
     if(!le.has(k))le.set(k,{o:{lead:c.lead_id||'',ten:c.customer_name||'',ma:c.kiot_code||c.lead_id||'',loai:c.loai||'Sỉ'},kq:{cs:[],don:[]}});
     le.get(k).kq.cs.push(cvCs(c));});
-  const oX=x=>({lead:x.r.leadId,ten:x.r.name,ma:x.r.kh||x.r.leadId,loai:x.loai,vip:rptSlLaVip(x.r),pl:rptSlLocTT(x.r)});
+  const oX=x=>({lead:x.r.leadId,ten:x.r.name,ma:x.r.kh||x.r.leadId,loai:x.loai,vip:rptSlLaVip(x.r),bl:rptSlLaBl(x.r),pl:rptSlLocTT(x.r)});
   const moi=[],cu=[],chot=[];
   K.ds.forEach(x=>{if(!loais.includes(x.loai))return;const minh=String(x.r.staff||'').trim()===sale;
     const laMoi=minh&&cvNgayTao(x.r)===d;
@@ -5593,7 +5610,7 @@ function rptMktData(){
       if(brandLoc&&brandRow!==brandLoc)return;
       sale.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',
         brand:brandRow,adId:r.adId||'',
-        rev,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||'',key:r.key,vip:rptSlLaVip(r)});
+        rev,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||'',key:r.key,vip:rptSlLaVip(r),bl:rptSlLaBl(r)});
     });
   });
   // DOANH THU KHÁCH ONLINE TỔNG HỢP (anh Hải 09/11/2026: "doanh thu online full cả tháng miễn là khách onl"; "tổng onl bên MKT phải bằng
@@ -5606,7 +5623,7 @@ function rptMktData(){
       if(/offline/i.test(r.nguon||''))return;
       const full=rptSlTienOnlNguon(r),bR=t==='Sỉ'?'Shidai':(rptSlBrandCua(r)||'');
       if(full>0&&!(brandLoc&&bR!==brandLoc))onl.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',brand:bR,adId:r.adId||'',
-        rev:full,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||'',key:r.key,vip:rptSlLaVip(r)});
+        rev:full,ngay:r.closeDate,kh:r.kh||'',staff:r.staff||'',key:r.key,vip:rptSlLaVip(r),bl:rptSlLaBl(r)});
     });});}
   finally{window._rptSlCaMuaLai=false;}
   window._rptSlType=cu||'Lẻ';window._rptSlMod=cuMod||null;window._kiotOrdByCode=null;if(typeof rptSlXoaCache==="function")rptSlXoaCache();
@@ -5654,7 +5671,7 @@ function rptMktData(){
       const tinh=rptMktDuocTinh(r);   // MKT CHỈ lấy nguồn Online -- cả Lẻ lẫn Sỉ (chốt 23/9/2026)
       theoAd[id].khach.push({loai:t,name:r.name,phone:r.phone,kenh:r.kenh||'',staff:r.staff||'',
         kh:r.kh||'',ngay:r.isChot?r.closeDate:r.created,rev:r.isChot?rptSlDoanhThuMkt(r):0,chot:!!r.isChot,
-        don:r.isChot?(r.kords||[]).map(o=>o.code):[],key:r.key,chat:rptSlChatUrl(r),adId:id,tinh:!!(r.isChot&&tinh),leadId:r.leadId,vip:rptSlLaVip(r)});   // phiếu mua (đơn đặt hàng Kiot) để xem khách mua gì
+        don:r.isChot?(r.kords||[]).map(o=>o.code):[],key:r.key,chat:rptSlChatUrl(r),adId:id,tinh:!!(r.isChot&&tinh),leadId:r.leadId,vip:rptSlLaVip(r),bl:rptSlLaBl(r)});   // phiếu mua (đơn đặt hàng Kiot) để xem khách mua gì
       if(r.isChot&&tinh){const v=rptSlDoanhThuMkt(r);if(v>0){theoAd[id].don++;theoAd[id].rev+=v;}}
     });
   });
@@ -6441,7 +6458,7 @@ function rptSlMaDuoiTen(r){
   const ma=r.kh||r.manualKH||'';
   const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const oNho='font-size:10.5px;font-weight:700;color:var(--muted);margin-top:1px';
-  const vip=rptSlLaVip(r)?rptSlVipNhan():'';
+  const vip=(rptSlLaBl(r)?rptSlBlNhan(r):'')+(rptSlLaVip(r)?rptSlVipNhan():'');   // + nhãn BLACKLIST (14/11/2026)
   if(ma)return '<div style="'+oNho+'" title="Lead ID: '+e(r.leadId)+'">'+vip
     +rptSlKiotLink(ma,'<span style="color:var(--accent)">'+e(ma)+'</span>')+rptSlNhanNguon(r)+'</div>';
   return r.leadId?'<div style="'+oNho+'">'+vip+e(r.leadId)+rptSlNhanNguon(r)+'</div>':'';
@@ -6456,7 +6473,7 @@ function rptSlLaVip(r){if(!r)return false;if(r.vip===true)return true;try{return
 // (.vip-nhan) + sao (.vip-sao); CSS `tr:has(.vip-nhan,.vip-sao)` tự tô CẢ DÒNG ở mọi bảng (viền vàng trái, nền vàng nhạt, tên đậm vàng)
 // -> không phải sửa từng bảng. Thẻ khách ở Báo cáo công việc cũng nhận khung (.cv-kh / .cv-viec).
 const RPT_SL_VUONG_MIEN='<svg viewBox="0 0 24 24" width="11" height="11" style="vertical-align:-1px"><path d="M3 8.5l4.5 3.8L12 5l4.5 7.3L21 8.5l-1.8 10H4.8z" fill="currentColor"/></svg>';
-function rptSlSaoVip(x){return rptSlLaVip(x)?' <span class="vip-sao" title="Khách VIP — cần để ý">'+RPT_SL_SAO.replace('width="15" height="15"','width="12" height="12"')+'</span>':'';}
+function rptSlSaoVip(x){return (rptSlLaVip(x)?' <span class="vip-sao" title="Khách VIP — cần để ý">'+RPT_SL_SAO.replace('width="15" height="15"','width="12" height="12"')+'</span>':'')+rptSlDauBl(x);}   // + dấu Blacklist (14/11/2026)
 function rptSlVipNhan(){return '<span class="vip-nhan" title="Khách VIP — cần để ý">'+RPT_SL_VUONG_MIEN+'VIP</span>';}
 function rptSlVipNut(r){const on=rptSlLaVip(r),k=String(r.key||'').replace(/['"\\]/g,'');
   return '<button id="vipNut" onclick="rptSlVipDoi(\''+k+'\')" title="'+(on?'Khách VIP — bấm để bỏ đánh dấu':'Đánh dấu khách VIP cần để ý')+'"'
@@ -6473,6 +6490,59 @@ async function rptSlVipDoi(key){
   }catch(e){alert('Chưa lưu được VIP: '+e.message);}
   try{rptSlRender();}catch(e){}
   rptSlShowCustomer(key);
+}
+// ── KHÁCH BLACKLIST (anh Hải 14/11/2026: "thêm tính năng blacklist, khung đen đỏ tương tự khách VIP, chọn blacklist sẽ hiện thêm 1 dòng
+// note lý do/lưu ý", "bộ lọc cho blacklist riêng như vip"): nút cấm cạnh sao VIP trong hồ sơ khách, Sale tự chọn; bật thì hiện dòng nhập
+// LÝ DO / LƯU Ý (bắt buộc), lý do hiện ở dải đen đỏ đầu hồ sơ + chú thích khi rê chuột vào dấu cạnh tên. Lưu saleretail_manual.blacklist
+// (+ blacklist_ly_do, _luc, _boi), SQL supabase-schema-blacklist.sql. Khách gộp: 1 dòng nào Blacklist là Blacklist. Bộ lọc Trạng thái
+// có mục "Khách Blacklist" (RPT_SL_TT_BL). Mọi chỗ in tên đã gọi rptSlSaoVip / rptSlMaDuoiTen nên tự có dấu + khung. Monsieur Claude.
+const RPT_SL_CAM='<svg viewBox="0 0 24 24" width="15" height="15" style="vertical-align:-2px"><circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M6 6l12 12" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
+function rptSlBlDong(r){if(!r)return null;try{return rptSlIdsCua(r).map(id=>rptSlManual[id]).find(m=>m&&m.blacklist)||null;}catch(e){const m=rptSlManual[r.leadId];return m&&m.blacklist?m:null;}}
+function rptSlLaBl(r){if(!r)return false;if(r.bl===true)return true;return !!rptSlBlDong(r);}
+function rptSlBlLyDo(r){const m=rptSlBlDong(r);return m?String(m.blacklist_ly_do||'').trim():'';}
+function rptSlBlTieuDe(r){const l=rptSlBlLyDo(r);return ('Khách Blacklist'+(l?' — '+l:'')).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function rptSlDauBl(x){return rptSlLaBl(x)?' <span class="bl-dau" title="'+rptSlBlTieuDe(x)+'">'+RPT_SL_CAM.replace('width="15" height="15"','width="12" height="12"')+'</span>':'';}
+function rptSlBlNhan(r){return '<span class="bl-nhan" title="'+rptSlBlTieuDe(r)+'">'+RPT_SL_CAM.replace('width="15" height="15"','width="10" height="10"').replace(/currentColor/g,'#ff6b6b')+'BLACKLIST</span>';}
+function rptSlBlNut(r){const on=rptSlLaBl(r),k=String(r.key||'').replace(/['"\\]/g,'');
+  return '<button id="blNut" onclick="rptSlBlBam(\''+k+'\')" title="'+(on?'Khách Blacklist — bấm để bỏ':'Đưa khách vào Blacklist (ghi lý do / lưu ý)')+'"'
+    +' style="border:none;background:transparent;cursor:pointer;padding:0 2px;vertical-align:middle;color:'+(on?'var(--bl-vien)':'var(--border2,#cbd5e1)')+'">'+RPT_SL_CAM+'</button>';}
+// dải đen đỏ dưới đầu hồ sơ: đang Blacklist -> lý do + nút Sửa; đang mở nhập (bật mới / sửa) -> ô lý do + Lưu / Huỷ
+function rptSlBlThanh(r){
+  const k=String(r.key||'').replace(/['"\\]/g,''),e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const icon=RPT_SL_CAM.replace(/currentColor/g,'#ff6b6b');
+  if(window._rptSlBlMo===r.key)return '<div class="bl-thanh">'+icon+'<b style="white-space:nowrap">BLACKLIST · Lý do / lưu ý</b>'
+    +'<input id="blLyDo" value="'+e(rptSlBlLyDo(r))+'" placeholder="VD: bom hàng, nợ xấu, hay đổi trả, nói chuyện khó…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();rptSlBlLuu(\''+k+'\');}else if(event.key===\'Escape\')rptSlBlHuy(\''+k+'\');">'
+    +'<button class="bl-luu" id="blLuuNut" onclick="rptSlBlLuu(\''+k+'\')">Lưu</button><button onclick="rptSlBlHuy(\''+k+'\')">Huỷ</button></div>';
+  if(!rptSlLaBl(r))return '';
+  const m=rptSlBlDong(r)||{},ai=m.blacklist_boi?rptTenHien(m.blacklist_boi):'',luc=m.blacklist_luc?dmy(String(m.blacklist_luc).slice(0,10)):'';
+  return '<div class="bl-thanh">'+icon+'<b style="white-space:nowrap">BLACKLIST</b><span style="flex:1;min-width:0">'+(rptSlBlLyDo(r)?e(rptSlBlLyDo(r)):'<i style="opacity:.75">(chưa ghi lý do)</i>')+'</span>'
+    +(ai||luc?'<span style="opacity:.7;font-weight:600;white-space:nowrap">'+e([ai,luc].filter(Boolean).join(' · '))+'</span>':'')
+    +'<button onclick="window._rptSlBlMo=\''+k+'\';rptSlShowCustomer(\''+k+'\')">✏ Sửa lý do</button></div>';
+}
+function rptSlBlBam(key){
+  const r=rptSlBuildMaster().find(x=>x.key===key);if(!r)return;
+  if(!rptSlLaBl(r)){window._rptSlBlMo=key;rptSlShowCustomer(key);setTimeout(()=>{const o=document.getElementById('blLyDo');if(o)o.focus();},30);return;}
+  if(!confirm('Bỏ khách "'+(r.name||'')+'" khỏi Blacklist?'))return;
+  rptSlBlGhi(r,false,'');
+}
+function rptSlBlHuy(key){window._rptSlBlMo=null;rptSlShowCustomer(key);}
+function rptSlBlLuu(key){
+  const r=rptSlBuildMaster().find(x=>x.key===key);if(!r)return;
+  const ly=String((document.getElementById('blLyDo')||{}).value||'').trim();
+  if(!ly){alert('Ghi lý do / lưu ý cho khách Blacklist');const o=document.getElementById('blLyDo');if(o)o.focus();return;}
+  rptSlBlGhi(r,true,ly);
+}
+async function rptSlBlGhi(r,bat,ly){
+  const nut=document.getElementById(bat?'blLuuNut':'blNut');if(nut){if(nut.disabled)return;nut.disabled=true;nut.style.opacity='.5';}
+  const ai=localStorage.getItem('dashUser')||'app',luc=new Date().toISOString(),cu=rptSlLaBl(r)?'Blacklist: '+rptSlBlLyDo(r):'';
+  try{
+    if(bat){const m=rptSlBlDong(r);await rptSlSaveManual(m?m.lead_id:r.leadId,{blacklist:true,blacklist_ly_do:ly,blacklist_luc:luc,blacklist_boi:ai});}
+    else for(const id of rptSlIdsCua(r))if((rptSlManual[id]||{}).blacklist)await rptSlSaveManual(id,{blacklist:false,blacklist_luc:luc,blacklist_boi:ai});
+    logAct('U','saleretail_manual',r.leadId,r.name||null,'Khách Blacklist',cu,bat?'Blacklist: '+ly:'bỏ Blacklist');
+    window._rptSlBlMo=null;
+  }catch(e){alert('Chưa lưu được Blacklist: '+e.message);if(nut){nut.disabled=false;nut.style.opacity='';}return;}
+  try{rptSlRender();}catch(e){}
+  rptSlShowCustomer(r.key);
 }
 // SĐT nằm dưới Mã KH trong ô tên khách (Master + CRM, Lẻ + Sỉ -- anh Hải 02/10/2026), bỏ cột SĐT riêng.
 function rptSlSdtDuoiTen(r){
@@ -7647,10 +7717,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='13/11 15:58';
+const APP_VERSION='14/11 11:49';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=579;
+const APP_BAN=580;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8643,7 +8713,7 @@ function rptMktKhachAd(a){
       +(it?'<div style="font-size:11px;color:var(--text2);margin-top:2px;line-height:1.45">'+it+'</div>'
           :(k.kh&&!_kiotItemsDaTai[k.kh]?'<div style="font-size:11px;color:var(--muted)">đang tải mặt hàng…</div>':''))+'</div>';}).join('')||'—';
   dataModal({title,cols:['Loại','Ngày','Khách','SĐT','Kênh','Sales','Mã KH','Trạng thái','Doanh thu','Phiếu mua'],
-    rows:a.khach.slice().sort((x,y)=>y.rev-x.rev).map(k=>[k.loai,dmy(k.ngay),e(k.name)+(k.vip?rptSlSaoVip({vip:true}):''),k.phone||'',k.kenh,k.staff,k.kh,
+    rows:a.khach.slice().sort((x,y)=>y.rev-x.rev).map(k=>[k.loai,dmy(k.ngay),e(k.name)+rptSlSaoVip({vip:!!k.vip,bl:!!k.bl}),k.phone||'',k.kenh,k.staff,k.kh,
       k.chot?'<span style="color:var(--green);font-weight:700">Chốt đơn</span>':'chưa chốt',k.rev?vnd(k.rev):'',phieu(k)])});
   const can=[...new Set(a.khach.filter(k=>k.don&&k.don.length&&k.kh&&!_kiotItemsDaTai[k.kh]).map(k=>k.kh))];
   if(can.length)Promise.all(can.map(kiotLoadItems)).then(()=>{
@@ -8919,10 +8989,11 @@ function rptSlLocTTDs(){
   const ds=rptSlPhanLoaiDs();   // Lẻ + Sỉ chung 1 bộ Phân loại (06/10/2026)
   // + giá trị CŨ đã bỏ khỏi danh mục nhưng còn khách đang mang (vd "Chăm sóc dài hạn") -> vẫn lọc được để đổi hàng loạt
   let cu=[];try{cu=[...new Set(rptSlBuildMaster().map(r=>String(r.siPhanLoai||'').trim()).filter(x=>x&&!ds.includes(x)))];}catch(e){}
-  return [RPT_SL_TT_VIP,...new Set(ds),...cu,'(chưa cập nhật)'];
+  return [RPT_SL_TT_VIP,RPT_SL_TT_BL,...new Set(ds),...cu,'(chưa cập nhật)'];
 }
 // NHÓM KHÁCH VIP trong bộ lọc Trạng thái (anh Hải 04/11/2026): khách gắn sao VIP, BẤT KỂ phân loại. Chọn cùng mục khác = cộng gộp.
 const RPT_SL_TT_VIP='Khách VIP';
+const RPT_SL_TT_BL='Khách Blacklist';   // anh Hải 14/11/2026: "bộ lọc cho blacklist riêng như vip" -- khách Blacklist, bất kể phân loại
 function rptSlLocTT(r){
   const v=String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim();
   return /^chăm sóc dài hạn$/i.test(v)?'Tiềm năng, chưa ra đơn':/^mất kết nối$/i.test(v)?'Không tiềm năng':(v||'(chưa cập nhật)');   // đồng nhất 06/10 · bỏ Mất kết nối 07/10/2026
@@ -8968,7 +9039,7 @@ function rptSlApplyF(tab,list,opt){
   return list.filter(r=>(!cham||rptSlChamLoc(r).some(x=>cham.includes(x)))&&
     (!sale||sale.includes(rptSlSaleLoc(r)))&&
     (ng?ng.includes(rptSlNguonNhan(r)):!(anOffKiot&&rptSlNguonNhan(r)==='Offline · Kiot'))&&
-    (!st||st.includes(rptSlLocTT(r))||(st.includes(RPT_SL_TT_VIP)&&rptSlLaVip(r)))&&
+    (!st||st.includes(rptSlLocTT(r))||(st.includes(RPT_SL_TT_VIP)&&rptSlLaVip(r))||(st.includes(RPT_SL_TT_BL)&&rptSlLaBl(r)))&&
     (!sp||sp.includes(r.siSpQT||'(chưa rõ)'))&&
     (!br||rptSlBrandLoc(r).some(b=>br.includes(b))));
 }
@@ -10855,15 +10926,15 @@ function rptSlShowCustomer(key,sua){
   let m=document.getElementById('qcModal');if(!m){m=document.createElement('div');m.id='qcModal';document.body.appendChild(m);}
   m.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this)qcCloseModal()">
     <div style="background:var(--surface);border-radius:16px;max-width:1320px;width:100%;height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">
-      <div class="hs-dau${rptSlLaVip(r)?' hs-vip':''}" style="display:flex;align-items:center;gap:13px;padding:16px 20px;border-bottom:1px solid var(--border)">
-        <span class="hs-ava" style="width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:21px;color:var(--muted);flex:0 0 auto">${rptSlLaVip(r)?RPT_SL_VUONG_MIEN.replace(/width="11" height="11"/,'width="22" height="22"'):''}</span>
+      <div class="hs-dau${rptSlLaBl(r)?' hs-bl':rptSlLaVip(r)?' hs-vip':''}" style="display:flex;align-items:center;gap:13px;padding:16px 20px;border-bottom:1px solid var(--border)">
+        <span class="hs-ava" style="width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:21px;color:var(--muted);flex:0 0 auto">${rptSlLaBl(r)?RPT_SL_CAM.replace('width="15" height="15"','width="22" height="22"'):rptSlLaVip(r)?RPT_SL_VUONG_MIEN.replace(/width="11" height="11"/,'width="22" height="22"'):''}</span>
         <div style="min-width:0">
-          <div style="font-size:16px;font-weight:800;color:var(--text)">${suaSi&&dsSua.ten?'<input id="siO_ten" value="'+esc(r.name).replace(/"/g,'&quot;')+'" onkeydown="if(event.key===\'Escape\')rptSiHuyO();else if(event.key===\'Enter\'){event.preventDefault();rptSiLuuTatCa();}" style="font-size:16px;font-weight:800;height:34px;min-width:280px;padding:2px 10px;border:1.5px solid var(--accent);border-radius:8px;background:var(--accent-l);color:var(--text);font-family:var(--font);outline:none">':esc(r.name)} ${rptSlVipNut(r)} <span style="font-size:12.5px;font-weight:700;color:var(--muted)">· ${esc(r.kh||r.leadId||'')}</span></div>
+          <div style="font-size:16px;font-weight:800;color:var(--text)">${suaSi&&dsSua.ten?'<input id="siO_ten" value="'+esc(r.name).replace(/"/g,'&quot;')+'" onkeydown="if(event.key===\'Escape\')rptSiHuyO();else if(event.key===\'Enter\'){event.preventDefault();rptSiLuuTatCa();}" style="font-size:16px;font-weight:800;height:34px;min-width:280px;padding:2px 10px;border:1.5px solid var(--accent);border-radius:8px;background:var(--accent-l);color:var(--text);font-family:var(--font);outline:none">':esc(r.name)} ${rptSlVipNut(r)}${rptSlBlNut(r)} <span style="font-size:12.5px;font-weight:700;color:var(--muted)">· ${esc(r.kh||r.leadId||'')}</span></div>
           <div style="font-size:12px;color:var(--muted);font-weight:600">${[...(r.phones||[]).map(p=>p.so),r.kenh,r.staff].filter(Boolean).map(esc).join(' · ')}</div>
         </div>
         <span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex:0 0 auto">${nutDau}</span>
         <button onclick="qcCloseModal()" style="background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text);flex:0 0 auto">✕</button>
-      </div>
+      </div>${rptSlBlThanh(r)}
       <style>.hs-than{display:flex;flex:1;min-height:0}.hs-nav{width:190px;flex:0 0 auto;padding:14px 10px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:4px;background:var(--surface)}
         .hs-giua{flex:1;min-width:0;overflow:auto}.hs-phai{width:360px;flex:0 0 auto;border-left:1px solid var(--border);overflow:auto;background:var(--surface)}
         .hs-tab:hover{background:var(--bg2)}
