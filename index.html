@@ -5255,8 +5255,15 @@ function bcnThe(sale,S,tu,den){
 // là thuộc về nhân sự thì cho hết vào"): mục Sỉ = Sale đội Sỉ + "Cả 2" (Nguyên), mục Lẻ = Sale đội Lẻ; báo cáo mỗi người gồm HẾT khách của họ
 // (cả Lẻ lẫn Sỉ). Admin thấy cả 2 mục; Sale thường chỉ thấy mục đội mình.
 function bcnDoi(ns){return ns&&ns.doi==='Lẻ'?'Lẻ':'Sỉ';}
-function bcnDoiToi(){if(cvXemHet())return '';const sale=cvSaleCuaAcc(cvAccCua(cvToi().id));if(!sale)return '';
-  return bcnDoi(saleNhanSuDS().find(x=>String(x.ten||'').trim()===sale));}
+// Sale của tài khoản đang xem (không phải Admin): tài khoản của 1 người -> [người đó]; TÀI KHOẢN CHUNG (vd "Sale Chánh Tâm") -> mọi Sale
+// ĐANG LÀM trong phạm vi xem (data_sales) của tài khoản, mỗi người 1 tab (anh Hải 16/11/2026: "share view cho bên Chánh Tâm nick Diệp với Lệ",
+// "Chánh Tâm view hết Sale Lẻ"). Sale đã nghỉ trong phạm vi thì bỏ (khách của họ đã về người nhận bàn giao).
+function bcnSalesToi(){if(cvXemHet())return null;const a=cvAccCua(cvToi().id),s=cvSaleCuaAcc(a);if(s)return [s];
+  const dang=saleNhanSuDS().filter(x=>x.dang_lam!==false).map(x=>String(x.ten||'').trim());
+  return [...new Set(((a&&a.data_sales)||[]).map(x=>String(x||'').trim()).filter(x=>dang.includes(x)))];}
+function bcnDoiToi(){const ds=bcnSalesToi();if(!ds||!ds.length)return '';
+  const doi=[...new Set(ds.map(t=>bcnDoi(saleNhanSuDS().find(x=>String(x.ten||'').trim()===t))))];
+  return doi.length===1?doi[0]:'';}
 function bcnLoai(){const st=cvSt(),toi=bcnDoiToi();
   if(toi)st.bcnLoai=toi;else if(!['Lẻ','Sỉ'].includes(st.bcnLoai))st.bcnLoai='Sỉ';
   return st.bcnLoai;}
@@ -5309,12 +5316,21 @@ async function renderCongViec(taiLai){
     ds=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten&&x.ten!==RPT_SL_BOT_SI&&bcnDoi(x)===loai)
       .sort((p,q)=>thu(p)-thu(q)||String(p.ten).localeCompare(String(q.ten),'vi'))
       .map(x=>({sale:x.ten,acc:bcnAccCua(x.ten)}));
-  }else{const sale=cvSaleCuaAcc(cvAccCua(toi.id));ds=sale?[{sale,acc:[toi.ten].concat(bcnAccCua(sale))}]:[];}
+  }else{
+    // tài khoản 1 người -> báo cáo của mình (cộng tài khoản đang dùng vào danh sách người ghi); TÀI KHOẢN CHUNG -> mỗi Sale trong phạm vi 1 tab,
+    // lọc theo đội của mục menu đang mở (16/11/2026 Chánh Tâm: Diệp, Lệ, Vân Ngọc)
+    const ss=bcnSalesToi()||[];
+    if(ss.length===1)ds=[{sale:ss[0],acc:[toi.ten].concat(bcnAccCua(ss[0]))}];
+    else{const ns=t=>saleNhanSuDS().find(x=>String(x.ten||'').trim()===t);
+      const dung=ss.filter(t=>bcnDoi(ns(t))===loai);
+      // KHÔNG thêm tên tài khoản chung vào người ghi: lượt chăm ghi từ tài khoản chung sẽ hiện ở MỌI tab -> chỉ theo cột Sale của lượt chăm
+      ds=(dung.length?dung:ss).sort((p,q)=>p.localeCompare(q,'vi')).map(t=>({sale:t,acc:bcnAccCua(t)}));}
+  }
   const rong=t=>'<div class="bcn"><div style="padding:22px 20px;color:var(--muted);font-size:12.5px">'+t+'</div></div>';
   // MỖI NHÂN SỰ 1 TAB (anh Hải 12/11/2026: "mỗi nhân sự là 1 tab đi, cho dễ nhìn"): Admin thấy hàng tab tên Sale (người chưa có việc chữ mờ),
   // bấm tab xem thẻ của người đó; Sale thường chỉ có thẻ của mình nên không hiện tab. Chỉ tính số cho người đang xem (đỡ nặng khi chọn cả tháng).
   let tabs='',xem=ds;
-  if(het&&ds.length){
+  if((het||ds.length>1)&&ds.length){   // 16/11: tài khoản chung nhiều Sale cũng có hàng tab
     if(!ds.some(p=>p.sale===st.bcnSale))st.bcnSale=ds[0].sale;
     // tab ghi TÊN ĐẦY ĐỦ của Sale (anh Hải 12/11/2026: "tab báo cáo để tên đầy đủ của sale")
     tabs='<div class="bcn-tabs">'+ds.map(p=>'<button class="'+(p.sale===st.bcnSale?'on':'')+'" onclick="cvSt().bcnSale=\''+cvId(p.sale)+'\';renderCongViec()">'
@@ -7717,10 +7733,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='14/11 11:49';
+const APP_VERSION='16/11 08:59';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=580;
+const APP_BAN=581;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
