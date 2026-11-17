@@ -113,10 +113,15 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
   // nhân sự: so theo tên bỏ dấu; tên ngắn nằm trọn trong tên dài coi là 1 người (luật gộp tên Sale)
   const tenMkt = [...new Set(mkt.map((x) => x.nhan_su))];
   const tron = (ngan, dai) => (' ' + dai + ' ').includes(' ' + ngan + ' ');   // trọn chữ, không cắt giữa chữ
+  // TÊN LẠ (anh Hải 17/11/2026: "tên dễ mà, họ hiếc các thứ đầy đủ, cái nào thấy lạ bảo t"): tên bên Kế toán không ghép được về
+  // đúng 1 tên bên MKT -> gom vào ten_la, trang So khớp + chuông admin hiện cho anh xem. Không tự đoán.
+  const tenLa = new Map();
   const veTenMkt = (t) => { const b = boDau(t); if (!b) return '(chưa gán)';
     const dung = tenMkt.find((m) => boDau(m) === b); if (dung) return dung;
     const gan = tenMkt.filter((m) => { const c = boDau(m); return c && Math.min(b.length, c.length) >= 4 && (tron(b, c) || tron(c, b)); });
-    return gan.length === 1 ? gan[0] : t; };   // nhiều tên cùng khớp -> không đoán, giữ tên Kế toán
+    if (gan.length === 1) return gan[0];
+    if (!tenLa.has(t)) tenLa.set(t, gan.length ? 'giống nhiều người bên MKT: ' + gan.join(', ') : 'bên MKT không có tên này');
+    return t; };   // nhiều tên cùng khớp / không khớp -> không đoán, giữ tên Kế toán
 
   const ketQua = [];
   for (const t of cacThang) {
@@ -160,6 +165,7 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
     + 'Tháng ' + nay.thang.slice(5) + ': MKT ' + tr(nay.mkt.tong) + ' (Onl ' + tr(nay.mkt.online) + ' / Off ' + tr(nay.mkt.offline) + ')'
     + (nay.kt ? ' · KT ' + tr(nay.kt.tong) + ' (Onl ' + tr(nay.kt.online) + ' / Off ' + tr(nay.kt.offline) + ') · ' + (nay.so_lech || 0) + ' đơn lệch' : '');
   console.log(ghiChu); console.log(tomTat);
+  tenLa.forEach((ly, ten) => console.log('TÊN LẠ bên Kế toán: ' + ten + ' — ' + ly));
   ketQua.forEach((v) => { console.log('\n== ' + v.thang + ' · MKT ' + tr(v.mkt.tong) + ' Onl ' + tr(v.mkt.online) + ' Off ' + tr(v.mkt.offline) + ' (' + v.mkt.don + ' đơn)'
     + (v.kt ? ' | KT ' + tr(v.kt.tong) + ' Onl ' + tr(v.kt.online) + ' Off ' + tr(v.kt.offline) + ' (' + v.kt.don + ' đơn)' : ''));
     v.nhan_su.slice(0, 12).forEach((n) => console.log('   ' + n.ten.padEnd(24) + tr(n.mkt).padStart(10) + (n.kt != null ? tr(n.kt).padStart(10) : '')));
@@ -169,7 +175,9 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
     await ghiDb('so_dt_2app_tin', { ben: 'mkt', thang: nay.thang, noi_dung: 'Lượt so đêm ' + vnNay().slice(0, 10) + ': ' + tomTat });
     let tin = [];
     try { tin = await tai('so_dt_2app_tin', 'select=id,luc,ben,thang,ma,noi_dung&order=luc.desc'); } catch (e) { /* hộp thư lỗi không chặn kết quả */ }
-    const doanhThu = { luc, tu_thang: TU_THANG, kt_luc: ktLuc || null, kt_cu: ktCu, ghi_chu: ghiChu, thang: ketQua, trung, tin: tin.slice(0, 40) };
+    const ten_la = [...tenLa].map(([ten, ly]) => ({ ten, ly, tien: kt.filter((x) => x.nhan_su === ten).reduce((s, x) => s + Number(x.tien || 0), 0),
+      thang: [...new Set(kt.filter((x) => x.nhan_su === ten).map((x) => x.thang))].sort().join(', ') }));
+    const doanhThu = { luc, tu_thang: TU_THANG, kt_luc: ktLuc || null, kt_cu: ktCu, ghi_chu: ghiChu, thang: ketQua, trung, ten_la, tin: tin.slice(0, 40) };
     // gắn vào lượt so khớp mã MỚI NHẤT (bước ngay trước trong sync-kiot.yml); kết quả mang giờ riêng (doanh_thu.luc) nên chạy tay gắn lượt cũ hơn vẫn rõ.
     // KHÔNG thêm lượt riêng: chuông + trang So khớp lấy lượt mới nhất làm kết quả so mã -> 1 dòng không so mã sẽ báo "khớp" sai.
     const gan = await tai('kiot_so_khop', 'select=id&trang_thai=neq.running&order=chay_luc.desc').catch(() => []);

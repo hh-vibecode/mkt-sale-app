@@ -7734,10 +7734,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='17/11 07:25';
+const APP_VERSION='17/11 07:33';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=582;
+const APP_BAN=583;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7882,10 +7882,11 @@ async function dlKiem(){
     const kt=x&&x.ke_toan;if(kt&&(kt.loi||kt.so_lech))ra.push({cau:'<b>App Kế toán '+(kt.loi?'— chưa đọc được dữ liệu':'lệch Kiot '+kt.so_lech+' mã')+'</b> (check chéo lượt '+dataMoiTruoc(x.chay_luc)+'): '
       +e((kt.lech||[]).slice(0,4).map(y=>y.code+' '+y.kieu.split(' ·')[0]).join(', '))+((kt.lech||[]).length>4?'…':'')+' — chuyển lời Kế toán'+xem});
     // SO DOANH THU 2 APP mỗi đêm (17/11/2026): chỉ lấy vài trường nhỏ của cột doanh_thu (cột đầy đủ nặng)
-    const r2=await fetch(SUPABASE_URL+'/rest/v1/kiot_so_khop?select=dt_luc:doanh_thu->>luc,dt_cu:doanh_thu->kt_cu,dt_ktluc:doanh_thu->>kt_luc&doanh_thu=not.is.null&order=chay_luc.desc&limit=1&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    const r2=await fetch(SUPABASE_URL+'/rest/v1/kiot_so_khop?select=dt_luc:doanh_thu->>luc,dt_cu:doanh_thu->kt_cu,dt_ktluc:doanh_thu->>kt_luc,dt_tenla:doanh_thu->ten_la&doanh_thu=not.is.null&order=chay_luc.desc&limit=1&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
     const y=r2.ok?(await r2.json())[0]:null;
     if(!y||phut(y.dt_luc)>30*60)ra.push({cau:'<b>So doanh thu app MKT ↔ Kế toán</b> chưa chạy '+(y?'từ '+dataMoiTruoc(y.dt_luc):'lượt nào')+' (đêm, khung 22h)'+xem});
-    else if(y.dt_cu)ra.push({cau:'<b>So doanh thu 2 app: Kế toán '+(y.dt_ktluc?'chưa gửi số mới (lần cuối '+dataMoiTruoc(y.dt_ktluc)+')':'chưa gửi số')+'</b> — chuyển lời Kế toán'+xem});}catch(x){}
+    else if(y.dt_cu)ra.push({cau:'<b>So doanh thu 2 app: Kế toán '+(y.dt_ktluc?'chưa gửi số mới (lần cuối '+dataMoiTruoc(y.dt_ktluc)+')':'chưa gửi số')+'</b> — chuyển lời Kế toán'+xem});
+    if(y&&Array.isArray(y.dt_tenla)&&y.dt_tenla.length)ra.push({cau:'<b>Tên nhân sự lạ bên Kế toán</b> (không ghép được với app MKT): '+e(y.dt_tenla.slice(0,4).map(z=>z.ten).join(', '))+(y.dt_tenla.length>4?'…':'')+xem});}catch(x){}
   const conNgay=Math.floor((new Date(PANCAKE_TOKEN_HET).getTime()-now)/864e5);
   if(conNgay<=7)ra.push({cau:'<b>Token Pancake '+(conNgay<0?'ĐÃ HẾT HẠN':'còn '+conNgay+' ngày là hết hạn')+'</b> ('+dmy(PANCAKE_TOKEN_HET.slice(0,10))+') — đổi token ở GitHub + Supabase, hết hạn là mọi đồng bộ Pancake dừng'});
   // mục 4 + 5 phải dựng danh sách khách (~1,3 giây) -> chỉ tính lại mỗi 15 phút, khi có đơn mới về hoặc vừa chọn tay Lẻ / Sỉ (sửa lag 05/11/2026)
@@ -8223,6 +8224,10 @@ function soKhopDt(e,gio){
       +o(t.mkt.tong,k&&k.tong)+o(t.mkt.online,k&&k.online)+o(t.mkt.offline,k&&k.offline)+o(t.mkt.don,k&&k.don,num)
       +'<td>'+(!k?'<span style="color:var(--muted)">Kế toán chưa có</span>':t.so_lech?'<span style="color:'+cam+';font-weight:800">'+num(t.so_lech)+' đơn lệch</span>':'<span style="color:var(--green);font-weight:800">✓ Khớp</span>')+'</td></tr>';}).join('')
     +'</tbody></table></div></div>';
+  // tên nhân sự bên Kế toán không ghép được về đúng 1 tên bên MKT (anh Hải 17/11/2026: "cái nào thấy lạ bảo t") -- không tự đoán
+  if(dt.ten_la&&dt.ten_la.length)h+='<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head" style="border-left:4px solid var(--red)"><div class="tbl-title">Tên lạ bên Kế toán</div><div class="tbl-count" style="background:var(--red);color:#fff">'+dt.ten_la.length+'</div></div>'
+    +'<div class="tbl-scroll"><table><thead><tr><th>Tên Kế toán ghi</th><th>Vì sao lạ</th><th>Tháng</th><th style="text-align:right">Doanh thu KT</th></tr></thead><tbody>'
+    +dt.ten_la.map(x=>'<tr><td style="font-weight:700">'+e(x.ten)+'</td><td>'+e(x.ly)+'</td><td>'+e(x.thang||'')+'</td><td style="text-align:right">'+vnd(x.tien||0)+'</td></tr>').join('')+'</tbody></table></div></div>';
   const t=T.find(x=>x.thang===_sk.dtThang);
   if(t){
     const coKt=!!t.kt;
