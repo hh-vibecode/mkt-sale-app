@@ -50,3 +50,22 @@ create table if not exists so_dt_2app_ly_do (
   primary key (thang, ben, ma)
 );
 alter table so_dt_2app_ly_do enable row level security;
+
+-- 6) (17/11/2026, anh Hải: "k so khớp vs kế toán ở doanh thu nữa, cái m cần so khớp là số lượng đơn onl off ... vs sale đã được ghi nhận đủ đơn
+--    hay chưa, và bàn luận vs nó"; "bắt đầu so từ tháng 11") -- so KÊNH + SALE từng đơn, không so tiền:
+alter table so_dt_2app add column if not exists kenh_ly text;   -- vì sao app đó ghi Online / Offline cho đơn này
+alter table so_dt_2app add column if not exists ns_ly   text;   -- vì sao ghi nhân sự này (gán tay / người bán Kiot / bàn giao ...)
+alter table so_dt_2app add column if not exists nv_ban  text;   -- người bán ghi trên phiếu Kiot
+
+-- 7) (17/11/2026, anh Hải: "bảo kế toán share cho m phần hoa hồng, m hỗ trợ nó check cuối mỗi ngày, xem các đơn đã được ghi nhận đúng đủ cho các
+--    sale chưa, bảo nó share cả phần quy tắc hoa hồng sang m xem hoa hồng của sale đã đúng chưa luôn") -- Kế toán ghi, MKT đọc + kiểm:
+alter table so_dt_2app add column if not exists hh    numeric;   -- hoa hồng Kế toán tính cho đơn này (ben kt)
+alter table so_dt_2app add column if not exists hh_ly text;      -- quy tắc / mức áp (vd "Lẻ online đơn đầu 3%")
+create table if not exists so_dt_2app_quy_tac (                  -- quy tắc hoa hồng Kế toán đang áp (ben kt ghi, MKT đọc)
+  khoa      text primary key,                                     -- mã quy tắc
+  ben       text not null default 'kt' check (ben in ('mkt','kt')),
+  noi_dung  text not null,                                        -- diễn giải đầy đủ
+  ap_tu     date, ap_den date,
+  luc       timestamptz not null default now()
+);
+alter table so_dt_2app_quy_tac enable row level security;
