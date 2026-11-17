@@ -38,3 +38,15 @@ alter table kiot_so_khop add column if not exists doanh_thu jsonb;
 -- 4) kiot_so_khop giờ chứa doanh thu theo nhân sự + mã đơn -> bỏ quyền đọc của khoá công khai (anon), chỉ người đăng nhập (app tự gắn thẻ phiên).
 drop policy if exists kiot_so_khop_doc on kiot_so_khop;
 create policy kiot_so_khop_doc on kiot_so_khop for select to authenticated using (true);
+
+-- 5) (17/11/2026, anh Hải: "tất cả phần lệch t cần có note của m vs kế toán về phần lệch đó tại sao lệch hàng ngày") LÝ DO KHÔNG TÍNH:
+--    mỗi app ghi lý do mình KHÔNG tính 1 mã mà bên kia tính (ben = app ghi lý do). Mỗi lượt xoá dòng ben của mình rồi ghi lại.
+create table if not exists so_dt_2app_ly_do (
+  thang   text not null,
+  ben     text not null check (ben in ('mkt','kt')),
+  ma      text not null,          -- mã như bên kia ghi (DH / HD / TH)
+  ly_do   text not null,
+  luc     timestamptz not null default now(),
+  primary key (thang, ben, ma)
+);
+alter table so_dt_2app_ly_do enable row level security;

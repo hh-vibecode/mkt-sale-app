@@ -25,6 +25,7 @@ const DA_NGHI = { 'Nguyễn Hữu Toàn': 'Sale cũ', 'Nguyễn Thảo Ngọc': 
   'Nguyễn Thị Huế': 'nhân viên cũ', 'Nguyễn Thị Chuyện': 'nhân viên cũ', 'Vũ Thanh Bình': 'kế toán cũ' };
 const vnNay = () => new Date(Date.now() + 7 * 3600e3).toISOString();
 const boDau = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/\s+/g, ' ').trim();
+const vndS = (n) => Math.round(Number(n || 0)).toLocaleString('vi') + 'đ';
 const tr = (n) => (Math.round(Number(n || 0) / 1e5) / 10).toLocaleString('vi') + 'tr';
 
 async function ghiDb(bang, body, loc, method) {
@@ -72,6 +73,7 @@ function donMkt(ctx, cacThang) {
 function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
   const o = mktMoiThang.get(ma);
   if (o && o.thang !== thang) return 'app MKT tính ở tháng ' + o.thang.slice(5) + '/' + o.thang.slice(0, 4) + ' (ngày tạo đơn ' + o.ngay + ')';
+  if (/^TH/i.test(ma)) return 'app MKT không trừ phiếu trả hàng (doanh thu = giá trị đơn đặt)';
   ctx.__ma = ma;
   return vm.runInContext(`(()=>{
     const ma=__ma;
@@ -131,6 +133,59 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
     if (!tenLa.has(t)) tenLa.set(t, gan.length ? 'giống nhiều người bên MKT: ' + gan.join(', ') : 'bên MKT không có tên này');
     return t; };   // nhiều tên cùng khớp / không khớp -> không đoán, giữ tên Kế toán
 
+  // GHI CHÚ 2 BÊN + ĐÁNH GIÁ TỪNG ĐƠN LỆCH (anh Hải 17/11/2026: "tất cả phần lệch t cần có note của m vs kế toán về phần lệch đó tại sao lệch
+  // hàng ngày, xem lý do có đủ hợp lý để bỏ qua không, đấy mới là việc chính"). Mỗi đơn lệch TIỀN: loại lệch + giải thích + đánh giá
+  // 'bo_qua' (lý do hợp lý, cộng dồn / tiền thật không đổi) hoặc 'can_xem' (có thể sai số thật -- anh xem). Ghi chú Kế toán = ly_do trên dòng của họ,
+  // hoặc bảng so_dt_2app_ly_do (lý do họ KHÔNG tính 1 mã MKT tính). Bên MKT cũng ghi lý do MKT không tính các mã Kế toán tính vào bảng đó.
+  const ktTheoMa = new Map(), mktTheoMa = new Map();
+  kt.map(quy).forEach((x) => { if (!ktTheoMa.has(x.ma)) ktTheoMa.set(x.ma, []); ktTheoMa.get(x.ma).push(x); });
+  mkt.forEach((x) => { if (!mktTheoMa.has(x.ma)) mktTheoMa.set(x.ma, []); mktTheoMa.get(x.ma).push(x); });
+  let ktLy = new Map();
+  try { (await tai('so_dt_2app_ly_do', `select=thang,ma,ly_do&ben=eq.kt&thang=gte.${TU_THANG}`)).forEach((x) => ktLy.set(x.thang + '|' + x.ma, x.ly_do)); }
+  catch (e) { console.log('Chưa đọc được so_dt_2app_ly_do: ' + e.message); }
+  const thg = (t) => t.slice(5) + '/' + t.slice(0, 4);
+  // 1 câu chung cho mỗi loại lệch (bảng tóm tắt theo loại trên trang So khớp)
+  const GT_CHUNG = {
+    'Lệch tháng': 'Cùng 1 đơn, 2 bên ghi khác tháng: MKT theo ngày tạo đơn, Kế toán theo ngày hoá đơn',
+    'Phiếu tạm tính nhờ cọc của khách': 'MKT xét cọc theo KHÁCH, Kế toán theo TỪNG ĐƠN — phiếu chưa có tiền riêng',
+    'Tính nhờ hoá đơn khác của khách': 'MKT tính vì khách có hoá đơn khác; đơn này chưa có tiền / hoá đơn riêng',
+    'Trả hàng': 'Kế toán trừ hàng trả lại, MKT không trừ',
+    'Khác giá trị': 'MKT lấy giá trị đơn đặt, Kế toán lấy giá trị hoá đơn',
+    'Kế toán thấy tiền, MKT không thấy': 'Kế toán có phiếu thu sổ quỹ cho đơn, app MKT không đọc sổ quỹ',
+    'Chênh không đáng kể': 'Đơn 0đ / chênh dưới 1.000đ',
+    'Chỉ MKT tính': 'Kế toán không tính ở tháng nào', 'Chỉ Kế toán tính': 'MKT không tính ở tháng nào',
+  };
+  // nhận định từng đơn = thông tin RIÊNG của đơn đó (câu giải thích chung nằm ở bảng Lý do lệch, không lặp lại từng dòng)
+  const congNo = new Map((vm.runInContext('kiotCustomers', ctx) || []).map((c) => [c.code, Number(c.debt || 0)]));
+  const noKhach = (ma) => { if (!ma || !congNo.has(ma)) return ''; const d = congNo.get(ma); return d < 0 ? 'khách đang còn cọc ' + vndS(-d) : d > 0 ? 'khách đang nợ ' + vndS(d) + ', không còn cọc' : 'công nợ khách = 0, không còn cọc'; };
+  const danhGia = (l, t) => {
+    const dTien = l.kt - l.mkt;
+    if (Math.abs(dTien) < 1000) return { loai: 'Chênh không đáng kể', dg: 'bo_qua', gt: 'Đơn 0đ hoặc chênh dưới 1.000đ — không ảnh hưởng số.' };
+    if (l.chi === 'mkt') {
+      const khac = (ktTheoMa.get(l.ma_raw) || []).filter((k) => k.thang !== t);
+      if (khac.length) return { loai: 'Lệch tháng', dg: 'bo_qua', gt: 'MKT ' + thg(t) + ' · Kế toán ' + khac.map((k) => thg(k.thang) + (k.ma_goc ? ' (' + k.ma_goc + ')' : '')).join(', ') + ' — cùng đơn, cộng dồn không lệch.' };
+      if (/cọc/.test(l.ly_mkt)) { const n = noKhach(l.ma_kh); return { loai: 'Phiếu tạm tính nhờ cọc của khách', dg: 'can_xem', gt: 'Phiếu chưa có tiền riêng' + (n ? '; ' + n : '') + '. Kế toán chưa thấy cọc / phiếu thu của đơn này.' }; }
+      if (/hoá đơn hoàn thành/.test(l.ly_mkt)) return { loai: 'Tính nhờ hoá đơn khác của khách', dg: 'can_xem', gt: 'Đơn 0đ trên phiếu, chưa có hoá đơn riêng' + (noKhach(l.ma_kh) ? '; ' + noKhach(l.ma_kh) : '') + '.' };
+      return { loai: 'Chỉ MKT tính', dg: 'can_xem', gt: 'Kế toán không tính ở tháng nào.' };
+    }
+    if (l.chi === 'kt') {
+      if (l.kt < 0 || /trả hàng/i.test(l.ly_kt)) {
+        const hd = (String(l.ly_kt).match(/HD\d[\w.]*/) || [])[0], don = hd && hdVeDon.get(hd);
+        const mktGoc = mktTheoMa.get(don || hd || '');
+        return mktGoc ? { loai: 'Trả hàng', dg: 'can_xem', gt: 'MKT vẫn tính đủ đơn gốc ' + (don || hd) + ' (' + mktGoc.map((m) => thg(m.thang)).join(', ') + ') → cao hơn thực thu ' + vndS(-l.kt) + '.' }
+          : { loai: 'Trả hàng', dg: 'bo_qua', gt: 'Đơn gốc ' + (don || hd || '') + ' MKT không tính doanh thu → không ảnh hưởng số MKT.' };
+      }
+      const khac = (mktTheoMa.get(l.ma_raw) || []).filter((m) => m.thang !== t);
+      if (khac.length) return { loai: 'Lệch tháng', dg: 'bo_qua', gt: 'Kế toán ' + thg(t) + (l.ma_goc ? ' (' + l.ma_goc + ')' : '') + ' · MKT ' + khac.map((m) => thg(m.thang)).join(', ') + ' (tạo đơn ' + khac[0].ngay + ') — cùng đơn, cộng dồn không lệch.' };
+      if (/báo giá/.test(l.ly_mkt)) return { loai: 'Kế toán thấy tiền, MKT không thấy', dg: 'can_xem', gt: 'Nếu phiếu thu đúng của đơn này thì MKT đang THIẾU ' + vndS(l.kt) + '.' };
+      return { loai: 'Chỉ Kế toán tính', dg: 'can_xem', gt: 'MKT không tính ở tháng nào.' };
+    }
+    const p = Math.abs(dTien) / Math.max(Math.abs(l.mkt), 1);
+    return { loai: 'Khác giá trị', dg: p <= 0.02 ? 'bo_qua' : 'can_xem', gt: (l.ma_goc ? 'Hoá đơn ' + l.ma_goc + ' ' : 'Hoá đơn ') + (dTien > 0 ? 'cao hơn' : 'thấp hơn') + ' đơn đặt ' + vndS(Math.abs(dTien)) + ' (' + (p * 100).toFixed(1) + '%)'
+      + (p <= 0.02 ? ' — chênh nhỏ lúc ra hoá đơn, bỏ qua được.' : ' — xem đơn có sửa hàng / thêm hàng lúc ra hoá đơn không.') };
+  };
+  const lyMktCuaKt = [];   // lý do MKT KHÔNG tính các mã Kế toán tính -> so_dt_2app_ly_do (ben mkt) cho bên Kế toán đọc
+
   const ketQua = [];
   for (const t of cacThang) {
     const M = mkt.filter((x) => x.thang === t), K = kt.filter((x) => x.thang === t).map(quy);
@@ -147,21 +202,26 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
     if (K.length) {
       const mM = new Map(M.map((x) => [x.ma, x])), mK = new Map();
       K.forEach((x) => { const c = mK.get(x.ma); if (c) { c.tien += Number(x.tien || 0); c.ma_goc = [c.ma_goc, x.ma_goc].filter(Boolean).join(', '); } else mK.set(x.ma, { ...x, tien: Number(x.tien || 0) }); });
-      const lech = [];
+      // chỉ đơn lệch TIỀN mới vào danh sách; khác kênh / nhân sự (tiền khớp) chỉ đếm -- 2 app gán theo luật riêng anh đã chốt giữ
+      const lech = []; let khacKenh = 0, khacNs = 0;
       M.forEach((x) => { const y = mK.get(x.ma);
-        if (!y) { lech.push({ ma: x.ma, kieu: 'chỉ MKT tính', mkt: x.tien, kt: 0, ly_mkt: x.ly_do, ly_kt: '', nhan_su: x.nhan_su, kenh: x.kenh }); return; }
-        const khac = [];
-        if (Math.round(x.tien) !== Math.round(y.tien)) khac.push('tiền');
-        if (x.kenh !== y.kenh) khac.push('kênh MKT ' + x.kenh + ' / KT ' + y.kenh);
-        if (veTenMkt(y.nhan_su) !== x.nhan_su) khac.push('nhân sự MKT ' + x.nhan_su + ' / KT ' + (y.nhan_su || '—'));
-        if (khac.length) lech.push({ ma: x.ma + (y.ma_goc ? ' (KT: ' + y.ma_goc + ')' : ''), kieu: khac.join(' · '), mkt: x.tien, kt: y.tien, ly_mkt: x.ly_do, ly_kt: y.ly_do || '', nhan_su: x.nhan_su, kenh: x.kenh }); });
+        if (!y) { lech.push({ ma: x.ma, ma_raw: x.ma, chi: 'mkt', mkt: x.tien, kt: 0, ly_mkt: x.ly_do, ly_kt: ktLy.get(t + '|' + x.ma) || '', nhan_su: x.nhan_su, kenh: x.kenh, ma_kh: x.ma_kh }); return; }
+        if (x.kenh !== y.kenh) khacKenh++;
+        if (veTenMkt(y.nhan_su) !== x.nhan_su) khacNs++;
+        if (Math.round(x.tien) !== Math.round(y.tien)) lech.push({ ma: x.ma + (y.ma_goc ? ' (KT: ' + y.ma_goc + ')' : ''), ma_raw: x.ma, ma_goc: y.ma_goc || '', chi: '', mkt: x.tien, kt: y.tien, ly_mkt: x.ly_do, ly_kt: y.ly_do || '', nhan_su: x.nhan_su, kenh: x.kenh }); });
       mK.forEach((y, ma) => { if (mM.has(ma)) return;
-        lech.push({ ma: ma + (y.ma_goc ? ' (KT: ' + y.ma_goc + ')' : ''), kieu: 'chỉ Kế toán tính', mkt: 0, kt: y.tien, ly_mkt: lyDoMktKhongTinh(ctx, ma, t, mktMoiThang), ly_kt: y.ly_do || '', nhan_su: y.nhan_su || '', kenh: y.kenh || '' }); });
-      lech.sort((a, b) => Math.abs(b.mkt - b.kt) - Math.abs(a.mkt - a.kt));
-      // lệch TIỀN (chỉ 1 bên tính / khác tiền) xếp trước; chỉ khác kênh / nhân sự (tiền khớp) đếm riêng -- 2 app gán kênh, nhân sự theo luật riêng nên phần này lúc nào cũng nhiều
-      const laTien = (l) => /^chỉ /.test(l.kieu) || /tiền/.test(l.kieu);
-      lech.sort((a, b) => laTien(b) - laTien(a) || Math.abs(b.mkt - b.kt) - Math.abs(a.mkt - a.kt));
-      v.so_lech = lech.length; v.so_lech_tien = lech.filter(laTien).length; v.lech = lech.slice(0, 200);
+        const lyM = lyDoMktKhongTinh(ctx, ma, t, mktMoiThang);
+        lyMktCuaKt.push({ thang: t, ben: 'mkt', ma: y.ma_goc || ma, ly_do: 'MKT không tính tháng này: ' + lyM, luc });
+        lech.push({ ma: ma + (y.ma_goc ? ' (KT: ' + y.ma_goc + ')' : ''), ma_raw: ma, ma_goc: y.ma_goc || '', chi: 'kt', mkt: 0, kt: y.tien, ly_mkt: lyM, ly_kt: y.ly_do || '', nhan_su: y.nhan_su || '', kenh: y.kenh || '' }); });
+      lech.forEach((l) => { const d = danhGia(l, t); l.loai = d.loai; l.dg = d.dg; l.gt = d.gt; l.kieu = l.chi === 'mkt' ? 'chỉ MKT tính' : l.chi === 'kt' ? 'chỉ Kế toán tính' : 'khác tiền'; });
+      lech.sort((a, b) => (a.dg === 'can_xem' ? 0 : 1) - (b.dg === 'can_xem' ? 0 : 1) || Math.abs(b.mkt - b.kt) - Math.abs(a.mkt - a.kt));
+      // tổng hợp theo loại lệch: số đơn + tiền chênh (KT − MKT) + đánh giá
+      const nhom = {};
+      lech.forEach((l) => { const g = nhom[l.loai + '|' + l.dg] = nhom[l.loai + '|' + l.dg] || { loai: l.loai, dg: l.dg, don: 0, chenh: 0, gt: GT_CHUNG[l.loai] || '', moi: 0 }; g.don++; g.chenh += l.kt - l.mkt; });
+      v.nhom = Object.values(nhom).sort((a, b) => (a.dg === 'can_xem' ? 0 : 1) - (b.dg === 'can_xem' ? 0 : 1) || Math.abs(b.chenh) - Math.abs(a.chenh));
+      v.so_lech_tien = lech.length; v.so_lech = lech.length + khacKenh + khacNs; v.khac_kenh = khacKenh; v.khac_ns = khacNs;
+      v.can_xem = lech.filter((l) => l.dg === 'can_xem').length; v.can_xem_tien = lech.filter((l) => l.dg === 'can_xem').reduce((s, l) => s + l.kt - l.mkt, 0);
+      v.lech = lech.slice(0, 250);
       v.khop = Math.round(v.mkt.tong) === Math.round(v.kt.tong) && Math.round(v.mkt.online) === Math.round(v.kt.online);
     }
     ketQua.push(v);
@@ -170,25 +230,43 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
   // (3) tóm tắt + hộp thư
   const nay = ketQua[ketQua.length - 1];
   const tomTat = kt.length
-    ? ketQua.map((v) => v.thang.slice(5) + '/' + v.thang.slice(2, 4) + ': MKT ' + tr(v.mkt.tong) + (v.kt ? ' / KT ' + tr(v.kt.tong) + (v.so_lech ? ' (' + v.so_lech_tien + ' đơn lệch tiền, ' + (v.so_lech - v.so_lech_tien) + ' chỉ khác kênh / nhân sự)' : ' khớp') : ' / KT chưa có')).join(' · ')
+    ? ketQua.map((v) => v.thang.slice(5) + '/' + v.thang.slice(2, 4) + ': MKT ' + tr(v.mkt.tong) + (v.kt ? ' / KT ' + tr(v.kt.tong) + (v.so_lech_tien ? ' (' + v.so_lech_tien + ' đơn lệch tiền: ' + v.can_xem + ' cần xem, ' + (v.so_lech_tien - v.can_xem) + ' bỏ qua được)' : ' khớp tiền') : ' / KT chưa có')).join(' · ')
     : 'Kế toán chưa gửi số vào so_dt_2app';
   const ghiChu = (ktCu ? (ktLuc ? 'Số Kế toán cũ (gửi lúc ' + ktLuc.slice(0, 16) + ' UTC) · ' : 'Kế toán chưa gửi số · ') : '')
     + 'Tháng ' + nay.thang.slice(5) + ': MKT ' + tr(nay.mkt.tong) + ' (Onl ' + tr(nay.mkt.online) + ' / Off ' + tr(nay.mkt.offline) + ')'
-    + (nay.kt ? ' · KT ' + tr(nay.kt.tong) + ' (Onl ' + tr(nay.kt.online) + ' / Off ' + tr(nay.kt.offline) + ') · ' + (nay.so_lech_tien || 0) + ' đơn lệch tiền' : '');
+    + (nay.kt ? ' · KT ' + tr(nay.kt.tong) + ' (Onl ' + tr(nay.kt.online) + ' / Off ' + tr(nay.kt.offline) + ') · ' + (nay.can_xem || 0) + ' đơn lệch cần xem' : '');
   console.log(ghiChu); console.log(tomTat);
   tenLa.forEach((ly, ten) => console.log('TÊN LẠ bên Kế toán: ' + ten + ' — ' + ly));
   ketQua.forEach((v) => { console.log('\n== ' + v.thang + ' · MKT ' + tr(v.mkt.tong) + ' Onl ' + tr(v.mkt.online) + ' Off ' + tr(v.mkt.offline) + ' (' + v.mkt.don + ' đơn)'
     + (v.kt ? ' | KT ' + tr(v.kt.tong) + ' Onl ' + tr(v.kt.online) + ' Off ' + tr(v.kt.offline) + ' (' + v.kt.don + ' đơn)' : ''));
     v.nhan_su.slice(0, 12).forEach((n) => console.log('   ' + n.ten.padEnd(24) + tr(n.mkt).padStart(10) + (n.kt != null ? tr(n.kt).padStart(10) : '')));
-    (v.lech || []).slice(0, 10).forEach((l) => console.log('   lệch ' + l.ma + ' · ' + l.kieu + ' · MKT ' + tr(l.mkt) + ' / KT ' + tr(l.kt) + ' · MKT: ' + l.ly_mkt)); });
+    (v.nhom || []).forEach((g) => console.log('   [' + (g.dg === 'can_xem' ? 'CẦN XEM' : 'bỏ qua') + '] ' + g.loai + ': ' + g.don + ' đơn, KT − MKT ' + tr(g.chenh)));
+    (v.lech || []).filter((l) => l.dg === 'can_xem').slice(0, 6).forEach((l) => console.log('     ' + l.ma + ' · ' + l.loai + ' · MKT ' + tr(l.mkt) + ' / KT ' + tr(l.kt))); });
+
+  // đơn CẦN XEM mới so với lượt trước -> chuông (đơn cũ đã báo thì thôi, tránh chuông lặp mỗi đêm)
+  const khoaCx = []; ketQua.forEach((v) => (v.lech || []).forEach((l) => { if (l.dg === 'can_xem') khoaCx.push(v.thang + '|' + l.ma_raw); }));
+  let truoc = null;
+  try { const r = await tai('kiot_so_khop', 'select=k:doanh_thu->can_xem_keys&doanh_thu=not.is.null&order=chay_luc.desc'); truoc = r[0] && Array.isArray(r[0].k) ? new Set(r[0].k) : null; } catch (e) { truoc = null; }
+  const moiCx = truoc ? khoaCx.filter((k) => !truoc.has(k)) : [];
+  ketQua.forEach((v) => (v.lech || []).forEach((l) => { if (l.dg === 'can_xem' && truoc && !truoc.has(v.thang + '|' + l.ma_raw)) {
+    l.moi = true; const g = (v.nhom || []).find((x) => x.loai === l.loai && x.dg === l.dg); if (g) g.moi++; } }));
+  console.log('\nĐơn cần xem: ' + khoaCx.length + (truoc ? ' · mới so với lượt trước: ' + moiCx.length : ' (lượt đầu, chưa có lượt trước để so)'));
 
   if (!KHO) {
-    await ghiDb('so_dt_2app_tin', { ben: 'mkt', thang: nay.thang, noi_dung: 'Lượt so đêm ' + vnNay().slice(0, 10) + ': ' + tomTat });
+    // lý do MKT không tính các mã Kế toán tính -> bảng lý do cho bên Kế toán đọc
+    await ghiDb('so_dt_2app_ly_do', null, `?ben=eq.mkt&thang=gte.${TU_THANG}`, 'DELETE');
+    const lyGop = new Map(lyMktCuaKt.map((x) => [x.thang + '|' + x.ma, x]));
+    const lyDs = [...lyGop.values()];
+    for (let i = 0; i < lyDs.length; i += 500) await ghiDb('so_dt_2app_ly_do', lyDs.slice(i, i + 500));
+    // hộp thư: 1 tin tóm tắt / ngày (chạy tay nhiều lần trong ngày không thêm tin)
+    const daCo = await tai('so_dt_2app_tin', `select=id&ben=eq.mkt&luc=gte.${new Date(Date.now() - 12 * 3600e3).toISOString()}`).catch(() => []);
+    if (!daCo.length) await ghiDb('so_dt_2app_tin', { ben: 'mkt', thang: nay.thang, noi_dung: 'Lượt so đêm ' + vnNay().slice(0, 10) + ': ' + tomTat });
     let tin = [];
     try { tin = await tai('so_dt_2app_tin', 'select=id,luc,ben,thang,ma,noi_dung&order=luc.desc'); } catch (e) { /* hộp thư lỗi không chặn kết quả */ }
     const ten_la = [...tenLa].map(([ten, ly]) => ({ ten, ly, tien: kt.filter((x) => x.nhan_su === ten).reduce((s, x) => s + Number(x.tien || 0), 0),
       thang: [...new Set(kt.filter((x) => x.nhan_su === ten).map((x) => x.thang))].sort().join(', ') }));
-    const doanhThu = { luc, tu_thang: TU_THANG, kt_luc: ktLuc || null, kt_cu: ktCu, ghi_chu: ghiChu, thang: ketQua, trung, ten_la, tin: tin.slice(0, 40) };
+    const doanhThu = { luc, tu_thang: TU_THANG, kt_luc: ktLuc || null, kt_cu: ktCu, ghi_chu: ghiChu, thang: ketQua, trung, ten_la, tin: tin.slice(0, 40),
+      can_xem_keys: khoaCx, can_xem_moi: moiCx.length, lan_dau: !truoc };
     // gắn vào lượt so khớp mã MỚI NHẤT (bước ngay trước trong sync-kiot.yml); kết quả mang giờ riêng (doanh_thu.luc) nên chạy tay gắn lượt cũ hơn vẫn rõ.
     // KHÔNG thêm lượt riêng: chuông + trang So khớp lấy lượt mới nhất làm kết quả so mã -> 1 dòng không so mã sẽ báo "khớp" sai.
     const gan = await tai('kiot_so_khop', 'select=id&trang_thai=neq.running&order=chay_luc.desc').catch(() => []);
