@@ -44,6 +44,7 @@ function donMkt(ctx, cacThang) {
       if(typeof rptSlTTVConTinh==='function'&&rptSlTTVConTinh(o)&&o.status===1)return 'Tự Tại Viên: phiếu tạm tính trong 14 ngày';
       if(String(o.purchase_date||'').slice(0,10)<RPT_MOC_HOADON)return 'trước 1/6/2026 (không xét dấu vết tiền)';
       if(Number(o.total_payment||0)>0)return 'trả tiền trên đơn';
+      if(typeof rptSlHdCuaDon==='function'&&(rptSlHdCuaDon()[o.code]||0)>0)return 'hoá đơn hoàn thành của chính đơn';
       if(rptSlGiuTinh(o))return 'khách từng có cọc (giữ tính)';
       if(o.status!==1&&(rptSlHoaDonTheoKhach()[o.customer_code]||0)>0)return 'khách có hoá đơn hoàn thành';
       if(rptSlKhachCoCoc(o.customer_code))return 'khách có cọc (nợ âm trên Kiot)';
@@ -173,8 +174,8 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
       if (l.kt < 0 || /trả hàng/i.test(l.ly_kt)) {
         const hd = (String(l.ly_kt).match(/HD\d[\w.]*/) || [])[0], don = hd && hdVeDon.get(hd);
         const mktGoc = mktTheoMa.get(don || hd || '');
-        return mktGoc ? { loai: 'Trả hàng', dg: 'can_xem', gt: 'MKT vẫn tính đủ đơn gốc ' + (don || hd) + ' (' + mktGoc.map((m) => thg(m.thang)).join(', ') + ') → cao hơn thực thu ' + vndS(-l.kt) + '.' }
-          : { loai: 'Trả hàng', dg: 'bo_qua', gt: 'Đơn gốc ' + (don || hd || '') + ' MKT không tính doanh thu → không ảnh hưởng số MKT.' };
+        // TRẢ HÀNG = NGOẠI LỆ HỢP LỆ (anh Hải 17/11/2026: doanh thu MKT là doanh thu đơn đặt, không trừ hàng trả lại -- như đơn huỷ, chỉ cần giải thích được)
+        return { loai: 'Trả hàng', dg: 'bo_qua', gt: mktGoc ? 'Kế toán trừ hàng trả của đơn ' + (don || hd) + ' (MKT tính ' + mktGoc.map((m) => thg(m.thang)).join(', ') + '); MKT không trừ hàng trả.' : 'Đơn gốc ' + (don || hd || '') + ' MKT không tính doanh thu.' };
       }
       const khac = (mktTheoMa.get(l.ma_raw) || []).filter((m) => m.thang !== t);
       if (khac.length) return { loai: 'Lệch tháng', dg: 'bo_qua', gt: 'Kế toán ' + thg(t) + (l.ma_goc ? ' (' + l.ma_goc + ')' : '') + ' · MKT ' + khac.map((m) => thg(m.thang)).join(', ') + ' (tạo đơn ' + khac[0].ngay + ') — cùng đơn, cộng dồn không lệch.' };
