@@ -173,7 +173,10 @@ async function ghi(bang, body, id) {
     let KT = null, keToan = null;
     try {
       KT = {
-        don: (await dbAll('kt_kiot_dat_hang', 'ma,tong,trang_thai,khach_ma,ngay', '&ngay=gte.' + MOC_HD)).map((x) => ({ code: x.ma, total: Number(x.tong || 0), status: x.trang_thai, customer_code: x.khach_ma || '', ngay: vnNgay(x.ngay) })),
+        // Kế toán GIỮ dòng đơn đã xoá trên Kiot có chủ ý, đánh dấu trang_thai = 4 + trang_thai_ten 'Đã xoá trên Kiot' (phiên Kế toán báo 17/11/2026)
+        // -> coi là đã xoá (như kiot_da_xoa bên MKT), không báo "Kế toán còn giữ mã Kiot đã xoá".
+        don: (await dbAll('kt_kiot_dat_hang', 'ma,tong,trang_thai,trang_thai_ten,khach_ma,ngay', '&ngay=gte.' + MOC_HD)).map((x) => ({ code: x.ma, total: Number(x.tong || 0), status: x.trang_thai, customer_code: x.khach_ma || '', ngay: vnNgay(x.ngay),
+          xoa: /đã xoá trên kiot|đã xóa trên kiot/i.test(String(x.trang_thai_ten || '')) })),
         hd: (await dbAll('kt_kiot_hoa_don', 'ma,tong,trang_thai,khach_ma,ma_dat_hang,ngay', '&ngay=gte.' + MOC_HD)).map((x) => ({ code: x.ma, total: Number(x.tong || 0), status: x.trang_thai, customer_code: x.khach_ma || '', order_code: x.ma_dat_hang || '', ngay: vnNgay(x.ngay) })),
       };
       const moi = (x) => x.sua && Date.now() - new Date(/[zZ]|[+-]\d\d:\d\d$/.test(x.sua) ? x.sua : x.sua + '+07:00').getTime() < 60 * 60000;
