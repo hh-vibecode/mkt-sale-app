@@ -6806,6 +6806,8 @@ const RPT_SL_SALE_ALIAS={
   'ngọc diệp':'Đinh Ngọc Diệp',
   'chánh tâm ngọc diệp':'Đinh Ngọc Diệp',
   'đinh thị ngọc diệp':'Đinh Ngọc Diệp',
+  // anh Hải 17/11/2026 xác nhận cùng 1 người: tên Kiot / Kế toán "Nguyễn Trung Khánh Nguyên" = Nhân sự "Nguyễn Khánh Nguyên" (trước bị tách 2 dòng doanh thu)
+  'nguyễn trung khánh nguyên':'Nguyễn Khánh Nguyên',
   // Tuấn Chánh Tâm (anh Hải 24/10/2026 xác nhận cùng 1 người): Pancake "Đức Tuấn Chánh Tâm" = Kiot / Nhân sự "Nguyễn Đức Anh Tuấn"
   'đức tuấn chánh tâm':'Nguyễn Đức Anh Tuấn',
   'tuấn chánh tâm':'Nguyễn Đức Anh Tuấn',
@@ -7740,10 +7742,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='17/11 07:45';
+const APP_VERSION='17/11 07:51';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=585;
+const APP_BAN=586;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8240,7 +8242,7 @@ function soKhopDt(e,gio){
   if(t){
     const coKt=!!t.kt;
     h+='<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head"><div class="tbl-title">Theo nhân sự · '+th(t.thang)+'</div><span class="tbl-count">'+(t.nhan_su||[]).length+'</span></div><div class="tbl-scroll"><table><thead><tr><th>Nhân sự</th><th style="text-align:right">App MKT</th><th style="text-align:right">Kế toán</th><th style="text-align:right">Lệch</th></tr></thead><tbody>'
-      +(t.nhan_su||[]).map(n=>{const l=coKt?n.mkt-(n.kt||0):null;return '<tr><td class="name">'+e(n.ten)+(n.ten_kt?'<div style="font-size:11px;color:var(--muted)">KT ghi: '+e(n.ten_kt)+'</div>':'')+'</td><td style="text-align:right">'+(n.mkt?vnd(n.mkt):'—')+'</td><td style="text-align:right">'+(coKt?(n.kt?vnd(n.kt):'—'):'—')+'</td>'
+      +(t.nhan_su||[]).map(n=>{const l=coKt?n.mkt-(n.kt||0):null;return '<tr><td class="name">'+e(n.ten)+(n.ghi?' <span class="tbl-count">'+e(n.ghi)+'</span>':'')+(n.ten_kt?'<div style="font-size:11px;color:var(--muted)">KT ghi: '+e(n.ten_kt)+'</div>':'')+'</td><td style="text-align:right">'+(n.mkt?vnd(n.mkt):'—')+'</td><td style="text-align:right">'+(coKt?(n.kt?vnd(n.kt):'—'):'—')+'</td>'
         +'<td style="text-align:right;font-weight:800'+(l?';color:'+cam:'')+'">'+(l==null?'—':l?(l>0?'+':'')+vnd(l):'✓')+'</td></tr>';}).join('')
       +'</tbody></table></div></div>';
     if(t.lech&&t.lech.length)h+='<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head" style="border-left:4px solid '+cam+'"><div class="tbl-title">Đơn lệch · '+th(t.thang)+'</div><div class="tbl-count" style="background:'+cam+';color:#fff">'+num(t.so_lech||t.lech.length)+'</div>'

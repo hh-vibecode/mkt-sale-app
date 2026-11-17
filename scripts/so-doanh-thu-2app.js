@@ -17,6 +17,12 @@ const { napApp, tai, SUPABASE_URL, H } = require('./lib/nap-app.js');
 const KHO = process.env.KHO === '1';
 const TU_THANG = '2026-06';   // Lẻ chỉ có từ 1/6/2026 (luật app) -> so từ T6
 
+// TÊN NHÂN SỰ THEO KẾ TOÁN (anh Hải 17/11/2026: "còn lại đúng hết tên rồi, m follow theo tên của kế toán nhé"):
+// so doanh thu dùng tên bên Kế toán làm chuẩn -> tên app MKT đổi sang tên Kế toán trước khi ghi / so.
+const TEN_THEO_KT = { 'Nguyễn Khánh Nguyên': 'Nguyễn Trung Khánh Nguyên', 'Đinh Ngọc Diệp': 'Đinh Thị Ngọc Diệp' };
+// Người đã nghỉ, anh Hải xác nhận 17/11/2026 -> không báo "tên lạ", chỉ ghi chú cạnh tên.
+const DA_NGHI = { 'Nguyễn Hữu Toàn': 'Sale cũ', 'Nguyễn Thảo Ngọc': 'Sale cũ', 'Nguyễn Đức Anh Tuấn': 'Sale cũ', 'Hà Minh Ngọc': 'Sale cũ',
+  'Nguyễn Thị Huế': 'nhân viên cũ', 'Nguyễn Thị Chuyện': 'nhân viên cũ', 'Vũ Thanh Bình': 'kế toán cũ' };
 const vnNay = () => new Date(Date.now() + 7 * 3600e3).toISOString();
 const boDau = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/\s+/g, ' ').trim();
 const tr = (n) => (Math.round(Number(n || 0) / 1e5) / 10).toLocaleString('vi') + 'tr';
@@ -90,6 +96,7 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
 
   const ctx = await napApp();
   const { ra: mkt, trung } = donMkt(ctx, cacThang);
+  mkt.forEach((x) => { if (TEN_THEO_KT[x.nhan_su]) x.nhan_su = TEN_THEO_KT[x.nhan_su]; });
   console.log('App MKT: ' + mkt.length + ' đơn tính doanh thu ' + cacThang[0] + ' → ' + thangNay + (trung.length ? ' · ' + trung.length + ' mã nằm ở cả Lẻ lẫn Sỉ (đã bỏ lần 2)' : ''));
 
   // (1) ghi danh sách bên MKT (thay toàn bộ các tháng đang so)
@@ -120,6 +127,7 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
     const dung = tenMkt.find((m) => boDau(m) === b); if (dung) return dung;
     const gan = tenMkt.filter((m) => { const c = boDau(m); return c && Math.min(b.length, c.length) >= 4 && (tron(b, c) || tron(c, b)); });
     if (gan.length === 1) return gan[0];
+    if (DA_NGHI[t]) return t;   // người đã nghỉ anh đã xác nhận -> không phải tên lạ
     if (!tenLa.has(t)) tenLa.set(t, gan.length ? 'giống nhiều người bên MKT: ' + gan.join(', ') : 'bên MKT không có tên này');
     return t; };   // nhiều tên cùng khớp / không khớp -> không đoán, giữ tên Kế toán
 
@@ -133,7 +141,7 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
     const ns = {};
     M.forEach((x) => { const n = ns[x.nhan_su] = ns[x.nhan_su] || { ten: x.nhan_su, mkt: 0, kt: 0, ten_kt: new Set() }; n.mkt += x.tien; });
     K.forEach((x) => { const k = veTenMkt(x.nhan_su); const n = ns[k] = ns[k] || { ten: k, mkt: 0, kt: 0, ten_kt: new Set() }; n.kt += Number(x.tien || 0); if (x.nhan_su && x.nhan_su !== k) n.ten_kt.add(x.nhan_su); });
-    v.nhan_su = Object.values(ns).map((n) => ({ ten: n.ten, mkt: n.mkt, kt: K.length ? n.kt : null, ten_kt: [...n.ten_kt].join(', ') }))
+    v.nhan_su = Object.values(ns).map((n) => ({ ten: n.ten, mkt: n.mkt, kt: K.length ? n.kt : null, ten_kt: [...n.ten_kt].join(', '), ghi: DA_NGHI[n.ten] || '' }))
       .sort((a, b) => Math.max(b.mkt, b.kt || 0) - Math.max(a.mkt, a.kt || 0));
     // từng đơn
     if (K.length) {
