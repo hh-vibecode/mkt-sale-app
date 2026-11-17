@@ -7734,10 +7734,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='17/11 07:33';
+const APP_VERSION='17/11 07:43';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=583;
+const APP_BAN=584;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8222,7 +8222,9 @@ function soKhopDt(e,gio){
     +'<div class="tbl-scroll"><table><thead><tr><th>Tháng</th><th style="text-align:right">Doanh thu</th><th style="text-align:right">Online</th><th style="text-align:right">Offline</th><th style="text-align:right">Số đơn</th><th>Kết quả</th></tr></thead><tbody>'
     +T.map(t=>{const k=t.kt;return '<tr onclick="_sk.dtThang=\''+t.thang+'\';soKhopVe()" style="cursor:pointer'+(t.thang===_sk.dtThang?';background:var(--bg2)':'')+'"><td style="font-weight:700">'+th(t.thang)+'</td>'
       +o(t.mkt.tong,k&&k.tong)+o(t.mkt.online,k&&k.online)+o(t.mkt.offline,k&&k.offline)+o(t.mkt.don,k&&k.don,num)
-      +'<td>'+(!k?'<span style="color:var(--muted)">Kế toán chưa có</span>':t.so_lech?'<span style="color:'+cam+';font-weight:800">'+num(t.so_lech)+' đơn lệch</span>':'<span style="color:var(--green);font-weight:800">✓ Khớp</span>')+'</td></tr>';}).join('')
+      +'<td>'+(!k?'<span style="color:var(--muted)">Kế toán chưa có</span>':t.so_lech?(t.so_lech_tien!=null&&t.so_lech_tien<t.so_lech
+        ?'<span style="color:'+cam+';font-weight:800">'+num(t.so_lech_tien)+' đơn lệch tiền</span><div style="font-size:11px;color:var(--muted)">'+num(t.so_lech-t.so_lech_tien)+' chỉ khác kênh / nhân sự</div>'
+        :'<span style="color:'+cam+';font-weight:800">'+num(t.so_lech)+' đơn lệch</span>'):'<span style="color:var(--green);font-weight:800">✓ Khớp</span>')+'</td></tr>';}).join('')
     +'</tbody></table></div></div>';
   // tên nhân sự bên Kế toán không ghép được về đúng 1 tên bên MKT (anh Hải 17/11/2026: "cái nào thấy lạ bảo t") -- không tự đoán
   if(dt.ten_la&&dt.ten_la.length)h+='<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head" style="border-left:4px solid var(--red)"><div class="tbl-title">Tên lạ bên Kế toán</div><div class="tbl-count" style="background:var(--red);color:#fff">'+dt.ten_la.length+'</div></div>'
@@ -8236,7 +8238,7 @@ function soKhopDt(e,gio){
         +'<td style="text-align:right;font-weight:800'+(l?';color:'+cam:'')+'">'+(l==null?'—':l?(l>0?'+':'')+vnd(l):'✓')+'</td></tr>';}).join('')
       +'</tbody></table></div></div>';
     if(t.lech&&t.lech.length)h+='<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head" style="border-left:4px solid '+cam+'"><div class="tbl-title">Đơn lệch · '+th(t.thang)+'</div><div class="tbl-count" style="background:'+cam+';color:#fff">'+num(t.so_lech||t.lech.length)+'</div>'
-      +(t.so_lech>t.lech.length?'<span class="tbl-count">hiện '+t.lech.length+' đơn lệch tiền nhiều nhất</span>':'')+'</div><div class="tbl-scroll"><table><thead><tr><th>Mã</th><th>Lệch</th><th style="text-align:right">App MKT</th><th style="text-align:right">Kế toán</th><th>Lý do bên MKT</th><th>Lý do bên Kế toán</th></tr></thead><tbody>'
+      +(t.so_lech>t.lech.length?'<span class="tbl-count">hiện '+t.lech.length+' đơn, lệch tiền trước</span>':'')+'</div><div class="tbl-scroll"><table><thead><tr><th>Mã</th><th>Lệch</th><th style="text-align:right">App MKT</th><th style="text-align:right">Kế toán</th><th>Lý do bên MKT</th><th>Lý do bên Kế toán</th></tr></thead><tbody>'
       +t.lech.map(l=>'<tr><td style="font-weight:700">'+e(l.ma)+'<div style="font-size:11px;color:var(--muted)">'+e(l.nhan_su||'')+(l.kenh?' · '+e(l.kenh):'')+'</div></td><td>'+e(l.kieu)+'</td><td style="text-align:right">'+(l.mkt?vnd(l.mkt):'—')+'</td><td style="text-align:right">'+(l.kt?vnd(l.kt):'—')+'</td>'
         +'<td style="font-size:12px">'+e(l.ly_mkt||'')+'</td><td style="font-size:12px">'+e(l.ly_kt||'')+'</td></tr>').join('')
       +'</tbody></table></div></div>';

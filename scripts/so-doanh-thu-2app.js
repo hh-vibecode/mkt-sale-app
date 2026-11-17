@@ -150,7 +150,10 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
       mK.forEach((y, ma) => { if (mM.has(ma)) return;
         lech.push({ ma: ma + (y.ma_goc ? ' (KT: ' + y.ma_goc + ')' : ''), kieu: 'chỉ Kế toán tính', mkt: 0, kt: y.tien, ly_mkt: lyDoMktKhongTinh(ctx, ma, t, mktMoiThang), ly_kt: y.ly_do || '', nhan_su: y.nhan_su || '', kenh: y.kenh || '' }); });
       lech.sort((a, b) => Math.abs(b.mkt - b.kt) - Math.abs(a.mkt - a.kt));
-      v.so_lech = lech.length; v.lech = lech.slice(0, 200);
+      // lệch TIỀN (chỉ 1 bên tính / khác tiền) xếp trước; chỉ khác kênh / nhân sự (tiền khớp) đếm riêng -- 2 app gán kênh, nhân sự theo luật riêng nên phần này lúc nào cũng nhiều
+      const laTien = (l) => /^chỉ /.test(l.kieu) || /tiền/.test(l.kieu);
+      lech.sort((a, b) => laTien(b) - laTien(a) || Math.abs(b.mkt - b.kt) - Math.abs(a.mkt - a.kt));
+      v.so_lech = lech.length; v.so_lech_tien = lech.filter(laTien).length; v.lech = lech.slice(0, 200);
       v.khop = Math.round(v.mkt.tong) === Math.round(v.kt.tong) && Math.round(v.mkt.online) === Math.round(v.kt.online);
     }
     ketQua.push(v);
@@ -159,11 +162,11 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
   // (3) tóm tắt + hộp thư
   const nay = ketQua[ketQua.length - 1];
   const tomTat = kt.length
-    ? ketQua.map((v) => v.thang.slice(5) + '/' + v.thang.slice(2, 4) + ': MKT ' + tr(v.mkt.tong) + (v.kt ? ' / KT ' + tr(v.kt.tong) + (v.so_lech ? ' (' + v.so_lech + ' đơn lệch)' : ' khớp') : ' / KT chưa có')).join(' · ')
+    ? ketQua.map((v) => v.thang.slice(5) + '/' + v.thang.slice(2, 4) + ': MKT ' + tr(v.mkt.tong) + (v.kt ? ' / KT ' + tr(v.kt.tong) + (v.so_lech ? ' (' + v.so_lech_tien + ' đơn lệch tiền, ' + (v.so_lech - v.so_lech_tien) + ' chỉ khác kênh / nhân sự)' : ' khớp') : ' / KT chưa có')).join(' · ')
     : 'Kế toán chưa gửi số vào so_dt_2app';
   const ghiChu = (ktCu ? (ktLuc ? 'Số Kế toán cũ (gửi lúc ' + ktLuc.slice(0, 16) + ' UTC) · ' : 'Kế toán chưa gửi số · ') : '')
     + 'Tháng ' + nay.thang.slice(5) + ': MKT ' + tr(nay.mkt.tong) + ' (Onl ' + tr(nay.mkt.online) + ' / Off ' + tr(nay.mkt.offline) + ')'
-    + (nay.kt ? ' · KT ' + tr(nay.kt.tong) + ' (Onl ' + tr(nay.kt.online) + ' / Off ' + tr(nay.kt.offline) + ') · ' + (nay.so_lech || 0) + ' đơn lệch' : '');
+    + (nay.kt ? ' · KT ' + tr(nay.kt.tong) + ' (Onl ' + tr(nay.kt.online) + ' / Off ' + tr(nay.kt.offline) + ') · ' + (nay.so_lech_tien || 0) + ' đơn lệch tiền' : '');
   console.log(ghiChu); console.log(tomTat);
   tenLa.forEach((ly, ten) => console.log('TÊN LẠ bên Kế toán: ' + ten + ' — ' + ly));
   ketQua.forEach((v) => { console.log('\n== ' + v.thang + ' · MKT ' + tr(v.mkt.tong) + ' Onl ' + tr(v.mkt.online) + ' Off ' + tr(v.mkt.offline) + ' (' + v.mkt.don + ' đơn)'
