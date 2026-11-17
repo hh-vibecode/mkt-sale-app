@@ -153,6 +153,7 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
     'Khác giá trị': 'MKT lấy giá trị đơn đặt, Kế toán lấy giá trị hoá đơn',
     'Kế toán thấy tiền, MKT không thấy': 'Kế toán có phiếu thu sổ quỹ cho đơn, app MKT không đọc sổ quỹ',
     'Chênh không đáng kể': 'Đơn 0đ / chênh dưới 1.000đ',
+    'Đơn huỷ': 'MKT không tính đơn huỷ',
     'Chỉ MKT tính': 'Kế toán không tính ở tháng nào', 'Chỉ Kế toán tính': 'MKT không tính ở tháng nào',
   };
   // nhận định từng đơn = thông tin RIÊNG của đơn đó (câu giải thích chung nằm ở bảng Lý do lệch, không lặp lại từng dòng)
@@ -177,6 +178,8 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
       }
       const khac = (mktTheoMa.get(l.ma_raw) || []).filter((m) => m.thang !== t);
       if (khac.length) return { loai: 'Lệch tháng', dg: 'bo_qua', gt: 'Kế toán ' + thg(t) + (l.ma_goc ? ' (' + l.ma_goc + ')' : '') + ' · MKT ' + khac.map((m) => thg(m.thang)).join(', ') + ' (tạo đơn ' + khac[0].ngay + ') — cùng đơn, cộng dồn không lệch.' };
+      // đơn huỷ = ngoại lệ hợp lệ (anh Hải 17/11/2026: "của m là doanh thu, k tính đơn hủy ... sau khi trừ ngoại lệ (đơn hủy, phiếu cọc tháng trước tháng này mới trả...) vẫn phải trùng")
+      if (/^(đơn huỷ|hoá đơn không hoàn thành)/.test(l.ly_mkt)) return { loai: 'Đơn huỷ', dg: 'bo_qua', gt: 'MKT không tính (' + l.ly_mkt + ').' };
       if (/báo giá/.test(l.ly_mkt)) return { loai: 'Kế toán thấy tiền, MKT không thấy', dg: 'can_xem', gt: 'Nếu phiếu thu đúng của đơn này thì MKT đang THIẾU ' + vndS(l.kt) + '.' };
       return { loai: 'Chỉ Kế toán tính', dg: 'can_xem', gt: 'MKT không tính ở tháng nào.' };
     }
@@ -222,6 +225,11 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
       v.so_lech_tien = lech.length; v.so_lech = lech.length + khacKenh + khacNs; v.khac_kenh = khacKenh; v.khac_ns = khacNs;
       v.can_xem = lech.filter((l) => l.dg === 'can_xem').length; v.can_xem_tien = lech.filter((l) => l.dg === 'can_xem').reduce((s, l) => s + l.kt - l.mkt, 0);
       v.lech = lech.slice(0, 250);
+      // ĐỐI CHIẾU (anh Hải 17/11/2026): MKT ± ngoại lệ hợp lệ (bỏ qua được) PHẢI = Kế toán. con_lech = phần còn lại sau ngoại lệ = tổng chênh các đơn
+      // CẦN XEM (mục tiêu 0). chua_giai_thich = (KT − MKT) − tổng chênh mọi đơn lệch: phép cộng phải khép kín, khác 0 là job so sót đơn.
+      const sum = (f) => lech.filter(f).reduce((s, l) => s + l.kt - l.mkt, 0);
+      v.doi_chieu = { chenh: v.kt.tong - v.mkt.tong, ngoai_le: sum((l) => l.dg === 'bo_qua'), ngoai_le_don: lech.filter((l) => l.dg === 'bo_qua').length, con_lech: sum((l) => l.dg === 'can_xem') };
+      v.doi_chieu.chua_giai_thich = Math.round(v.doi_chieu.chenh - v.doi_chieu.ngoai_le - v.doi_chieu.con_lech);
       v.khop = Math.round(v.mkt.tong) === Math.round(v.kt.tong) && Math.round(v.mkt.online) === Math.round(v.kt.online);
     }
     ketQua.push(v);
@@ -240,6 +248,7 @@ function lyDoMktKhongTinh(ctx, ma, thang, mktMoiThang) {
   ketQua.forEach((v) => { console.log('\n== ' + v.thang + ' · MKT ' + tr(v.mkt.tong) + ' Onl ' + tr(v.mkt.online) + ' Off ' + tr(v.mkt.offline) + ' (' + v.mkt.don + ' đơn)'
     + (v.kt ? ' | KT ' + tr(v.kt.tong) + ' Onl ' + tr(v.kt.online) + ' Off ' + tr(v.kt.offline) + ' (' + v.kt.don + ' đơn)' : ''));
     v.nhan_su.slice(0, 12).forEach((n) => console.log('   ' + n.ten.padEnd(24) + tr(n.mkt).padStart(10) + (n.kt != null ? tr(n.kt).padStart(10) : '')));
+    if (v.doi_chieu) console.log('   ĐỐI CHIẾU: MKT ' + tr(v.mkt.tong) + ' ± ngoại lệ ' + tr(v.doi_chieu.ngoai_le) + ' = ' + tr(v.mkt.tong + v.doi_chieu.ngoai_le) + ' · KT ' + tr(v.kt.tong) + ' · CÒN LỆCH ' + tr(v.doi_chieu.con_lech) + (v.doi_chieu.chua_giai_thich ? ' · CHƯA GIẢI THÍCH ' + vndS(v.doi_chieu.chua_giai_thich) : ' · khép kín'));
     (v.nhom || []).forEach((g) => console.log('   [' + (g.dg === 'can_xem' ? 'CẦN XEM' : 'bỏ qua') + '] ' + g.loai + ': ' + g.don + ' đơn, KT − MKT ' + tr(g.chenh)));
     (v.lech || []).filter((l) => l.dg === 'can_xem').slice(0, 6).forEach((l) => console.log('     ' + l.ma + ' · ' + l.loai + ' · MKT ' + tr(l.mkt) + ' / KT ' + tr(l.kt))); });
 

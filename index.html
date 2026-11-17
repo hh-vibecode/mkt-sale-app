@@ -7742,10 +7742,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='17/11 15:04';
+const APP_VERSION='17/11 15:19';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=587;
+const APP_BAN=588;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8240,12 +8240,15 @@ function soKhopDt(){
   if(!dt)return the('<div style="padding:14px 16px;color:'+mo+'">Chưa có lượt so doanh thu nào.</div>');
   const T=(dt.thang||[]).slice().reverse();
   const tien=(a,b)=>'<td style="text-align:right">'+vnd(a)+(b==null?'':'<div style="font-size:11px;font-weight:700;color:'+(Math.round(a)===Math.round(b)?mo:SK_CAM)+'">KT '+vnd(b)+'</div>')+'</td>';
-  return the('<div class="tbl-scroll"><table><thead><tr><th>Tháng</th><th style="text-align:right">Doanh thu</th><th style="text-align:right">Online</th><th style="text-align:right">Offline</th><th style="text-align:right">Lệch</th></tr></thead><tbody>'
+  return the('<div class="tbl-scroll"><table><thead><tr><th>Tháng</th><th style="text-align:right">Doanh thu</th><th style="text-align:right">Online</th><th style="text-align:right">Offline</th><th style="text-align:right" title="Kế toán − (MKT ± ngoại lệ hợp lệ: đơn huỷ, lệch tháng, trả hàng đơn MKT không tính, chênh lặt vặt) — phải bằng 0">Còn lệch sau ngoại lệ</th></tr></thead><tbody>'
     +T.map(t=>{const k=t.kt,cx=t.can_xem||0,bq=(t.so_lech_tien||0)-cx;
       return '<tr onclick="soKhopDtMo(\''+t.thang+'\')" style="cursor:pointer" title="Bấm xem lý do lệch"><td style="font-weight:800">'+skTh(t.thang)+'</td>'
         +tien(t.mkt.tong,k?k.tong:null)+tien(t.mkt.online,k?k.online:null)+tien(t.mkt.offline,k?k.offline:null)
-        +'<td style="text-align:right">'+(!k?'<span style="color:'+mo+'">Kế toán chưa có</span>'
-          :(cx?'<b style="color:'+SK_CAM+'">'+num(cx)+' cần xem</b>':'<b style="color:var(--green)">0 cần xem</b>')+'<div style="font-size:11px;color:'+mo+'">'+num(bq)+' bỏ qua được</div>')+'</td></tr>';}).join('')
+        // ĐỐI CHIẾU (anh Hải 17/11/2026): MKT ± ngoại lệ hợp lệ phải = Kế toán -> con số chính là phần CÒN LỆCH (mục tiêu 0)
+        +'<td style="text-align:right">'+(!k?'<span style="color:'+mo+'">Kế toán chưa có</span>':(()=>{const d=t.doi_chieu||{},cl=Math.round(d.con_lech||0);
+          return (cl?'<b style="color:'+SK_CAM+'">'+(cl>0?'+':'')+vnd(cl)+'</b><div style="font-size:11px;color:'+SK_CAM+';font-weight:700">'+num(cx)+' đơn cần xem</div>':'<b style="color:var(--green)">0 ✓</b>')
+            +'<div style="font-size:11px;color:'+mo+'">ngoại lệ '+(d.ngoai_le>0?'+':'')+vnd(d.ngoai_le||0)+' · '+num(bq)+' đơn</div>'
+            +(d.chua_giai_thich?'<div style="font-size:11px;color:var(--red);font-weight:800">chưa giải thích '+vnd(d.chua_giai_thich)+'</div>':'');})())+'</td></tr>';}).join('')
     +'</tbody></table></div>');
 }
 // popup chung (dùng khung #qcModal như các popup danh sách khác)
@@ -8286,7 +8289,13 @@ function soKhopDtMo(thang,che,loai){
         +'<td style="'+SK_TD+';font-size:12px;min-width:240px">'+(loai==='cx'?'<div style="font-weight:700;margin-bottom:2px">'+skE(l.loai)+'</div>':'')+skE(l.gt||'')+'</td></tr>'));
   }else{
     const N=t.nhom||[];window._skNhom=N.map(g=>g.loai+'|'+g.dg);
-    than=skBang([['Nhận định'],['Loại lệch'],['Số đơn',1],['KT − MKT',1],['Vì sao']],N.map((g,i)=>'<tr onclick="soKhopDtMo(\''+thang+'\',\'ds\',window._skNhom['+i+'])" style="cursor:pointer" title="Bấm xem các đơn">'
+    // dải đối chiếu: MKT → ± ngoại lệ hợp lệ → = ? so với Kế toán → còn lệch (phải 0)
+    const d=t.doi_chieu||{},o=(l,v,mau,dau)=>'<div style="text-align:right"><div style="font-size:11px;color:'+mo+';font-weight:700">'+l+'</div><div style="font-size:15px;font-weight:800'+(mau?';color:'+mau:'')+'">'+(dau&&v>0?'+':'')+vnd(v)+'</div></div>',mui='<div style="color:'+mo+';font-size:16px">→</div>';
+    than='<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--border)">'
+      +o('Doanh thu MKT',t.mkt.tong)+mui+o('± Ngoại lệ hợp lệ',d.ngoai_le||0,'',1)+mui+o('= MKT sau ngoại lệ',t.mkt.tong+(d.ngoai_le||0))+'<div style="color:'+mo+'">so với</div>'+o('Kế toán',k.tong)
+      +'<div style="flex:1"></div>'+o('Còn lệch (phải = 0)',d.con_lech||0,Math.round(d.con_lech||0)?SK_CAM:'var(--green)',1)
+      +(d.chua_giai_thich?o('Chưa giải thích',d.chua_giai_thich,'var(--red)',1):'')+'</div>';
+    than+=skBang([['Nhận định'],['Loại lệch'],['Số đơn',1],['KT − MKT',1],['Vì sao']],N.map((g,i)=>'<tr onclick="soKhopDtMo(\''+thang+'\',\'ds\',window._skNhom['+i+'])" style="cursor:pointer" title="Bấm xem các đơn">'
         +'<td style="'+SK_TD+'">'+skDg(g.dg)+'</td><td style="'+SK_TD+';font-weight:700">'+skE(g.loai)+(g.moi?' '+skNhan(g.moi+' mới',SK_CAM):'')+'</td>'
         +'<td style="'+SK_TD+';text-align:right">'+num(g.don)+'</td><td style="'+SK_TD+';text-align:right;font-weight:700'+(g.dg==='can_xem'?';color:'+SK_CAM:'')+'">'+(g.chenh>0?'+':'')+vnd(g.chenh)+'</td>'
         +'<td style="'+SK_TD+';font-size:12px;color:'+mo+'">'+skE(g.gt||'')+'</td></tr>'))
