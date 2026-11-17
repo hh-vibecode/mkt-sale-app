@@ -78,6 +78,16 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/so-khop-kiot.js
 
+      # SO DOANH THU APP MKT ↔ APP KẾ TOÁN (anh Hải 17/11/2026: "so qua lại vs trao đổi vs nhau ... doanh thu tổng, onl off, nhân sự định kỳ đêm hàng ngày"):
+      # chỉ lượt toàn bộ khung 22h VN (script tự bỏ qua trước 20h; bấm chạy tay có tick backfill thì chạy luôn). Ghi danh sách đơn app MKT tính vào
+      # so_dt_2app (ben mkt), đọc ben kt của app Kế toán, so tổng / Online / Offline / nhân sự / từng đơn -> kiot_so_khop.doanh_thu.
+      - name: So doanh thu app MKT ↔ app Kế toán (lượt tối)
+        if: always() && steps.luot.outputs.day_du == '1'
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SO_DT: ${{ inputs.backfill && '1' || '0' }}
+        run: node scripts/so-doanh-thu-2app.js
+
       # Danh mục hàng (nhóm cha) cho thẻ "Doanh số theo nhóm hàng" ở Báo cáo tổng hợp (30/10/2026) -- chỉ lượt quét lại toàn bộ (khung 7h + 22h VN).
       - name: Sync danh mục hàng KiotViet (nhóm cha)
         if: always() && steps.luot.outputs.day_du == '1'

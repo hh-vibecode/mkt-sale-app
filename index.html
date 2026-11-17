@@ -3137,7 +3137,8 @@ const DH_CRON=[
    viec:['Kéo đơn đặt hàng (DH…) từ 1/6 — đây là nguồn DOANH THU và NGÀY CHỐT của báo cáo Sale']},
   {job:'kiot',ten:'So khớp Kiot ↔ App',src:'Đối soát Kiot (tuần)',
    lich:'khoảng 7h05 · 22h05 (lượt 15 phút đầu khung 7h / 22h)',
-   viec:['So từng mã đơn đặt hàng + hoá đơn 2026 với Kiot; tự kéo bù mã thiếu / lệch, đánh dấu mã Kiot đã xoá','Kết quả: Cài đặt nâng cao › So khớp Kiot · còn lệch thì báo chuông admin']},
+   viec:['So từng mã đơn đặt hàng + hoá đơn 2026 với Kiot; tự kéo bù mã thiếu / lệch, đánh dấu mã Kiot đã xoá','Kết quả: Cài đặt nâng cao › So khớp Kiot · còn lệch thì báo chuông admin',
+     'Lượt tối: so DOANH THU với app Kế toán (tổng · Online / Offline · nhân sự, từ T6/2026) qua bảng chung so_dt_2app — mỗi app giữ luật mình, chỉ chỉ ra đơn lệch + lý do']},
   {job:'kiot',ten:'KiotViet → hoá đơn + khách',src:'KiotViet - Hoá đơn',
    lich:'chạy cùng lượt với đơn đặt hàng',
    viec:['Kéo hoá đơn (HD…) và danh sách khách Kiot','Hoá đơn CHỈ dùng cho đối soát tiền về, không tính vào doanh số Sale']},
@@ -7733,10 +7734,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='16/11 08:59';
+const APP_VERSION='17/11 07:25';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=581;
+const APP_BAN=582;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -7879,7 +7880,12 @@ async function dlKiem(){
     if(x&&(x.trang_thai==='lech'||x.trang_thai==='loi'))ra.push({cau:'<b>So khớp Kiot ↔ App '+(x.trang_thai==='loi'?'bị lỗi':'còn lệch')+'</b> (lượt '+dataMoiTruoc(x.chay_luc)+'): '+e(String(x.ghi_chu||'').slice(0,160))+xem});
     else if(x&&phut(x.chay_luc)>17*60)ra.push({cau:'<b>So khớp Kiot ↔ App</b> chưa chạy từ '+dataMoiTruoc(x.chay_luc)+' (khung 7h + 22h)'+xem});
     const kt=x&&x.ke_toan;if(kt&&(kt.loi||kt.so_lech))ra.push({cau:'<b>App Kế toán '+(kt.loi?'— chưa đọc được dữ liệu':'lệch Kiot '+kt.so_lech+' mã')+'</b> (check chéo lượt '+dataMoiTruoc(x.chay_luc)+'): '
-      +e((kt.lech||[]).slice(0,4).map(y=>y.code+' '+y.kieu.split(' ·')[0]).join(', '))+((kt.lech||[]).length>4?'…':'')+' — chuyển lời Kế toán'+xem});}catch(x){}
+      +e((kt.lech||[]).slice(0,4).map(y=>y.code+' '+y.kieu.split(' ·')[0]).join(', '))+((kt.lech||[]).length>4?'…':'')+' — chuyển lời Kế toán'+xem});
+    // SO DOANH THU 2 APP mỗi đêm (17/11/2026): chỉ lấy vài trường nhỏ của cột doanh_thu (cột đầy đủ nặng)
+    const r2=await fetch(SUPABASE_URL+'/rest/v1/kiot_so_khop?select=dt_luc:doanh_thu->>luc,dt_cu:doanh_thu->kt_cu,dt_ktluc:doanh_thu->>kt_luc&doanh_thu=not.is.null&order=chay_luc.desc&limit=1&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    const y=r2.ok?(await r2.json())[0]:null;
+    if(!y||phut(y.dt_luc)>30*60)ra.push({cau:'<b>So doanh thu app MKT ↔ Kế toán</b> chưa chạy '+(y?'từ '+dataMoiTruoc(y.dt_luc):'lượt nào')+' (đêm, khung 22h)'+xem});
+    else if(y.dt_cu)ra.push({cau:'<b>So doanh thu 2 app: Kế toán '+(y.dt_ktluc?'chưa gửi số mới (lần cuối '+dataMoiTruoc(y.dt_ktluc)+')':'chưa gửi số')+'</b> — chuyển lời Kế toán'+xem});}catch(x){}
   const conNgay=Math.floor((new Date(PANCAKE_TOKEN_HET).getTime()-now)/864e5);
   if(conNgay<=7)ra.push({cau:'<b>Token Pancake '+(conNgay<0?'ĐÃ HẾT HẠN':'còn '+conNgay+' ngày là hết hạn')+'</b> ('+dmy(PANCAKE_TOKEN_HET.slice(0,10))+') — đổi token ở GitHub + Supabase, hết hạn là mọi đồng bộ Pancake dừng'});
   // mục 4 + 5 phải dựng danh sách khách (~1,3 giây) -> chỉ tính lại mỗi 15 phút, khi có đơn mới về hoặc vừa chọn tay Lẻ / Sỉ (sửa lag 05/11/2026)
@@ -8139,8 +8145,11 @@ async function renderSoKhop(){
   if(!dashToanQuyenXem()){el.innerHTML='<div class="tbl-card" style="padding:16px 18px;color:var(--muted)">Chỉ Admin xem được So khớp</div>';return;}
   el.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">Đang tải kết quả so khớp…</div>';
   try{
-    const r=await fetch(SUPABASE_URL+'/rest/v1/kiot_so_khop?select=*&order=chay_luc.desc&limit=40&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+    const r=await fetch(SUPABASE_URL+'/rest/v1/kiot_so_khop?select=id,chay_luc,buoi,trang_thai,so_ma,so_lech,thang,lech,da_sua,ghi_chu,ke_toan&order=chay_luc.desc&limit=40&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
     if(!r.ok)throw new Error('lỗi '+r.status);_sk.ds=await r.json();
+    // so doanh thu 2 app (17/11/2026): chỉ tải cột doanh_thu của lượt mới nhất có nó (cột nặng, không tải cho cả 40 lượt)
+    try{const d=await fetch(SUPABASE_URL+'/rest/v1/kiot_so_khop?select=doanh_thu&doanh_thu=not.is.null&order=chay_luc.desc&limit=1&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});
+      _sk.dt=d.ok?((await d.json())[0]||{}).doanh_thu||null:null;}catch(e){_sk.dt=null;}
     try{const l=await fetch(SUPABASE_URL+'/rest/v1/danh_muc?select=link&loai=eq.so_khop_link_kt&limit=1&offset=0',{headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY}});_sk.linkKt=l.ok?((await l.json())[0]||{}).link||'':'';}catch(e){_sk.linkKt='';}   // link Log so khớp của Kế toán (lưu CSDL, không để trong code public)
   }catch(e){el.innerHTML='<div class="tbl-card" style="padding:16px 18px;color:var(--red)">Chưa đọc được bảng kiot_so_khop: '+String(e.message).replace(/</g,'&lt;')+'</div>';return;}
   _sk.chon=Math.max(0,_sk.ds.findIndex(x=>x.trang_thai!=='running'));
@@ -8181,6 +8190,7 @@ function soKhopVe(){
         +'<td>'+kq(t)+'</td></tr>').join('')
       +'</tbody></table></div><div style="padding:8px 16px 12px;font-size:11px;color:var(--muted)">Số Kiot; dòng đỏ = app MKT khác, dòng cam = app Kế toán khác (đọc bảng thô của Kế toán, bỏ mã Kiot vừa sửa &lt; 60 phút). Đơn đặt = không tính đơn huỷ · Hoá đơn = hoá đơn hoàn thành · theo ngày trên phiếu (giờ VN).</div></div>';
   }
+  h+=soKhopDt(e,gio);
   const bang=(tieu,ds,mau,cot)=>ds&&ds.length?'<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head" style="border-left:4px solid '+mau+'"><div class="tbl-title">'+tieu+'</div><div class="tbl-count" style="background:'+mau+';color:#fff">'+ds.length+'</div></div>'
     +'<div class="tbl-scroll"><table><thead><tr><th>Loại</th><th>Mã</th><th>'+cot+'</th></tr></thead><tbody>'
     +ds.map(d=>'<tr><td>'+e(d.loai)+'</td><td style="font-weight:700">'+e(d.code)+'</td><td>'+e(d.kieu||((d.ly||'')+(d.xu_ly?' → '+d.xu_ly:'')))+'</td></tr>').join('')+'</tbody></table></div></div>':'';
@@ -8193,6 +8203,44 @@ function soKhopVe(){
       +'<td style="text-align:right">'+(y.so_ma?num(y.so_ma):'—')+'</td><td style="text-align:right">'+((y.da_sua||[]).length||'—')+'</td><td style="font-size:12px;color:var(--muted)">'+e(y.ghi_chu||'')+'</td></tr>').join('')
     +'</tbody></table></div></div>';
   el.innerHTML=h;if(typeof tblAlign==='function')tblAlign(el);
+}
+// SO DOANH THU APP MKT ↔ APP KẾ TOÁN MỖI ĐÊM (anh Hải 17/11/2026: "so qua lại vs trao đổi vs nhau trên cloud về doanh thu tổng, onl off,
+// nhân sự định kỳ đêm hàng ngày", không đổi luật bên nào). Job scripts/so-doanh-thu-2app.js ghi kiot_so_khop.doanh_thu; trang chỉ đọc.
+// Bảng tháng (số MKT, dòng cam = Kế toán khác) -> bấm tháng: theo nhân sự + từng đơn lệch kèm lý do 2 bên + hộp thư 2 app.
+function soKhopDt(e,gio){
+  const dt=_sk.dt,cam='var(--orange,#f97316)';
+  const dau=b=>'<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head"><div class="tbl-title">Doanh thu app MKT ↔ app Kế toán</div>'+b+'</div>';
+  if(!dt)return dau('<span class="tbl-count">so mỗi đêm khung 22h</span>')+'<div style="padding:14px 16px;color:var(--muted)">Chưa có lượt so doanh thu nào.</div></div>';
+  const ktTag=dt.kt_cu?'<span class="tbl-count" style="background:'+cam+';color:#fff">'+(dt.kt_luc?'Số Kế toán cũ · '+gio(dt.kt_luc):'Kế toán chưa gửi số')+'</span>'
+    :'<span class="tbl-count">Kế toán gửi '+gio(dt.kt_luc)+'</span>';
+  const T=(dt.thang||[]).slice().reverse();
+  if(!T.some(t=>t.thang===_sk.dtThang))_sk.dtThang=T[0]&&T[0].thang;
+  const th=t=>t.slice(5)+'/'+t.slice(0,4);
+  const o=(a,b,f)=>'<td style="text-align:right">'+(f||vnd)(a)+(b!=null&&Math.round(a)!==Math.round(b)?'<div style="font-size:11px;color:'+cam+';font-weight:800">KT '+(f||vnd)(b)+'</div>':'')+'</td>';
+  let h=dau('<span class="tbl-count">lượt '+gio(dt.luc)+'</span>'+ktTag+'<span class="tbl-count">dòng cam = Kế toán khác</span>')
+    +'<div class="tbl-scroll"><table><thead><tr><th>Tháng</th><th style="text-align:right">Doanh thu</th><th style="text-align:right">Online</th><th style="text-align:right">Offline</th><th style="text-align:right">Số đơn</th><th>Kết quả</th></tr></thead><tbody>'
+    +T.map(t=>{const k=t.kt;return '<tr onclick="_sk.dtThang=\''+t.thang+'\';soKhopVe()" style="cursor:pointer'+(t.thang===_sk.dtThang?';background:var(--bg2)':'')+'"><td style="font-weight:700">'+th(t.thang)+'</td>'
+      +o(t.mkt.tong,k&&k.tong)+o(t.mkt.online,k&&k.online)+o(t.mkt.offline,k&&k.offline)+o(t.mkt.don,k&&k.don,num)
+      +'<td>'+(!k?'<span style="color:var(--muted)">Kế toán chưa có</span>':t.so_lech?'<span style="color:'+cam+';font-weight:800">'+num(t.so_lech)+' đơn lệch</span>':'<span style="color:var(--green);font-weight:800">✓ Khớp</span>')+'</td></tr>';}).join('')
+    +'</tbody></table></div></div>';
+  const t=T.find(x=>x.thang===_sk.dtThang);
+  if(t){
+    const coKt=!!t.kt;
+    h+='<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head"><div class="tbl-title">Theo nhân sự · '+th(t.thang)+'</div><span class="tbl-count">'+(t.nhan_su||[]).length+'</span></div><div class="tbl-scroll"><table><thead><tr><th>Nhân sự</th><th style="text-align:right">App MKT</th><th style="text-align:right">Kế toán</th><th style="text-align:right">Lệch</th></tr></thead><tbody>'
+      +(t.nhan_su||[]).map(n=>{const l=coKt?n.mkt-(n.kt||0):null;return '<tr><td class="name">'+e(n.ten)+(n.ten_kt?'<div style="font-size:11px;color:var(--muted)">KT ghi: '+e(n.ten_kt)+'</div>':'')+'</td><td style="text-align:right">'+(n.mkt?vnd(n.mkt):'—')+'</td><td style="text-align:right">'+(coKt?(n.kt?vnd(n.kt):'—'):'—')+'</td>'
+        +'<td style="text-align:right;font-weight:800'+(l?';color:'+cam:'')+'">'+(l==null?'—':l?(l>0?'+':'')+vnd(l):'✓')+'</td></tr>';}).join('')
+      +'</tbody></table></div></div>';
+    if(t.lech&&t.lech.length)h+='<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head" style="border-left:4px solid '+cam+'"><div class="tbl-title">Đơn lệch · '+th(t.thang)+'</div><div class="tbl-count" style="background:'+cam+';color:#fff">'+num(t.so_lech||t.lech.length)+'</div>'
+      +(t.so_lech>t.lech.length?'<span class="tbl-count">hiện '+t.lech.length+' đơn lệch tiền nhiều nhất</span>':'')+'</div><div class="tbl-scroll"><table><thead><tr><th>Mã</th><th>Lệch</th><th style="text-align:right">App MKT</th><th style="text-align:right">Kế toán</th><th>Lý do bên MKT</th><th>Lý do bên Kế toán</th></tr></thead><tbody>'
+      +t.lech.map(l=>'<tr><td style="font-weight:700">'+e(l.ma)+'<div style="font-size:11px;color:var(--muted)">'+e(l.nhan_su||'')+(l.kenh?' · '+e(l.kenh):'')+'</div></td><td>'+e(l.kieu)+'</td><td style="text-align:right">'+(l.mkt?vnd(l.mkt):'—')+'</td><td style="text-align:right">'+(l.kt?vnd(l.kt):'—')+'</td>'
+        +'<td style="font-size:12px">'+e(l.ly_mkt||'')+'</td><td style="font-size:12px">'+e(l.ly_kt||'')+'</td></tr>').join('')
+      +'</tbody></table></div></div>';
+  }
+  const tin=(dt.tin||[]).slice(0,15);
+  if(tin.length)h+='<div class="tbl-card" style="margin-bottom:14px"><div class="tbl-head"><div class="tbl-title">Trao đổi 2 app</div><span class="tbl-count">'+tin.length+' tin gần nhất</span></div><div class="tbl-scroll"><table><thead><tr><th>Lúc</th><th>Bên</th><th>Tháng / mã</th><th>Nội dung</th></tr></thead><tbody>'
+    +tin.map(x=>'<tr><td>'+gio(x.luc)+'</td><td style="font-weight:700">'+(x.ben==='kt'?'Kế toán':'App MKT')+'</td><td>'+e([x.thang,x.ma].filter(Boolean).join(' · '))+'</td><td style="white-space:normal;font-size:12px">'+e(x.noi_dung)+'</td></tr>').join('')
+    +'</tbody></table></div></div>';
+  return h;
 }
 async function soKhopChay(btn){
   btn.disabled=true;btn.textContent='Đang gọi…';
