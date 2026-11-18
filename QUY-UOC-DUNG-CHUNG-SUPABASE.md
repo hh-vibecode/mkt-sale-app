@@ -22,6 +22,9 @@ Soạn 29/9/2026 bởi Monsieur Claude.
   `kiot_invoices`, `kiot_customers`, `kiot_don_giu_tinh`, `mkt_spend`, `danh_muc`, `sale_nhan_su`, `pancake_tu_tao_don`, `job_moc`,
   `activity_log`, `sync_log`, `datahub_sync_log`, `backup_snapshots`, `kiot_hang` (danh mục hàng + nhóm cha, 30/10/2026), `zalo_noi_kh` (nối khách Zalo ↔ khách app do Sale gắn ở Báo cáo công việc, 13/11/2026; app QC đọc được để điền ma_kh),
   `kiot_so_khop` (nhật ký so khớp Kiot ↔ app 2 lần / ngày, 10/11/2026; từ 17/11 chỉ người đăng nhập đọc, cột `doanh_thu` = kết quả so doanh thu 2 app).
+  **`cv_phan_hoi_ngay` + hàm `cv_lam_moi_phan_hoi()` + pg_cron `cv-phan-hoi-10p` (18/11/2026)** — bản chụp CHỈ ĐỌC của view QC `qc_phan_hoi_ngay` cho
+  Báo cáo công việc (view QC hỏi cả tháng bị quá giờ). Chép lại 10 phút / lần 6h–23h VN; chỉ người đăng nhập đọc. KHÔNG sửa gì bên QC; QC đổi cột view
+  thì sửa hàm này (supabase-schema-cv-phan-hoi.sql).
   **`so_dt_2app` + `so_dt_2app_tin` (17/11/2026) — bảng TRAO ĐỔI app MKT ↔ app Kế toán:** MKT giữ cấu trúc; mỗi app CHỈ ghi dòng `ben` của mình
   (`mkt` / `kt`): danh sách đơn tính doanh thu theo tháng + hộp thư. Chỉ service_role (RLS bật, không policy). Schema: `supabase-schema-so-doanh-thu-2app.sql`. **Cột `kiot_da_xoa` trên `kiot_orders` / `kiot_invoices` (10/11/2026): mã đã bị xoá trên Kiot -- dòng GIỮ LẠI, app nào đọc 2 bảng này nên lọc `kiot_da_xoa is null`.**
   `cong_viec_ngay` / `cong_viec_muc` + hàm `cv_toi()` / `cv_xem_het()` (Báo cáo công việc, 04/11/2026 — RLS theo `app_user_id` trong thẻ phiên: mỗi người chỉ thấy của mình, admin / supreme / '*' xem hết).

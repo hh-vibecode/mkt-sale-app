@@ -5087,8 +5087,11 @@ function bcnZaloCo(tu,den){   // đủ mọi ngày trong khoảng -> mảng gộ
   const rows=[].concat(...ds.slice().sort().map(d=>C[d].rows));
   window._bcnZalo={k,rows};return rows;
 }
-async function bcnZaloCum(tu,den){   // 1 lần hỏi view cho 1 cụm ngày; lỗi view mới -> view cũ (như trước)
+async function bcnZaloCum(tu,den){   // 1 lần hỏi cho 1 cụm ngày; lỗi view mới -> view cũ (như trước)
   const kh='&ngay=gte.'+tu+'&ngay=lte.'+den+'&order=ngay,conv_id';
+  // BẢN CHỤP cv_phan_hoi_ngay (18/11/2026, anh duyệt "ok chạy"; supabase-schema-cv-phan-hoi.sql): pg_cron chép view QC 10 phút / lần (6h–23h VN),
+  // đọc cả tháng < 1 giây. Cụm CÓ HÔM NAY vẫn hỏi view gốc cho số mới nhất (chạy ngầm, không chặn màn hình).
+  if(den<todayISO()){try{const r=await sbFetchAll('cv_phan_hoi_ngay','select=ngay,nen_tang,sale,conv_id,khach_id,ten_khach,sdt,khach_nhan,la_miss'+kh);if(r)return r;}catch(e){}}
   try{return await sbFetchAll('qc_phan_hoi_ngay','select=ngay,nen_tang,sale,conv_id,khach_id,ten_khach,sdt,khach_nhan,la_miss'+kh);}
   catch(e){const q=c=>'select=ngay,sale,conv_id,khach_id,ten_khach,sdt,ma_kh'+c+kh;
     try{return await sbFetchAll('qc_zalo_phan_hoi_ngay',q(',da_tra_loi,khach_nhan'));}
@@ -5100,6 +5103,9 @@ async function bcnZaloNgam(tu,den){
   window._bcnZlDang=window._bcnZlDang||{};
   const can=thieu.filter(d=>!window._bcnZlDang[d]);if(!can.length)return;
   can.forEach(d=>window._bcnZlDang[d]=true);
+  // hôm nay chưa có gì: lấy tạm bản chụp (trễ ≤ 10 phút) để hiện ngay, đánh dấu cũ -> lượt dưới vẫn hỏi view gốc rồi thay
+  const hn=todayISO();
+  if(can.includes(hn)&&!C[hn]){try{C[hn]={luc:Date.now(),cu:true,rows:await sbFetchAll('cv_phan_hoi_ngay','select=ngay,nen_tang,sale,conv_id,khach_id,ten_khach,sdt,khach_nhan,la_miss&ngay=eq.'+hn+'&order=conv_id')||[]};}catch(e){}}
   // nối tay của Sale (nút "Nối", 13/11/2026) -- bảng nhỏ, nạp hết
   try{const noi={};(await sbFetchAll('zalo_noi_kh','select=khach_id,lead_id,ma_kh&order=khach_id')).forEach(x=>{noi[x.khach_id]=x;});window._zlNoi=noi;}catch(e){window._zlNoi=window._zlNoi||{};}
   const cum=[];let c=[];
@@ -7782,10 +7788,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='18/11 15:56';
+const APP_VERSION='18/11 16:03';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=595;
+const APP_BAN=596;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
