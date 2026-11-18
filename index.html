@@ -5074,23 +5074,49 @@ async function bcnTaiLog(tu,den){
 // 1 dòng view = 1 khách Zalo x 1 Sale x 1 ngày (giờ VN); da_tra_loi = Sale đã trả lời sau tin cần trả lời cuối của khách (QC tính cả trả lời
 // sang ngày sau; "ok / vâng / ảnh / sticker" không cần trả lời); khach_nhan=false = Sale nhắn chủ động, khách không nhắn (da_tra_loi null).
 // View QC dựng xong 13/11/2026 (sale khớp sale_nhan_su.ten qua qc_sale_ten; ma_kh tạm luôn null -> nối khách bằng SĐT / số trong tên Zalo).
-async function bcnTaiZalo(tu,den){
-  const k=tu+'|'+den;if(window._bcnZalo&&window._bcnZalo.k===k)return window._bcnZalo.rows;
-  let rows=null;
-  // NGUỒN MỚI (QC 13/11/2026): view qc_phan_hoi_ngay (mọi nền tảng; app CHỈ lấy nen_tang = zalo theo lời anh "của Zalo"). Dòng la_miss = false
-  // = Sale đã nhắn khách; la_miss = true = MISS ĐÃ CHỐT (khách hỏi, chưa ai trả lời; chỉ hiện từ ngày D+1 và khi khách chờ > 60 phút làm việc;
-  // Sale trả lời sau thì dòng miss tự mất). Lỗi -> quay về view cũ qc_zalo_phan_hoi_ngay (không có miss).
-  // 13/11 anh dặn QC bỏ "nhắn trước / chưa trả lời" -> view cũ bỏ 2 cột trạng thái thì đọc lại không có chúng (mọi dòng coi là Sale đã nhắn)
-  const kh='&ngay=gte.'+tu+'&ngay=lte.'+den+'&order=ngay,conv_id';
-  // 13/11 (sau): anh cho thêm khách Facebook (TikTok đi cùng, cùng kiểu hội thoại Pancake) -> bỏ lọc nen_tang
-  try{rows=await sbFetchAll('qc_phan_hoi_ngay','select=ngay,nen_tang,sale,conv_id,khach_id,ten_khach,sdt,khach_nhan,la_miss'+kh);}
-  catch(e){const q=c=>'select=ngay,sale,conv_id,khach_id,ten_khach,sdt,ma_kh'+c+kh;
-    try{rows=await sbFetchAll('qc_zalo_phan_hoi_ngay',q(',da_tra_loi,khach_nhan'));}
-    catch(e1){try{rows=await sbFetchAll('qc_zalo_phan_hoi_ngay',q(''));}catch(e2){rows=null;}}}
-  // nối tay của Sale (nút "Nối", 13/11/2026) -- bảng nhỏ, nạp hết
-  try{const noi={};(await sbFetchAll('zalo_noi_kh','select=khach_id,lead_id,ma_kh&order=khach_id')).forEach(x=>{noi[x.khach_id]=x;});window._zlNoi=noi;}catch(e){window._zlNoi=window._zlNoi||{};}
+// TẢI PHẢN HỒI KH THEO NGÀY + TẢI NGẦM (anh Hải 18/11/2026: "chuyển filter mất rất nhiều thời gian"). View qc_phan_hoi_ngay (app QC) mỗi lần hỏi
+// phải phân tích lại toàn bộ hội thoại: 1 ngày ~3 giây, 3 ngày ~4 giây, CẢ THÁNG QUÁ GIỜ (bị huỷ) -> trước đây đổi sang "Tháng này" phải chờ hết giờ,
+// cột Phản hồi KH vẫn trống. Nay: (1) nhớ theo TỪNG NGÀY (ngày đã tải không tải lại; hôm nay làm mới theo nhịp tự làm mới); (2) đổi bộ lọc -> vẽ
+// báo cáo NGAY, cột Phản hồi KH hiện "—" rồi tự điền khi tải ngầm xong; (3) ngày còn thiếu tải theo cụm 3 ngày liền nhau, 2 cụm song song (không quá giờ).
+window._bcnZlNgay=window._bcnZlNgay||{};
+function bcnZaloCo(tu,den){   // đủ mọi ngày trong khoảng -> mảng gộp (nhớ theo khoảng để giữ chỉ mục nối khách); thiếu ngày nào -> null
+  const ds=bcnNgays(tu,den),C=window._bcnZlNgay;
+  if(ds.some(d=>!C[d]))return null;
+  const k=tu+'|'+den+'|'+ds.map(d=>C[d].luc).join(',');
+  if(window._bcnZalo&&window._bcnZalo.k===k)return window._bcnZalo.rows;
+  const rows=[].concat(...ds.slice().sort().map(d=>C[d].rows));
   window._bcnZalo={k,rows};return rows;
 }
+async function bcnZaloCum(tu,den){   // 1 lần hỏi view cho 1 cụm ngày; lỗi view mới -> view cũ (như trước)
+  const kh='&ngay=gte.'+tu+'&ngay=lte.'+den+'&order=ngay,conv_id';
+  try{return await sbFetchAll('qc_phan_hoi_ngay','select=ngay,nen_tang,sale,conv_id,khach_id,ten_khach,sdt,khach_nhan,la_miss'+kh);}
+  catch(e){const q=c=>'select=ngay,sale,conv_id,khach_id,ten_khach,sdt,ma_kh'+c+kh;
+    try{return await sbFetchAll('qc_zalo_phan_hoi_ngay',q(',da_tra_loi,khach_nhan'));}
+    catch(e1){try{return await sbFetchAll('qc_zalo_phan_hoi_ngay',q(''));}catch(e2){return null;}}}
+}
+async function bcnZaloNgam(tu,den){
+  const C=window._bcnZlNgay,thieu=bcnNgays(tu,den).filter(d=>!C[d]||C[d].cu).sort();   // thiếu hoặc cũ (hôm nay chờ làm mới)
+  if(!thieu.length)return;
+  window._bcnZlDang=window._bcnZlDang||{};
+  const can=thieu.filter(d=>!window._bcnZlDang[d]);if(!can.length)return;
+  can.forEach(d=>window._bcnZlDang[d]=true);
+  // nối tay của Sale (nút "Nối", 13/11/2026) -- bảng nhỏ, nạp hết
+  try{const noi={};(await sbFetchAll('zalo_noi_kh','select=khach_id,lead_id,ma_kh&order=khach_id')).forEach(x=>{noi[x.khach_id]=x;});window._zlNoi=noi;}catch(e){window._zlNoi=window._zlNoi||{};}
+  const cum=[];let c=[];
+  can.forEach(d=>{if(c.length&&(c.length>=3||bcnCong(c[c.length-1],1)!==d)){cum.push(c);c=[];}c.push(d);});if(c.length)cum.push(c);
+  const xong=(ngays,rows)=>{const luc=Date.now();ngays.forEach(d=>{C[d]={luc,rows:(rows||[]).filter(x=>String(x.ngay).slice(0,10)===d)};delete window._bcnZlDang[d];});
+    const el=document.getElementById('page-congviec');
+    if(el&&el.classList.contains('active')){const st=cvSt();if(bcnZaloCo(st.bTu,st.bDen))renderCongViec();}};   // đủ dữ liệu khoảng đang xem -> vẽ lại
+  for(let i=0;i<cum.length;i+=2){
+    await Promise.all(cum.slice(i,i+2).map(async g=>{const rows=await bcnZaloCum(g[0],g[g.length-1]);
+      if(rows==null){g.forEach(d=>delete window._bcnZlDang[d]);return;}   // lỗi: để lần sau thử lại
+      xong(g,rows);}));
+  }
+}
+// giữ tên cũ cho chỗ khác gọi: có đủ thì trả ngay, thiếu thì kích tải ngầm và trả null (ô Phản hồi KH hiện "—" tới khi xong)
+async function bcnTaiZalo(tu,den){const r=bcnZaloCo(tu,den);if(!r)bcnZaloNgam(tu,den);return r;}
+// chiHomNay: đánh dấu hôm nay CŨ (vẫn hiện số cũ, tải ngầm bản mới rồi thay -- không chớp "—"); không tham số: xoá hết (nút Làm mới)
+function bcnZaloXoa(chiHomNay){if(chiHomNay){const c=window._bcnZlNgay[todayISO()];if(c)c.cu=true;}else{window._bcnZlNgay={};window._bcnZalo=null;}}
 // mọi SĐT (9 số cuối) trong 1 chuỗi -- "Mỹ Hương 0368xxxxxx/ 0913xxxxxx" ra 2 số
 function bcnSoTrong(t){return (String(t||'').replace(/[.\s-]/g,'').match(/(?:\+?84|0)\d{9}/g)||[]).map(m=>m.replace(/\D/g,'').slice(-9));}
 // khách Zalo của 1 Sale trong 1 ngày. NỐI KHÁCH theo thứ tự (13/11/2026 "cái nào có SĐT tự nối khách hàng luôn"):
@@ -5295,13 +5321,13 @@ async function renderCongViec(taiLai){
   let log=[],zl=null;
   try{
     // nút "Làm mới": nạp lại THẬT mọi nguồn (trước 12/11 chỉ nạp lại thao tác)
-    if(taiLai){window._bcnLog=null;window._bcnZalo=null;await Promise.all([dhLoadOrders(true),kiotLoadInvoices(true),dhLoadManual(true),rptSlLoadManual(true),siCrmLoad(true)]);
+    if(taiLai){window._bcnLog=null;bcnZaloXoa();await Promise.all([dhLoadOrders(true),kiotLoadInvoices(true),dhLoadManual(true),rptSlLoadManual(true),siCrmLoad(true)]);
       window._kiotOrdByCode=null;rptSlXoaCache();_cvKh={khoa:'',ds:[],theoId:{}};bcnLanNang=Date.now();}
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null),dmLoad(),
       het&&!window._rptSlAccs?rptSlLoadAccs().catch(()=>null):null]);
     await rptSlLockChot();
     // log thao tác (activity_log) thôi tải: cột "Thao tác khác" bỏ theo anh Hải 13/11/2026 ("bỏ bảng thao tác khác đi")
-    zl=await bcnTaiZalo(tu,den);
+    zl=bcnZaloCo(tu,den);bcnZaloNgam(tu,den);   // không chờ: thiếu ngày -> null, tải ngầm rồi tự vẽ lại (18/11/2026)
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo công việc',e,'renderCongViec');return;}
   if(!document.getElementById('page-congviec').classList.contains('active'))return;
   const ip='height:30px;box-sizing:border-box;padding:2px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px;font-weight:600;font-family:var(--font);outline:none';
@@ -5355,7 +5381,8 @@ async function bcnTuLamMoi(){
   const el=document.getElementById('page-congviec');if(!el||!el.classList.contains('active')||document.hidden||window._bcnDangTai)return;
   window._bcnDangTai=true;
   try{
-    if(Date.now()-bcnLanNang>=15*60000){bcnLanNang=Date.now();window._bcnZalo=null;await Promise.all([dhLoadOrders(true),kiotLoadInvoices(true),dhLoadManual(true),rptSlLoadManual(true)]);}
+    bcnZaloXoa(true);   // hôm nay: làm mới Phản hồi KH mỗi lượt 2 phút (ngày cũ giữ)
+    if(Date.now()-bcnLanNang>=15*60000){bcnLanNang=Date.now();await Promise.all([dhLoadOrders(true),kiotLoadInvoices(true),dhLoadManual(true),rptSlLoadManual(true)]);}
     await siCrmNapMoi();
     window._bcnLog=null;window._kiotOrdByCode=null;rptSlXoaCache();_cvKh={khoa:'',ds:[],theoId:{}};
     await renderCongViec();
@@ -7755,10 +7782,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='18/11 15:46';
+const APP_VERSION='18/11 15:56';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=594;
+const APP_BAN=595;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
