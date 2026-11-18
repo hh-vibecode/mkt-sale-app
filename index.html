@@ -6390,7 +6390,10 @@ function rptSlDoiCuaSale(ten){
     if(a&&/si|sỉ/i.test(a.position_title||''))return 'Sỉ';}catch(e){}
   return 'Lẻ';
 }
-const RPT_SL_SALE_BLACKLIST=['hệ thống','he thong','pancake','system','bot','admin','sales admin','tht holding','automation','chatbot','{del}'];
+// + 'nikkishastalqw' (18/11/2026): tài khoản Pancake mà job tự tạo đơn từ hội thoại dùng (257/277 đơn của nó từ T9 do job tạo) -- KHÔNG phải Sale.
+//   Trước bị coi là 1 người -> khách mới job tạo đứng tên nó, không vào Báo cáo công việc / chưa chăm của Sale nào (anh hỏi ca L-SD-2012, L-SD-1998).
+//   Nay là tài khoản chung -> Sale mặc định (Sỉ: Nguyên · Lẻ: Sale thương hiệu, luật 24/10).
+const RPT_SL_SALE_BLACKLIST=['hệ thống','he thong','pancake','system','bot','admin','sales admin','tht holding','automation','chatbot','{del}','nikkishastalqw'];
 // Danh sách LẤY ĐÚNG người phụ trách bên Pancake (+ người đứng tên dòng nhập tay của chính app).
 // KHÔNG lấy tên người bán bên Kiot: đơn Kiot nối về khách bằng MÃ KH rồi, tên bên đó không dùng tới.
 function rptSlSaleIsHuman(n){
@@ -7742,10 +7745,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='17/11 15:57';
+const APP_VERSION='18/11 14:04';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=589;
+const APP_BAN=590;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;

@@ -60,7 +60,9 @@ function moiTruong() {
 // Trả về máy ảo đã nạp đủ dữ liệu báo cáo Sale (không có số MKT).
 async function napApp() {
   const ctx = moiTruong();
-  const [dh, hd, dat, kh, dm, sm, crm, giu, dmuc] = await Promise.all([
+  // + sale_nhan_su (18/11/2026): thiếu bảng này thì luật Sale mặc định (tài khoản chung -> Nguyên / Sale thương hiệu) và bàn giao không chạy
+  //   trong máy ảo -> job so đơn / tự gắn ra Sale khác app thật.
+  const [dh, hd, dat, kh, dm, sm, crm, giu, dmuc, ns] = await Promise.all([
     tai('datahub_orders', 'select=*'),
     tai('kiot_invoices', 'select=*'),
     tai('kiot_orders', 'select=*'),
@@ -70,12 +72,14 @@ async function napApp() {
     tai('salesi_crm', 'select=*'),
     tai('kiot_don_giu_tinh', 'select=code'),
     tai('danh_muc', 'select=*&order=loai,thu_tu,id'),
+    tai('sale_nhan_su', 'select=id,ten,doi,dang_lam,ghi_chu,ban_giao_cho,ban_giao_luc&order=doi,ten'),
   ]);
-  ctx.__d = { dh, hd, dat, kh, dm, sm, crm, giu, dmuc };
+  ctx.__d = { dh, hd, dat, kh, dm, sm, crm, giu, dmuc, ns };
   vm.runInContext(`
     dhOrders=__d.dh;kiotInvoices=__d.hd;kiotOrders=__d.dat;kiotCustomers=__d.kh;dhManual=__d.dm;
     if(typeof kiotLamSach==='function')kiotLamSach();   // bỏ đơn / hoá đơn Kiot đã xoá (10/11/2026)
     siCrmRows=__d.crm;
+    if(typeof saleNhanSu!=='undefined'){saleNhanSu=__d.ns||[];saleNhanSuLoaded=true;}
     kiotGiuTinh=new Set((__d.giu||[]).map(x=>String(x.code).toUpperCase()));
     dhLoaded=kiotLoaded=dhManualLoaded=rptSlManualLoaded=siCrmLoaded=true;
     rptSlManual={};__d.sm.forEach(r=>rptSlManual[r.lead_id]=r);
