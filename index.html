@@ -4458,7 +4458,7 @@ function cvLaTaiCham(x){const r=x.r;if(cvLaChotHomNay(x))return false;if(r.siHen
   return !!dc&&dc<moc&&(r.siNgayNghi==null||r.siNgayNghi>14)&&rptSlLocTT(r)!=='Không tiềm năng';}
 // Lượt chăm sóc + đơn Kiot của 1 khách trong ngày d (ket_qua lưu đúng dạng này lúc chốt).
 function cvCs(c){return {tt:c.trang_thai||'',ht:c.hinh_thuc||'',nd:c.noi_dung||'',sp:c.sp_quan_tam||'',ph:c.phan_hoi||'',tiep:c.viec_tiep||'',
-  hen:c.ngay_hen?String(c.ngay_hen).slice(0,10):'',ma:c.ma_don||'',ai:rptTenHien(c.created_by||'')};}
+  hen:c.ngay_hen?String(c.ngay_hen).slice(0,10):'',ma:c.ma_don||'',ai:rptTenHien(c.created_by||''),ngay:String(c.ngay_cham||'').slice(0,10),luc:c.created_at||''};}
 function cvKetQua(x,d){
   if(!x)return {cs:[],don:[],pl:''};
   const cs=cvVoiLoai(x.loai,()=>rptSlCsRows(x.r)).filter(c=>String(c.ngay_cham||'').slice(0,10)===d).map(cvCs);
@@ -4731,7 +4731,11 @@ function cvTenKhHtml(o){   // o: {lead,ten,ma,loai,vip,bl}
 function cvKqHtml(kq){
   const out=[];
   (kq.don||[]).forEach(o=>out.push('<div class="cv-don'+(o.tam?' tam':'')+'">Đơn '+cvE(o.ma)+' · '+vnd(o.tien)+(o.sau?' · ngày '+dmy(o.sau):'')+(o.tam?' · chưa tính (chưa có tiền)':'')+'</div>'));
+  // lượt chăm của NGÀY SAU (data mới chăm muộn, 18/11/2026): "Chăm ngày 17/11 lúc 09:32" -- giờ = lúc Sale ghi lên app
+  const lucGhi=c=>{if(!c.luc)return '';const t=new Date(new Date(c.luc).getTime()+7*3600e3).toISOString(),ng=t.slice(0,10);
+    return ' lúc '+t.slice(11,16)+(ng!==c.sau?' '+dmy(ng).slice(0,5):'');};
   (kq.cs||[]).forEach(c=>out.push('<div class="cv-cs">'
+    +(c.sau?'<div><b class="cv-hen">Chăm ngày '+dmy(c.sau).slice(0,5)+lucGhi(c)+'</b></div>':'')
     +'<div>'+(c.tt?'<b>'+cvE(c.tt)+'</b>':'')+(c.ht?' · '+cvE(c.ht):'')+(c.nd?(c.tt||c.ht?' — ':'')+cvE(c.nd):'')+'</div>'
     +(c.sp?'<div class="cv-phu">SP quan tâm: '+cvE(c.sp)+'</div>':'')
     +(c.ph?'<div class="cv-phu">Khách phản hồi: '+cvE(c.ph)+'</div>':'')
@@ -5435,9 +5439,16 @@ function cvCuoiNgaySoLieu(sale,acc,d,loaiChi){
   K.ds.forEach(x=>{if(!loais.includes(x.loai))return;const minh=String(x.r.staff||'').trim()===sale;
     const laMoi=minh&&cvNgayTao(x.r)===d;
     // data mới chưa chăm trong ngày nhưng CHỐT ĐƠN những ngày sau -> vẫn là đã xử lý, hiện đơn đầu tiên kèm ngày (17/11/2026, ca Hung Orgen 15/11 -> DH003092 16/11)
+    // + CHĂM NHỮNG NGÀY SAU (anh Hải 18/11/2026, ca Huế Nhung L-SD-2005 data 16/11, chăm 17/11: "data mới nào hôm ấy mà hôm sau có lịch sử chăm điền luôn,
+    //   sửa chưa chăm thành chăm ngày ..., xong vẫn nằm yên ở data mới của ngày đó để lưu vết"; "cho ghi nhận luôn lúc cập nhật lịch sử"): hiện lượt chăm
+    //   ĐẦU TIÊN sau ngày đó kèm ngày chăm + giờ ghi. Tính lúc dựng từ siCrmRows -> Sale lưu lượt chăm là ô đổi ngay.
     if(laMoi){const kq=cvKetQua(x,d);
-      if(!cvDaXuLy(kq)){const sau=[...(x.r.kords||[]),...(x.r.repeatOrds||[]),...(x.r.staleOrds||[])].filter(o=>o.status!==4&&String(o.purchase_date||'').slice(0,10)>d)
-        .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)))[0];
+      if(!cvDaXuLy(kq)){
+        const csSau=cvVoiLoai(x.loai,()=>rptSlCsRows(x.r)).filter(c=>String(c.ngay_cham||'').slice(0,10)>d)
+          .sort((a,b)=>String(a.ngay_cham).localeCompare(String(b.ngay_cham))||String(a.created_at||'').localeCompare(String(b.created_at||'')))[0];
+        const sau=[...(x.r.kords||[]),...(x.r.repeatOrds||[]),...(x.r.staleOrds||[])].filter(o=>o.status!==4&&String(o.purchase_date||'').slice(0,10)>d)
+          .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)))[0];
+        if(csSau)kq.cs=[Object.assign(cvCs(csSau),{sau:String(csSau.ngay_cham).slice(0,10)})];
         if(sau)kq.don=[{ma:sau.code,tien:Number(sau.total||0),tam:!!(sau.khongTinh||rptSlPhieuTreo(sau)),sau:String(sau.purchase_date).slice(0,10)}];}
       moi.push({o:oX(x),kq,x});}else if(coLog.has(x))cu.push({o:oX(x),kq:cvKetQua(x,d)});
     if(!minh)return;const co=new Set(),don=[];
@@ -7745,10 +7756,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='18/11 14:04';
+const APP_VERSION='18/11 14:49';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=590;
+const APP_BAN=591;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
