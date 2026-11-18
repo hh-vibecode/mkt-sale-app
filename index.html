@@ -7755,10 +7755,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='18/11 15:30';
+const APP_VERSION='18/11 15:46';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=593;
+const APP_BAN=594;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -9214,8 +9214,17 @@ function rptSlFilterBar(tab){
 }
 // Dựng Master khá nặng (gộp đơn Pancake + Kiot + nhập tay). Một lần render gọi lại 3-8 lần với CÙNG
 // tham số -> nhớ kết quả theo (loại khách + kỳ lọc + phạm vi dữ liệu), xoá khi dữ liệu đổi.
-let _rptSlCache={};
-function rptSlXoaCache(){_rptSlCache={};window._rptSlVer=(window._rptSlVer||0)+1;}
+// TỐI ƯU TỐC ĐỘ (anh Hải 18/11/2026: "xem tối ưu lại tốc độ load nhé, đang thấy chậm hơn xưa rất nhiều"). Đo trên dữ liệu thật: báo cáo MKT
+// 2,7 giây vì dựng lại Master ~10 lần -- rptSlXoaCache() được gọi ở 56 chỗ (đa số chỉ để đổi Lẻ <-> Sỉ, dữ liệu không đổi) và cache chỉ giữ 1 bản.
+// (1) Cache Master GIỮ NHIỀU BẢN theo đúng khoá cũ (loại · kỳ · phạm vi xem · số dòng dữ liệu · nhân sự) -> đổi Lẻ / Sỉ / kỳ không mất bản kia.
+// (2) Xoá cache nhiều lần trong CÙNG 1 lượt chạy đồng bộ (1 lần vẽ trang) chỉ xoá lần đầu: bản dựng sau lần xoá đó đã là dữ liệu mới. Lưu dữ liệu
+//     (sau await, lượt khác) vẫn xoá như cũ. rptSlXoaCache(true) = ép xoá ngay.
+let _rptSlCache=new Map(),_rptSlXoaVua=false;
+function rptSlXoaCache(ep){
+  if(_rptSlXoaVua&&!ep)return;
+  _rptSlCache=new Map();window._rptSlVer=(window._rptSlVer||0)+1;
+  _rptSlXoaVua=true;setTimeout(()=>{_rptSlXoaVua=false;},0);
+}
 // BẢNG TRA "MÃ KHÁCH -> SALE PHỤ TRÁCH ĐÃ CHỐT" cho các chỗ lọc phạm vi xem ngoài Master (Data Hub, Data nhập tay,
 // phễu Lẻ). Trước 28/9/2026 các chỗ đó lọc theo người phụ trách bên Pancake / tên gõ trên dòng nhập tay -> khách
 // Sale được GÁN TAY không hiện với chính Sale đó. Dựng từ Master cả Lẻ lẫn Sỉ (trước khi lọc phạm vi), nhớ theo dữ liệu.
@@ -9246,9 +9255,10 @@ function rptSlBuildMaster(){
     dhOrders.length,kiotOrders.length,dhManual.length,Object.keys(rptSlManual).length,
     (typeof siCrmRows!=='undefined'?siCrmRows.length:0),RPT_SL_DANG_LUU.size,
     saleNhanSuDS().map(x=>x.ten+'/'+x.doi+'/'+(x.dang_lam!==false)).join(',')].join('|');
-  if(_rptSlCache.khoa===khoa)return _rptSlCache.rows;
+  const co=_rptSlCache.get(khoa);if(co)return co;
   const rows=rptSlBuildMasterRaw();
-  _rptSlCache={khoa,rows};
+  if(_rptSlCache.size>=16)_rptSlCache.clear();   // chặn phình bộ nhớ (mỗi bản vài nghìn khách)
+  _rptSlCache.set(khoa,rows);
   return rows;
 }
 // PHIẾU TẠM — 3 trường hợp người dùng phân tích (22/9/2026), KHÔNG dùng mốc ngày nữa:
