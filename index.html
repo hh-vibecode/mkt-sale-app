@@ -4730,10 +4730,11 @@ function cvTenKhHtml(o){   // o: {lead,ten,ma,loai,vip,bl}
 }
 function cvKqHtml(kq){
   const out=[];
-  (kq.don||[]).forEach(o=>out.push('<div class="cv-don'+(o.tam?' tam':'')+'">Đơn '+cvE(o.ma)+' · '+vnd(o.tien)+(o.sau?' · ngày '+dmy(o.sau):'')+(o.tam?' · chưa tính (chưa có tiền)':'')+'</div>'));
-  // lượt chăm của NGÀY SAU (data mới chăm muộn, 18/11/2026): "Đã chăm 17/11" -- chỉ ngày, không giờ (anh: "ngày thôi k cần giờ, đã chăm xx/xx")
-  (kq.cs||[]).forEach(c=>out.push('<div class="cv-cs">'
-    +(c.sau?'<div><b class="cv-hen">Đã chăm '+dmy(c.sau).slice(0,5)+'</b></div>':'')
+  // VIỆC LÀM NGÀY SAU của data mới (18/11/2026): CHỈ ghi "Đã chăm 17/11" / "Đã chốt đơn 17/11" -- chi tiết đã nằm ở cột Chăm lại / Chốt đơn
+  // của chính ngày đó, không chép lại (anh: "bảo ghi chăm sóc ngày bao nhiêu là được rồi, còn viết lại chi tiết chăm sóc làm gì").
+  (kq.don||[]).forEach(o=>out.push(o.sau?'<div><b class="cv-hen">Đã chốt đơn '+dmy(o.sau).slice(0,5)+'</b></div>'
+    :'<div class="cv-don'+(o.tam?' tam':'')+'">Đơn '+cvE(o.ma)+' · '+vnd(o.tien)+(o.tam?' · chưa tính (chưa có tiền)':'')+'</div>'));
+  (kq.cs||[]).forEach(c=>out.push(c.sau?'<div><b class="cv-hen">Đã chăm '+dmy(c.sau).slice(0,5)+'</b></div>':'<div class="cv-cs">'
     +'<div>'+(c.tt?'<b>'+cvE(c.tt)+'</b>':'')+(c.ht?' · '+cvE(c.ht):'')+(c.nd?(c.tt||c.ht?' — ':'')+cvE(c.nd):'')+'</div>'
     +(c.sp?'<div class="cv-phu">SP quan tâm: '+cvE(c.sp)+'</div>':'')
     +(c.ph?'<div class="cv-phu">Khách phản hồi: '+cvE(c.ph)+'</div>':'')
@@ -7754,10 +7755,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='18/11 14:56';
+const APP_VERSION='18/11 15:30';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=592;
+const APP_BAN=593;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
