@@ -25,6 +25,22 @@
 | 35 | **KH005832** (mua 2025 qua Facebook, đơn 30/10 6,3tr được tính MKT tháng đầu vì Lẻ chỉ thấy từ 1/6) | giữ hay bỏ khỏi MKT |
 | 36 | **Đổi khoá Kiot** (KIOT_CLIENT_ID / SECRET từng in ra kết quả lệnh trên máy 30/10 và LẠI 10/11, kèm mã x-cron-key của goi_sync; không lên web / commit) | có đổi không |
 
+## 1b. VIỆC QC CSKH ĐỀ NGHỊ — CHỜ ANH BẢO MỚI LÀM (anh 20/11/2026: "note mấy cái qc nhắn cho m thành 1 phần riêng, sau bh t bảo làm mới làm")
+
+> Phiên QC CSKH nhắn sang (cross-session) 19–20/11/2026. KHÔNG tự làm phần nào dưới đây cho tới khi anh bảo. QC sở hữu view (qc_*), app MKT chỉ ĐỌC; QC chỉ THÊM cột, không đổi tên / xoá.
+
+**Q1. Giao việc hằng ngày theo KHÁCH TIỀM NĂNG do QC lọc** — view `qc_khach_tiem_nang_ngay` (security_invoker, authenticated đọc được).
+- Từ 20/11: CHỈ còn tiềm năng thật, 1 dòng / hội thoại (lần đánh giá mới nhất; đã chốt / từ chối / chưa đủ thì tự rơi khỏi view). Bình luận + inbox cùng khách gộp 1 dòng (giữ inbox).
+- Cột: ngay, ket (luôn 'tiem_nang'), ly_do, danh_gia_luc, nen_tang, kenh, page_id, pancake_conversation_id, khach_id, ten_khach, sdt, sale (tên sale_nhan_su), sale_qc, pancake_url, **chua_khai_thac** (bool), **ly_do_chua_khai_thac**.
+- "Chưa khai thác hết" = Sale hứa quay lại (kiểm kho, hỏi xưởng, gửi ảnh / giá sau…) rồi bỏ lửng quá 1 ngày làm việc — anh coi là LỖI SALE, cần gắn thêm thẻ "chưa khai thác hết", giao việc những dòng này TRƯỚC.
+- Luật từ chối QC đã siết: chê đắt / không ưng / so giá chỗ khác, hoặc Sale báo không có đúng thứ khách cần mà khách không hỏi phương án khác -> từ chối, không còn tiềm năng.
+- Nhịp QC: 2 lần / ngày (12h–13h59 và 20h–21h59 VN), lượt tối chỉ đánh giá lại hội thoại có tin mới.
+- Phân công QC đề nghị: QC chỉ thống kê + chỉ đọc Pancake; app MKT nối vào app, GIAO VIỆC cho Sale và CẬP NHẬT THẺ TRẠNG THÁI trên Pancake (khách rơi khỏi view thì gỡ thẻ / việc).
+- Số liệu em xem 20/11 (chỉ đọc): 137 hội thoại, 0 trùng; Vân Ngọc 72 (2 chưa khai thác), Diệp 33, Nguyên 14, Kim Oanh 14, Lệ 2, trống 2. Đọc cả view ~0,6 giây. Nối với khách app: qua pancake_conversation_id = datahub_orders.conversation_id (bản cũ 19/11: 45/162 nối được) + SĐT (ít dòng có).
+- Lưu ý khi làm: gắn / gỡ thẻ Pancake là thao tác ra ngoài -> chạy thử KHO=1, báo số trước; PUT tags ghi đè cả bộ (đọc shop_customer.tags, bài học 30/9).
+
+**Q2. View `qc_phan_hoi_ngay` chống trùng (20/11)** — đúng 1 dòng = 1 khách × 1 Sale × 1 ngày (trước thừa 818 dòng từ 1/10: 6.061 -> 5.598); phut_cho = lượt trả lời nhanh nhất trong ngày; dòng miss bỏ nếu cùng ngày đã được trả lời ở luồng khác. Số "khách được trả lời" / "trả lời muộn" bên MKT sẽ GIẢM — là số đúng. App MKT đọc bản chụp cv_phan_hoi_ngay (pg_cron 10 phút chép view) nên tự nhận, KHÔNG cần sửa. QC cảnh báo: view 1 ngày ~3–4s, cả tháng ~15s (authenticated giới hạn 8s) — app đã đọc bản chụp + hôm nay theo ngày. 20/11 đầu giờ chiều QC có bản lỗi chậm 30s ~15 phút (đã trả lại) — lỗi hết giờ trong khoảng đó là do QC.
+
 ## 2. CLAUDE ĐANG NỢ (tự làm, không cần hỏi)
 
 | # | Việc | Ghi chú |
