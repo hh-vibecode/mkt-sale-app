@@ -19,7 +19,7 @@ Soạn 29/9/2026 bởi Monsieur Claude.
 ## 2. Ai sở hữu bảng nào
 
 - **MKT / Sale (lõi, nhiều app đọc):** `datahub_orders`, `datahub_manual`, `saleretail_manual`, `salesi_crm`, `salesi_crm_note`, `mkt_ads_trang_thai`, `dang_xem`, `kiot_orders`,
-  `kiot_invoices`, `kiot_customers`, `kiot_don_giu_tinh`, `mkt_spend`, `danh_muc`, `sale_nhan_su`, `pancake_tu_tao_don`, `job_moc`,
+  `kiot_invoices`, `kiot_customers`, `kiot_don_giu_tinh`, `mkt_spend`, `danh_muc`, `sale_nhan_su`, `pancake_tu_tao_don`, `pancake_gan_the_qc`, `job_moc`,
   `activity_log`, `sync_log`, `datahub_sync_log`, `backup_snapshots`, `kiot_hang` (danh mục hàng + nhóm cha, 30/10/2026), `zalo_noi_kh` (nối khách Zalo ↔ khách app do Sale gắn ở Báo cáo công việc, 13/11/2026; app QC đọc được để điền ma_kh),
   `kiot_so_khop` (nhật ký so khớp Kiot ↔ app 2 lần / ngày, 10/11/2026; từ 17/11 chỉ người đăng nhập đọc, cột `doanh_thu` = kết quả so doanh thu 2 app).
   **`cv_phan_hoi_ngay` + hàm `cv_lam_moi_phan_hoi()` + pg_cron `cv-phan-hoi-10p` (18/11/2026)** — bản chụp CHỈ ĐỌC của view QC `qc_phan_hoi_ngay` cho
@@ -78,6 +78,7 @@ Hạn mức Pro: egress 250 GB, log 20 GB, CSDL 8 GB / tháng; máy chủ Micro 
 | MKT / Sale | Đồng bộ Pancake | mỗi 10 phút; quét toàn bộ 7h05 · 12h30 · 18h00 |
 | MKT / Sale | Đồng bộ Kiot | 5,20,35,50 phút mỗi giờ; quét toàn bộ 7h20 |
 | MKT / Sale | Tạo đơn từ hội thoại / Phân loại SP | mỗi tiếng 6h–22h (từ 05/11) / 7h & 18h |
+| MKT / Sale | Gắn thẻ hội thoại Pancake theo view `qc_khach_tiem_nang_ngay` (đọc view QC) | 14h & 22h VN, sau 2 lượt chấm QC (từ 23/11) |
 | MKT / Sale | Meta Ads · Chốt mốc số liệu · Sao lưu | 7h, 12h, 15h · 0h, 8h, 16h · 1h sáng |
 | QC CSKH | `qc-keo-gio`, `qc-keo-6h` | xem repo qc-cskh |
 
