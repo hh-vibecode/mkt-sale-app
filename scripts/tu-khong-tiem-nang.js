@@ -46,7 +46,11 @@ function cham(thread) {
     if (m) dong.push({ t: Date.parse(m[1] + 'T' + m[2] + ':00+07:00'), ai: m[3].startsWith('Sale') ? 'sale' : m[3] === 'Bot' ? 'bot' : 'khach', nd: m[4] });
     else if (dong.length && l0.trim()) dong[dong.length - 1].nd += '\n' + l0.trim();
   }
-  const coND = x => /gửi ảnh|gửi tệp|\(ảnh|\(tệp/i.test(x.nd) || x.nd.trim().length > 24 || /\?/.test(x.nd);
+  // tin KHÔNG có nội dung = CHỈ lời đáp lễ ngắn "ok / dạ / vâng / cảm ơn / sticker" (23/11 ~11h40: trước tính mọi tin ≤ 24 ký tự không "?"
+  // là im -> "giá bao nhiêu ạ" bị coi là im, chuyển nhầm khách QC ghi "khách hỏi, chờ Sale")
+  const leTiet = t => { const v = String(t || '').toLowerCase().replace(/[!.,~\s]+/g, ' ').trim();
+    return !v || (v.length <= 24 && !/\?/.test(v) && /^((dạ|da|vâng|vang|ok|oke|okie|okay|ừ|uk|uh|ạ|à|vg|dc|được|đc|em|e|anh|a|chị|c|mình|cảm ơn|cám ơn|cam on|thank|thanks|tks|ty|nhé|nha|nhá|ạh|👍|❤️|🙏|\(sticker\))\s*)+$/i.test(v)); };
+  const coND = x => /gửi ảnh|gửi tệp|\(ảnh|\(tệp/i.test(x.nd) || !leTiet(x.nd);
   const sale = dong.filter(x => x.ai === 'sale'), khach = dong.filter(x => x.ai === 'khach' && coND(x));
   return { saleCuoi: sale.length ? sale[sale.length - 1].t : null, khachCuoi: khach.length ? khach[khach.length - 1].t : null,
     coSo: dong.some(x => x.ai === 'khach' && soTrong(x.nd).length) };
@@ -61,7 +65,11 @@ function cham(thread) {
     if (!(await gianhMoc(SB, KHOA, 'tu-khong-tiem-nang', 6 * 60))) { console.log('Không tiềm năng 7 ngày: chưa đủ 6 giờ từ lượt trước — bỏ qua'); return; }
   }
   // hội thoại QC tháng 11 -> full_thread mới nhất
-  const qcTh = {};
+  const qcTh = {}, qcView = {};
+  // view tiềm năng QC: khách "chưa khai thác hết" (lỗi Sale) / "khách hỏi, chờ Sale" -> KHÔNG BAO GIỜ chuyển (việc của Sale, Daily Task đỏ)
+  (await sbAll(SB, KHOA, 'qc_khach_tiem_nang_ngay', `select=pancake_conversation_id,chua_khai_thac,ly_do_nhom&ngay=gte.${TU_NGAY}&order=pancake_conversation_id`))
+    .forEach(q => { qcView[q.pancake_conversation_id] = q; });
+  const viecSale = c => { const q = qcView[c]; return !!q && (q.chua_khai_thac === true || /chờ Sale/i.test(q.ly_do_nhom || '')); };
   (await sbAll(SB, KHOA, 'sale_response_review', `select=id,conv_id,full_thread&conv_date=gte.${TU_NGAY}&verdict=neq.khong_lien_quan&order=id`))
     .forEach(x => { if (x.conv_id && String(x.full_thread || '').trim()) qcTh[x.conv_id] = x.full_thread; });
   const nkCu = await sbAll(SB, KHOA, 'khach_khong_tiem_nang_tu_dong', 'select=*&order=lead_id');
@@ -122,8 +130,13 @@ function cham(thread) {
     if (String(man.si_phan_loai || '').trim() !== 'Không tiềm năng' || String(man.updated_by || '') !== AI) continue;   // Sale đã đổi sau đó -> không đụng
     let ly = null;
     if (!qcTh[x.conversation_id]) ly = 'hội thoại không thuộc dữ liệu QC tháng 11';
+    else if (viecSale(x.conversation_id)) ly = 'QC: chưa khai thác hết / khách hỏi chờ Sale (việc của Sale)';
     else if (kh && saleDaCapNhat(kh)) ly = 'Sale đã cập nhật khách (lượt chăm sóc / hồ sơ)';
-    else { const h = cham(qcTh[x.conversation_id]); if (h.khachCuoi && h.khachCuoi > Date.parse(x.luc)) ly = 'khách nhắn lại'; }
+    else { const h = cham(qcTh[x.conversation_id]);
+      if (h.khachCuoi && h.khachCuoi > Date.parse(x.luc)) ly = 'khách nhắn lại';
+      // tính lại đủ điều kiện theo luật hiện hành (vd cách nhận tin đáp lễ đổi 23/11) -> không còn đúng thì trả
+      else { const im = !(h.khachCuoi && h.saleCuoi && h.khachCuoi > h.saleCuoi), chuaSo = !(kh && kh.coSoApp) && !h.coSo;
+        if (!h.saleCuoi || Date.now() - h.saleCuoi < NGAY * 864e5 || (!im && !chuaSo)) ly = 'không còn đúng luật 7 ngày (tính lại)'; } }
     if (!ly) { daChuyen.add(x.lead_id); continue; }
     dem.tra++; lyTra[ly] = (lyTra[ly] || 0) + 1;
     if (XEM) { console.log(`  TRẢ ${x.lead_id} ${x.ten} · ${ly}`); continue; }
@@ -151,6 +164,7 @@ function cham(thread) {
   for (const u of ungVien) {
     if (daChuyen.has(u.lead)) continue;
     if (!u.conv) { dem.giu_ngoai_qc++; continue; }
+    if (viecSale(u.conv)) { dem.giu_sale++; continue; }
     if (saleDaCapNhat(u)) { dem.giu_sale++; continue; }
     const h = cham(qcTh[u.conv]);
     if (!h.saleCuoi || now - h.saleCuoi < NGAY * 864e5) { dem.giu_moi++; continue; }

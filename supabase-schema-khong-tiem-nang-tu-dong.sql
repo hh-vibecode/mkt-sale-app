@@ -27,3 +27,9 @@ alter table khach_khong_tiem_nang_tu_dong add column if not exists pl_tay_truoc 
 alter table khach_khong_tiem_nang_tu_dong add column if not exists nguoi_sua_truoc text;       -- updated_by trước khi chuyển
 alter table khach_khong_tiem_nang_tu_dong add column if not exists sua_luc_truoc timestamptz;  -- updated_at trước khi chuyển
 alter table khach_khong_tiem_nang_tu_dong add column if not exists co_ho_so_truoc boolean;     -- đã có dòng saleretail_manual trước khi chuyển
+
+-- 23/11 ~11h40 (anh: "đồng bộ với qc phần này luôn, tránh báo không có trên app"): app (người đăng nhập) + QC ĐỌC được bảng này để Daily Task
+-- bỏ các khách job đã chuyển "Không tiềm năng". Chỉ đọc; ghi vẫn chỉ job (service_role).
+grant select on khach_khong_tiem_nang_tu_dong to authenticated;
+drop policy if exists khach_ktn_doc on khach_khong_tiem_nang_tu_dong;
+create policy khach_ktn_doc on khach_khong_tiem_nang_tu_dong for select to authenticated using (true);
