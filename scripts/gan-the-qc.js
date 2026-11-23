@@ -158,6 +158,19 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
         // + "Không tiềm năng" do job 7 ngày đặt (tu-khong-tiem-nang.js) cũng là đã xử lý -> không gắn lại LEAD TIỀM NĂNG (23/11/2026)
         if (v && m.updated_by && (!/^(monsieur claude|auto-)/i.test(String(m.updated_by).trim()) || String(m.updated_by).trim() === 'Monsieur Claude (7 ngày)')) { ttApp[c] = v; break; } }
     });
+    // SALE ĐÃ CẬP NHẬT KHÁCH -> KHÔNG ĐỤNG (anh Hải 23/11/2026: "sale đã update data rồi thì m không được sờ vào nữa"): có lượt chăm sóc
+    // (salesi_crm theo Lead ID), hồ sơ saleretail_manual do NGƯỜI sửa (bất kỳ ô nào), hoặc activity_log có người sửa Lead ID đó.
+    const cs = new Set(), nguoi = new Set();
+    for (let i = 0; i < tat.length; i += 80) {
+      const ph = tat.slice(i, i + 80).map(encodeURIComponent).join(',');
+      (await sbAll(SB, KHOA, 'salesi_crm', 'select=lead_id&lead_id=in.(' + ph + ')&order=lead_id')).forEach(x => cs.add(x.lead_id));
+      (await sbAll(SB, KHOA, 'activity_log', 'select=ref,who&ref=in.(' + ph + ')&order=ref')).forEach(x => { if (!/^(monsieur claude|auto-)/i.test(String(x.who || '').trim())) nguoi.add(x.ref); });
+    }
+    Object.entries(leadCua).forEach(([c, ids]) => {
+      if (ttApp[c]) return;
+      if (ids.some(id => cs.has(id) || nguoi.has(id) || (man[id] && man[id].updated_by && !/^(monsieur claude|auto-)/i.test(String(man[id].updated_by).trim()))))
+        ttApp[c] = 'Sale đã cập nhật khách';
+    });
   }
   // khách job 7 ngày đang để "Không tiềm năng" (chưa trả lại) -> coi như đã xử lý, theo mã HỘI THOẠI (khách gộp có thể khác Lead ID)
   (await sbAll(SB, KHOA, 'khach_khong_tiem_nang_tu_dong', 'select=conversation_id&tra_lai_luc=is.null&conversation_id=not.is.null&order=conversation_id'))
