@@ -38,7 +38,7 @@ jobs:
           PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/tu-tao-don-hoi-thoai.js
-      # Gắn thẻ hội thoại Pancake theo đánh giá QC (anh Hải 23/11/2026): LEAD TIỀM NĂNG / LEAD ĐẠT, mỗi hội thoại 1 lần lúc đầu,
+      # Gắn THẺ KHÁCH Pancake (POS) theo đánh giá QC (anh Hải 23/11/2026): LEAD TIỀM NĂNG / LEAD ĐẠT, mỗi hội thoại 1 lần lúc đầu,
       # sau đó Sale tự đổi. Script tự bỏ qua ngoài khung 14h & 22h giờ VN (ngay sau 2 lượt chấm của QC). Lỗi không chặn sync.
       - name: Gắn thẻ Pancake theo đánh giá QC (14h, 22h VN)
         continue-on-error: true
