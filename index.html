@@ -7861,10 +7861,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/11 09:35';
+const APP_VERSION='23/11 09:36';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=605;
+const APP_BAN=606;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -10322,7 +10322,8 @@ function rptPcXemHt(conv,key){
    +'<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)"><div style="font-size:15px;font-weight:800">Hội thoại Pancake</div>'
    +(x.pancake_url?'<a href="'+cvE(x.pancake_url)+'" target="_blank" rel="noopener" class="refresh-btn" style="margin:0 0 0 auto;padding:6px 14px;font-size:12px;text-decoration:none">Mở trên Pancake</a>':'')
    +'<button onclick="qcCloseModal()" style="'+(x.pancake_url?'':'margin-left:auto;')+'background:var(--bg2);border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--text)">✕</button></div>'
-   +(x.tom_tat?'<div style="padding:10px 18px;border-bottom:1px solid var(--border);font-size:12.5px;line-height:1.5;background:var(--bg2)"><span style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-right:6px">Tóm tắt QC</span>'+cvE(x.tom_tat)+'</div>':'')
+   // khung TÓM TẮT HỘI THOẠI màu riêng (vàng nhạt + viền trái), không lẫn với bong bóng tin nhắn bên dưới (anh Hải 23/11/2026)
+   +(x.tom_tat?'<div style="margin:10px 18px 2px;padding:9px 12px;border-left:3px solid var(--yellow);border-radius:8px;font-size:12.5px;line-height:1.5;color:var(--text);background:color-mix(in srgb,var(--yellow) 14%,var(--surface))"><div style="font-size:10.5px;font-weight:800;color:var(--yellow);text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px">Tóm tắt hội thoại</div>'+cvE(x.tom_tat)+'</div>':'')
    +'<div style="padding:8px 18px 16px;overflow:auto">'+ds+'</div>'
    +(key?'<div style="display:flex;justify-content:flex-end;padding:10px 18px;border-top:1px solid var(--border)"><button onclick="qcCloseModal();rptSlShowCustomer('+q+key+q+');rptSlCusTab('+q+'cs'+q+')" class="btn-ghost" style="margin:0;padding:6px 14px;font-size:12px">Lịch sử chăm sóc</button></div>':'')
    +'</div></div>';
