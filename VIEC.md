@@ -161,6 +161,8 @@
 
 ## 4. CƠ CHẾ TỰ CHẠY (đang sống)
 
+- **LỊCH PHỐI HỢP MKT ↔ QC (từ 23/11/2026, giờ VN)**: QC kéo tin mỗi giờ phút 25 (+ 6h20, 18h35 kéo bù) · QC AI chấm tiềm năng / đạt + Sỉ/Lẻ 12h50 (khung 12–14h) và 20h50 (20–22h, chỉ hội thoại có tin mới) -> MKT `gan-the-qc.js` 14h00–14h59 và 22h00–22h59: tạo đơn trắng (chưa có đơn), gắn thẻ khách KH SỈ/LẺ + LEAD TIỀM NĂNG/ĐẠT, ghi Sale + ngày khách nhắn -> sync Pancake 10 phút đưa về app. Daily Task đọc view QC (nhớ 10 phút), ô Hội thoại Pancake đọc sale_response_review. QC chấm nội dung (chỉ đọc Pancake), MKT tạo đơn / gắn thẻ / giao việc, Sale kiểm phân loại + đối chiếu cuối ngày (trạng thái Sale ưu tiên). QC chỉ THÊM cột, đổi giờ chấm phải báo MKT dời job. Đo 23/11: báo giá -> có trong app trung vị ~4 giờ, 90% < 9,5 giờ, chậm nhất ~1 ngày (báo giá sau 22h).
+
 - `scripts/so-doanh-thu-2app.js` — cuối lượt so khớp tối (sync-kiot.yml, khung 22h VN; tự bỏ qua trước 20h trừ SO_DT=1 / chạy tay backfill): nạp index.html (nap-app) -> ghi đơn MKT tính doanh thu vào so_dt_2app, so với ben kt -> kiot_so_khop.doanh_thu + 1 tin hộp thư. KHO=1 chạy thử.
 - `sync-datahub-pancake` · `sync-kiot-orders` (có lấy kênh bán) · `sync-kiot-invoices` · `sync-mkt-from-meta` — lịch do pg_cron trên Supabase bắn.
 - `scripts/tu-tao-nhap-tay.js` — chạy kèm mỗi lượt sync đơn Kiot: khách LẺ + kênh ONLINE + từ 1/6/2026 + chưa có trong app -> tự tạo dòng Data nhập tay. Xem trước bằng `KHO=1`.
