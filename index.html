@@ -7861,10 +7861,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='18/11 17:37';
+const APP_VERSION='23/11 08:33';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=597;
+const APP_BAN=598;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -8058,7 +8058,7 @@ async function tbTinh(){
   if(!dashCan('report-saleretail')&&!dashCan('report-salesi'))return;
   _tb.dangTinh=true;
   try{
-    await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null)]);
+    await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),saleNhanSuLoad().catch(()=>null),qcTnLoad().catch(()=>null)]);
     const admin=dashToanQuyenXem(),hom=tbGioVN(Date.now()),ds=[],nguoi={},todo={};
     // MÃ KH NGHI GÁN NHẦM -> chuông của CHÍNH Sale phụ trách khách đó (anh Hải 10/11/2026: "khách nào nghi gắn nhầm m báo chuông cho chính
     // ng sale phụ trách data ấy, để họ tự click"). Tài khoản = đúng 1 Sale (cvSaleCuaAcc, luật gộp tên); admin / tài khoản chung -> không nhận.
@@ -11687,6 +11687,71 @@ function rptSlMatLeadSi(r){
 function rptSlLeadCu(r){
   return !r.isChot&&/^lead cũ$/i.test(String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim());   // đã chốt thì phải hiện lại (còn Mã KH…)
 }
+// ── KHÁCH TIỀM NĂNG QC ĐÁNH GIÁ (VIEC.md 1b-Q1; anh Hải 23/11/2026 "làm phần tự đánh giá tiềm năng đi") ─────────────────────
+// Nguồn: view qc_khach_tiem_nang_ngay do APP QC dựng (QC đọc hội thoại Pancake 2 lần / ngày 12h–14h và 20h–22h VN, 1 dòng / hội thoại =
+// lần đánh giá mới nhất; đã chốt / từ chối thì tự rơi khỏi view). App MKT CHỈ ĐỌC, lấy HẾT dòng (QC đính chính 20/11: có dòng ket='chua_du'
+// mà chua_khai_thac=true vẫn là việc). sale = tên chuẩn sale_nhan_su (Sale nghỉ có bàn giao -> người nhận, bcnSaleNhan).
+// ĐỎ, tính vào Tổng việc / badge: chua_khai_thac = Sale hứa quay lại (kiểm kho, hỏi xưởng, gửi ảnh / giá…) rồi bỏ lửng > 1 ngày làm việc —
+//   anh coi là LỖI SALE, giao TRƯỚC. Hết việc khi Sale nhắn lại khách và lượt QC sau đánh giá lại (dòng tự rơi / hết cờ).
+// XANH, không tính: các khách tiềm năng còn lại — danh sách để Sale chăm tiếp.
+// Lẻ / Sỉ: khách nối được vào khách app (conversation_id đơn Pancake, rồi SĐT) -> theo khách đó; không nối được -> theo đội của Sale
+//   (đội "Cả 2": page có chữ "Sỉ" -> Sỉ, còn lại Lẻ). Phạm vi: admin / toàn quyền xem hết, Sale thấy dòng của Sale trong phạm vi xem.
+window._qcTn=window._qcTn||{rows:null,luc:0,dang:false};
+async function qcTnLoad(ep){
+  const C=window._qcTn;
+  if(C.dang||(!ep&&C.rows&&Date.now()-C.luc<10*60e3))return C.rows;
+  C.dang=true;
+  try{C.rows=await sbFetchAll('qc_khach_tiem_nang_ngay','select=ngay,ket,ly_do,danh_gia_luc,nen_tang,kenh,page_id,pancake_conversation_id,khach_id,ten_khach,sdt,sale,pancake_url,chua_khai_thac,ly_do_chua_khai_thac&order=pancake_conversation_id');C.luc=Date.now();}
+  catch(e){console.warn('qcTnLoad',e);if(!C.rows)C.rows=[];C.luc=Date.now()-8*60e3;}   // lỗi: thử lại sau ~2 phút, không vỡ Daily Task
+  finally{C.dang=false;}
+  try{const p=Object.values(RPT_SL_CFG).map(c=>c.page).find(k=>{const el=document.getElementById('page-'+k);return el&&el.classList.contains('active');});
+    if(p)rptSlRender();}catch(e){}
+  return C.rows;
+}
+function qcTnIdx(rows){   // conversation_id / SĐT 9 số cuối -> khách của 1 Master (nhớ theo mảng Master)
+  if(rows._qcIdx)return rows._qcIdx;const conv={},sdt={};
+  rows.forEach(r=>{(r.orders||[]).forEach(o=>{if(o&&o.conversation_id&&!conv[o.conversation_id])conv[o.conversation_id]=r;});
+    [].concat(r.phones||[],r.phone||[]).map(v=>v&&typeof v==='object'?v.so:v).map(v=>String(v||'')).join(' ').split(/[^0-9]+/).filter(p=>p.length>=9)
+      .forEach(p=>{const k=p.slice(-9);if(!sdt[k])sdt[k]=r;});});
+  return rows._qcIdx={conv,sdt};
+}
+function qcTnTim(I,q){if(q.pancake_conversation_id&&I.conv[q.pancake_conversation_id])return I.conv[q.pancake_conversation_id];
+  for(const p of bcnSoTrong(q.sdt))if(I.sdt[p])return I.sdt[p];return null;}
+function qcTnDs(){
+  const C=window._qcTn;if(!C.rows){qcTnLoad();return [];}
+  if(Date.now()-C.luc>10*60e3)qcTnLoad();   // làm mới ngầm, lần vẽ sau có số mới
+  const L=rptSlType(),sc=dashToanQuyenXem()?[]:dashSales();
+  let Iday,Ikia;try{Iday=qcTnIdx(rptSlBuildMaster());}catch(e){Iday={conv:{},sdt:{}};}
+  try{Ikia=qcTnIdx(rptSlMasterLoaiKia(false));}catch(e){Ikia={conv:{},sdt:{}};}
+  const out=[];
+  // KHÁCH ĐẠT (anh 23/11/2026: tệp QC chia Tiềm năng thực sự / Khách đạt; đang bàn với QC tên cột) -> không giao việc
+  C.rows.forEach(q=>{if(q.ket==='dat'||q.nhom==='dat')return;const sale=bcnSaleNhan(q.sale);
+    if(sc.length&&!sc.includes(sale))return;
+    const r=qcTnTim(Iday,q);
+    if(!r){if(qcTnTim(Ikia,q))return;
+      const d=sale?rptSlDoiCuaSale(sale):'Lẻ',loai=d==='Cả 2'?(/sỉ/i.test(q.kenh||'')?'Sỉ':'Lẻ'):d;
+      if(loai!==L)return;}
+    out.push({q,r,sale,ckt:q.chua_khai_thac===true});});
+  return out.sort((a,b)=>(b.ckt-a.ckt)||String(b.q.ngay||'').localeCompare(String(a.q.ngay||''))||String(a.sale).localeCompare(String(b.sale),'vi'));
+}
+function qcTnHtml(ds){
+  const e=cvE,q=String.fromCharCode(39);
+  return '<div class="tbl-scroll"><table><thead><tr><th>Ngày</th><th>Sales</th><th>Khách</th><th>Kênh</th><th>QC đánh giá</th><th></th></tr></thead><tbody>'
+    +ds.map(x=>{const Q=x.q,r=x.r,k=r?String(r.key).replace(/'/g,''):'';
+      return '<tr'+(r?' style="cursor:pointer" onclick="rptSlShowCustomer('+q+k+q+')"':'')+'>'
+        +'<td style="white-space:nowrap">'+(dmy(String(Q.ngay||'').slice(0,10))||'—')+'</td>'
+        +'<td style="white-space:nowrap">'+(x.sale?e(x.sale):'<span style="color:var(--muted)">chưa rõ</span>')+'</td>'
+        +'<td class="name">'+(r?rptSlTenKhach(r)+rptSlMaDuoiTen(r):e(Q.ten_khach||'(không tên)')+'<div style="font-size:10.5px;color:var(--muted);font-weight:600">chưa có trong app'+(Q.sdt?' · '+e(Q.sdt):'')+'</div>')+'</td>'
+        +'<td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(Q.kenh)+'">'+e(Q.kenh||'—')+'</td>'
+        +'<td style="white-space:normal;min-width:240px;max-width:420px;font-size:12px;line-height:1.45">'
+          +(x.ckt?'<div style="color:var(--red);font-weight:700">Chưa khai thác hết: '+e(Q.ly_do_chua_khai_thac||'')+'</div>':'')
+          +'<div style="color:var(--text2)">'+e(Q.ly_do||'')+'</div></td>'
+        +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
+          +(Q.pancake_url?'<a href="'+e(Q.pancake_url)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 11px;font-size:11px;font-weight:700;text-decoration:none">Mở hội thoại</a>':'')
+          +(r?'<button onclick="rptSlShowCustomer('+q+k+q+');rptSlCsMoForm()" style="margin-left:5px;border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">+ Lượt chăm sóc</button>':'')
+        +'</td></tr>';}).join('')
+    +'</tbody></table></div>';
+}
 function rptSlTodoBuckets(){
   const all=rptSlSortNew(rptSlBuildMaster().filter(r=>!r.vangLai),rptSlNgayTao)   // Khách vãng lai không có việc (08/10/2026)
     .filter(r=>!RPT_SL_DANG_LUU.has(r.leadId))   // dòng vừa điền mã: giấu đi trong lúc chạy ngầm
@@ -11705,6 +11770,7 @@ function rptSlTodoBuckets(){
     //     Số liệu báo cáo vẫn đúng, nhưng Pancake chưa khớp; Sale không tự sửa được, cần người tạo app.
     loiHT:all.filter(r=>(rptSlManual[r.leadId]||{}).sync_error),
     viecGiao:rptSlViecGiaoDs(),
+    qcTn:qcTnDs(),   // khách tiềm năng QC đánh giá (23/11/2026) -- chỉ dòng chua_khai_thac tính vào tổng việc
     viecXong:rptSlViecXongDs(),   // việc Sale đã xong, chờ quản lý kiểm (chỉ admin) -- bảng vàng (05/10/2026)   // việc admin giao ở lượt chăm sóc (05/10/2026) -- bảng đỏ đầu Daily Task
     // 3. Chưa cập nhật trạng thái (chỉ nhóm chưa chốt -- nhóm chốt đã khoá cứng).
     //    SỈ KHÁC LẺ: Sale Sỉ không dùng ô trạng thái của luồng Lẻ, họ ghi ở "Phân loại KH"
@@ -11762,7 +11828,7 @@ function rptSlViecXongDs(){
 }
 function rptSlTongViec(b,nghi){
   const n=(nghi||rptSlNghiTrung(b.all)).length+(b.trungMa||[]).length+rptSlTrungSdtDem(b.trungSdt||rptSlTrungSdt(b.all));
-  return (b.viecGiao||[]).length+b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length+n;
+  return (b.viecGiao||[]).length+(b.qcTn||[]).filter(x=>x.ckt).length+b.thieuMa.length+b.maSai.length+b.maNgo.length+b.loiHT.length+b.chuaTT.length+n;
 }
 // 3 mục QUAN TRỌNG NHẤT luôn mở sẵn data lỗi; các mục còn lại gập lại, bấm tiêu đề mới bung ra.
 function rptSlSecOpen(id){return !!(window._rptSlSecOpen||{})[id];}
@@ -12318,6 +12384,8 @@ function rptSlNlDashDs(k){
       rows.push([dmy(rptSlNgayTao(r))||'—',g.rows.map(x=>rptSlSaleHien(x.staff)).filter((v,i,a)=>a.indexOf(v)===i).join(', '),
         g.rows.map(ten).join('<br>'),g.rows.map(x=>e(x.kenh||'—')).join('<br>'),mau('Nghi trùng khách · '+(g.ly||[]).join(', '),'var(--red)'),
         (()=>{const t=g.rows.reduce((s2,x)=>s2+tien(x),0);return t?vnd(t):'—';})()]);keys.push(r.key);});
+    (b.qcTn||[]).filter(x=>x.ckt).forEach(x=>{const r=x.r;rows.push(r?co(r).concat([mau('Tiềm năng chưa khai thác hết (QC)','var(--red)'),tien(r)?vnd(tien(r)):'—'])
+      :[dmy(String(x.q.ngay||'').slice(0,10))||'—',e(x.sale||'—'),e(x.q.ten_khach||'(không tên)')+' <span style="color:var(--muted);font-weight:600">· chưa có trong app</span>',e(x.q.kenh||'—'),mau('Tiềm năng chưa khai thác hết (QC)','var(--red)'),'—']);keys.push(r?r.key:'');});
     (b.trungMa||[]).forEach(r=>{rows.push(co(r).concat([mau('Nghi trùng · '+(r.nguonLienHe||[]).length+' dòng chung mã','var(--red)'),tien(r)?vnd(tien(r)):'—']));keys.push(r.key);});
     return dataModal({title:'Tổng việc cần làm',cols:COT.concat(['Việc cần làm','Doanh số']),rows,keys});
   }
@@ -12728,6 +12796,9 @@ function rptSlInputHtml(){
       vx.length=0;
       return loc+rptSlInputSec('sGiao','','Việc được giao'+(chon.length?' · '+chon.join(', '):''),'ghi 1 lượt chăm sóc mới là xong việc · việc xong chuyển sang tab Đã hoàn thành',vg.length+(dashToanQuyenXem()?vx.length:0),'var(--red)',rptSlViecGiaoHtml(vg,dashToanQuyenXem()?vx:[]),true);
     })()}
+    ${(()=>{const ck=b.qcTn.filter(x=>x.ckt),tn=b.qcTn.filter(x=>!x.ckt);
+      return rptSlInputSec('sQcCkt','','Khách tiềm năng chưa khai thác hết','QC đánh giá · Sale hứa quay lại rồi bỏ lửng — nhắn lại khách',ck.length,'var(--red)',qcTnHtml(ck),true)
+        +rptSlInputSec('sQcTn','','Khách tiềm năng QC đánh giá','danh sách chăm tiếp — không tính vào tổng việc cần làm',tn.length,'var(--accent)',qcTnHtml(tn));})()}
     ${rptSlInputSec('s1','','Đã chốt đơn nhưng CHƯA có Mã KH Kiot','điền vào đây là ghi thẳng sang ghi chú nội bộ đơn Pancake',b.thieuMa.length,'var(--red)',s1,true)}
     ${rptSlInputSec('sTrungSdt','','Trùng SĐT Sỉ – Lẻ','cùng 1 SĐT nhưng 1 khách bên Sỉ, 1 khách bên Lẻ — chuyển 1 bên sang bên kia hoặc giữ riêng',rptSlTrungSdtDem(b.trungSdt),'var(--red)',rptSlTrungSdtHtml(b.trungSdt),true)}
     ${rptSlInputSec('sTrung','','Nghi trùng khách','tích từ 2 khách cùng nhóm để hợp nhất',nghi.length+b.trungMa.length,'var(--red)',rptSlTrungHtml(nghi,rptSlTrungMaHtml(b.trungMa)),true)}
