@@ -18,7 +18,8 @@
 //   3. Thẻ khách POS: đọc shop_customer.tags NGAY TRƯỚC khi ghi (PUT ghi đè cả bộ — bài học 30/9), chỉ THÊM: KH SỈ / KH LẺ nếu thiếu;
 //      LEAD TIỀM NĂNG / LEAD ĐẠT nếu khách chưa có CHỐT ĐƠN / LEAD KO ĐẠT / *TIỀM NĂNG* (hoặc LEAD ĐẠT khi gắn đạt). Cập nhật luôn
 //      datahub_orders.customer_tags của đơn (như pancake-note) để app thấy ngay.
-// Lịch: bước trong sync-datahub.yml (10 phút / lần, có concurrency) nhưng chỉ làm việc lúc 14h và 22h giờ VN; CHAY_NGAY=1 bỏ khung giờ.
+// Lịch (23/11 trưa): bước trong sync-datahub.yml (10 phút / lần, có concurrency), CHỈ làm việc khi view QC có lần chấm mới (dấu ở job_moc
+//   'gan-the-qc') hoặc còn đơn chờ ghi bù; CHAY_NGAY=1 bỏ kiểm dấu. Không còn khung 14h / 22h.
 // KHO=1: chạy thử, chỉ in số. GIOI_HAN=n: chỉ xử lý n hội thoại (thử từng ít một).
 const fs = require('fs'), path = require('path');
 const { sbAll } = require('./lib/sb');
@@ -44,7 +45,6 @@ async function lay(url) {
   }
   return null;
 }
-function vmTT(ctx, r) { ctx.__r = r; return require('vm').runInContext('rptSlLocTT(__r)', ctx); }
 function nhomCua(q) {
   if (q.chua_khai_thac === true || q.nhom === 'tiem_nang' || /^Khách dừng/i.test(q.ly_do_nhom || '')) return 'tiem_nang';
   return 'dat';
@@ -57,8 +57,19 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
 
 (async () => {
   if (!TOKEN || !KHOA) { console.error('Thiếu PANCAKE_SESSION_TOKEN / SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); }
-  const gioVN = new Date(Date.now() + 7 * 3600e3).getUTCHours();
-  if (process.env.CHAY_NGAY !== '1' && ![14, 22].includes(gioVN)) { console.log('Gắn thẻ QC: ngoài khung 14h / 22h VN (giờ VN ' + gioVN + 'h) — bỏ qua'); return; }
+  // LỊCH (anh Hải 23/11/2026: "data chậm nhất 1-2h là phải có rồi", "xếp lại lịch sao cho ít phải xử lý nhất và đỡ tốn token nhất"):
+  // BỎ khung 14h / 22h. Chạy theo mỗi lượt đồng bộ Pancake (10 phút) nhưng CHỈ LÀM VIỆC KHI VIEW QC ĐỔI (dấu = lần chấm mới nhất + số dòng,
+  // lưu job_moc 'gan-the-qc') hoặc còn đơn job tạo chờ ghi bù Sale / ngày. Không đổi -> thoát sau 2 câu hỏi rất nhẹ.
+  const HJ = { ...HSB };
+  const dauR = await fetch(`${SB}/rest/v1/qc_khach_tiem_nang_ngay?select=danh_gia_luc&ngay=gte.${TU_NGAY}&order=danh_gia_luc.desc&limit=1`, { headers: { ...HJ, Prefer: 'count=exact' } });
+  if (!dauR.ok) throw new Error('Đọc view QC lỗi ' + dauR.status);
+  const dau = String(((await dauR.json())[0] || {}).danh_gia_luc || '') + '|' + String(dauR.headers.get('content-range') || '').split('/')[1];
+  const moc = (await sbAll(SB, KHOA, 'job_moc', 'select=dau_van&ten=eq.gan-the-qc'))[0];
+  const choBu = (await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id&order_id=not.is.null&or=(sale_gan.is.null,ngay_nhan.is.null)&limit=1')).length;
+  if (process.env.CHAY_NGAY !== '1' && moc && moc.dau_van === dau && !choBu) { console.log('Gắn thẻ QC: view QC chưa có lần chấm mới — bỏ qua'); return; }
+  const luuDau = async () => { if (XEM) return;
+    await fetch(`${SB}/rest/v1/job_moc?on_conflict=ten`, { method: 'POST', headers: { ...HJ, Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify([{ ten: 'gan-the-qc', dau_van: dau, luc: new Date().toISOString(), ghi_chu: 'xong' }]) }); };
 
   const view = await sbAll(SB, KHOA, 'qc_khach_tiem_nang_ngay', 'select=ngay,page_id,pancake_conversation_id,ten_khach,sdt,sale,nhom,ly_do_nhom,chua_khai_thac,loai_khach&ngay=gte.' + TU_NGAY + '&order=pancake_conversation_id');
   // GHI BÙ SALE cho đơn job đã tạo: lúc tạo Pancake chưa trả số đơn (system_id) -> chờ đơn về hub rồi ghi Sale gán tay = Sale QC
@@ -103,22 +114,36 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
   const da = new Set((await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id&order=conversation_id')).map(r => r.conversation_id));
   const moi = view.filter(q => q.page_id && q.pancake_conversation_id && !da.has(q.pancake_conversation_id)).slice(0, GIOI_HAN);
   console.log(`Gắn thẻ QC: view ${view.length} hội thoại · đã xử lý trước ${da.size} · lượt này ${moi.length}${XEM ? ' (KHO=1: chạy thử)' : ''}`);
-  if (!moi.length) return;
+  if (!moi.length) { await luuDau(); return; }
 
-  const donCua = {};
-  (await sbAll(SB, KHOA, 'datahub_orders', 'select=shop_id,order_id,conversation_id,order_date&conversation_id=not.is.null&order=order_date.desc'))
-    .forEach(o => { if (!donCua[o.conversation_id]) donCua[o.conversation_id] = o; });
+  const donCua = {}, donTheoConv = {}, donTheoSo = {};
+  const l9 = s => { const d = String(s || '').replace(/\D/g, ''); return d.length >= 9 ? d.slice(-9) : ''; };
+  (await sbAll(SB, KHOA, 'datahub_orders', 'select=shop_id,order_id,system_id,phone,conversation_id,order_date&order=order_date.desc'))
+    .forEach(o => {
+      if (o.conversation_id) { if (!donCua[o.conversation_id]) donCua[o.conversation_id] = o; (donTheoConv[o.conversation_id] = donTheoConv[o.conversation_id] || []).push(o); }
+      const k = l9(o.phone); if (k) (donTheoSo[k] = donTheoSo[k] || []).push(o);
+    });
   const jobSdt = new Set((await sbAll(SB, KHOA, 'pancake_tu_tao_don', 'select=conversation_id&conversation_id=not.is.null&order=conversation_id')).map(r => r.conversation_id));
 
-  // trạng thái Sale trên app (ưu tiên)
+  // TRẠNG THÁI SALE TRÊN APP (ưu tiên) — ĐỌC NHẸ (23/11/2026, thay nạp cả app): Lead ID của mọi đơn cùng hội thoại + cùng SĐT
+  // (L-<shop>-<system_id>) -> ô Phân loại KH (saleretail_manual.si_phan_loai) do NGƯỜI chọn (người sửa cuối không phải job).
+  // Khách đã chốt: thẻ khách CHỐT ĐƠN (daXep) chặn ở bước gắn thẻ.
   const ttApp = {};
   {
-    const { napApp, masterCua } = require('./lib/nap-app');
-    const ctx = await napApp();
-    for (const L of ['Lẻ', 'Sỉ']) masterCua(ctx, L).forEach(r => {
-      const tt = r.isChot ? 'Đã ra đơn' : vmTT(ctx, r);
-      [].concat((r.orders || []).map(o => o && o.conversation_id), r.convId, (r.mergedRows || []).map(m => m.convId)).filter(Boolean)
-        .forEach(c => { if (!ttApp[c]) ttApp[c] = tt; });
+    const leadCua = {};
+    moi.forEach(q => {
+      const ds = [...(donTheoConv[q.pancake_conversation_id] || [])];
+      ds.slice().forEach(o => { const k = l9(o.phone); if (k) ds.push(...(donTheoSo[k] || [])); });
+      leadCua[q.pancake_conversation_id] = [...new Set(ds.filter(o => SHOP_CODE[o.shop_id] && o.system_id).map(o => 'L-' + SHOP_CODE[o.shop_id] + '-' + String(o.system_id).padStart(4, '0')))];
+    });
+    const tat = [...new Set(Object.values(leadCua).flat())], man = {};
+    for (let i = 0; i < tat.length; i += 80) {
+      (await sbAll(SB, KHOA, 'saleretail_manual', 'select=lead_id,si_phan_loai,updated_by&lead_id=in.(' + tat.slice(i, i + 80).map(encodeURIComponent).join(',') + ')'))
+        .forEach(m => { man[m.lead_id] = m; });
+    }
+    Object.entries(leadCua).forEach(([c, ids]) => {
+      for (const id of ids) { const m = man[id]; const v = String((m && m.si_phan_loai) || '').trim();
+        if (v && m.updated_by && !/^(monsieur claude|auto-)/i.test(String(m.updated_by).trim())) { ttApp[c] = v; break; } }
     });
   }
   const nk = [];
@@ -212,6 +237,7 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
     await sleep(200);
   }
   await ghi(nk);
+  if (!dem.loi) await luuDau();   // lỗi -> giữ dấu cũ, lượt 10 phút sau thử lại
   console.log(`Gắn thẻ QC xong: ${XEM ? 'SẼ' : 'đã'} tạo đơn ${dem.tao_don} · gắn LEAD ${dem.gan_lead} · gắn Sỉ/Lẻ ${dem.gan_sile} · bỏ qua ${dem.bo_qua} · chờ lượt sau ${dem.cho} · lỗi ${dem.loi}`);
   Object.entries(theoThe).forEach(([k, v]) => console.log('   ', k + ':', v));
   if (dem.loi) process.exitCode = 1;

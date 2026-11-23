@@ -39,9 +39,9 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/tu-tao-don-hoi-thoai.js
       # Gắn THẺ KHÁCH Pancake (POS) theo đánh giá QC (anh Hải 23/11/2026): LEAD TIỀM NĂNG / LEAD ĐẠT, mỗi hội thoại 1 lần lúc đầu,
-      # sau đó Sale tự đổi. Script tự bỏ qua ngoài khung 14h & 22h giờ VN (ngay sau 2 lượt chấm của QC). Lỗi không chặn sync.
+      # sau đó Sale tự đổi. Chỉ làm việc khi view QC có lần chấm mới (dấu ở job_moc), không đổi thì thoát ngay. Lỗi không chặn sync.
       # 23/11/2026 anh duyệt lô đầu 85 đơn ("tạo cả 85 đơn") -> bật tự TẠO ĐƠN trắng cho hội thoại QC chưa có đơn (TAO_DON=1).
-      - name: Tạo đơn + gắn thẻ Pancake theo đánh giá QC (14h, 22h VN)
+      - name: Tạo đơn + gắn thẻ Pancake theo đánh giá QC (khi QC có lần chấm mới)
         continue-on-error: true
         env:
           TAO_DON: '1'
