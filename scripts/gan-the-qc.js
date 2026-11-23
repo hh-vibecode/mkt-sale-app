@@ -20,12 +20,15 @@ const TOKEN = process.env.PANCAKE_SESSION_TOKEN || (KEYS.match(/PANCAKE_SESSION_
 const KHOA = process.env.SUPABASE_SERVICE_ROLE_KEY || (KEYS.match(/SERVICE_ROLE_KEY:\s*(eyJ[A-Za-z0-9._-]+)/) || [])[1];
 const SB = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const XEM = process.env.KHO === '1';
+// CHỈ HỘI THOẠI TỪ THÁNG 11/2026 (anh Hải 23/11/2026: "cái gắn thẻ tiềm năng này cũng xử lý từ tháng 11 thôi")
+const TU_NGAY = '2026-11-01';
 const THE_NHOM = { tiem_nang: 'LEAD TIỀM NĂNG', dat: 'LEAD ĐẠT' };
 // thẻ trạng thái Sale đã tự gắn -> tôn trọng, không gắn thêm
 const THE_SALE = /LEAD ĐẠT|LEAD KO ĐẠT|TIỀM NĂNG|CHỐT ĐƠN|RÁC|TUYỂN DỤNG|CHƯA CÓ NC|GIÁ CAO|SAI SP|KO LH ĐC/i;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const an = s => String(s || '').split(TOKEN || '\u0000').join('***');
 
+function vmTT(ctx, r) { ctx.__r = r; return require('vm').runInContext('rptSlLocTT(__r)', ctx); }
 function nhomCua(q) {
   if (q.chua_khai_thac === true || q.nhom === 'tiem_nang' || /^Khách dừng/i.test(q.ly_do_nhom || '')) return 'tiem_nang';
   return 'dat';
@@ -36,7 +39,7 @@ function nhomCua(q) {
   const gioVN = new Date(Date.now() + 7 * 3600e3).getUTCHours();
   if (process.env.CHAY_NGAY !== '1' && ![14, 22].includes(gioVN)) { console.log('Gắn thẻ QC: ngoài khung 14h / 22h VN (giờ VN ' + gioVN + 'h) — bỏ qua'); return; }
 
-  const view = await sbAll(SB, KHOA, 'qc_khach_tiem_nang_ngay', 'select=page_id,pancake_conversation_id,ten_khach,nhom,ly_do_nhom,chua_khai_thac&order=pancake_conversation_id');
+  const view = await sbAll(SB, KHOA, 'qc_khach_tiem_nang_ngay', 'select=ngay,page_id,pancake_conversation_id,ten_khach,nhom,ly_do_nhom,chua_khai_thac&ngay=gte.'+TU_NGAY+'&order=pancake_conversation_id');
   const da = new Set((await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id&order=conversation_id')).map(r => r.conversation_id));
   const moi = view.filter(q => q.page_id && q.pancake_conversation_id && !da.has(q.pancake_conversation_id));
   console.log(`Gắn thẻ QC: view ${view.length} hội thoại · đã xử lý trước ${da.size} · mới ${moi.length}${XEM ? ' (KHO=1: chạy thử)' : ''}`);
@@ -48,6 +51,7 @@ function nhomCua(q) {
     const st = await fetch(`https://pancake.vn/api/v1/pages/${pg}/settings?access_token=${TOKEN}`).then(r => r.json()).catch(() => null);
     const ma = {}, ten = {};
     ((st && st.settings && st.settings.tags) || []).forEach(t => { ma[String(t.text).trim().toUpperCase()] = t.id; ten[t.id] = String(t.text).trim(); });
+    if (XEM && process.env.THU_TN === '1' && ma['LEAD TIỀM NĂNG'] == null && Object.keys(ma).length) ma['LEAD TIỀM NĂNG'] = -1;   // chỉ chạy thử: giả như page đã có thẻ
     return (trang[pg] = { ma, ten, pt: null });
   };
   const ghi = async rows => {
@@ -58,9 +62,29 @@ function nhomCua(q) {
     if (!r.ok) throw new Error('Ghi nhật ký lỗi ' + r.status + ' ' + (await r.text()).slice(0, 200));
   };
 
+  // TRẠNG THÁI SALE CHỌN TRÊN APP ĐƯỢC ƯU TIÊN (anh Hải 23/11/2026: "data nào trùng với sale xử lý rồi thì ưu tiên trạng thái xử lý của sale",
+  // "trạng thái sale chọn trên app vẫn ưu tiên"): hội thoại nối được khách app (conversation_id đơn Pancake / convId dòng khách) ->
+  //   đã chốt / Phân loại khác Lead mới & Tiềm năng -> BỎ QUA (ghi nhật ký "Sale đã xử lý"); "Tiềm năng, chưa ra đơn" -> gắn LEAD TIỀM NĂNG dù QC xếp đạt.
+  // Nạp app (nặng) CHỈ KHI có dòng gắn được (page đã có thẻ cần gắn) -> lúc page chưa có thẻ LEAD TIỀM NĂNG không nạp.
+  for (const q of moi) { const T = await theTrang(q.page_id); q._the = T.ma[THE_NHOM[nhomCua(q)].toUpperCase()]; q._co = T.ma['LEAD TIỀM NĂNG'] != null; }
+  const ttApp = {};
+  if (moi.some(q => q._the != null || q._co)) {
+    const { napApp, masterCua } = require('./lib/nap-app');
+    const ctx = await napApp();
+    for (const L of ['Lẻ', 'Sỉ']) masterCua(ctx, L).forEach(r => {
+      const tt = r.isChot ? 'Đã ra đơn' : (vmTT(ctx, r));
+      [].concat((r.orders || []).map(o => o && o.conversation_id), r.convId, (r.mergedRows || []).map(m => m.convId)).filter(Boolean)
+        .forEach(c => { if (!ttApp[c]) ttApp[c] = tt; });
+    });
+  }
   const dem = { gan: 0, bo_qua: 0, loi: 0, cho_the: 0 }, theoThe = {}, nk = [];
   for (const q of moi) {
-    const pg = q.page_id, conv = q.pancake_conversation_id, nhom = nhomCua(q), canThe = THE_NHOM[nhom];
+    const pg = q.page_id, conv = q.pancake_conversation_id, tt = ttApp[conv] || '';
+    if (tt && !['Lead mới', 'Tiềm năng, chưa ra đơn', '(chưa cập nhật)'].includes(tt)) {
+      dem.bo_qua++; nk.push({ conversation_id: conv, page_id: pg, nhom: nhomCua(q), ly_do_nhom: q.ly_do_nhom || null, the_truoc: null,
+        tag_id: null, tag_ten: null, ket: 'bo_qua', ghi_chu: 'Sale đã xử lý trên app: ' + tt }); continue;
+    }
+    const nhom = tt === 'Tiềm năng, chưa ra đơn' ? 'tiem_nang' : nhomCua(q), canThe = THE_NHOM[nhom];
     const T = await theTrang(pg);
     const tagId = T.ma[canThe.toUpperCase()];
     if (tagId == null) { dem.cho_the++; theoThe['chờ page có thẻ ' + canThe] = (theoThe['chờ page có thẻ ' + canThe] || 0) + 1; continue; }
@@ -90,7 +114,7 @@ function nhomCua(q) {
     await sleep(200);
   }
   await ghi(nk);
-  console.log(`Gắn thẻ QC xong: ${XEM ? 'SẼ gắn' : 'đã gắn'} ${dem.gan} · bỏ qua (Sale đã có thẻ) ${dem.bo_qua} · chờ page có thẻ ${dem.cho_the} · lỗi ${dem.loi}`);
+  console.log(`Gắn thẻ QC xong: ${XEM ? 'SẼ gắn' : 'đã gắn'} ${dem.gan} · bỏ qua (Sale đã xử lý: thẻ Pancake / trạng thái app) ${dem.bo_qua} · chờ page có thẻ ${dem.cho_the} · lỗi ${dem.loi}`);
   Object.entries(theoThe).forEach(([k, v]) => console.log('   ', k + ':', v));
   if (dem.loi) process.exitCode = 1;
 })().catch(e => { console.error(an(e && e.message || e)); process.exit(1); });
