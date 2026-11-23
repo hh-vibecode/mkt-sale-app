@@ -20,3 +20,10 @@ create table if not exists khach_khong_tiem_nang_tu_dong (
 );
 alter table khach_khong_tiem_nang_tu_dong enable row level security;
 revoke all on khach_khong_tiem_nang_tu_dong from anon, authenticated;
+
+-- 23/11 ~11h15: lưu NGUYÊN TRẠNG hồ sơ trước khi chuyển để trả lại đúng (lần đầu ghi đè updated_by làm mất người sửa cũ -> phải khôi phục từ
+-- backup_snapshots, xem supabase-khoi-phuc-19-khach-23-11.sql).
+alter table khach_khong_tiem_nang_tu_dong add column if not exists pl_tay_truoc text;          -- saleretail_manual.si_phan_loai trước khi chuyển (null = không có)
+alter table khach_khong_tiem_nang_tu_dong add column if not exists nguoi_sua_truoc text;       -- updated_by trước khi chuyển
+alter table khach_khong_tiem_nang_tu_dong add column if not exists sua_luc_truoc timestamptz;  -- updated_at trước khi chuyển
+alter table khach_khong_tiem_nang_tu_dong add column if not exists co_ho_so_truoc boolean;     -- đã có dòng saleretail_manual trước khi chuyển
