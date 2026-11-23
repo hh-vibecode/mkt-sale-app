@@ -7861,10 +7861,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/11 10:16';
+const APP_VERSION='23/11 10:34';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=607;
+const APP_BAN=608;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -9253,7 +9253,7 @@ function rptSlSaleDaSuaTT(r){return rptSlIdsCua(r).some(id=>{const m=rptSlManual
   return String(m.si_phan_loai||'').trim()&&String(m.updated_by||'').trim()&&!/^(monsieur claude|auto-)/i.test(String(m.updated_by).trim());});}
 function rptSlLaAi(r){return !!rptSlAiQc(r)&&!rptSlSaleDaSuaTT(r);}
 function rptSlAiThe(r){const q=rptSlAiQc(r);if(!q||rptSlSaleDaSuaTT(r))return '';
-  const tn=q.chua_khai_thac===true||q.nhom==='tiem_nang'||/^Khách dừng/i.test(q.ly_do_nhom||'');
+  const tn=q.chua_khai_thac===true||q.nhom==='tiem_nang';   // theo đúng nhóm QC (23/11 ~10h40: bỏ tự coi "Khách dừng" là tiềm năng)
   return ' <span title="AI (QC) đã chấm: '+(tn?'Tiềm năng':'Đạt')+(q.ly_do?' — '+cvE(q.ly_do):'')+'" style="display:inline-block;vertical-align:middle;margin-left:4px;padding:0 5px;border:1px solid var(--accent);border-radius:5px;color:var(--accent);font-size:9.5px;font-weight:800;line-height:15px">AI</span>';}   // anh Hải 14/11/2026: "bộ lọc cho blacklist riêng như vip" -- khách Blacklist, bất kể phân loại
 function rptSlLocTT(r){
   const v=String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim();
@@ -11854,7 +11854,9 @@ function qcTnDs(){
   //  TIỀM NĂNG để Sale chăm lại (đã nhờ QC đổi nhom trong view; app tự coi là tiềm năng phòng khi view chưa đổi).
   let dat=0;
   C.rows.forEach(q=>{const ln=String(q.ly_do_nhom||'');if(ln==='Khách từ chối hẳn'&&q.chua_khai_thac!==true)return;
-    let laDat=q.nhom==='dat'&&q.chua_khai_thac!==true&&!/^Khách dừng/i.test(ln);const sale=bcnSaleNhan(q.sale);
+    // ĐỔI 23/11 ~10h40 (anh: "báo giá xong không nói gì không được tính là tiềm năng nữa, là đạt thôi, xử lý lại với QC"): app làm ĐÚNG cột
+    // nhom của QC (QC áp luật mới trong view), bỏ phần tự coi "Khách dừng" là tiềm năng (luật (3) ở trên hết hiệu lực).
+    let laDat=q.nhom==='dat'&&q.chua_khai_thac!==true;const sale=bcnSaleNhan(q.sale);
     if(sc.length&&!sc.includes(sale))return;
     const r=qcTnTim(Iday,q);
     if(!r){if(qcTnTim(Ikia,q))return;

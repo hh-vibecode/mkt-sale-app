@@ -6,7 +6,9 @@
 //   -> anh: "từ hôm nay m tự tạo đơn, gắn sỉ lẻ, tiềm năng vs đạt trên pancake luôn", "m tự gắn sỉ lẻ cho data mới từ hôm nay, cái nào
 //   sale gắn thì thôi, ưu tiên dữ liệu của sale".
 // Nguồn: view qc_khach_tiem_nang_ngay (app QC, 2 lượt chấm / ngày 12h–14h & 20h–22h VN), dòng ngay >= 1/11/2026.
-//   TIỀM NĂNG = chua_khai_thac, nhom 'tiem_nang', hoặc "Khách dừng" -> thẻ khách "LEAD TIỀM NĂNG"
+//   TIỀM NĂNG = chua_khai_thac hoặc nhom 'tiem_nang' (THEO ĐÚNG QC — 23/11 ~10h40 anh: "báo giá xong không nói gì ... là đạt thôi") -> "LEAD TIỀM NĂNG"
+//   NÂNG THẺ: hội thoại đã gắn LEAD ĐẠT mà QC chuyển sang tiềm năng (khách nhắn lại) -> thêm LEAD TIỀM NĂNG nếu Sale chưa đụng (thẻ khách
+//   chưa có CHỐT ĐƠN / LEAD KO ĐẠT / TIỀM NĂNG, Phân loại app không do người chọn). KHÔNG tự hạ tiềm năng -> đạt.
 //   ĐẠT = phần còn lại -> thẻ khách "LEAD ĐẠT"
 //   SỈ / LẺ = cột loai_khach của QC ('si' -> KH SỈ, còn lại KH LẺ) — CHỈ gắn khi khách chưa có KH SỈ / KH LẺ (Sale gắn rồi thì giữ).
 // Mỗi hội thoại (chưa có trong nhật ký pancake_gan_the_qc):
@@ -46,7 +48,7 @@ async function lay(url) {
   return null;
 }
 function nhomCua(q) {
-  if (q.chua_khai_thac === true || q.nhom === 'tiem_nang' || /^Khách dừng/i.test(q.ly_do_nhom || '')) return 'tiem_nang';
+  if (q.chua_khai_thac === true || q.nhom === 'tiem_nang') return 'tiem_nang';
   return 'dat';
 }
 function daXep(tags, nhom) {   // thẻ trạng thái khách đã có -> không gắn LEAD
@@ -63,7 +65,10 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
   const HJ = { ...HSB };
   const dauR = await fetch(`${SB}/rest/v1/qc_khach_tiem_nang_ngay?select=danh_gia_luc&ngay=gte.${TU_NGAY}&order=danh_gia_luc.desc&limit=1`, { headers: { ...HJ, Prefer: 'count=exact' } });
   if (!dauR.ok) throw new Error('Đọc view QC lỗi ' + dauR.status);
-  const dau = String(((await dauR.json())[0] || {}).danh_gia_luc || '') + '|' + String(dauR.headers.get('content-range') || '').split('/')[1];
+  // + số dòng tiềm năng: QC đổi LUẬT nhóm (không chấm lại) thì danh_gia_luc / số dòng có thể giữ nguyên mà nhóm đổi (23/11)
+  const tnR = await fetch(`${SB}/rest/v1/qc_khach_tiem_nang_ngay?select=pancake_conversation_id&ngay=gte.${TU_NGAY}&nhom=eq.tiem_nang&limit=1`, { headers: { ...HJ, Prefer: 'count=exact' } });
+  const dau = String(((await dauR.json())[0] || {}).danh_gia_luc || '') + '|' + String(dauR.headers.get('content-range') || '').split('/')[1]
+    + '|tn' + String((tnR.ok && tnR.headers.get('content-range')) || '').split('/')[1];
   const moc = (await sbAll(SB, KHOA, 'job_moc', 'select=dau_van&ten=eq.gan-the-qc'))[0];
   const choBu = (await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id&order_id=not.is.null&or=(sale_gan.is.null,ngay_nhan.is.null)&limit=1')).length;
   if (process.env.CHAY_NGAY !== '1' && moc && moc.dau_van === dau && !choBu) { console.log('Gắn thẻ QC: view QC chưa có lần chấm mới — bỏ qua'); return; }
@@ -111,10 +116,17 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
     }
     if (cho.length) console.log(`Ghi bù cho đơn job tạo: Sale ${bu} · ngày khách nhắn ${buNgay} / ${cho.length} dòng chờ`);
   }
-  const da = new Set((await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id&order=conversation_id')).map(r => r.conversation_id));
+  const nkCu = await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id,nhom,ket,tag_ten,the_truoc,the_si_le,the_sau,shop_id&order=conversation_id');
+  const da = new Set(nkCu.map(r => r.conversation_id));
   const moi = view.filter(q => q.page_id && q.pancake_conversation_id && !da.has(q.pancake_conversation_id)).slice(0, GIOI_HAN);
-  console.log(`Gắn thẻ QC: view ${view.length} hội thoại · đã xử lý trước ${da.size} · lượt này ${moi.length}${XEM ? ' (KHO=1: chạy thử)' : ''}`);
-  if (!moi.length) { await luuDau(); return; }
+  // ĐỒNG BỘ NHÓM (anh Hải 23/11/2026 ~10h45: "xử lý lại đống data trên app và pancake cho chuẩn theo rule vừa làm luôn, clear bớt tiềm năng đi"):
+  // hội thoại job ĐÃ gắn LEAD mà QC nay xếp nhóm khác -> sửa thẻ theo QC, CHỈ KHI SALE CHƯA ĐỤNG: thẻ khách hiện tại đúng y bộ job để lại
+  // (the_sau; dòng cũ chưa có thì dựng = the_truoc + Sỉ/Lẻ + LEAD job gắn) và Phân loại app không do người chọn.
+  //   tiềm năng -> đạt: gỡ LEAD TIỀM NĂNG (chỉ khi do job gắn), thêm LEAD ĐẠT nếu thiếu.   đạt -> tiềm năng: thêm LEAD TIỀM NĂNG.
+  const viewCua = {}; view.forEach(q => { viewCua[q.pancake_conversation_id] = q; });
+  const doiNhom = nkCu.filter(x => x.ket === 'gan' && x.tag_ten && viewCua[x.conversation_id] && nhomCua(viewCua[x.conversation_id]) !== x.nhom).slice(0, GIOI_HAN);
+  console.log(`Gắn thẻ QC: view ${view.length} hội thoại · đã xử lý trước ${da.size} · mới ${moi.length} · đổi nhóm ${doiNhom.length}${XEM ? ' (KHO=1: chạy thử)' : ''}`);
+  if (!moi.length && !doiNhom.length) { await luuDau(); return; }
 
   const donCua = {}, donTheoConv = {}, donTheoSo = {};
   const l9 = s => { const d = String(s || '').replace(/\D/g, ''); return d.length >= 9 ? d.slice(-9) : ''; };
@@ -131,7 +143,7 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
   const ttApp = {};
   {
     const leadCua = {};
-    moi.forEach(q => {
+    moi.concat(doiNhom.map(x => viewCua[x.conversation_id])).forEach(q => {
       const ds = [...(donTheoConv[q.pancake_conversation_id] || [])];
       ds.slice().forEach(o => { const k = l9(o.phone); if (k) ds.push(...(donTheoSo[k] || [])); });
       leadCua[q.pancake_conversation_id] = [...new Set(ds.filter(o => SHOP_CODE[o.shop_id] && o.system_id).map(o => 'L-' + SHOP_CODE[o.shop_id] + '-' + String(o.system_id).padStart(4, '0')))];
@@ -153,8 +165,44 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
       headers: { ...HSB, Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(rows) });
     if (!r.ok) throw new Error('Ghi nhật ký lỗi ' + r.status + ' ' + (await r.text()).slice(0, 200));
   };
-  const dem = { tao_don: 0, gan_lead: 0, gan_sile: 0, bo_qua: 0, cho: 0, loi: 0 }, theoThe = {};
+  const dem = { tao_don: 0, gan_lead: 0, gan_sile: 0, bo_qua: 0, cho: 0, loi: 0, doi_nhom: 0, doi_bo: 0 }, theoThe = {};
   const cong = k => { theoThe[k] = (theoThe[k] || 0) + 1; };
+  const tachThe = s => String(s || '').split(',').map(x => x.trim()).filter(Boolean);
+  const cungBo = (a, b) => { const A = [...new Set(a.map(x => x.toUpperCase()))].sort().join('|'), B = [...new Set(b.map(x => x.toUpperCase()))].sort().join('|'); return A === B; };
+
+  // ── ĐỒNG BỘ NHÓM cho hội thoại đã gắn ──
+  for (const x of doiNhom) {
+    const q = viewCua[x.conversation_id], nhomMoi = nhomCua(q), conv = x.conversation_id;
+    const capNk = async body => { if (!XEM) await fetch(`${SB}/rest/v1/pancake_gan_the_qc?conversation_id=eq.${encodeURIComponent(conv)}`, { method: 'PATCH', headers: { ...HSB, Prefer: 'return=minimal' }, body: JSON.stringify(body) }); };
+    const tt = ttApp[conv];
+    if (tt && !['Lead mới', '(chưa cập nhật)'].includes(tt)) { dem.doi_bo++; await capNk({ ket: 'sale_xu_ly', ghi_chu: 'QC đổi nhóm -> ' + nhomMoi + ' nhưng Sale đã chọn "' + tt + '" trên app — giữ' }); continue; }
+    const m = /(\d+)\/([0-9a-f-]{36})/i.exec(x.tag_ten || '');
+    if (!m) { dem.doi_bo++; continue; }
+    const shop = m[1], cid = m[2];
+    const j = await lay(pos(`shops/${shop}/customers/${cid}`)); const kh = j && (j.data || j);
+    const hienTai = kh && (Array.isArray(kh.tags) ? kh.tags : (kh.shop_customer && kh.shop_customer.tags));
+    if (!Array.isArray(hienTai)) { dem.loi++; console.log('  không đọc được thẻ khách', shop, cid); continue; }
+    const theJob = String(x.tag_ten).split(' (')[0];
+    const ky = x.the_sau ? tachThe(x.the_sau) : [...tachThe(x.the_truoc), ...(x.the_si_le ? [x.the_si_le] : []), theJob];
+    if (!cungBo(hienTai, ky)) { dem.doi_bo++; await capNk({ ket: 'sale_xu_ly', ghi_chu: 'QC đổi nhóm -> ' + nhomMoi + ' nhưng thẻ khách đã khác lúc job gắn (Sale đã đụng: ' + hienTai.join(', ') + ') — giữ' }); continue; }
+    let moiThe = hienTai.slice();
+    const daCoTruoc = t => tachThe(x.the_truoc).some(y => y.toUpperCase() === t);
+    if (nhomMoi === 'dat') {
+      if (!daCoTruoc('LEAD TIỀM NĂNG')) moiThe = moiThe.filter(t => t.toUpperCase() !== 'LEAD TIỀM NĂNG');
+      if (!moiThe.some(t => /TIỀM NĂNG/i.test(t)) && !moiThe.some(t => t.toUpperCase() === 'LEAD ĐẠT')) moiThe.push('LEAD ĐẠT');
+    } else if (!moiThe.some(t => /TIỀM NĂNG/i.test(t))) moiThe.push('LEAD TIỀM NĂNG');
+    if (cungBo(moiThe, hienTai)) { await capNk({ nhom: nhomMoi }); continue; }
+    cong('đổi nhóm -> ' + (nhomMoi === 'dat' ? 'ĐẠT' : 'TIỀM NĂNG')); dem.doi_nhom++;
+    if (XEM) continue;
+    const r = await fetch(pos(`shops/${shop}/customers/${cid}`), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { tags: moiThe } }) });
+    if (!r.ok) { dem.loi++; dem.doi_nhom--; console.log('  đổi nhóm lỗi', conv, r.status); continue; }
+    await capNk({ nhom: nhomMoi, the_sau: moiThe.join(', '), tag_ten: THE_NHOM[nhomMoi] + ' (khách POS ' + shop + '/' + cid + ')',
+      ghi_chu: 'đổi nhóm theo QC ' + new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 16).replace('T', ' ') + ' (' + x.nhom + ' -> ' + nhomMoi + ')' });
+    // bản sao trong hub: mọi đơn của khách này trên shop đó
+    (donTheoConv[conv] || []).filter(o => String(o.shop_id) === shop).forEach(o => fetch(`${SB}/rest/v1/datahub_orders?shop_id=eq.${o.shop_id}&order_id=eq.${o.order_id}`,
+      { method: 'PATCH', headers: { ...HSB, Prefer: 'return=minimal' }, body: JSON.stringify({ customer_tags: moiThe.join(', ') }) }).catch(() => null));
+    await sleep(200);
+  }
 
   for (const q of moi) {
     const pg = q.page_id, conv = q.pancake_conversation_id, tt = ttApp[conv] || '';
@@ -230,7 +278,7 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
     if (them.includes(theSiLe)) { dem.gan_sile++; cong(theSiLe); }
     if (!x) { dem.gan_lead++; cong(canThe); }
     nk.push({ ...dong, nhom, shop_id: d.shop_id, order_id: taoMoi ? taoMoi.id : null, the_si_le: them.includes(theSiLe) ? theSiLe : null,
-      the_truoc: cu.join(', ') || null, tag_ten: x ? null : canThe + ' (khách POS ' + d.shop_id + '/' + cid + ')', ket: 'gan', ghi_chu: x ? 'LEAD bỏ qua: khách đã có ' + x : null });
+      the_truoc: cu.join(', ') || null, the_sau: moiThe.join(', '), tag_ten: x ? null : canThe + ' (khách POS ' + d.shop_id + '/' + cid + ')', ket: 'gan', ghi_chu: x ? 'LEAD bỏ qua: khách đã có ' + x : null });
     await fetch(`${SB}/rest/v1/datahub_orders?shop_id=eq.${d.shop_id}&order_id=eq.${d.order_id}`, { method: 'PATCH',
       headers: { ...HSB, Prefer: 'return=minimal' }, body: JSON.stringify({ customer_tags: moiThe.join(', ') }) }).catch(() => null);
     if (nk.length >= 20) await ghi(nk.splice(0));
@@ -238,7 +286,7 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
   }
   await ghi(nk);
   if (!dem.loi) await luuDau();   // lỗi -> giữ dấu cũ, lượt 10 phút sau thử lại
-  console.log(`Gắn thẻ QC xong: ${XEM ? 'SẼ' : 'đã'} tạo đơn ${dem.tao_don} · gắn LEAD ${dem.gan_lead} · gắn Sỉ/Lẻ ${dem.gan_sile} · bỏ qua ${dem.bo_qua} · chờ lượt sau ${dem.cho} · lỗi ${dem.loi}`);
+  console.log(`Gắn thẻ QC xong: ${XEM ? 'SẼ' : 'đã'} tạo đơn ${dem.tao_don} · gắn LEAD ${dem.gan_lead} · gắn Sỉ/Lẻ ${dem.gan_sile} · bỏ qua ${dem.bo_qua} · chờ lượt sau ${dem.cho} · đổi nhóm ${dem.doi_nhom} (giữ vì Sale đã xử lý ${dem.doi_bo}) · lỗi ${dem.loi}`);
   Object.entries(theoThe).forEach(([k, v]) => console.log('   ', k + ':', v));
   if (dem.loi) process.exitCode = 1;
 })().catch(e => { console.error(an(e && e.message || e)); process.exit(1); });

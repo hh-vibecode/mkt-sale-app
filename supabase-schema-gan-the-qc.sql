@@ -24,3 +24,4 @@ alter table pancake_gan_the_qc add column if not exists order_id text;          
 alter table pancake_gan_the_qc add column if not exists the_si_le text;         -- KH SỈ / KH LẺ job gắn (null = khách đã có / không gắn)
 alter table pancake_gan_the_qc add column if not exists sale_gan text;          -- Sale QC đã ghi vào saleretail_manual.si_sale cho đơn job tạo (null = chưa ghi, chờ đơn về hub)
 alter table pancake_gan_the_qc add column if not exists ngay_nhan date;         -- ngày khách bắt đầu nhắn (giờ VN, inserted_at hội thoại) -> saleretail_manual.ngay_tao_sua
+alter table pancake_gan_the_qc add column if not exists the_sau text;           -- bộ thẻ khách ngay sau khi job ghi -> so với thẻ hiện tại để biết Sale đã đụng chưa (đồng bộ nhóm)
