@@ -36,6 +36,8 @@ function nhomCua(q) {
 
 (async () => {
   if (!TOKEN || !KHOA) { console.error('Thiếu PANCAKE_SESSION_TOKEN / SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); }
+  // TẠM DỪNG 23/11/2026 ~09:40 (anh Hải: "m nhầm thẻ rồi") -- chờ anh chỉ đúng thẻ tiềm năng / đạt rồi mới bật lại. CHAY_NGAY=1 vẫn chạy tay được.
+  if (process.env.CHAY_NGAY !== '1') { console.log('Gắn thẻ QC: TẠM DỪNG — chờ anh Hải chốt đúng thẻ'); return; }
   const gioVN = new Date(Date.now() + 7 * 3600e3).getUTCHours();
   if (process.env.CHAY_NGAY !== '1' && ![14, 22].includes(gioVN)) { console.log('Gắn thẻ QC: ngoài khung 14h / 22h VN (giờ VN ' + gioVN + 'h) — bỏ qua'); return; }
 
