@@ -7861,10 +7861,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/11 09:30';
+const APP_VERSION='23/11 09:32';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=603;
+const APP_BAN=604;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -10251,11 +10251,18 @@ function rptSlPcLink(r){const c=rptSlPcConv(r);if(!c)return '';
 // TẢI NHẸ: chỉ hội thoại của khách đang hiện trên trang (≤ 50 / trang, ~1,2 nghìn ký tự / hội thoại), tải ngầm sau khi bảng vẽ xong,
 // nhớ trong phiên; hội thoại không có trong QC nhớ là null để không hỏi lại. Chưa có thì ô giữ bong bóng lượt chăm sóc như cũ.
 window._pcTh=window._pcTh||{};window._pcThCan=window._pcThCan||new Set();
+// PHẠM VI (anh Hải 23/11/2026: "m lấy hội thoại của tệp tiềm năng với tệp có trong app thôi"): chỉ hỏi hội thoại của KHÁCH TRONG APP đang
+// hiện trên bảng (Master / CRM) và của TỆP TIỀM NĂNG QC (bấm bong bóng ở Daily Task) -- không kéo cả bảng hội thoại QC.
 function rptPcThTai(){
   if(window._pcThHen)return;
   window._pcThHen=setTimeout(async()=>{window._pcThHen=null;
-    const can=[...window._pcThCan].filter(c=>!(c in window._pcTh)&&!(window._pcThDang||{})[c]);window._pcThCan.clear();
-    if(!can.length)return;window._pcThDang=window._pcThDang||{};can.forEach(c=>window._pcThDang[c]=1);
+    const can=[...window._pcThCan];window._pcThCan.clear();
+    if(await rptPcThNap(can)){try{const p=Object.values(RPT_SL_CFG).map(c=>c.page).find(k=>{const el=document.getElementById('page-'+k);return el&&el.classList.contains('active');});if(p)rptSlRender();}catch(e){}}
+  },0);
+}
+async function rptPcThNap(ds){
+    const can=ds.filter(c=>c&&!(c in window._pcTh)&&!(window._pcThDang||{})[c]);
+    if(!can.length)return 0;window._pcThDang=window._pcThDang||{};can.forEach(c=>window._pcThDang[c]=1);
     let moi=0;
     for(let i=0;i<can.length;i+=40){const g=can.slice(i,i+40);
       try{const rows=await sbFetchAll('sale_response_review','select=id,conv_id,full_thread,pancake_url&conv_id=in.('+g.map(c=>'"'+encodeURIComponent(c)+'"').join(',')+')&verdict=neq.khong_lien_quan&conv_date=gte.2026-11-01&order=id.desc');
@@ -10269,8 +10276,17 @@ function rptPcThTai(){
           tt.forEach(t=>{const x=theoId[t.review_id];if(x&&x.tom_tat==null&&String(t.ly_do||'').trim())x.tom_tat=String(t.ly_do).trim();});}catch(e){console.warn('tom tat QC',e);}}}
       catch(e){console.warn('rptPcThTai',e);}   // lỗi: không đánh dấu -> lần vẽ sau thử lại
       finally{g.forEach(c=>delete window._pcThDang[c]);}}
-    if(moi){try{const p=Object.values(RPT_SL_CFG).map(c=>c.page).find(k=>{const el=document.getElementById('page-'+k);return el&&el.classList.contains('active');});if(p)rptSlRender();}catch(e){}}
-  },0);
+    return moi;
+}
+// bấm bong bóng ở dòng tệp tiềm năng (Daily Task): tải đúng 1 hội thoại rồi mở
+async function rptPcMo(conv,key,nut){
+  if(!(conv in window._pcTh)){if(nut)nut.style.opacity='.5';await rptPcThNap([conv]);if(nut)nut.style.opacity='';}
+  if(window._pcTh[conv])return rptPcXemHt(conv,key);
+  let md=document.getElementById('qcModal');if(!md){md=document.createElement('div');md.id='qcModal';document.body.appendChild(md);}
+  md.innerHTML='<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)qcCloseModal()">'
+   +'<div style="background:var(--surface);border-radius:14px;max-width:420px;width:100%;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.35)"><div style="font-weight:800;margin-bottom:6px">Hội thoại Pancake</div>'
+   +'<div style="font-size:12.5px;color:var(--text2)">QC chưa có nội dung hội thoại này (từ 1/11). Mở trực tiếp trên Pancake.</div>'
+   +'<div style="text-align:right;margin-top:12px"><button onclick="qcCloseModal()" class="btn-ghost" style="margin:0;padding:6px 14px;font-size:12px">Đóng</button></div></div></div>';
 }
 function rptPcThDong(t){const out=[];
   for(const l0 of String(t||'').split(/\r?\n/)){const l=l0.trim();if(!l)continue;
@@ -11846,6 +11862,7 @@ function qcTnHtml(ds){
           +(!x.ckt&&Q.ly_do_nhom?'<div style="font-weight:700;color:'+(x.choSale?'var(--red)':'var(--text)')+'">'+e(Q.ly_do_nhom)+'</div>':'')
           +'<div style="color:var(--text2)">'+e(Q.ly_do||'')+'</div></td>'
         +'<td onclick="rptSlStop(event)" style="white-space:nowrap">'
+          +(Q.pancake_conversation_id?'<button onclick="rptPcMo('+q+e(Q.pancake_conversation_id).replace(/'/g,'')+q+','+q+k+q+',this)" title="Xem hội thoại Pancake (QC)" style="display:inline-flex;vertical-align:middle;align-items:center;justify-content:center;width:32px;height:26px;margin-right:5px;border:1.5px solid var(--accent);border-radius:13px;background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent);cursor:pointer"><span style="width:15px;height:15px;display:inline-flex">'+ic('chat')+'</span></button>':'')
           +(Q.pancake_url?'<a href="'+e(Q.pancake_url)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;border:1.5px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;height:26px;padding:0 11px;font-size:11px;font-weight:700;text-decoration:none">Mở hội thoại</a>':'')
           +(r?'<button onclick="rptSlShowCustomer('+q+k+q+');rptSlCsMoForm()" style="margin-left:5px;border:1.5px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:7px;height:26px;padding:0 10px;cursor:pointer;font-size:11px;font-weight:700">+ Lượt chăm sóc</button>':'')
         +'</td></tr>';}).join('')
