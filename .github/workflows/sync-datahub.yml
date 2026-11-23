@@ -48,6 +48,14 @@ jobs:
           PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/gan-the-qc.js
+      # Tự chuyển khách tiềm năng -> "Không tiềm năng" + thẻ khách LEAD ĐẠT sau 7 ngày Sale nhắn mà khách im / chưa SĐT (anh Hải 23/11/2026),
+      # khách nhắn lại thì tự trả. Tối đa 1 lượt / 6 giờ, 7h–22h VN (nạp app nặng). Lỗi không chặn sync.
+      - name: Tự chuyển Không tiềm năng sau 7 ngày
+        continue-on-error: true
+        env:
+          PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/tu-khong-tiem-nang.js
       - name: Sync đơn hàng Pancake -> Supabase
         env:
           PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}

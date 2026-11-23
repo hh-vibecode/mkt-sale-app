@@ -155,9 +155,13 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
     }
     Object.entries(leadCua).forEach(([c, ids]) => {
       for (const id of ids) { const m = man[id]; const v = String((m && m.si_phan_loai) || '').trim();
-        if (v && m.updated_by && !/^(monsieur claude|auto-)/i.test(String(m.updated_by).trim())) { ttApp[c] = v; break; } }
+        // + "Không tiềm năng" do job 7 ngày đặt (tu-khong-tiem-nang.js) cũng là đã xử lý -> không gắn lại LEAD TIỀM NĂNG (23/11/2026)
+        if (v && m.updated_by && (!/^(monsieur claude|auto-)/i.test(String(m.updated_by).trim()) || String(m.updated_by).trim() === 'Monsieur Claude (7 ngày)')) { ttApp[c] = v; break; } }
     });
   }
+  // khách job 7 ngày đang để "Không tiềm năng" (chưa trả lại) -> coi như đã xử lý, theo mã HỘI THOẠI (khách gộp có thể khác Lead ID)
+  (await sbAll(SB, KHOA, 'khach_khong_tiem_nang_tu_dong', 'select=conversation_id&tra_lai_luc=is.null&conversation_id=not.is.null&order=conversation_id'))
+    .forEach(x => { ttApp[x.conversation_id] = 'Không tiềm năng'; });
   const nk = [];
   const ghi = async rows => {
     if (XEM || !rows.length) return;
