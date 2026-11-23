@@ -7861,10 +7861,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/11 11:09';
+const APP_VERSION='23/11 14:13';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=609;
+const APP_BAN=610;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -11847,8 +11847,11 @@ function qcTnDs(){
   const C=window._qcTn;if(!C.rows){qcTnLoad();return [];}
   if(Date.now()-C.luc>10*60e3)qcTnLoad();   // làm mới ngầm, lần vẽ sau có số mới
   const L=rptSlType(),sc=dashToanQuyenXem()?[]:dashSales();
-  let Iday,Ikia;try{Iday=qcTnIdx(rptSlBuildMaster());}catch(e){Iday={conv:{},sdt:{}};}
-  try{Ikia=qcTnIdx(rptSlMasterLoaiKia(false));}catch(e){Ikia={conv:{},sdt:{}};}
+  // Nối khách trên Master KHÔNG LỌC PHẠM VI (23/11/2026) -- chỉ để biết khách thuộc Lẻ / Sỉ và Sale app nào đứng tên; dòng ngoài phạm vi
+  // tài khoản vẫn bị bỏ ở bước lọc Sale bên dưới, không hiện gì của khách người khác. Trước đây nối trên Master đã lọc phạm vi -> Sale
+  // không nối được khách của Sale khác, rơi về Sale QC ghi (Nguyên vẫn thấy Phan Dung dù app đứng tên Vân Ngọc).
+  let Iday,Ikia;try{Iday=qcTnIdx(rptSlMasterLoaiKia(true,L));}catch(e){Iday={conv:{},sdt:{}};}
+  try{Ikia=qcTnIdx(rptSlMasterLoaiKia(true));}catch(e){Ikia={conv:{},sdt:{}};}
   const out=[];
   // TIỀM NĂNG THỰC SỰ / KHÁCH ĐẠT (anh Hải chốt 23/11/2026, QC chia trong view từ 23/11 08:36, cột nhom = 'tiem_nang' | 'dat'):
   //  tiềm năng = khách vẫn để mở (khách hỏi chờ Sale, hoặc Sale đáp < 7 ngày), không chê đắt, HOẶC Sale chưa khai thác hết -> GIAO VIỆC;
@@ -11860,9 +11863,13 @@ function qcTnDs(){
   C.rows.forEach(q=>{const ln=String(q.ly_do_nhom||'');if(C.ktn&&C.ktn.has(q.pancake_conversation_id)&&q.chua_khai_thac!==true)return;if(ln==='Khách từ chối hẳn'&&q.chua_khai_thac!==true)return;
     // ĐỔI 23/11 ~10h40 (anh: "báo giá xong không nói gì không được tính là tiềm năng nữa, là đạt thôi, xử lý lại với QC"): app làm ĐÚNG cột
     // nhom của QC (QC áp luật mới trong view), bỏ phần tự coi "Khách dừng" là tiềm năng (luật (3) ở trên hết hiệu lực).
-    let laDat=q.nhom==='dat'&&q.chua_khai_thac!==true;const sale=bcnSaleNhan(q.sale);
-    if(sc.length&&!sc.includes(sale))return;
+    let laDat=q.nhom==='dat'&&q.chua_khai_thac!==true;
     const r=qcTnTim(Iday,q);
+    // SALE = SALE APP ĐÃ CHỐT khi khách nối được (gán tay > Kiot > Pancake, như Master / CRM), chỉ khách chưa có trong app mới theo
+    // Sale QC ghi (anh Hải 23/11/2026 hỏi Phan Dung L-SD-2017: "data này Ngọc đang tl chứ nhỉ" — QC ghi Nguyên vì hôm đó Sale chưa
+    // nhắn, app đứng tên Vân Ngọc -> việc đỏ "chờ Sale" rơi sang Nguyên, Ngọc không thấy).
+    const sale=r&&r.staff?bcnSaleNhan(r.staff):bcnSaleNhan(q.sale);
+    if(sc.length&&!sc.includes(sale))return;
     if(!r){if(qcTnTim(Ikia,q))return;
       const d=sale?rptSlDoiCuaSale(sale):'Lẻ',loai=d==='Cả 2'?(/sỉ/i.test(q.kenh||'')?'Sỉ':'Lẻ'):d;
       if(loai!==L)return;}
