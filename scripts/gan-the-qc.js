@@ -57,6 +57,81 @@ function daXep(tags, nhom) {   // thẻ trạng thái khách đã có -> không 
 }
 const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim()));
 
+// ── ĐỒNG BỘ SALE THEO QC (anh Hải chốt 23/11/2026, qua QC + xác nhận trong chat MKT "Theo QC, trừ Sale tự gán") ──
+// Khách trong view QC (từ 1/11) đứng tên Sale = cột sale của view (QC a82705a: người CÓ TÊN nhắn gần nhất trên Pancake, quy ra tên nhân sự),
+// kể cả khi khác luật riêng của app (khách sỉ Shidai -> Nguyên). Ghi vào Sale gán tay saleretail_manual.si_sale của mọi Lead ID cùng
+// hội thoại + cùng SĐT. KHÔNG ĐỤNG:
+//   - SALE TỰ GÁN: si_sale đã có tên do NGƯỜI ghi (người sửa cuối của dòng không phải job, hoặc activity_log ô si_sale do người sửa),
+//     trừ khi si_sale đúng bằng tên job ghi lần trước (pancake_gan_the_qc.sale_gan) và không có người sửa ô si_sale. si_sale '' = đã thu hồi.
+//   - khách đã chốt / đã nối Kiot (thẻ khách CHỐT ĐƠN, hoặc kiot_code trên hồ sơ): gán tay thắng người bán Kiot -> đổi sẽ xê dịch doanh thu.
+//   - tên QC không có trong Nhân sự Sale đang làm.
+// Dòng đã có: chỉ PATCH si_sale (giữ updated_by / updated_at — job 7 ngày + bước "Sale đã cập nhật" dựa vào đó). Dòng mới: updated_by job.
+async function dongBoSale(view) {
+  const ns = new Set((await sbAll(SB, KHOA, 'sale_nhan_su', 'select=ten,dang_lam&order=ten')).filter(x => x.dang_lam !== false).map(x => x.ten));
+  const qs = view.filter(q => q.pancake_conversation_id && q.sale && ns.has(q.sale));
+  if (!qs.length) return;
+  const l9 = s => { const d = String(s || '').replace(/\D/g, ''); return d.length >= 9 ? d.slice(-9) : ''; };
+  const leadOf = o => SHOP_CODE[o.shop_id] && o.system_id ? 'L-' + SHOP_CODE[o.shop_id] + '-' + String(o.system_id).padStart(4, '0') : '';
+  const convs = [...new Set(qs.map(q => q.pancake_conversation_id))], donConv = [];
+  for (let i = 0; i < convs.length; i += 50)
+    donConv.push(...await sbAll(SB, KHOA, 'datahub_orders', 'select=shop_id,system_id,phone,conversation_id,customer_tags,staff_name&conversation_id=in.(' + convs.slice(i, i + 50).map(encodeURIComponent).join(',') + ')&order=conversation_id'));
+  const so = [...new Set(donConv.map(o => l9(o.phone)).filter(Boolean))], donSo = [];
+  for (let i = 0; i < so.length; i += 50)
+    donSo.push(...await sbAll(SB, KHOA, 'datahub_orders', 'select=shop_id,system_id,phone,conversation_id,customer_tags&or=(' + so.slice(i, i + 50).map(k => 'phone.like.*' + k).join(',') + ')&order=shop_id,system_id'));
+  const theoSo = {}; donSo.forEach(o => { const k = l9(o.phone); if (k) (theoSo[k] = theoSo[k] || []).push(o); });
+  const nhom = {};
+  qs.forEach(q => {
+    const ds = donConv.filter(o => o.conversation_id === q.pancake_conversation_id);
+    ds.slice().forEach(o => ds.push(...(theoSo[l9(o.phone)] || [])));
+    if (!ds.length) return;
+    const goc = donConv.filter(o => o.conversation_id === q.pancake_conversation_id);
+    nhom[q.pancake_conversation_id] = { q, goc, ids: [...new Set(ds.map(leadOf).filter(Boolean))], chot: ds.some(o => /CHỐT ĐƠN/i.test(o.customer_tags || '')) };
+  });
+  const tat = [...new Set(Object.values(nhom).flatMap(x => x.ids))], man = {}, nguoiSua = new Set();
+  const laJob = s => /^(monsieur claude|auto-)/i.test(String(s || '').trim());
+  for (let i = 0; i < tat.length; i += 80) {
+    const ph = tat.slice(i, i + 80).map(encodeURIComponent).join(',');
+    (await sbAll(SB, KHOA, 'saleretail_manual', 'select=lead_id,si_sale,updated_by,kiot_code&lead_id=in.(' + ph + ')&order=lead_id')).forEach(m => { man[m.lead_id] = m; });
+    (await sbAll(SB, KHOA, 'activity_log', 'select=ref,who&fld=eq.si_sale&ref=in.(' + ph + ')&order=ref')).forEach(x => { if (!laJob(x.who)) nguoiSua.add(x.ref); });
+  }
+  // Chỉ hội thoại đã có dòng nhật ký pancake_gan_the_qc: tên job ghi được lưu ở sale_gan để lượt sau phân biệt "job gán" với "Sale tự gán"
+  // (dòng hồ sơ có sẵn giữ người sửa cũ, nên không dựa vào updated_by được). Hội thoại mới -> lượt sau, khi bước gắn thẻ đã ghi nhật ký.
+  const jobGhi = {}, coDong = new Set();
+  (await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id,sale_gan&order=conversation_id')).forEach(x => { coDong.add(x.conversation_id); if (x.sale_gan) jobGhi[x.conversation_id] = x.sale_gan; });
+  const dem = { doi: 0, dung: 0, tu_gan: 0, chot: 0, cho: 0 }, ghiMoi = [], vaLai = [], nhat = [], bao = [];
+  for (const [conv, g] of Object.entries(nhom)) {
+    const sale = g.q.sale;
+    if (!coDong.has(conv)) { dem.cho++; continue; }
+    if (g.chot || g.ids.some(id => man[id] && man[id].kiot_code)) { dem.chot++; continue; }
+    const tuGan = g.ids.some(id => { const m = man[id]; if (!m || m.si_sale === null || m.si_sale === undefined) return false;
+      if (String(m.si_sale).trim() === '') return true;   // thu hồi
+      if (nguoiSua.has(id)) return true;
+      if (m.si_sale === jobGhi[conv]) return false;   // tên job ghi lần trước
+      return !laJob(m.updated_by); });
+    if (tuGan) { dem.tu_gan++; continue; }
+    // Chưa ai gán tay + đơn của hội thoại do chính Sale QC tạo + không phải shop Shidai (luật app khách sỉ Shidai -> Nguyên) -> app
+    // vốn đã tự suy ra đúng Sale đó: KHÔNG ghi (ghi thừa thành gán tay, sau này đè cả người bán Kiot).
+    const tenKhop = t => { const a = String(t || '').trim().toLowerCase(); return a.length >= 3 && sale.toLowerCase().includes(a); };
+    if (g.ids.every(id => !man[id] || man[id].si_sale === null) && g.goc.length && g.goc.every(o => String(o.shop_id) !== '1943052948' && tenKhop(o.staff_name))) { dem.dung++; continue; }
+    const can = g.ids.filter(id => !man[id] || man[id].si_sale !== sale);
+    if (!can.length) { dem.dung++; continue; }
+    dem.doi++; bao.push(`${g.q.ten_khach} ${g.ids.join('/')}: ${[...new Set(g.ids.map(id => (man[id] && man[id].si_sale) || '(trống)'))].join('/')} -> ${sale}`);
+    can.forEach(id => { if (man[id]) vaLai.push(['lead', id, sale]); else ghiMoi.push({ lead_id: id, si_sale: sale, updated_by: 'Monsieur Claude (QC)', updated_at: new Date().toISOString() });
+      nhat.push({ who: 'Monsieur Claude', act: 'U', tbl: 'saleretail_manual', ref: id, label: 'Sale theo QC (người có tên nhắn gần nhất) — anh chốt 23/11', fld: 'si_sale', old_v: (man[id] && man[id].si_sale) || null, new_v: sale }); });
+    vaLai.push([conv, sale]);
+  }
+  console.log(`Đồng bộ Sale theo QC: ${XEM ? 'SẼ ' : ''}đổi ${dem.doi} khách · đã đúng ${dem.dung} · giữ vì Sale tự gán ${dem.tu_gan} · giữ vì đã chốt / nối Kiot ${dem.chot} · chờ nhật ký ${dem.cho}`);
+  bao.forEach(s => console.log('   ', s));
+  if (XEM) return;
+  if (ghiMoi.length) { const r = await fetch(`${SB}/rest/v1/saleretail_manual?on_conflict=lead_id`, { method: 'POST', headers: { ...HSB, Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(ghiMoi) });
+    if (!r.ok) console.log('  ghi Sale mới lỗi', r.status); }
+  for (const v of vaLai) {
+    if (v[0] === 'lead') await fetch(`${SB}/rest/v1/saleretail_manual?lead_id=eq.${encodeURIComponent(v[1])}`, { method: 'PATCH', headers: { ...HSB, Prefer: 'return=minimal' }, body: JSON.stringify({ si_sale: v[2] }) });
+    else await fetch(`${SB}/rest/v1/pancake_gan_the_qc?conversation_id=eq.${encodeURIComponent(v[0])}`, { method: 'PATCH', headers: { ...HSB, Prefer: 'return=minimal' }, body: JSON.stringify({ sale_gan: v[1] }) });
+  }
+  if (nhat.length) await fetch(`${SB}/rest/v1/activity_log`, { method: 'POST', headers: { ...HSB, Prefer: 'return=minimal' }, body: JSON.stringify(nhat) }).catch(() => null);
+}
+
 (async () => {
   if (!TOKEN || !KHOA) { console.error('Thiếu PANCAKE_SESSION_TOKEN / SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); }
   // LỊCH (anh Hải 23/11/2026: "data chậm nhất 1-2h là phải có rồi", "xếp lại lịch sao cho ít phải xử lý nhất và đỡ tốn token nhất"):
@@ -116,6 +191,7 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
     }
     if (cho.length) console.log(`Ghi bù cho đơn job tạo: Sale ${bu} · ngày khách nhắn ${buNgay} / ${cho.length} dòng chờ`);
   }
+  await dongBoSale(view);
   const nkCu = await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id,nhom,ket,tag_ten,the_truoc,the_si_le,the_sau,shop_id&order=conversation_id');
   const da = new Set(nkCu.map(r => r.conversation_id));
   const moi = view.filter(q => q.page_id && q.pancake_conversation_id && !da.has(q.pancake_conversation_id)).slice(0, GIOI_HAN);
