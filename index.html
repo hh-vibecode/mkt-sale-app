@@ -1327,7 +1327,7 @@ function tblAlign(root){
     hs.forEach((th,i)=>{
       const td=bs[i];if(!td)return;
       const right=td.classList.contains('num')||/text-align:\s*right/.test(td.getAttribute('style')||'');
-      const giua=/text-align:\s*center/.test(td.getAttribute('style')||'');   // cột căn giữa (bong bóng Trao đổi gần nhất)
+      const giua=/text-align:\s*center/.test(td.getAttribute('style')||'');   // cột căn giữa (bong bóng Hội thoại Pancake)
       const want=right?'right':(giua?'center':'left');
       if(th.style.textAlign!==want)th.style.textAlign=want;
     });
@@ -7861,10 +7861,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/11 09:32';
+const APP_VERSION='23/11 09:35';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=604;
+const APP_BAN=605;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -9231,11 +9231,25 @@ function rptSlLocTTDs(){
   const ds=rptSlPhanLoaiDs();   // Lẻ + Sỉ chung 1 bộ Phân loại (06/10/2026)
   // + giá trị CŨ đã bỏ khỏi danh mục nhưng còn khách đang mang (vd "Chăm sóc dài hạn") -> vẫn lọc được để đổi hàng loạt
   let cu=[];try{cu=[...new Set(rptSlBuildMaster().map(r=>String(r.siPhanLoai||'').trim()).filter(x=>x&&!ds.includes(x)))];}catch(e){}
-  return [RPT_SL_TT_VIP,RPT_SL_TT_BL,...new Set(ds),...cu,'(chưa cập nhật)'];
+  return [RPT_SL_TT_VIP,RPT_SL_TT_BL,RPT_SL_TT_AI,...new Set(ds),...cu,'(chưa cập nhật)'];
 }
 // NHÓM KHÁCH VIP trong bộ lọc Trạng thái (anh Hải 04/11/2026): khách gắn sao VIP, BẤT KỂ phân loại. Chọn cùng mục khác = cộng gộp.
 const RPT_SL_TT_VIP='Khách VIP';
-const RPT_SL_TT_BL='Khách Blacklist';   // anh Hải 14/11/2026: "bộ lọc cho blacklist riêng như vip" -- khách Blacklist, bất kể phân loại
+const RPT_SL_TT_BL='Khách Blacklist';
+// DATA AI XỬ LÝ (anh Hải 23/11/2026: "thêm thẻ AI chỗ ngày tạo để phân biệt data nào AI xử lý, thêm bộ lọc data AI xử lý"): khách có hội thoại
+// Pancake nằm trong tệp AI của QC chấm (view qc_khach_tiem_nang_ngay, từ 1/11 -- tiềm năng hoặc đạt). Nối theo conversation_id đơn Pancake /
+// convId dòng khách (cả khách gộp), rồi SĐT. Mục lọc nằm trong bộ lọc Trạng thái như Khách VIP (chọn cùng mục khác = cộng gộp).
+const RPT_SL_TT_AI='Data AI xử lý';
+function rptSlAiQc(r){
+  const C=window._qcTn;if(!C||!C.rows){if(typeof qcTnLoad==='function')qcTnLoad();return null;}
+  if(C._idx!==C.rows){const cv={},so={};C.rows.forEach(q=>{if(q.pancake_conversation_id)cv[q.pancake_conversation_id]=q;bcnSoTrong(q.sdt).forEach(p=>{so[p]=so[p]||q;});});C._cv=cv;C._so=so;C._idx=C.rows;}
+  for(const c of [].concat((r.orders||[]).map(o=>o&&o.conversation_id),r.convId,(r.mergedRows||[]).map(m=>m.convId)))if(c&&C._cv[c])return C._cv[c];
+  for(const v of [].concat(r.phones||[],r.phone||[])){const p=String(v&&typeof v==='object'?v.so:v||'').replace(/\D/g,'').slice(-9);if(p.length===9&&C._so[p])return C._so[p];}
+  return null;}
+function rptSlLaAi(r){return !!rptSlAiQc(r);}
+function rptSlAiThe(r){const q=rptSlAiQc(r);if(!q)return '';
+  const tn=q.chua_khai_thac===true||q.nhom==='tiem_nang'||/^Khách dừng/i.test(q.ly_do_nhom||'');
+  return ' <span title="AI (QC) đã chấm: '+(tn?'Tiềm năng':'Đạt')+(q.ly_do?' — '+cvE(q.ly_do):'')+'" style="display:inline-block;vertical-align:middle;margin-left:4px;padding:0 5px;border:1px solid var(--accent);border-radius:5px;color:var(--accent);font-size:9.5px;font-weight:800;line-height:15px">AI</span>';}   // anh Hải 14/11/2026: "bộ lọc cho blacklist riêng như vip" -- khách Blacklist, bất kể phân loại
 function rptSlLocTT(r){
   const v=String(r.siPhanLoai||(r.sh||{}).phan_loai||'').trim();
   return /^chăm sóc dài hạn$/i.test(v)?'Tiềm năng, chưa ra đơn':/^mất kết nối$/i.test(v)?'Không tiềm năng':(v||'(chưa cập nhật)');   // đồng nhất 06/10 · bỏ Mất kết nối 07/10/2026
@@ -9281,7 +9295,7 @@ function rptSlApplyF(tab,list,opt){
   return list.filter(r=>(!cham||rptSlChamLoc(r).some(x=>cham.includes(x)))&&
     (!sale||sale.includes(rptSlSaleLoc(r)))&&
     (ng?ng.includes(rptSlNguonNhan(r)):!(anOffKiot&&rptSlNguonNhan(r)==='Offline · Kiot'))&&
-    (!st||st.includes(rptSlLocTT(r))||(st.includes(RPT_SL_TT_VIP)&&rptSlLaVip(r))||(st.includes(RPT_SL_TT_BL)&&rptSlLaBl(r)))&&
+    (!st||st.includes(rptSlLocTT(r))||(st.includes(RPT_SL_TT_VIP)&&rptSlLaVip(r))||(st.includes(RPT_SL_TT_BL)&&rptSlLaBl(r))||(st.includes(RPT_SL_TT_AI)&&rptSlLaAi(r)))&&
     (!sp||sp.includes(r.siSpQT||'(chưa rõ)'))&&
     (!br||rptSlBrandLoc(r).some(b=>br.includes(b))));
 }
@@ -10208,7 +10222,7 @@ function rptSlMasterRowSi(r){
   const rg=modRange(rptSlMod()),coLoc=!!(rg.from||rg.to);
   const congDon=r._chiCS?0:((r.revenue+r.repeatRevenue)||(coLoc?0:Number(sh.gia_tri_cong_don||0)));
   return '<tr style="cursor:pointer" onclick="rptSlShowCustomer(\''+r.key.replace(/'/g,"\\'")+'\',false)">'
-    +rptSlChonO(r)+'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+rptSlNhanCu(r.created||sh.ngay_tao,rptSlLyDoKy(r))+'</td>'
+    +rptSlChonO(r)+'<td style="white-space:nowrap">'+(dmy(r.created||sh.ngay_tao)||'—')+rptSlAiThe(r)+rptSlNhanCu(r.created||sh.ngay_tao,rptSlLyDoKy(r))+'</td>'
     +'<td>'+rptSiNguonChip(r)+'</td>'
     +rptSlSaleO(r)
     +'<td class="name">'+rptSlTenKhach(r)+rptSlMaDuoiTen(r)+rptSlSdtDuoiTen(r)+'</td>'   // SĐT gộp dưới mã (anh Hải 02/10/2026)
@@ -10244,7 +10258,7 @@ function rptSlPcLink(r){const c=rptSlPcConv(r);if(!c)return '';
   return '<a href="'+u+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Mở hội thoại Pancake'+(c.t?' · tin gần nhất '+dmy(c.t.slice(0,10)):'')+'"'
     +' style="display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;width:32px;height:28px;border:1.5px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text2);text-decoration:none">'
     +'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>';}
-// NGUYÊN HỘI THOẠI PANCAKE trong ô Trao đổi gần nhất (anh Hải 23/11/2026, qua QC: "tóm tắt làm gì, cái phần của m trong app là đủ rồi",
+// NGUYÊN HỘI THOẠI PANCAKE trong ô Hội thoại Pancake (trước tên Trao đổi gần nhất; anh Hải 23/11/2026, qua QC: "tóm tắt làm gì, cái phần của m trong app là đủ rồi",
 // "bảo mkt bê nguyên hội thoại m đưa vào app sang cái ô của nó"; "xử lý từ tháng 11 thôi"). Nguồn: bảng sale_response_review của app QC
 // (CHỈ ĐỌC): conv_id = conversation_id đơn Pancake, verdict <> 'khong_lien_quan', conv_date >= 1/11/2026, dòng id lớn nhất; full_thread mỗi dòng
 // "[YYYY-MM-DD HH:MM] Khách: …" / "Sale (Tên): …" / "Bot: …" (giờ VN). Bấm bong bóng mở cả hội thoại (không tóm tắt AI — dùng luôn phần QC).
@@ -10317,13 +10331,20 @@ function rptPcXemHt(conv,key){
 // TRÌNH BÀY = BONG BÓNG CHAT như cũ (anh Hải 23/11/2026, ảnh bong bóng: "trình bày thành ô chat như này mà"): ô chỉ có bong bóng (màu theo
 // lượt chăm sóc như trước); có hội thoại QC -> bấm bong bóng mở khung chat cả hội thoại (+ nút Mở trên Pancake, Lịch sử chăm sóc).
 // Chưa có hội thoại QC: bong bóng giữ việc cũ (lượt chăm sóc) + nút link Pancake nếu có hội thoại.
+// CỘT "HỘI THOẠI PANCAKE" (anh Hải 23/11/2026: "đổi thành hội thoại pancake, đồng nhất hết màu sắc đi, nhiều cái có hội thoại mà không có màu
+// là sao"): 1 bong bóng, 1 nghĩa màu -- XANH = khách có hội thoại Pancake (bấm: có nội dung QC từ 1/11 thì mở khung chat + Tóm tắt QC,
+// chưa có thì mở thẳng hội thoại trên Pancake); TRẮNG = không có hội thoại (bấm: mở tab Lịch sử chăm sóc). Bỏ màu theo lượt chăm sóc / giao việc.
 function rptSiTraoDoiO(r){
-  const c=rptSlPcConv(r),b=rptSiTraoDoiBong(r);
-  if(c){const x=window._pcTh[c.conv],q=String.fromCharCode(39);
-    if(x)return b.replace(/onclick="[^"]*"/,'onclick="rptPcXemHt('+q+cvE(c.conv).replace(/'/g,'')+q+','+q+String(r.key).replace(/'/g,'').replace(/"/g,'')+q+')"')
-      .replace(/title="[^"]*"/,'title="Xem hội thoại Pancake"');
-    if(!(c.conv in window._pcTh)){window._pcThCan.add(c.conv);rptPcThTai();}}
-  return b+rptSlPcLink(r);
+  const c=rptSlPcConv(r),q=String.fromCharCode(39),key=String(r.key).replace(/'/g,'').replace(/"/g,'');
+  const nut=(bam,tip,co)=>'<button onclick="'+bam+'" title="'+tip+'" style="display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;width:32px;height:28px;border-radius:14px;cursor:pointer;'
+    +(co?'border:1.5px solid var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent)':'border:1.5px solid var(--border);background:var(--surface);color:var(--muted)')+'">'
+    +'<span style="width:16px;height:16px;display:inline-flex">'+ic('chat')+'</span></button>';
+  if(!c)return nut('rptSlShowCustomer('+q+key+q+');rptSlCusTab('+q+'cs'+q+')','Không có hội thoại Pancake — bấm mở lịch sử chăm sóc',false);
+  const x=window._pcTh[c.conv];
+  if(!(c.conv in window._pcTh)){window._pcThCan.add(c.conv);rptPcThTai();}
+  if(x)return nut('rptPcXemHt('+q+cvE(c.conv).replace(/'/g,'')+q+','+q+key+q+')','Xem hội thoại Pancake',true);
+  const u='https://pancake.vn/'+encodeURIComponent(c.page)+'?c_id='+encodeURIComponent(c.conv);
+  return nut('window.open('+q+u+q+','+q+'_blank'+q+','+q+'noopener'+q+')','Mở hội thoại trên Pancake'+(c.t?' · tin gần nhất '+dmy(c.t.slice(0,10)):''),true);
 }
 function rptSiTraoDoiBong(r){
   const x=rptSiLuotGanNhat(r);
@@ -10416,7 +10437,7 @@ const RPT_SL_MASTER_HEAD_LE='<th>Ngày tạo</th><th>Nguồn</th><th>Kênh</th><
 // 01/10/2026 (anh Hải): bỏ "Giá trị kỳ gần nhất" + ẩn "Giá trị cộng dồn"; cột DOANH THU = đơn rơi vào bộ lọc ngày.
 const RPT_SL_MASTER_HEAD_SI='<th>Ngày tạo</th><th>Nguồn</th><th>Sales phụ trách</th>'
   +'<th>Tên cửa hàng</th><th>Phân loại KH</th>'
-  +'<th>Trao đổi gần nhất</th><th>CS cuối</th>'   // GỘP MASTER + CRM (anh Hải 07/10/2026): có lại bong bóng trao đổi gần nhất
+  +'<th>Hội thoại Pancake</th><th>CS cuối</th>'   // GỘP MASTER + CRM (anh Hải 07/10/2026): có lại bong bóng trao đổi gần nhất
   +'<th>Doanh thu</th><th></th>';
 Object.defineProperty(window,'RPT_SL_MASTER_HEAD',{get:()=>rptSlChonHetTh()+RPT_SL_MASTER_HEAD_SI.replace('<th>Phân loại KH</th>','<th>Phân loại KH'+dmBut('si_phan_loai')+'</th>')
   .replace('<th>Tên cửa hàng</th>',rptSlType()==='Sỉ'?'<th>Tên cửa hàng</th>':'<th>Họ tên khách</th>')
@@ -12798,7 +12819,7 @@ async function rptSlTraLaiViec(id,el){
 function rptSlInputHtml(){
   if(rptSlDtTab()==='xong')return rptSlDaXongHtml();   // nút "Đã hoàn thành" nằm trên thanh tab, nối sau Daily Task (12/10/2026)
   const b=rptSlTodoBuckets();
-  const info=r=>`<td>${dmy(r.created)||'—'}</td>
+  const info=r=>`<td style="white-space:nowrap">${dmy(r.created)||'—'}${rptSlAiThe(r)}</td>
     <td>${rptSlSrcBadge(r)}</td>
     <td class="name">${rptSlTenKhach(r)}${rptSlMaDuoiTen(r)}</td>
     <td style="white-space:nowrap">${rptSlSdtHtml(r)}</td>
@@ -13012,7 +13033,7 @@ function rptSlCrmHtmlRaw(){
     <div class="tbl-card">
       <div class="tbl-head"><div class="tbl-title">CRM — khách cần chăm sóc</div><div class="tbl-count">${num(list.length)}</div></div>
       <div class="tbl-scroll"><table>
-        <thead><tr>${rptSlChonHetTh()}<th>CS cuối</th><th>Nguồn</th><th>Sales phụ trách</th><th>${rptSlType()==='Sỉ'?'Tên cửa hàng':'Họ tên khách'}</th><th>Phân loại KH${dmBut('si_phan_loai')}</th><th>Trao đổi gần nhất</th><th>Hẹn tiếp theo</th><th></th></tr></thead>
+        <thead><tr>${rptSlChonHetTh()}<th>CS cuối</th><th>Nguồn</th><th>Sales phụ trách</th><th>${rptSlType()==='Sỉ'?'Tên cửa hàng':'Họ tên khách'}</th><th>Phân loại KH${dmBut('si_phan_loai')}</th><th>Hội thoại Pancake</th><th>Hẹn tiếp theo</th><th></th></tr></thead>
         <tbody>${rows||'<tr><td colspan="9">'+(q?rptSlTimRong(q):rptSlEmptyHtml(false))+rptSlTimDaGo(q)+'</td></tr>'}</tbody>
       </table></div>
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid var(--border)">
