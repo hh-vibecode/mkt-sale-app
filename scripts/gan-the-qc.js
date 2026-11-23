@@ -61,6 +61,29 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
   if (process.env.CHAY_NGAY !== '1' && ![14, 22].includes(gioVN)) { console.log('Gắn thẻ QC: ngoài khung 14h / 22h VN (giờ VN ' + gioVN + 'h) — bỏ qua'); return; }
 
   const view = await sbAll(SB, KHOA, 'qc_khach_tiem_nang_ngay', 'select=ngay,page_id,pancake_conversation_id,ten_khach,sdt,sale,nhom,ly_do_nhom,chua_khai_thac,loai_khach&ngay=gte.' + TU_NGAY + '&order=pancake_conversation_id');
+  // GHI BÙ SALE cho đơn job đã tạo: lúc tạo Pancake chưa trả số đơn (system_id) -> chờ đơn về hub rồi ghi Sale gán tay = Sale QC
+  // vào saleretail_manual (lead_id L-<shop>-<system_id>), chỉ khi dòng chưa có Sale gán tay (Sale / admin gán rồi thì giữ).
+  {
+    const cho = await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id,shop_id,order_id&order_id=not.is.null&sale_gan=is.null&order=conversation_id');
+    const saleCua = {}; view.forEach(q => { saleCua[q.pancake_conversation_id] = q.sale; });
+    let bu = 0;
+    for (const x of cho) {
+      const sale = saleCua[x.conversation_id]; if (!sale || XEM) continue;
+      const o = (await sbAll(SB, KHOA, 'datahub_orders', 'select=system_id&shop_id=eq.' + x.shop_id + '&order_id=eq.' + x.order_id))[0];
+      if (!o || !o.system_id || !SHOP_CODE[x.shop_id]) continue;   // đơn chưa về hub -> lượt sau
+      const lead = 'L-' + SHOP_CODE[x.shop_id] + '-' + String(o.system_id).padStart(4, '0');
+      const cu = (await sbAll(SB, KHOA, 'saleretail_manual', 'select=si_sale&lead_id=eq.' + encodeURIComponent(lead)))[0];
+      if (!(cu && cu.si_sale)) {
+        const r = await fetch(`${SB}/rest/v1/saleretail_manual?on_conflict=lead_id`, { method: 'POST', headers: { ...HSB, Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify([{ lead_id: lead, si_sale: sale, updated_by: 'Monsieur Claude (QC)', updated_at: new Date().toISOString() }]) });
+        if (!r.ok) { console.log('  ghi Sale lỗi', lead, r.status); continue; }
+        bu++;
+      }
+      await fetch(`${SB}/rest/v1/pancake_gan_the_qc?conversation_id=eq.${encodeURIComponent(x.conversation_id)}`, { method: 'PATCH', headers: { ...HSB, Prefer: 'return=minimal' },
+        body: JSON.stringify({ sale_gan: cu && cu.si_sale ? 'giữ ' + cu.si_sale : sale }) });
+    }
+    if (cho.length) console.log(`Ghi bù Sale cho đơn job tạo: ${bu} / ${cho.length} (còn lại chờ đơn về hub)`);
+  }
   const da = new Set((await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id&order=conversation_id')).map(r => r.conversation_id));
   const moi = view.filter(q => q.page_id && q.pancake_conversation_id && !da.has(q.pancake_conversation_id)).slice(0, GIOI_HAN);
   console.log(`Gắn thẻ QC: view ${view.length} hội thoại · đã xử lý trước ${da.size} · lượt này ${moi.length}${XEM ? ' (KHO=1: chạy thử)' : ''}`);
@@ -130,11 +153,7 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
       dem.tao_don++;
       taoMoi = { shop, id: String(od.id), sys: od.system_id };
       d = { shop_id: shop, order_id: String(od.id) };
-      // Sale gán tay = Sale QC ghi (đơn job tạo đứng tên tài khoản chung)
-      if (q.sale && od.system_id && SHOP_CODE[shop]) {
-        await fetch(`${SB}/rest/v1/saleretail_manual?on_conflict=lead_id`, { method: 'POST', headers: { ...HSB, Prefer: 'resolution=merge-duplicates,return=minimal' },
-          body: JSON.stringify([{ lead_id: 'L-' + SHOP_CODE[shop] + '-' + String(od.system_id).padStart(4, '0'), si_sale: q.sale, updated_by: 'Monsieur Claude (QC)', updated_at: new Date().toISOString() }]) }).catch(() => null);
-      }
+      // Sale gán tay = Sale QC: ghi ở bước GHI BÙ SALE đầu lượt sau (Pancake chưa trả system_id lúc tạo)
       await sleep(400);
     }
 
