@@ -16,3 +16,9 @@ create table if not exists pancake_gan_the_qc (
 );
 alter table pancake_gan_the_qc enable row level security;
 revoke all on pancake_gan_the_qc from anon, authenticated;
+
+-- 23/11/2026 (anh: "từ hôm nay m tự tạo đơn, gắn sỉ lẻ, tiềm năng vs đạt trên pancake luôn"): job tạo đơn trắng cho hội thoại chưa có đơn
+-- + gắn KH SỈ / KH LẺ (chỉ khi khách chưa có) -> ghi thêm đơn đã tạo và thẻ Sỉ/Lẻ đã gắn.
+alter table pancake_gan_the_qc add column if not exists shop_id bigint;
+alter table pancake_gan_the_qc add column if not exists order_id text;          -- đơn job TẠO MỚI (null = dùng đơn có sẵn)
+alter table pancake_gan_the_qc add column if not exists the_si_le text;         -- KH SỈ / KH LẺ job gắn (null = khách đã có / không gắn)
