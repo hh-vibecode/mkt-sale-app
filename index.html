@@ -7861,10 +7861,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/11 09:36';
+const APP_VERSION='23/11 10:16';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=606;
+const APP_BAN=607;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -9246,8 +9246,13 @@ function rptSlAiQc(r){
   for(const c of [].concat((r.orders||[]).map(o=>o&&o.conversation_id),r.convId,(r.mergedRows||[]).map(m=>m.convId)))if(c&&C._cv[c])return C._cv[c];
   for(const v of [].concat(r.phones||[],r.phone||[])){const p=String(v&&typeof v==='object'?v.so:v||'').replace(/\D/g,'').slice(-9);if(p.length===9&&C._so[p])return C._so[p];}
   return null;}
-function rptSlLaAi(r){return !!rptSlAiQc(r);}
-function rptSlAiThe(r){const q=rptSlAiQc(r);if(!q)return '';
+// SALE ĐÃ TỰ CHỈNH TRẠNG THÁI -> BỎ THẺ AI (anh Hải 23/11/2026: "cái nào mà sale đã tự điều chỉnh lại trạng thái thì bỏ thẻ AI luôn"):
+// ô Phân loại KH (saleretail_manual.si_phan_loai, mọi Lead ID của khách gộp) có giá trị và người sửa cuối là NGƯỜI (Sale / admin),
+// không phải job (updated_by "Monsieur Claude…" / "auto-…"). Bộ lọc "Data AI xử lý" theo đúng luật này.
+function rptSlSaleDaSuaTT(r){return rptSlIdsCua(r).some(id=>{const m=rptSlManual[id]||{};
+  return String(m.si_phan_loai||'').trim()&&String(m.updated_by||'').trim()&&!/^(monsieur claude|auto-)/i.test(String(m.updated_by).trim());});}
+function rptSlLaAi(r){return !!rptSlAiQc(r)&&!rptSlSaleDaSuaTT(r);}
+function rptSlAiThe(r){const q=rptSlAiQc(r);if(!q||rptSlSaleDaSuaTT(r))return '';
   const tn=q.chua_khai_thac===true||q.nhom==='tiem_nang'||/^Khách dừng/i.test(q.ly_do_nhom||'');
   return ' <span title="AI (QC) đã chấm: '+(tn?'Tiềm năng':'Đạt')+(q.ly_do?' — '+cvE(q.ly_do):'')+'" style="display:inline-block;vertical-align:middle;margin-left:4px;padding:0 5px;border:1px solid var(--accent);border-radius:5px;color:var(--accent);font-size:9.5px;font-weight:800;line-height:15px">AI</span>';}   // anh Hải 14/11/2026: "bộ lọc cho blacklist riêng như vip" -- khách Blacklist, bất kể phân loại
 function rptSlLocTT(r){

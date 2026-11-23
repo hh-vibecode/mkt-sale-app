@@ -63,26 +63,42 @@ const coSiLe = tags => tags.some(x => /^KH (SỈ|LẺ)$/i.test(String(x).trim())
   const view = await sbAll(SB, KHOA, 'qc_khach_tiem_nang_ngay', 'select=ngay,page_id,pancake_conversation_id,ten_khach,sdt,sale,nhom,ly_do_nhom,chua_khai_thac,loai_khach&ngay=gte.' + TU_NGAY + '&order=pancake_conversation_id');
   // GHI BÙ SALE cho đơn job đã tạo: lúc tạo Pancake chưa trả số đơn (system_id) -> chờ đơn về hub rồi ghi Sale gán tay = Sale QC
   // vào saleretail_manual (lead_id L-<shop>-<system_id>), chỉ khi dòng chưa có Sale gán tay (Sale / admin gán rồi thì giữ).
+  // + NGÀY TẠO = NGÀY KHÁCH NHẮN (anh Hải 23/11/2026, ảnh Master toàn 23/11 kèm thẻ AI: "ngày tạo của AI cho chuẩn với ngày khách nhắn"):
+  //   ghi saleretail_manual.ngay_tao_sua = ngày mở hội thoại (inserted_at Pancake, UTC -> giờ VN), chỉ khi ô còn trống.
   {
-    const cho = await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id,shop_id,order_id&order_id=not.is.null&sale_gan=is.null&order=conversation_id');
+    const cho = await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id,page_id,shop_id,order_id,sale_gan,ngay_nhan&order_id=not.is.null&or=(sale_gan.is.null,ngay_nhan.is.null)&order=conversation_id');
     const saleCua = {}; view.forEach(q => { saleCua[q.pancake_conversation_id] = q.sale; });
-    let bu = 0;
+    let bu = 0, buNgay = 0;
     for (const x of cho) {
-      const sale = saleCua[x.conversation_id]; if (!sale || XEM) continue;
+      if (XEM) continue;
+      const sale = saleCua[x.conversation_id];
       const o = (await sbAll(SB, KHOA, 'datahub_orders', 'select=system_id&shop_id=eq.' + x.shop_id + '&order_id=eq.' + x.order_id))[0];
       if (!o || !o.system_id || !SHOP_CODE[x.shop_id]) continue;   // đơn chưa về hub -> lượt sau
       const lead = 'L-' + SHOP_CODE[x.shop_id] + '-' + String(o.system_id).padStart(4, '0');
-      const cu = (await sbAll(SB, KHOA, 'saleretail_manual', 'select=si_sale&lead_id=eq.' + encodeURIComponent(lead)))[0];
-      if (!(cu && cu.si_sale)) {
-        const r = await fetch(`${SB}/rest/v1/saleretail_manual?on_conflict=lead_id`, { method: 'POST', headers: { ...HSB, Prefer: 'resolution=merge-duplicates,return=minimal' },
-          body: JSON.stringify([{ lead_id: lead, si_sale: sale, updated_by: 'Monsieur Claude (QC)', updated_at: new Date().toISOString() }]) });
-        if (!r.ok) { console.log('  ghi Sale lỗi', lead, r.status); continue; }
-        bu++;
+      const cu = (await sbAll(SB, KHOA, 'saleretail_manual', 'select=si_sale,ngay_tao_sua&lead_id=eq.' + encodeURIComponent(lead)))[0] || {};
+      let ngay = x.ngay_nhan;
+      if (!ngay) {
+        const c = await lay(`https://pancake.vn/api/v1/pages/${x.page_id}/conversations/${x.conversation_id}?access_token=${TOKEN}`);
+        const ins = c && (c.conversation || c).inserted_at;
+        if (ins) ngay = new Date(Date.parse(/Z|[+-]\d\d:?\d\d$/.test(ins) ? ins : ins + 'Z') + 7 * 3600e3).toISOString().slice(0, 10);
       }
-      await fetch(`${SB}/rest/v1/pancake_gan_the_qc?conversation_id=eq.${encodeURIComponent(x.conversation_id)}`, { method: 'PATCH', headers: { ...HSB, Prefer: 'return=minimal' },
-        body: JSON.stringify({ sale_gan: cu && cu.si_sale ? 'giữ ' + cu.si_sale : sale }) });
+      const ghiM = {};
+      if (sale && !cu.si_sale && !x.sale_gan) ghiM.si_sale = sale;
+      if (ngay && !cu.ngay_tao_sua) ghiM.ngay_tao_sua = ngay;
+      if (Object.keys(ghiM).length) {
+        const r = await fetch(`${SB}/rest/v1/saleretail_manual?on_conflict=lead_id`, { method: 'POST', headers: { ...HSB, Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify([{ lead_id: lead, ...ghiM, updated_by: 'Monsieur Claude (QC)', updated_at: new Date().toISOString() }]) });
+        if (!r.ok) { console.log('  ghi Sale / ngày lỗi', lead, r.status); continue; }
+        if (ghiM.si_sale) bu++; if (ghiM.ngay_tao_sua) buNgay++;
+      }
+      const capNhat = {};
+      if (!x.sale_gan) capNhat.sale_gan = cu.si_sale ? 'giữ ' + cu.si_sale : (sale || '(QC không ghi Sale)');
+      if (!x.ngay_nhan && ngay) capNhat.ngay_nhan = ngay;
+      if (Object.keys(capNhat).length) await fetch(`${SB}/rest/v1/pancake_gan_the_qc?conversation_id=eq.${encodeURIComponent(x.conversation_id)}`, { method: 'PATCH', headers: { ...HSB, Prefer: 'return=minimal' },
+        body: JSON.stringify(capNhat) });
+      await sleep(150);
     }
-    if (cho.length) console.log(`Ghi bù Sale cho đơn job tạo: ${bu} / ${cho.length} (còn lại chờ đơn về hub)`);
+    if (cho.length) console.log(`Ghi bù cho đơn job tạo: Sale ${bu} · ngày khách nhắn ${buNgay} / ${cho.length} dòng chờ`);
   }
   const da = new Set((await sbAll(SB, KHOA, 'pancake_gan_the_qc', 'select=conversation_id&order=conversation_id')).map(r => r.conversation_id));
   const moi = view.filter(q => q.page_id && q.pancake_conversation_id && !da.has(q.pancake_conversation_id)).slice(0, GIOI_HAN);
