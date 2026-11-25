@@ -4536,7 +4536,58 @@ function cvKetQua(x,d){
     don.push({ma:o.code,tien:Number(o.total||0),tam:!!(o.khongTinh||rptSlPhieuTreo(o))});});
   return {cs,don,pl:rptSlLocTT(x.r)};
 }
-function cvDaXuLy(kq){return !!(kq&&((kq.cs||[]).length||(kq.don||[]).length));}
+function cvDaXuLy(kq){return !!(kq&&((kq.cs||[]).length||(kq.don||[]).length||(kq.pc&&kq.pc.ok)));}
+// CHĂM QUA HỘI THOẠI PANCAKE (anh Hải 25/11/2026: "mấy data này có thể nhặt nội dung đã chat bên pancake ra để làm thành tóm tắt chăm sóc
+// đc mà", "cái nào nhắn sót hay nhắn chưa hết mới coi là chưa chăm thôi"). Data mới chưa có lượt chăm ghi tay / đơn -> đọc kết luận QC
+// của hội thoại Pancake (bảng sale_response_review của app QC, CHỈ ĐỌC, 1 dòng = 1 hội thoại x 1 ngày, từ 1/11/2026):
+//   Sale đã nhắn = verdict dung / sai / loi_nen_tang, hoặc khong_lien_quan mà có câu Sale trả lời (khách chào / khấn, Sale vẫn đáp)
+//   -> ĐÃ CHĂM, tóm tắt = câu khách hỏi + câu Sale trả lời của ngày đó.
+//   CHƯA CHĂM = khong_tra_loi / chi_bot ("Nhắn sót") hoặc thieu ("Nhắn chưa hết", kèm nhận xét QC).
+// Xét ngày nhận data (lấy cả 3 ngày trước: Sale nhắn rồi mới lên đơn); ngày đó sót / chưa hết mà ngày sau Sale nhắn đủ -> đã chăm ngày sau.
+window._bcnPc=window._bcnPc||{};window._bcnPcCan=window._bcnPcCan||new Set();
+function bcnPcConvs(r){const s=new Set();
+  (r.orders||[]).forEach(o=>{if(o&&o.conversation_id)s.add(String(o.conversation_id));});
+  [r].concat(r.mergedRows||[]).forEach(m=>{if(m&&m.convId)s.add(String(m.convId));});
+  return [...s];}
+function bcnPcLoai(x){const v=String(x.verdict||'');
+  if(['dung','sai','loi_nen_tang'].includes(v)||(v==='khong_lien_quan'&&String(x.sale_reply||'').trim()&&!x.noi_bo))return 'tot';
+  if(v==='thieu')return 'thieu';if(v==='khong_tra_loi'||v==='chi_bot')return 'sot';return '';}
+function bcnPcKq(r,d){
+  const cs=bcnPcConvs(r);if(!cs.length)return null;
+  const tu=bcnCong(d,-3),ngay=new Map();let chua=false;
+  cs.forEach(c=>{if(!(c in window._bcnPc)){chua=true;window._bcnPcCan.add(c);return;}
+    const thay=new Set();   // bảng xếp id giảm dần -> mỗi hội thoại x ngày lấy lần chấm mới nhất
+    (window._bcnPc[c]||[]).forEach(x=>{const nd=String(x.conv_date||'').slice(0,10),k=nd;if(nd<tu||thay.has(k))return;thay.add(k);
+      const l=bcnPcLoai(x);if(!l)return;if(!ngay.has(nd))ngay.set(nd,[]);ngay.get(nd).push(Object.assign({l,conv:c},x));});});
+  if(chua)return null;
+  const ds=[...ngay.keys()].sort();if(!ds.length)return null;
+  // trạng thái 1 ngày: có hội thoại sót / chưa hết -> chưa chăm ngày đó; còn lại có tin Sale -> đã chăm
+  const ttNgay=nd=>{const v=ngay.get(nd),xau=v.find(x=>x.l!=='tot');return xau||v[0];};
+  const dau=ttNgay(ds[0]);
+  const ok=dau.l==='tot'?dau:ds.slice(1).map(ttNgay).find(x=>x.l==='tot');
+  const z=ok||dau,nd=String(z.conv_date).slice(0,10);
+  return {ok:!!ok,l:z.l,v:z.verdict,ngay:nd,sau:nd>d?nd:'',truoc:nd<d?nd:'',ask:String(z.customer_ask||'').trim(),rep:String(z.sale_reply||'').trim(),
+    issue:String(z.issue||'').trim(),conv:z.conv,key:String(r.key||'').replace(/['"]/g,'')};}
+async function bcnPcNgam(){
+  const can=[...window._bcnPcCan].filter(c=>!(c in window._bcnPc)&&!(window._bcnPcDang||{})[c]);window._bcnPcCan.clear();
+  if(!can.length)return;window._bcnPcDang=window._bcnPcDang||{};can.forEach(c=>window._bcnPcDang[c]=1);
+  let xong=0;
+  for(let i=0;i<can.length;i+=40){const g=can.slice(i,i+40);
+    try{const rows=await sbFetchAll('sale_response_review','select=id,conv_id,conv_date,verdict,customer_ask,sale_reply,issue,noi_bo&conv_id=in.('
+        +g.map(c=>'"'+encodeURIComponent(c)+'"').join(',')+')&conv_date=gte.2026-11-01&order=id.desc');
+      g.forEach(c=>{window._bcnPc[c]=[];});(rows||[]).forEach(x=>{(window._bcnPc[x.conv_id]=window._bcnPc[x.conv_id]||[]).push(x);});xong+=g.length;}
+    catch(e){console.warn('bcnPcNgam',e);}   // lỗi: không đánh dấu -> lần vẽ sau thử lại
+    finally{g.forEach(c=>delete window._bcnPcDang[c]);}}
+  const el=document.getElementById('page-congviec');
+  if(xong&&el&&el.classList.contains('active'))renderCongViec();}
+function bcnPcHtml(p){if(!p)return '';const q=String.fromCharCode(39),cat=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
+  const nut=p.conv?' <a href="javascript:void 0" onclick="event.stopPropagation();rptPcMo('+q+cvE(p.conv).replace(/'/g,'')+q+','+q+p.key+q+',this)" style="color:var(--accent);font-weight:700;text-decoration:none">Xem hội thoại</a>':'';
+  const ngay=p.sau||p.truoc?' '+dmy(p.sau||p.truoc).slice(0,5):'';
+  if(p.ok)return '<div class="cv-cs"><div><b>Nhắn Pancake'+ngay+'</b>'+(p.ask?' — Khách: '+cvE(cat(p.ask,140)):'')+'</div>'
+    +(p.rep?'<div class="cv-phu">Sale: '+cvE(cat(p.rep,180))+'</div>':'')+'<div class="cv-phu">'+nut.trim()+'</div></div>';
+  return '<div class="cv-cs"><div><span class="bcn-cam">'+(p.l==='thieu'?'Nhắn chưa hết':'Nhắn sót'+(p.v==='chi_bot'?' (chỉ bot trả lời)':''))+ngay+'</span>'
+    +(p.ask?' — Khách: '+cvE(cat(p.ask,140)):'')+'</div>'
+    +(p.l==='thieu'&&p.issue?'<div class="cv-phu">'+cvE(cat(p.issue,200))+'</div>':'')+'<div class="cv-phu">'+nut.trim()+'</div></div>';}
 // Việc làm NGOÀI kế hoạch: lượt chăm sóc người đó ghi cho ngày d mà khách không nằm trong kế hoạch.
 function cvNgoai(ten,d,muc){
   const K=cvKhach(),coX=new Set(),coId=new Set(muc.map(m=>m.lead_id)),nhom=new Map();
@@ -4807,6 +4858,7 @@ function cvKqHtml(kq){
     +(c.sp?'<div class="cv-phu">SP quan tâm: '+cvE(c.sp)+'</div>':'')
     +(c.ph?'<div class="cv-phu">Khách phản hồi: '+cvE(c.ph)+'</div>':'')
     +(c.tiep||c.hen?'<div class="cv-phu">Tiếp theo: '+cvE(c.tiep)+(c.hen?' <b class="cv-hen">hẹn '+dmy(c.hen)+'</b>':'')+'</div>':'')+'</div>'));
+  if(kq.pc&&kq.pc.ok&&!out.length)out.push(bcnPcHtml(kq.pc));   // chăm qua hội thoại Pancake (25/11/2026)
   return out.length?out.join(''):'<span class="cv-chua">Chưa ghi nhận chăm sóc</span>';
 }
 function cvBoardHtml(){
@@ -5308,7 +5360,7 @@ function bcnSoLieu(p,ngays,log,zl){
   ngay.forEach(n=>{T.moi+=n.so.moi.length;T.cu+=n.so.cu.length;T.chot+=n.so.chot.length;T.tien+=n.so.tien;T.tt+=n.tt.length;
     if(n.zl){T.zl+=n.zl.filter(z=>!z.miss).length;T.miss+=n.zl.filter(z=>z.miss).length;}
     n.so.moi.forEach(z=>{const r=z.x.r;if(seen.has(r.leadId))return;seen.add(r.leadId);
-      if(!r.isChot&&!cvDaXuLy(z.kq)&&!cvVoiLoai(z.x.loai,()=>rptSlCsRows(r)).length)chua.push({o:z.o,d:n.d});});});
+      if(!r.isChot&&!cvDaXuLy(z.kq)&&!cvVoiLoai(z.x.loai,()=>rptSlCsRows(r)).length)chua.push({o:z.o,d:n.d,pc:z.kq.pc||null});});});
   return {ngay,chua,T};
 }
 // GIAO DIỆN TỐI GIẢN (anh Hải 12/11/2026: "màu miếc gớm thế trông chả sang gì cả") + "trình bày lại ngang theo từng ngày, cột thì chia dọc",
@@ -5319,7 +5371,7 @@ function bcnThe(sale,S,tu,den){
   const mot=tu===den,n=v=>num(v),T=S.T,thu=d=>{const t=new Date(d+'T00:00:00');return CV_THU[t.getDay()];};
   const muc=(z,nd)=>'<div class="bcn-muc"><div class="ten">'+cvTenKhHtml(z.o)+'<span class="ma">'+cvE(z.o.ma)+'</span></div><div>'+nd+'</div></div>';
   // có ĐƠN Kiot trong ngày cũng là đã chăm (anh Hải 17/11/2026: "có đơn thì đc tính là chăm r sao lại bảo chưa chăm") -- hiện đơn + lượt chăm
-  const cham=z=>muc(z,cvDaXuLy(z.kq)?cvKqHtml({cs:z.kq.cs||[],don:z.kq.don||[]}):'<span class="bcn-cam">Chưa chăm</span>');
+  const cham=z=>muc(z,cvDaXuLy(z.kq)?cvKqHtml({cs:z.kq.cs||[],don:z.kq.don||[],pc:z.kq.pc}):z.kq.pc?bcnPcHtml(z.kq.pc):'<span class="bcn-cam">Chưa chăm</span>');
   const gio=t=>t?new Date(t).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Ho_Chi_Minh'}):'';
   const COT=[
     ['Data mới',x=>x.so.moi.length,x=>x.so.moi.map(cham).join('')],
@@ -5352,7 +5404,7 @@ function bcnThe(sale,S,tu,den){
     +'<div class="bcn-so">'+[['Data mới',n(T.moi)],['Chưa xử lý',n(S.chua.length),S.chua.length?'cam':''],['Chăm lại',n(T.cu)],['Phản hồi KH',T.zl==null?'—':n(T.zl)+(T.miss?' <span class="bcn-cam" style="font-size:12px;font-weight:700">· '+n(T.miss)+' miss</span>':'')],['Chốt đơn',n(T.chot)],['Tiền chốt',T.tien?vnd(T.tien):'0']]
       .map(([l,v,c])=>'<div><div class="l">'+l+'</div><div class="n'+(c?' '+c:'')+'">'+v+'</div></div>').join('')+'</div>'
     +(S.chua.length?'<div class="bcn-nhom"><h4>Data mới chưa xử lý</h4>'
-      +S.chua.map(z=>'<div class="bcn-dong"><div class="bcn-kh">'+cvTenKhHtml(z.o)+'<div class="ma">'+cvE(z.o.ma)+'</div></div><div class="bcn-nd"><span class="bcn-cam">Nhận '+dmy(z.d).slice(0,5)+' · chưa chăm, chưa đơn</span></div></div>').join('')+'</div>':'')
+      +S.chua.map(z=>'<div class="bcn-dong"><div class="bcn-kh">'+cvTenKhHtml(z.o)+'<div class="ma">'+cvE(z.o.ma)+'</div></div><div class="bcn-nd"><span class="bcn-cam">Nhận '+dmy(z.d).slice(0,5)+' · '+(z.pc?(z.pc.l==='thieu'?'nhắn chưa hết':'nhắn sót'):'chưa chăm')+', chưa đơn</span></div></div>').join('')+'</div>':'')
     +'<div class="bcn-luoi">'+luoi+'</div></div>';
 }
 // MENU XỔ Sale Lẻ / Sale Sỉ ở thanh bên (anh Hải 13/11/2026, giống app Kế toán). Bấm "Báo cáo công việc" = mở / gập menu con.
@@ -5446,6 +5498,7 @@ async function renderCongViec(taiLai){
     +(!het&&!ds.length?rong('Tài khoản này chưa gắn với đúng 1 Sale (tài khoản chung?) nên chưa có báo cáo')
       :xem.length?xem.map(p=>bcnThe(p.sale,bcnSoLieu(p,ngays,log,zl),tu,den)).join(''):rong('Chưa có Sale nào'));
   if(html!==window._bcnHtml||!el.querySelector('.bcn')){window._bcnHtml=html;el.innerHTML=html;}   // không đổi gì thì không vẽ lại (giữ ô đang mở)
+  if(window._bcnPcCan.size)bcnPcNgam();   // hội thoại Pancake của data mới chưa chăm: tải ngầm rồi tự vẽ lại
 }
 // TỰ LÀM MỚI (anh Hải 12/11/2026: "thao tác trên app nó sẽ cập nhật real time về báo cáo nhỉ"). Chỉ chạy khi đang mở trang này + tab trình duyệt
 // đang xem. Mỗi 2 phút: lượt chăm sóc mới / sửa (siCrmNapMoi, vài KB) + thao tác (activity_log). Mỗi 15 phút (khớp nhịp job đồng bộ Kiot /
@@ -5549,7 +5602,8 @@ function cvCuoiNgaySoLieu(sale,acc,d,loaiChi){
         const sau=[...(x.r.kords||[]),...(x.r.repeatOrds||[]),...(x.r.staleOrds||[])].filter(o=>o.status!==4&&String(o.purchase_date||'').slice(0,10)>d)
           .sort((a,b)=>String(a.purchase_date).localeCompare(String(b.purchase_date)))[0];
         if(csSau)kq.cs=[Object.assign(cvCs(csSau),{sau:String(csSau.ngay_cham).slice(0,10)})];
-        if(sau)kq.don=[{ma:sau.code,tien:Number(sau.total||0),tam:!!(sau.khongTinh||rptSlPhieuTreo(sau)),sau:String(sau.purchase_date).slice(0,10)}];}
+        if(sau)kq.don=[{ma:sau.code,tien:Number(sau.total||0),tam:!!(sau.khongTinh||rptSlPhieuTreo(sau)),sau:String(sau.purchase_date).slice(0,10)}];
+        if(!cvDaXuLy(kq))kq.pc=bcnPcKq(x.r,d);}   // chưa ghi tay / chưa đơn -> xem hội thoại Pancake (25/11/2026)
       moi.push({o:oX(x),kq,x});}else if(coLog.has(x))cu.push({o:oX(x),kq:cvKetQua(x,d)});
     if(!minh)return;const co=new Set(),don=[];
     [...(x.r.kords||[]),...(x.r.repeatOrds||[])].forEach(o=>{
@@ -7861,10 +7915,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='23/11 14:13';
+const APP_VERSION='25/11 14:09';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=610;
+const APP_BAN=611;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
