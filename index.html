@@ -2583,13 +2583,15 @@ async function dhLoadOrders(force){
   // chỉ lấy cột thật sự dùng -- select=* kéo thêm address/ward/district/created_at... ~0,55 MB thừa
   const Q='select=id,system_id,shop_id,shop_name,brand,order_id,order_date,customer_status,customer_tags,customer_name,phone,province,district,ward,address,source,internal_note,staff_name,ad_id,order_status,conversation_id,page_id,last_chat_at&order=order_date.desc,system_id.desc';
   const chuan=a=>{a.forEach(o=>{if(String(o.shop_id)==='1329071685'||o.brand==='Other')o.brand='CT';});return a;};
+  return tai2Chung('dh',force,async()=>{
   const doi=tai2DoiMoi('dh');
-  if(force||dhLoaded){dhOrders=chuan(await sbFetchAll('datahub_orders',Q));dhLoaded=true;return;}
+  if(force||dhLoaded){const all=chuan(await sbFetchAll('datahub_orders',Q));if(_tai2.doi.dh!==doi)return;dhOrders=all;dhLoaded=true;return;}
   // TẢI 2 PHA (18/11/2026): 30 ngày gần nhất trước, phần cũ tải ngầm
   const m=tai2Moc();
-  dhOrders=chuan(await sbFetchAll('datahub_orders',Q+'&order_date=gte.'+m));dhLoaded=true;
-  tai2Ngam('dh',sbFetchAll('datahub_orders',Q+'&or=(order_date.lt.'+m+',order_date.is.null)'),rows=>{dhOrders=dhOrders.concat(chuan(rows));},()=>{dhLoaded=false;});
-  return;
+  const moi=chuan(await sbFetchAll('datahub_orders',Q+'&order_date=gte.'+m));if(_tai2.doi.dh!==doi)return;
+  dhOrders=moi;dhLoaded=true;
+  tai2Ngam('dh',sbFetchAll('datahub_orders',Q+'&or=(order_date.lt.'+m+',order_date.is.null)'),rows=>{dhOrders=tai2Ghep(dhOrders,chuan(rows),o=>o.id);},()=>{dhLoaded=false;},doi);
+  });
   // CHỈ CÓ 4 BRAND. Shop Hoàng Dương | Ming Ying là kênh TikTok của Chánh Tâm -> gom về CT.
   // Chuẩn hoá ngay lúc nạp để dữ liệu cũ (đang lưu brand 'Other') cũng đúng, không phải chờ crawl lại.
   dhOrders.forEach(o=>{if(String(o.shop_id)==='1329071685'||o.brand==='Other')o.brand='CT';});
@@ -2671,8 +2673,19 @@ function tai2Bao(){
   el.textContent='Đang tải nốt dữ liệu trước '+dmy(tai2Moc()).slice(0,5)+'… số toàn thời gian sẽ tự cập nhật';
 }
 function tai2DoiMoi(ten){_tai2.doi[ten]=(_tai2.doi[ten]||0)+1;return _tai2.doi[ten];}
-function tai2Ngam(ten,hua,apDung,khiLoi){
-  const doi=_tai2.doi[ten];_tai2.cho.add(ten);tai2Bao();
+// LỖI 25/11/2026 (anh: "T11 đúng, mấy tháng kia độn lên kinh thế" -- So sánh tháng T6–T10 gấp ~1,8 lần): nhiều chỗ gọi tải lần đầu CÙNG LÚC
+// (trang + chuông + bộ đếm), tai2Ngam lấy số đời SAU khi pha 1 xong nên cả 2 lượt đều nối phần cũ -> dữ liệu trước 30 ngày bị nhân đôi.
+// Sửa: lượt tải đầu đang chạy thì các lượt sau chờ chung (tai2Chung); số đời khoá từ lúc bắt đầu tải; ghép bỏ dòng trùng khoá (tai2Ghep).
+function tai2Chung(ten,force,fn){
+  _tai2.p=_tai2.p||{};
+  if(!force&&_tai2.p[ten])return _tai2.p[ten];
+  const p=Promise.resolve().then(fn);
+  if(!force){_tai2.p[ten]=p;p.then(()=>{},()=>{}).then(()=>{if(_tai2.p[ten]===p)_tai2.p[ten]=null;});}
+  return p;
+}
+function tai2Ghep(cu,moi,khoa){const co=new Set(cu.map(khoa));return cu.concat((moi||[]).filter(x=>!co.has(khoa(x))));}
+function tai2Ngam(ten,hua,apDung,khiLoi,doiGoc){
+  const doi=doiGoc||_tai2.doi[ten];_tai2.cho.add(ten);tai2Bao();
   Promise.resolve(hua).then(kq=>{if(_tai2.doi[ten]!==doi)return;apDung(kq);})
     .catch(e=>{console.warn('[tải ngầm] '+ten+' lỗi',e);if(_tai2.doi[ten]===doi&&khiLoi)khiLoi();})
     .finally(()=>{_tai2.cho.delete(ten);if(tai2Dang())return;
@@ -2702,38 +2715,44 @@ async function kiotLoadInvoices(force){
   const QI='select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,order_code,total,status,sale_channel,kiot_da_xoa';
   const QO='select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,total_payment,status,status_value,sale_channel,giao_dia_chi,giao_khu_vuc,kiot_da_xoa';
   const QK='select=code,name,phone,phone_key,customer_group,location_name,ward_name,address,debt';
-  tai2DoiMoi('kiot');
+  return tai2Chung('kiot',force,async()=>{
+  const doi=tai2DoiMoi('kiot');
   if(!force&&!kiotLoaded){
     // TẢI 2 PHA (18/11/2026): đơn + hoá đơn 30 ngày gần nhất + khách có trong các phiếu đó -> vẽ ngay; phần cũ + toàn bộ khách tải ngầm
     const m=tai2Moc();
-    [kiotInvoices,kiotOrders]=await Promise.all([sbFetchAll('kiot_invoices',QI+'&purchase_date=gte.'+m),sbFetchAll('kiot_orders',QO+'&purchase_date=gte.'+m)]);
-    const ma=[...new Set(kiotInvoices.concat(kiotOrders).map(x=>x.customer_code).filter(Boolean))],cum=[];
+    const [hd1,dd1]=await Promise.all([sbFetchAll('kiot_invoices',QI+'&purchase_date=gte.'+m),sbFetchAll('kiot_orders',QO+'&purchase_date=gte.'+m)]);
+    const ma=[...new Set(hd1.concat(dd1).map(x=>x.customer_code).filter(Boolean))],cum=[];
     for(let i=0;i<ma.length;i+=150)cum.push(ma.slice(i,i+150));
-    kiotCustomers=[].concat(...await Promise.all(cum.map(c=>sbFetchAll('kiot_customers',QK+'&code=in.('+c.map(x=>encodeURIComponent('"'+x+'"')).join(',')+')'))));
+    const kh1=[].concat(...await Promise.all(cum.map(c=>sbFetchAll('kiot_customers',QK+'&code=in.('+c.map(x=>encodeURIComponent('"'+x+'"')).join(',')+')'))));
+    if(_tai2.doi.kiot!==doi)return;   // có lượt tải mới hơn (tải lại toàn bộ) -> bỏ kết quả này
+    kiotInvoices=hd1;kiotOrders=dd1;kiotCustomers=kh1;
     kiotLamSach();
     try{kiotGiuTinh=new Set((await sbFetchAll('kiot_don_giu_tinh','select=code')).map(x=>String(x.code).toUpperCase()));}catch(e){}
     kiotLoaded=true;window._kiotCustByCode=null;window._kiotOrdByCode=null;window._kiotCNKhach=null;window._kiotRetailByPhone=null;window._rptSlHdKhach=null;rptSlXoaCache(true);
     const cu='&or=(purchase_date.lt.'+m+',purchase_date.is.null)';
     tai2Ngam('kiot',Promise.all([sbFetchAll('kiot_invoices',QI+cu),sbFetchAll('kiot_orders',QO+cu),sbFetchAll('kiot_customers',QK)]),([hd,dd,kh])=>{
       const xoaCu=window._kiotDonDaXoa||new Set();
-      kiotInvoices=kiotInvoices.concat(hd);kiotOrders=kiotOrders.concat(dd);kiotCustomers=kh;
+      kiotInvoices=tai2Ghep(kiotInvoices,hd,x=>x.code);kiotOrders=tai2Ghep(kiotOrders,dd,x=>x.code);kiotCustomers=kh;
       kiotLamSach(xoaCu);
-      window._kiotCustByCode=null;},()=>{kiotLoaded=false;});
+      window._kiotCustByCode=null;},()=>{kiotLoaded=false;},doi);
     return;
   }
-  [kiotInvoices,kiotOrders,kiotCustomers]=await Promise.all([
+  const [hdA,ddA,khA]=await Promise.all([
     // Bỏ cột items khỏi hoá đơn: nặng gấp 3,7 lần phần còn lại mà chỉ dùng lúc xem chi tiết 1 hoá đơn.
     sbFetchAll('kiot_invoices','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,customer_phone,order_code,total,status,sale_channel,kiot_da_xoa'),
     // items (danh sách mặt hàng) chiếm 3/4 dung lượng mà chỉ cần lúc mở chi tiết 1 khách -> tải riêng
     sbFetchAll('kiot_orders','select=code,purchase_date,branch_name,sold_by_name,customer_code,customer_name,total,total_payment,status,status_value,sale_channel,giao_dia_chi,giao_khu_vuc,kiot_da_xoa'),
     sbFetchAll('kiot_customers','select=code,name,phone,phone_key,customer_group,location_name,ward_name,address,debt'),
   ]);
+  if(_tai2.doi.kiot!==doi)return;
+  kiotInvoices=hdA;kiotOrders=ddA;kiotCustomers=khA;
   kiotLamSach();
   // đơn từng được tính nhờ khách có cọc -> giữ tính dù công nợ đổi về sau (bảng kiot_don_giu_tinh, 25/9/2026)
   try{kiotGiuTinh=new Set((await sbFetchAll('kiot_don_giu_tinh','select=code')).map(x=>String(x.code).toUpperCase()));}catch(e){}
   kiotLoaded=true;
   window._kiotOrdByCode=null;window._kiotCustByCode=null;window._kiotCNKhach=null;window._kiotRetailByPhone=null;window._rptSlHdKhach=null;
   if(typeof rptSlXoaCache==="function")rptSlXoaCache();
+  });
 }
 // Nối Pancake <-> Kiot theo ĐÚNG thứ tự của script cũ (syncLeadSalesOnline): 9 SỐ CUỐI SĐT trước, hết cách
 // mới dùng Mã KH Sale gõ trong ghi chú nội bộ. Chỉ nhận khách Kiot đúng nhóm "Khách lẻ".
@@ -6336,13 +6355,16 @@ const SI_CRM_COT='select=id,lead_id,kiot_code,customer_name,phone,ngay_cham,sp_q
 let siCrmLuc=0;   // lúc bắt đầu lần nạp gần nhất (để nạp phần mới)
 async function siCrmLoad(force){
   if(siCrmLoaded&&!force)return;
+  return tai2Chung('crm',force,async()=>{
   const luc=Date.now();
-  const Q=SI_CRM_COT+'&order=ngay_cham.desc,id.desc';tai2DoiMoi('crm');
-  if(force||siCrmLoaded){siCrmRows=await sbFetchAll('salesi_crm',Q);siCrmLoaded=true;siCrmLuc=luc;return;}
+  const Q=SI_CRM_COT+'&order=ngay_cham.desc,id.desc';const doi=tai2DoiMoi('crm');
+  if(force||siCrmLoaded){const all=await sbFetchAll('salesi_crm',Q);if(_tai2.doi.crm!==doi)return;siCrmRows=all;siCrmLoaded=true;siCrmLuc=luc;return;}
   // TẢI 2 PHA (18/11/2026): lượt chăm 30 ngày gần nhất trước (thứ tự ngày giảm dần giữ nguyên khi ghép), phần cũ tải ngầm
   const m=tai2Moc();
-  siCrmRows=await sbFetchAll('salesi_crm',Q+'&ngay_cham=gte.'+m);siCrmLoaded=true;siCrmLuc=luc;
-  tai2Ngam('crm',sbFetchAll('salesi_crm',Q+'&or=(ngay_cham.lt.'+m+',ngay_cham.is.null)'),rows=>{siCrmRows=siCrmRows.concat(rows);},()=>{siCrmLoaded=false;});
+  const moi=await sbFetchAll('salesi_crm',Q+'&ngay_cham=gte.'+m);if(_tai2.doi.crm!==doi)return;
+  siCrmRows=moi;siCrmLoaded=true;siCrmLuc=luc;
+  tai2Ngam('crm',sbFetchAll('salesi_crm',Q+'&or=(ngay_cham.lt.'+m+',ngay_cham.is.null)'),rows=>{siCrmRows=tai2Ghep(siCrmRows,rows,x=>x.id);},()=>{siCrmLoaded=false;},doi);
+  });
 }
 // NẠP PHẦN MỚI (17/10/2026, anh: "sau khi lưu không thấy lượt người khác vừa ghi"): chỉ lấy dòng thêm / sửa từ lần nạp trước
 // (updated_at, CSDL tự đóng dấu khi sửa -- trigger cham_luc) + đếm tổng; tổng lệch (có dòng bị xoá) thì nạp lại cả bảng.
@@ -7915,10 +7937,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='25/11 14:09';
+const APP_VERSION='25/11 14:59';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=611;
+const APP_BAN=612;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
