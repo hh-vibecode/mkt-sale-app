@@ -5742,7 +5742,7 @@ window._qcAds=window._qcAds||{rows:null,luc:0};
 async function mktLoadQcAds(ep){
   const C=window._qcAds;
   if(!ep&&C.rows&&Date.now()-C.luc<10*60e3)return C.rows;
-  try{C.rows=await sbFetchAll('qc_hoi_thoai_ads','select=page_id,pancake_conversation_id,loai,khach_id,ten_khach,sdt,ad_id,ad_luc,ad_id_theo_bai,so_ad_theo_bai,tin_dau_luc&qua_loc=is.true&kenh=eq.facebook&order=pancake_conversation_id');C.luc=Date.now();}
+  try{C.rows=await sbFetchAll('qc_hoi_thoai_ads','select=page_id,pancake_conversation_id,loai,kenh,qua_loc,khach_id,ten_khach,sdt,ad_id,ad_luc,ad_id_theo_bai,so_ad_theo_bai,tin_dau_luc&order=pancake_conversation_id');C.luc=Date.now();}
   catch(e){console.warn('mktLoadQcAds',e);if(!C.rows)C.rows=[];C.luc=Date.now()-8*60e3;}   // lỗi: báo cáo vẫn chạy, 3 cột hiện —
   return C.rows;
 }
@@ -5950,7 +5950,8 @@ function rptMktData(){
   // Phễu cộng dồn: Data mua ⊂ Tiềm năng ⊂ Data. Tiềm năng = đã mua, hoặc khách app Phân loại "Tiềm năng, chưa ra đơn" / thẻ TIỀM NĂNG,
   // hoặc đơn Pancake của hội thoại mang thẻ TIỀM NĂNG / CHỐT ĐƠN, hoặc hội thoại đang trong danh sách khách tiềm năng QC (qc_khach_tiem_nang_ngay). Data mua = khách app có phiếu Kiot tính doanh thu
   // (không huỷ, tiền > 0) ngày >= ngày bấm quảng cáo và trong kỳ; tiền = cộng các phiếu đó.
-  {const Q=(window._qcAds&&window._qcAds.rows)||null;
+  let chuaQuy=null;
+  {const Q0=(window._qcAds&&window._qcAds.rows)||null,Q=Q0&&Q0.filter(h=>h.qua_loc&&h.kenh==='facebook');
    Object.values(theoAd).forEach(a=>{a.qd=Q?[]:null;});
    if(Q){
      const ngayVN=t=>t?new Date(new Date(t).getTime()+7*3600e3).toISOString().slice(0,10):'';
@@ -5982,9 +5983,40 @@ function rptMktData(){
        a.qd.push({h,hs,r,t:m&&m.t,ngay,binhLuan:!ib,mua,phieu,tien:phieu.reduce((s2,o)=>s2+Number(o.total||0),0),
          tiem:mua||!!tnApp||tnPc||tnQc,nguonTiem:mua?'Đã mua':(tnApp||tnPc)?'Người chấm':tnQc?'App chấm':''});   // anh Hải 27/11: Người chấm = Sale (Phân loại app / thẻ Pancake), App chấm = QC tự động
      });
+   }
+   // CHƯA QUY ĐƯỢC QUẢNG CÁO (anh Hải 27/11/2026 duyệt): khách trong doanh thu MKT của kỳ (sale) mà KHÔNG có dấu vết quảng cáo nào -- không có Ad ID trên
+   // đơn Pancake, mọi hội thoại (cả Zalo, cả hội thoại chưa qua lọc QC) đều không có ad_id / quảng cáo theo bài. Để tổng theo quảng cáo + dòng này
+   // = tổng doanh thu MKT. KHÔNG nối theo tên (luật 13/10/2026).
+   // DOANH THU THEO QUẢNG CÁO (cùng ngày, để tổng khớp): khi có dữ liệu QC, cột Doanh thu / đơn của từng quảng cáo tính lại = doanh thu MKT của kỳ (sale)
+   // quy về ĐÚNG 1 quảng cáo / khách: Ad ID trên đơn Pancake (r.adId) nếu quảng cáo đó có chi phí trong kỳ, không thì quảng cáo GẦN NHẤT QC gắn
+   // (ad_id inbox, không có thì quảng cáo theo bài 1-QC). Bỏ điều kiện thẻ CHỐT cũ (rptMktDuocTinh) -- doanh thu MKT đã lọc dấu vết tiền.
+   // Có Ad ID mà quảng cáo không có chi phí trong kỳ -> vào dòng Chưa quy (lý do riêng).
+   if(Q0){
+     const cv={},so={},rK={};
+     Q0.forEach(h=>{cv[h.pancake_conversation_id]=h;bcnSoTrong(h.sdt).forEach(p=>{(so[p]=so[p]||[]).push(h);});});
+     ['Lẻ','Sỉ'].forEach(t=>(MS[t]||[]).forEach(r=>{rK[t+'|'+r.key]=r;}));
+     chuaQuy=[];
+     Object.values(theoAd).forEach(a=>{a.rev=0;a.don=0;});
+     sale.forEach(x=>{const r=rK[x.loai+'|'+x.key];
+       const cong=id=>{const a=theoAd[String(id||'').trim()];if(!a)return false;a.rev+=x.rev;a.don++;return true;};
+       if(!r){if(!cong(x.adId))chuaQuy.push({x,r:null,ly:'Không tìm thấy khách',h:null});return;}
+       const hs=[];(r.orders||[]).forEach(o=>{if(o&&cv[o.conversation_id])hs.push(cv[o.conversation_id]);});
+       [].concat(r.phones||[],r.phone||[]).map(v=>v&&typeof v==='object'?v.so:v).map(v=>String(v||'')).join(' ').split(/[^0-9]+/).filter(p=>p.length>=9)
+         .forEach(p=>(so[p.slice(-9)]||[]).forEach(h=>hs.push(h)));
+       const adPc=[x.adId,r.adId].concat((r.orders||[]).map(o=>o&&o.ad_id)).map(v=>String(v||'').trim()).filter(Boolean);
+       const ib=hs.filter(h=>h.ad_id).sort((p,q)=>String(q.ad_luc||'').localeCompare(String(p.ad_luc||'')))[0];
+       const bl=hs.filter(h=>h.ad_id_theo_bai&&Number(h.so_ad_theo_bai||0)===1).sort((p,q)=>String(q.tin_dau_luc||'').localeCompare(String(p.tin_dau_luc||'')))[0];
+       const adQc=[ib&&ib.ad_id,bl&&bl.ad_id_theo_bai].filter(Boolean);
+       if(adPc.some(cong)||adQc.some(cong))return;
+       if(adPc.length||adQc.length){chuaQuy.push({x,r,ly:'Quảng cáo không có chi phí trong kỳ (chạy trước kỳ / đã lọc)',h:ib||bl||hs[0]||null});return;}
+       const fb=hs.find(h=>h.kenh==='facebook'),zl=hs.find(h=>h.kenh==='zalo');
+       const ly=fb?'Có hội thoại Facebook nhưng không qua quảng cáo (khách tự nhắn page)':zl?'Chỉ có hội thoại Zalo (Zalo không có dữ liệu quảng cáo)'
+         :hs.length?'Có hội thoại nhưng không có dấu vết quảng cáo':(r.orders||[]).length?'Có đơn Pancake, hội thoại ngoài dữ liệu QC (trước 1/11/2026)'
+         :'Không có hội thoại / đơn Pancake (tạo thẳng trên Kiot)';
+       chuaQuy.push({x,r,ly,h:fb||zl||hs[0]||null});});
    }}
   const rev=sale.reduce((a,x)=>a+x.rev,0);
-  return{ads,kpi,spendBrand,spendNgay,camp,sale,onl,revBrand,plat,rev,don:sale.length,theoAd};
+  return{ads,kpi,spendBrand,spendNgay,camp,sale,onl,revBrand,plat,rev,don:sale.length,theoAd,chuaQuy};
 }
 function isoNgay(d){const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);}
 // Bấm ô Doanh số -> tầng 1 hiện 2 khối SỈ / LẺ (như dashboard cũ), bấm tiếp vào khối nào mới mở
@@ -6116,7 +6148,7 @@ function rptMktHtml(){
     '<span title="Khách nhắn / bình luận từ quảng cáo (QC gắn Ad ID từng hội thoại, từ 1/11/2026, đã qua lọc QC) · bấm số xem khách">Data</span>',
     '<span title="Data đã mua, hoặc Phân loại Tiềm năng trên app, hoặc thẻ TIỀM NĂNG / CHỐT ĐƠN trên đơn Pancake, hoặc QC đánh giá tiềm năng · bấm số xem khách">Tiềm năng</span>',
     '<span title="Data có phiếu Kiot tính doanh thu từ ngày bấm quảng cáo, trong kỳ · bấm số xem khách">Data mua</span>',
-    '<span title="Lượt mua Meta (Pancake báo khi chốt) · bấm số để xem khách trong app">Lượt mua</span>','<span title="Doanh thu tính cho MKT của khách mang Ad ID">Doanh thu</span>'];
+    '<span title="Lượt mua Meta (Pancake báo khi chốt) · bấm số để xem khách trong app">Lượt mua</span>','<span title="Doanh thu MKT của kỳ quy về 1 quảng cáo / khách: Ad ID trên đơn Pancake, không có thì quảng cáo gần nhất QC gắn cho hội thoại · khách không quy được ở dòng cuối">Doanh thu</span>'];
   window._rptSlLists=window._rptSlLists||{};
   const KIOT_DON='https://sieuthidotho285.kiotviet.vn/man/#/Order?Code=';
   const kiotPhieu=c=>/^HD/i.test(String(c))?'https://sieuthidotho285.kiotviet.vn/man/#/Invoices?Code='+encodeURIComponent(c):KIOT_DON+encodeURIComponent(c);   // HD = hoá đơn, DH = đơn đặt hàng
@@ -6277,6 +6309,26 @@ function rptMktHtml(){
       });
     });
   });
+  if(d.chuaQuy&&d.chuaQuy.length&&!chiChay){
+    const e=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const ds=d.chuaQuy.slice().sort((a,b)=>b.x.rev-a.x.rev),tien=ds.reduce((a,y)=>a+y.x.rev,0);
+    const dem={};ds.forEach(y=>{dem[y.ly]=(dem[y.ly]||0)+1;});
+    window._rptSlLists.chuaQuy={title:'Chưa quy được quảng cáo · '+num(ds.length)+' khách · '+vnd(tien),
+      cols:['Khách','Loại','Sales','Kênh Kiot','Lý do','Doanh thu MKT','Pancake / Zalo'],
+      phu:Object.entries(dem).map(([l,n])=>'<span style="display:inline-flex;padding:3px 10px;border-radius:999px;background:var(--bg2);font-size:11.5px;font-weight:700;color:var(--text2)">'+e(l)+' · '+num(n)+'</span>').join(''),
+      rows:ds.map(y=>{const r=y.r||{name:y.x.name,kh:y.x.kh,staff:y.x.staff,key:y.x.key},ma=r.kh||r.leadId||'',h=y.h;
+        const chat=(y.r&&rptSlChatUrl(y.r))||(h&&h.kenh==='facebook'?'https://pancake.vn/'+h.page_id+'?c_id='+encodeURIComponent(h.pancake_conversation_id):'');
+        return [e(r.name)+rptSlSaoVip(r)+(ma?'<div style="font-size:10.5px;color:var(--muted)">'+e(ma)+'</div>':''),y.x.loai,rptSlSaleHien(r.staff),e(y.x.kenh||''),
+          '<span style="font-size:11px">'+e(y.ly)+'</span>',vnd(y.x.rev),
+          chat?'<a href="'+chat+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);font-weight:700;text-decoration:none">Mở chat ↗</a>':'—'];}),
+      keys:ds.map(y=>y.x.key),loais:ds.map(y=>y.x.loai)};
+    const tr='<td class="num" style="color:var(--muted)">—</td>';
+    bangAd+='<tr onclick="rptSlShow(\'chuaQuy\')" style="cursor:pointer;border-top:2px solid var(--border)"><td></td>'
+      +'<td class="name" colspan="2">Chưa quy được quảng cáo<div style="font-size:10.5px;color:var(--muted);font-weight:600">khách tính doanh thu MKT nhưng không có dấu vết quảng cáo · bấm xem lý do</div></td><td></td>'
+      +tr.repeat(9)+tr+tr
+      +'<td class="num"><span style="font-weight:800;color:var(--green);border-bottom:1px dashed var(--accent)">'+num(ds.length)+'</span></td>'
+      +tr+'<td class="num" style="font-weight:800;color:var(--green)">'+vnd(tien)+'</td></tr>';
+  }
   const cuonAd='<div class="tbl-card" style="margin-top:16px"><div class="tbl-head"><div class="tbl-title">Chiến dịch quảng cáo</div>'
     +'<div class="tbl-count">'+num(dsCamp.length)+' chiến dịch</div>'
     +'<span style="margin-left:auto;display:inline-flex;gap:6px;align-items:center">'
@@ -8058,10 +8110,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='27/11 14:54';
+const APP_VERSION='27/11 15:00';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=616;
+const APP_BAN=617;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
