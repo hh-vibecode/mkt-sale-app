@@ -232,7 +232,7 @@ async function dongBoSale(view) {
     Object.entries(leadCua).forEach(([c, ids]) => {
       for (const id of ids) { const m = man[id]; const v = String((m && m.si_phan_loai) || '').trim();
         // + "Không tiềm năng" do job 7 ngày đặt (tu-khong-tiem-nang.js) cũng là đã xử lý -> không gắn lại LEAD TIỀM NĂNG (23/11/2026)
-        if (v && m.updated_by && (!/^(monsieur claude|auto-)/i.test(String(m.updated_by).trim()) || String(m.updated_by).trim() === 'Monsieur Claude (7 ngày)')) { ttApp[c] = v; break; } }
+        if (v && m.updated_by && (!/^(monsieur claude|auto-)/i.test(String(m.updated_by).trim()) || ['Monsieur Claude (7 ngày)', 'Monsieur Claude (xác nhận 2 ngày)'].includes(String(m.updated_by).trim()))) { ttApp[c] = v; break; } }
     });
     // SALE ĐÃ CẬP NHẬT KHÁCH -> KHÔNG ĐỤNG (anh Hải 23/11/2026: "sale đã update data rồi thì m không được sờ vào nữa"): có lượt chăm sóc
     // (salesi_crm theo Lead ID), hồ sơ saleretail_manual do NGƯỜI sửa (bất kỳ ô nào), hoặc activity_log có người sửa Lead ID đó.

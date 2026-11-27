@@ -16,7 +16,16 @@
 // SOÁT LẠI mỗi lượt các khách job đã chuyển (chưa trả): không còn đúng luật (hội thoại không thuộc QC T11 / Sale đã cập nhật / khách đã nhắn
 //   lại sau lúc chuyển) -> TRẢ LẠI: Phân loại cũ (người sửa cũ lấy từ activity_log nếu có), thẻ khách cũ (chỉ khi thẻ còn y như job để lại).
 //   Sale đã tự đổi Phân loại sau lúc chuyển -> không đụng.
-// Lịch: bước trong sync-datahub.yml, tối đa 1 lượt / 6 giờ (gianhMoc), 7h–22h VN. KHO=1 chạy thử (in từng ca). CHAY_NGAY=1 bỏ lịch.
+// + LUẬT XÁC NHẬN 2 NGÀY (anh Hải chốt 27/11/2026, QC + MKT đồng bộ): "các khách tiềm năng mà sale nhắn xác nhận lại xem họ có mua hay không ...
+//   sau 2 ngày mà họ k phản hồi lại tin xác nhận ấy hoặc phản hồi từ chối, thì [QC] chuyển tiềm năng thành đạt và cũng báo để mkt đổi lại thẻ và
+//   trạng thái cho tương ứng từ app tới pancake"; anh chọn trạng thái app = "Không tiềm năng". QC (v1.80) ghi trong view qc_khach_tiem_nang_ngay:
+//   xac_nhan_luc (giờ VN, tin xác nhận mới nhất) + nhom 'dat' với ly_do_nhom "Sale xác nhận lại, khách không phản hồi sau 2 ngày", hoặc ket
+//   'tu_choi' đánh giá SAU tin xác nhận. Ca này ĐỔI CẢ KHI SALE ĐÃ CẬP NHẬT (tin xác nhận chính là lượt chăm của Sale) -- chỉ trừ khách đã chốt
+//   (isChot / thẻ CHỐT ĐƠN) hoặc Sale đã chọn Phân loại khác Tiềm năng / Lead mới (Đã ra đơn, Lead cũ, Chưa liên hệ được, Không tiềm năng).
+//   App: Phân loại "Không tiềm năng" (updated_by "Monsieur Claude (xác nhận 2 ngày)"); thẻ khách bỏ *TIỀM NĂNG*, thêm LEAD ĐẠT. Trả lại khi QC
+//   không còn xếp đạt theo luật này (khách nhắn lại / đánh giá lại) hoặc khách nhắn lại sau lúc chuyển.
+// Lịch: bước trong sync-datahub.yml, tối đa 1 lượt / 6 giờ (gianhMoc), 7h–22h VN; CÓ ca xác nhận 2 ngày chưa xử lý thì chạy ngay (không chờ 6 giờ).
+//   KHO=1 chạy thử (in từng ca). CHAY_NGAY=1 bỏ lịch.
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const { sbAll } = require('./lib/sb');
 const KEYS = (() => { try { return fs.readFileSync(path.join(__dirname, '..', 'supabase-keys.local.txt'), 'utf8'); } catch (e) { return ''; } })();
@@ -24,7 +33,8 @@ const TOKEN = process.env.PANCAKE_SESSION_TOKEN || (KEYS.match(/PANCAKE_SESSION_
 const KHOA = process.env.SUPABASE_SERVICE_ROLE_KEY || (KEYS.match(/SERVICE_ROLE_KEY:\s*(eyJ[A-Za-z0-9._-]+)/) || [])[1];
 const SB = 'https://bcrpxfvvjsjpvbksqzls.supabase.co';
 const XEM = process.env.KHO === '1';
-const NGAY = 7, AI = 'Monsieur Claude (7 ngày)', TU_NGAY = '2026-11-01';
+const NGAY = 7, AI = 'Monsieur Claude (7 ngày)', AI_XN = 'Monsieur Claude (xác nhận 2 ngày)', TU_NGAY = '2026-11-01';
+const XN_LY = 'Sale xác nhận lại, khách không phản hồi sau 2 ngày', XN_TIEN_TO = 'Sale xác nhận lại';
 const HSB = { apikey: KHOA, Authorization: 'Bearer ' + KHOA, 'Content-Type': 'application/json' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const pos = p => `https://pos.pages.fm/api/v1/${p}${p.includes('?') ? '&' : '?'}access_token=${TOKEN}`;
@@ -58,26 +68,36 @@ function cham(thread) {
 
 (async () => {
   if (!TOKEN || !KHOA) { console.error('Thiếu PANCAKE_SESSION_TOKEN / SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); }
-  if (process.env.CHAY_NGAY !== '1') {
-    const gio = new Date(Date.now() + 7 * 3600e3).getUTCHours();
-    if (gio < 7 || gio > 22) { console.log('Không tiềm năng 7 ngày: ngoài 7h–22h VN — bỏ qua'); return; }
-    const { gianhMoc } = require('./lib/gianh-moc');
-    if (!(await gianhMoc(SB, KHOA, 'tu-khong-tiem-nang', 6 * 60))) { console.log('Không tiềm năng 7 ngày: chưa đủ 6 giờ từ lượt trước — bỏ qua'); return; }
-  }
   // hội thoại QC tháng 11 -> full_thread mới nhất
   const qcTh = {}, qcView = {};
   // view tiềm năng QC: khách "chưa khai thác hết" (lỗi Sale) / "khách hỏi, chờ Sale" -> KHÔNG BAO GIỜ chuyển (việc của Sale, Daily Task đỏ)
-  (await sbAll(SB, KHOA, 'qc_khach_tiem_nang_ngay', `select=pancake_conversation_id,chua_khai_thac,ly_do_nhom&ngay=gte.${TU_NGAY}&order=pancake_conversation_id`))
+  (await sbAll(SB, KHOA, 'qc_khach_tiem_nang_ngay', `select=pancake_conversation_id,chua_khai_thac,ly_do_nhom,nhom,ket,danh_gia_luc,xac_nhan_luc&ngay=gte.${TU_NGAY}&order=pancake_conversation_id`))
     .forEach(q => { qcView[q.pancake_conversation_id] = q; });
   const viecSale = c => { const q = qcView[c]; return !!q && (q.chua_khai_thac === true || /chờ Sale/i.test(q.ly_do_nhom || '')); };
+  // ca XÁC NHẬN 2 NGÀY của 1 hội thoại -> lý do (null = không thuộc luật). xac_nhan_luc là giờ VN không múi giờ.
+  const xnLuc = q => { const v = String(q.xac_nhan_luc || ''); return v ? Date.parse(/Z|[+-]\d\d:?\d\d$/.test(v) ? v : v.replace(' ', 'T') + '+07:00') : null; };
+  const xnDat = c => { const q = qcView[c]; if (!q || q.nhom !== 'dat' || !q.xac_nhan_luc || q.chua_khai_thac === true) return null;
+    if (q.ly_do_nhom === XN_LY) return XN_LY;
+    if (q.ket === 'tu_choi' && Date.parse(q.danh_gia_luc) > xnLuc(q)) return XN_TIEN_TO + ', khách từ chối';
+    return null; };
+  const nkCu = await sbAll(SB, KHOA, 'khach_khong_tiem_nang_tu_dong', 'select=*&order=lead_id');
+  if (process.env.CHAY_NGAY !== '1') {
+    const gio = new Date(Date.now() + 7 * 3600e3).getUTCHours();
+    if (gio < 7 || gio > 22) { console.log('Không tiềm năng 7 ngày: ngoài 7h–22h VN — bỏ qua'); return; }
+    // có hội thoại QC vừa xếp đạt theo luật xác nhận 2 ngày mà job chưa chuyển -> chạy ngay; không thì 6 giờ / lượt như cũ
+    const daXn = new Set(nkCu.filter(x => !x.tra_lai_luc && String(x.ly_do || '').startsWith(XN_TIEN_TO)).map(x => x.conversation_id));
+    const xnMoi = Object.keys(qcView).filter(c => xnDat(c) && !daXn.has(c)).length;
+    const { gianhMoc } = require('./lib/gianh-moc');
+    if (!xnMoi && !(await gianhMoc(SB, KHOA, 'tu-khong-tiem-nang', 6 * 60))) { console.log('Không tiềm năng 7 ngày: chưa đủ 6 giờ từ lượt trước — bỏ qua'); return; }
+    if (xnMoi) console.log(`Có ${xnMoi} hội thoại QC xếp đạt theo luật xác nhận 2 ngày — chạy ngay`);
+  }
   (await sbAll(SB, KHOA, 'sale_response_review', `select=id,conv_id,full_thread&conv_date=gte.${TU_NGAY}&verdict=neq.khong_lien_quan&order=id`))
     .forEach(x => { if (x.conv_id && String(x.full_thread || '').trim()) qcTh[x.conv_id] = x.full_thread; });
-  const nkCu = await sbAll(SB, KHOA, 'khach_khong_tiem_nang_tu_dong', 'select=*&order=lead_id');
 
   const { napApp, masterCua } = require('./lib/nap-app');
   const ctx = await napApp();
   ctx.__qc = qcTh;
-  const theoId = {}, ungVien = [];
+  const theoId = {}, ungVien = [], ungVienXn = [];
   for (const L of ['Lẻ', 'Sỉ']) {
     masterCua(ctx, L);
     ctx.__L = L;
@@ -91,18 +111,20 @@ function cham(thread) {
     const ds = vm.runInContext('window.__ds', ctx);
     ds.forEach(x => { x.loai = L; x.ids.forEach(id => { if (!theoId[id]) theoId[id] = x; }); });
     ds.filter(x => !x.isChot && x.tt === 'Tiềm năng, chưa ra đơn').forEach(x => ungVien.push(x));
+    ds.filter(x => !x.isChot && ['Tiềm năng, chưa ra đơn', 'Lead mới', '(chưa cập nhật)'].includes(x.tt)).forEach(x => {
+      const c = (x.convs || []).find(cv => xnDat(cv)); if (c) ungVienXn.push(Object.assign({}, x, { conv: c, xn: xnDat(c) })); });
   }
   // người sửa trong nhật ký thao tác (activity_log) theo Lead ID
   const nguoiLog = {};
-  const tatId = [...new Set(ungVien.flatMap(x => x.ids).concat(nkCu.map(x => x.lead_id)))];
+  const tatId = [...new Set(ungVien.flatMap(x => x.ids).concat(ungVienXn.flatMap(x => x.ids), nkCu.map(x => x.lead_id)))];
   for (let i = 0; i < tatId.length; i += 80) {
     (await sbAll(SB, KHOA, 'activity_log', 'select=ref,who,fld,new_v,at&ref=in.(' + tatId.slice(i, i + 80).map(encodeURIComponent).join(',') + ')&order=at'))
       .forEach(a => { if (!laJob(a.who)) (nguoiLog[a.ref] = nguoiLog[a.ref] || []).push(a); });
   }
   const saleDaCapNhat = x => x.nCs > 0 || x.nguoiSua.some(w => !laJob(w)) || x.ids.some(id => (nguoiLog[id] || []).length);
-  console.log(`Không tiềm năng 7 ngày: hội thoại QC T11 ${Object.keys(qcTh).length} · khách tiềm năng ${ungVien.length} · đã chuyển trước ${nkCu.filter(x => !x.tra_lai_luc).length}${XEM ? ' (KHO=1: chạy thử)' : ''}`);
+  console.log(`Không tiềm năng 7 ngày: hội thoại QC T11 ${Object.keys(qcTh).length} · khách tiềm năng ${ungVien.length} · đã chuyển trước ${nkCu.filter(x => !x.tra_lai_luc).length} · ca xác nhận 2 ngày ${ungVienXn.length}${XEM ? ' (KHO=1: chạy thử)' : ''}`);
 
-  const now = Date.now(), dem = { chuyen: 0, im: 0, chua_so: 0, giu_sale: 0, giu_ngoai_qc: 0, giu_moi: 0, tra: 0, loi: 0 }, lyTra = {};
+  const now = Date.now(), dem = { xn: 0, chuyen: 0, im: 0, chua_so: 0, giu_sale: 0, giu_ngoai_qc: 0, giu_moi: 0, tra: 0, loi: 0 }, lyTra = {};
   const act = [];
   const doiThe = async (shop, orderId, conv, fn) => {
     const j = await lay(pos(`shops/${shop}/orders/${orderId}`)); const d = j && (j.data || j);
@@ -127,9 +149,14 @@ function cham(thread) {
   for (const x of nkCu.filter(r => !r.tra_lai_luc)) {
     const kh = theoId[x.lead_id];
     const man = vm.runInContext(`rptSlManual[${JSON.stringify(x.lead_id)}]||{}`, ctx);
-    if (String(man.si_phan_loai || '').trim() !== 'Không tiềm năng' || String(man.updated_by || '') !== AI) continue;   // Sale đã đổi sau đó -> không đụng
+    const laXn = String(x.ly_do || '').startsWith(XN_TIEN_TO);
+    if (String(man.si_phan_loai || '').trim() !== 'Không tiềm năng' || String(man.updated_by || '') !== (laXn ? AI_XN : AI)) continue;   // Sale đã đổi sau đó -> không đụng
     let ly = null;
-    if (!qcTh[x.conversation_id]) ly = 'hội thoại không thuộc dữ liệu QC tháng 11';
+    if (laXn) {
+      if (!xnDat(x.conversation_id)) ly = 'QC không còn xếp đạt theo luật xác nhận 2 ngày (khách nhắn lại / đánh giá lại)';
+      else if (qcTh[x.conversation_id]) { const h = cham(qcTh[x.conversation_id]); if (h.khachCuoi && h.khachCuoi > Date.parse(x.luc)) ly = 'khách nhắn lại'; }
+    }
+    else if (!qcTh[x.conversation_id]) ly = 'hội thoại không thuộc dữ liệu QC tháng 11';
     else if (viecSale(x.conversation_id)) ly = 'QC: chưa khai thác hết / khách hỏi chờ Sale (việc của Sale)';
     else if (kh && saleDaCapNhat(kh)) ly = 'Sale đã cập nhật khách (lượt chăm sóc / hồ sơ)';
     else { const h = cham(qcTh[x.conversation_id]);
@@ -160,8 +187,18 @@ function cham(thread) {
     await sleep(150);
   }
 
-  // ── 2. CHUYỂN "KHÔNG TIỀM NĂNG" ──
+  // ── 2a. LUẬT XÁC NHẬN 2 NGÀY (đổi cả khi Sale đã cập nhật) ──
+  const xnXong = new Set();
+  for (const u of ungVienXn) {
+    if (daChuyen.has(u.lead) || xnXong.has(u.lead)) continue;
+    xnXong.add(u.lead); dem.xn++;
+    if (XEM) { console.log(`  CHUYỂN (xác nhận) ${u.loai} ${u.lead} ${u.ten} · ${u.tt} · ${u.xn}`); continue; }
+    try { await chuyenKtn(u, u.xn, null, AI_XN); } catch (e) { dem.loi++; console.log('  chuyển (xác nhận) lỗi', u.lead, an(e.message)); }
+    await sleep(150);
+  }
+  // ── 2b. CHUYỂN "KHÔNG TIỀM NĂNG" 7 NGÀY ──
   for (const u of ungVien) {
+    if (xnXong.has(u.lead)) continue;
     if (daChuyen.has(u.lead)) continue;
     if (!u.conv) { dem.giu_ngoai_qc++; continue; }
     if (viecSale(u.conv)) { dem.giu_sale++; continue; }
@@ -173,10 +210,13 @@ function cham(thread) {
     const lyDo = im ? 'im ' + NGAY + ' ngày sau tin Sale' : 'chưa SĐT sau ' + NGAY + ' ngày';
     dem.chuyen++; if (im) dem.im++; else dem.chua_so++;
     if (XEM) { console.log(`  CHUYỂN ${u.loai} ${u.lead} ${u.ten} · ${lyDo} · tin Sale cuối ${new Date(h.saleCuoi + 7 * 3600e3).toISOString().slice(0, 10)}`); continue; }
-    try {
+    try { await chuyenKtn(u, lyDo, h.saleCuoi, AI); } catch (e) { dem.loi++; console.log('  chuyển lỗi', u.lead, an(e.message)); }
+    await sleep(150);
+  }
+  async function chuyenKtn(u, lyDo, saleCuoi, ai) {
       const mCu = vm.runInContext(`rptSlManual[${JSON.stringify(u.lead)}]||{}`, ctx);
       await fetch(`${SB}/rest/v1/saleretail_manual?on_conflict=lead_id`, { method: 'POST', headers: { ...HSB, Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify([{ lead_id: u.lead, si_phan_loai: 'Không tiềm năng', updated_by: AI, updated_at: new Date().toISOString() }]) });
+        body: JSON.stringify([{ lead_id: u.lead, si_phan_loai: 'Không tiềm năng', updated_by: ai, updated_at: new Date().toISOString() }]) });
       const d0 = u.don.find(o => o.conv === u.conv) || null;
       let the = null;
       if (d0) the = await doiThe(d0.shop, d0.id, u.conv, cu => {
@@ -189,18 +229,16 @@ function cham(thread) {
         body: JSON.stringify({ nhom: 'dat' }) }).catch(() => null);
       await fetch(`${SB}/rest/v1/khach_khong_tiem_nang_tu_dong?on_conflict=lead_id`, { method: 'POST', headers: { ...HSB, Prefer: 'resolution=merge-duplicates,return=minimal' },
         body: JSON.stringify([{ lead_id: u.lead, ten: u.ten, conversation_id: u.conv, shop_id: d0 ? d0.shop : null, customer_id: the && the.cid || null, ly_do: lyDo,
-          sale_nhan_cuoi: new Date(h.saleCuoi).toISOString(), phan_loai_truoc: mCu.si_phan_loai || 'Tiềm năng, chưa ra đơn',
+          sale_nhan_cuoi: saleCuoi ? new Date(saleCuoi).toISOString() : null, phan_loai_truoc: mCu.si_phan_loai || 'Tiềm năng, chưa ra đơn',
           pl_tay_truoc: mCu.si_phan_loai || null, nguoi_sua_truoc: mCu.updated_by || null, sua_luc_truoc: mCu.updated_at || null, co_ho_so_truoc: !!mCu.lead_id,
           the_truoc: the && the.cu ? the.cu.join(', ') : null, the_sau: the && the.moi ? the.moi.join(', ') : null, luc: new Date().toISOString(), tra_lai_luc: null, ghi_chu: null }]) });
       act.push({ who: 'Monsieur Claude', act: 'U', tbl: 'saleretail_manual', ref: u.lead, label: u.ten, fld: 'Phân loại KH', old_v: mCu.si_phan_loai || 'Tiềm năng, chưa ra đơn', new_v: 'Không tiềm năng (' + lyDo + ')' });
-    } catch (e) { dem.loi++; console.log('  chuyển lỗi', u.lead, an(e.message)); }
-    await sleep(150);
   }
   if (!XEM && act.length) {
     const r = await fetch(`${SB}/rest/v1/activity_log`, { method: 'POST', headers: { ...HSB, Prefer: 'return=minimal' }, body: JSON.stringify(act) });
     if (!r.ok) console.log('  ghi activity_log lỗi', r.status);
   }
-  console.log(`Không tiềm năng 7 ngày xong: ${XEM ? 'SẼ' : 'đã'} trả lại ${dem.tra} ${JSON.stringify(lyTra)} · chuyển ${dem.chuyen} (im ${dem.im} · chưa SĐT ${dem.chua_so})`
+  console.log(`Không tiềm năng 7 ngày xong: ${XEM ? 'SẼ' : 'đã'} trả lại ${dem.tra} ${JSON.stringify(lyTra)} · xác nhận 2 ngày ${dem.xn} · chuyển 7 ngày ${dem.chuyen} (im ${dem.im} · chưa SĐT ${dem.chua_so})`
     + ` · giữ: Sale đã cập nhật ${dem.giu_sale}, ngoài dữ liệu QC T11 ${dem.giu_ngoai_qc}, chưa đủ 7 ngày / khách còn nhắn ${dem.giu_moi} · lỗi ${dem.loi}`);
   if (dem.loi) process.exitCode = 1;
 })().catch(e => { console.error(an(e && e.message || e)); process.exit(1); });
