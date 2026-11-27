@@ -28,7 +28,7 @@ async function khoaHong() {   // true = hỏng chắc chắn, false = dùng đư
 
 (async () => {
   const hong = await khoaHong();
-  const r = await fetch(`${SB}/rest/v1/job_moc?ten=eq.${TEN}&select=ten,luc,ghi_chu`, { headers: H });
+  const r = await fetch(`${SB}/rest/v1/job_moc?ten=eq.${TEN}&select=ten,luc,ghi_chu&limit=1`, { headers: H });
   const dau = r.ok ? (await r.json())[0] : null;
   const daBao = !!(dau && dau.ghi_chu === 'hỏng');
   if (hong === true) {
