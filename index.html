@@ -6146,7 +6146,7 @@ function rptMktHtml(){
     const the=(t,mau)=>'<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:var(--bg2);font-size:11.5px;font-weight:700;color:'+(mau||'var(--text2)')+'">'+t+'</span>';
     const tongTien=ds.reduce((s2,y)=>s2+y.tien,0);
     window._rptSlLists[k]={title:ten+' · '+tieuDe+' · '+num(ds.length)+' khách',
-      cols:['Ngày bấm QC','Khách','Nguồn','Quảng cáo','Sales','Trong app','Tiềm năng','Phiếu Kiot','Tiền mua','Pancake'],
+      cols:['Ngày bấm QC','Khách','Nguồn','Quảng cáo','Sales','Trong app','Phiếu Kiot','Tiền mua','Pancake'],
       phu:the(num(ds.length)+' khách')+the('Tiềm năng '+num(ds.filter(y=>y.tiem).length),'var(--orange,#f97316)')+the('Đã mua '+num(ds.filter(y=>y.mua).length)+(tongTien?' · '+vnd(tongTien):''),'var(--green)')+the('QC gắn Ad ID · từ 1/11/2026','var(--muted)'),
       rows:ds.map(y=>{const r=y.r,h=y.h;
         const ma=r?(r.kh||r.leadId||''):'';
@@ -6156,7 +6156,6 @@ function rptMktHtml(){
           '<span style="font-size:10.5px">'+e(tenAd[y.adId]||y.adId)+(y.binhLuan?'<br><span style="color:var(--muted)">theo bài viết</span>':'')+'</span>',
           r?rptSlSaleHien(r.staff):'—',
           r?e(y.t||'')+(r.kh?'':'<br><span style="font-size:10.5px;color:var(--muted)">chưa gắn Mã KH</span>'):'<span style="color:var(--muted)">chưa có trong app</span>',
-          y.tiem?'<b style="color:'+(y.mua?'var(--green)':'var(--orange,#f97316)')+'">'+y.nguonTiem+'</b>':'—',
           y.phieu.length?y.phieu.map(o=>lk(kiotPhieu(o.code),e(o.code))).join(' · '):'—',
           y.tien>0?vnd(y.tien):'—',
           conv?lk('https://pancake.vn/'+(h.page_id||String(conv).split('_')[0])+'?c_id='+encodeURIComponent(conv),'Mở chat ↗'):'—'];}),
@@ -8024,10 +8023,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='27/11 14:33';
+const APP_VERSION='27/11 14:49';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=613;
+const APP_BAN=614;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
