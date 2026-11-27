@@ -60,6 +60,12 @@ Soạn 29/9/2026 bởi Monsieur Claude.
 10. **Mốc giờ luôn theo giờ Việt Nam (UTC+7)** (anh chốt 7/10/2026): giờ hiển thị, báo cáo, "hôm nay / hôm qua", lịch chạy job.
     pg_cron và GitHub Actions chạy giờ UTC → đặt lịch = giờ VN − 7 và ghi chú giờ VN cạnh lịch; tính ngày bằng
     `now() at time zone 'Asia/Ho_Chi_Minh'` (JS: cộng 7h). `timestamptz` lưu UTC là bình thường, chỉ đổi khi hiện / cắt ngày.
+    **GIỜ VN HẾT, KHÔNG ĐỂ LỆCH 7 TIẾNG GIỮA CÁC APP** (anh chốt 27/11/2026: "giờ vn hết đi", sau ca QC / MKT so xac_nhan_luc với danh_gia_luc):
+    - Mọi mốc giờ trong hệ thống hiểu là giờ VN: hiển thị, báo cáo, tin nhắn giữa các phiên Claude, nhãn "hôm nay", cột ngày (`date` = ngày VN).
+    - Cột GIỜ trên bảng / view dùng chung: kiểu `timestamptz` (có múi giờ), KHÔNG dùng `timestamp` không múi. Giá trị lấy từ nguồn giờ VN (dòng
+      thread "[YYYY-MM-DD HH:MM]", ô giờ Kiot / Pancake không múi…) thì gắn múi khi ghi: `x AT TIME ZONE 'Asia/Ho_Chi_Minh'` (x là timestamp không múi)
+      hoặc chuỗi kèm "+07:00". App đọc cột timestamptz rồi đổi sang giờ VN khi hiện / cắt ngày (SQL `at time zone 'Asia/Ho_Chi_Minh'`, JS cộng 7h).
+    - Bất đắc dĩ phải giữ timestamp không múi thì tên cột kết thúc `_vn` và ghi chú trong sổ app sở hữu.
 
 ## 4. Tài nguyên dùng chung (cả org chung 1 hạn mức)
 
