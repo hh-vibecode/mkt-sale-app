@@ -372,7 +372,7 @@ a.cv-lk:hover{color:var(--accent);text-decoration:underline}
 .bcn-dau{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:18px 22px 6px;flex-wrap:wrap}
 .bcn-ten{font-size:16px;font-weight:800;color:var(--text);letter-spacing:-.01em}
 .bcn-ngay{font-size:12px;color:var(--muted);font-weight:600}
-.bcn-so{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;padding:12px 22px 20px}
+.bcn-so{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;padding:12px 22px 20px}
 .bcn-so>div{border:1px solid var(--border);border-radius:10px;padding:12px 16px;background:var(--surface)}
 .bcn-so .l{font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.05em;text-transform:uppercase}
 .bcn-so .n{font-size:21px;font-weight:800;color:var(--text);line-height:1.25;margin-top:4px;font-variant-numeric:tabular-nums}
@@ -5003,7 +5003,7 @@ function cvBaoCaoHtml(h,muc,ten,nguoiId){
       +(chot?the('var(--accent-l)','var(--accent)','Đã nộp báo cáo '+cvGio(h.chot_luc)):the('#fef3c7','#b45309','Chưa nộp báo cáo'))+'</div></div>'
     +'<div class="cv-so">'+so(num(tk.ke_hoach),'Việc kế hoạch')+so(num(tk.xu_ly),'Đã xử lý','#16a34a')
       +so(num(tk.ke_hoach-tk.xu_ly),'Chưa xử lý',tk.ke_hoach-tk.xu_ly?'#d97706':'')+so(num(tk.ngoai_n),'Ngoài kế hoạch')
-      +so(num(tk.don),'Đơn chốt',tk.don?'#16a34a':'')+so(vnd(tk.tien),'Tiền chốt',tk.tien?'#16a34a':'')
+      +so(num(tk.don),'Đơn chốt',tk.don?'#16a34a':'')+so(vnd(tk.tien),'Doanh thu chốt',tk.tien?'#16a34a':'')
       +(Si?['B','C'].map(n=>{const ds=bc[n],x=ds.filter(z=>z.m&&z.m.xong).length;
         return so(num(x)+'<span style="font-size:12px;color:var(--muted)">/'+ds.length+'</span>',n==='B'?'Việc cố định':'Việc chiến dịch',ds.length&&x===ds.length?'#16a34a':'');}).join(''):'')+'</div>'
     +(bang?'<div style="overflow-x:auto"><table class="cv-bang"><thead><tr><th></th><th>Khách</th><th>Mục tiêu</th><th>Kết quả trong ngày</th><th>Ghi chú</th></tr></thead><tbody>'+bang+'</tbody></table></div>'
@@ -5061,7 +5061,7 @@ function cvLichSuHtml(){
   const het=new Set(ds.map(h=>h.nguoi_id)).size>1||cvXemHet();
   if(!ds.length)return '<div class="cv-bc"><div class="cv-chua" style="padding:22px 18px">Chưa có báo cáo nào</div></div>';
   return '<div class="cv-bc"><div style="overflow-x:auto"><table class="cv-bang"><thead><tr><th>Ngày</th>'+(het?'<th>Người</th>':'')
-    +'<th style="text-align:right">Việc kế hoạch</th><th style="text-align:right">Đã xử lý</th><th style="text-align:right">Ngoài kế hoạch</th><th style="text-align:right">Đơn chốt</th><th style="text-align:right">Tiền chốt</th><th>Nộp kế hoạch</th><th>Nộp báo cáo</th></tr></thead><tbody>'
+    +'<th style="text-align:right">Việc kế hoạch</th><th style="text-align:right">Đã xử lý</th><th style="text-align:right">Ngoài kế hoạch</th><th style="text-align:right">Đơn chốt</th><th style="text-align:right">Doanh thu chốt</th><th>Nộp kế hoạch</th><th>Nộp báo cáo</th></tr></thead><tbody>'
     +ds.map(h=>{const t=tkL(h),kh=dem[h.ngay+'|'+h.nguoi_id]||0,dn=new Date(h.ngay+'T00:00:00');
       return '<tr style="cursor:pointer" onclick="cvMoNgay(\''+h.ngay+'\',\''+cvId(h.nguoi_id)+'\')"><td><b>'+dmy(h.ngay)+'</b> <span class="cv-phu">'+CV_THU[dn.getDay()]+'</span></td>'
         +(het?'<td>'+cvE(h.nguoi||'')+'</td>':'')
@@ -5157,10 +5157,10 @@ function cvQuanTriHtml(){
       +(mot?CV_THU[dn.getDay()]+', '+dmy(d):dmy(tu)+' – '+dmy(den)+' · '+ngays.length+' ngày')+' · '+dong.length+' Sale</div></div></div>'
     +'<div class="cv-so">'+so(num(T.gui)+'<span style="font-size:12px;color:var(--muted)">/'+(mot?coTK:T.ngayCo+' ngày')+'</span>','Đã nộp kế hoạch')
       +so(num(T.ke_hoach),'Việc kế hoạch')+so(num(T.xu_ly),'Đã xử lý','#16a34a')+so(num(T.ngoai_n),'Ngoài kế hoạch')
-      +so(num(T.luot),'Lượt chăm sóc')+so(num(T.don),'Đơn chốt',T.don?'#16a34a':'')+so(vnd(T.tien),'Tiền chốt',T.tien?'#16a34a':'')
+      +so(num(T.luot),'Lượt chăm sóc')+so(num(T.don),'Đơn chốt',T.don?'#16a34a':'')+so(vnd(T.tien),'Doanh thu chốt',T.tien?'#16a34a':'')
       +so(num(T.chot)+'<span style="font-size:12px;color:var(--muted)">/'+(mot?coTK:T.ngayCo+' ngày')+'</span>','Đã nộp báo cáo')+'</div>'
     +'<div style="overflow-x:auto"><table class="cv-bang"><thead><tr><th>Sale</th><th>Nộp kế hoạch</th><th style="text-align:right">Việc kế hoạch</th><th style="text-align:right">Đã xử lý</th>'
-      +'<th style="text-align:right">Chưa xử lý</th><th style="text-align:right">Ngoài kế hoạch</th><th style="text-align:right">Lượt chăm sóc</th><th style="text-align:right">Đơn chốt</th><th style="text-align:right">Tiền chốt</th>'
+      +'<th style="text-align:right">Chưa xử lý</th><th style="text-align:right">Ngoài kế hoạch</th><th style="text-align:right">Lượt chăm sóc</th><th style="text-align:right">Đơn chốt</th><th style="text-align:right">Doanh thu chốt</th>'
       +(L==='Sỉ'?'<th style="text-align:right">Việc cố định</th><th style="text-align:right">Việc chiến dịch</th>':'')+'<th>Nộp báo cáo</th></tr></thead><tbody>'
     +dong.map(x=>{const p=tl(x),chua=x.tk.ke_hoach-x.tk.xu_ly,g='<span class="cv-chua">—</span>',kh=!!x.p;
       return '<tr'+(kh?' style="cursor:pointer" onclick="cvMoNgay(\''+d+'\',\''+cvId(x.id)+'\')" title="Xem báo cáo ngày của '+cvE(x.ten)+'"':'')+'><td><b>'+cvE(x.ten)+'</b>'
@@ -5386,6 +5386,35 @@ function bcnSoLieu(p,ngays,log,zl){
 // "mấy cột nội dung cần theo dõi chia lại theo khung dọc", "làm sao để ngày nào nhìn ra ngày đấy, không bị lẫn", "tiêu đề xếp ngang nhau bất kể
 // nội dung, cái nào dài thì mấy cái kia tự xuống cho ngang". -> 1 lưới: hàng = ngày (mới nhất trên), cột = Ngày | Data mới | Chăm lại | Chốt đơn |
 // Thao tác khác. Ô ngày: số ngày to + thứ + "Hôm nay" + tiền chốt; ngày xen kẽ nền xám rất nhạt. Màu chỉ còn ở "Chưa chăm" + tiền.
+// DOANH THU CHỐT SAU HOÀN (anh Hải 27/11/2026) = "Doanh thu xét mốc" của app Kế toán (trang Hoa hồng): phiếu đặt đã cọc (tháng tạo đơn) + hoá đơn
+// không thuộc phiếu đặt đã cọc (tháng hoá đơn) − phiếu trả hàng TH trong tháng. Lấy NGUYÊN số Kế toán đẩy sang bảng so_dt_2app (ben = 'kt', job KT
+// 21:30 VN mỗi ngày -> trễ tối đa 1 ngày), KHÔNG tự tính lại. Kế toán xét theo THÁNG nên ô lấy trọn các tháng của khoảng đang xem (ghi rõ T11...).
+// Người: tài khoản Kiot gộp theo quy tắc Kế toán (so_dt_2app_quy_tac kt:nguoi:"Tên: ... · tài khoản Kiot tính cho người này: A, B") -- vd Kim Oanh tính
+// cho Nguyên; tài khoản không có trong quy tắc -> tính cho chính người bán. Tên quy về Nhân sự qua rptSlSaleName.
+window._ktXm=window._ktXm||{rows:null,quyTac:null,luc:0,dang:false};
+async function ktXmLoad(){
+  const C=window._ktXm;if(C.dang||(C.rows&&Date.now()-C.luc<30*60e3))return;
+  C.dang=true;
+  try{const [r,q]=await Promise.all([sbFetchAll('so_dt_2app','select=thang,ma,tien,nhan_su&ben=eq.kt&order=thang,ma'),
+      sbFetchAll('so_dt_2app_quy_tac','select=khoa,noi_dung&ben=eq.kt&khoa=like.kt:nguoi:*&order=khoa')]);
+    C.rows=r;C.quyTac=q;C.luc=Date.now();}
+  catch(e){console.warn('ktXmLoad',e);if(!C.rows){C.rows=[];C.quyTac=[];}C.luc=Date.now()-25*60e3;}   // lỗi: ô hiện "—", thử lại sau ~5 phút
+  finally{C.dang=false;}
+  const el=document.getElementById('page-congviec');if(el&&el.classList.contains('active'))renderCongViec();
+}
+function bcnKtXm(sale,tu,den){
+  const C=window._ktXm;if(!C.rows||Date.now()-C.luc>30*60e3)ktXmLoad();
+  if(!C.rows)return null;
+  const ten=x=>rptSlSaleName(String(x||'').trim()),toi=ten(sale),chu={};
+  (C.quyTac||[]).forEach(q=>{const m=String(q.noi_dung||'').match(/^([^:]+):.*tài khoản Kiot tính cho người này:\s*([^·]+)/);if(!m)return;
+    const ng=ten(m[1]);m[2].split(',').map(ten).filter(Boolean).forEach(a=>{chu[a]=ng;});});
+  const thangs=[];let t=String(tu).slice(0,7);
+  while(t&&t<=String(den).slice(0,7)&&thangs.length<24){thangs.push(t);const [y,mo]=t.split('-').map(Number);t=mo===12?(y+1)+'-01':y+'-'+String(mo+1).padStart(2,'0');}
+  let tien=0,n=0;
+  C.rows.forEach(x=>{if(!thangs.includes(x.thang))return;const a=ten(x.nhan_su);if((chu[a]||a)!==toi)return;tien+=Number(x.tien||0);n++;});
+  const nhan=thangs.map(x=>'T'+Number(x.slice(5))).filter((v,i,a)=>i===0||i===a.length-1).join('–');
+  return {tien,n,nhan,gop:Object.keys(chu).filter(a=>chu[a]===toi&&a!==toi),choNguoi:chu[toi]&&chu[toi]!==toi?chu[toi]:null};
+}
 function bcnThe(sale,S,tu,den){
   const mot=tu===den,n=v=>num(v),T=S.T,thu=d=>{const t=new Date(d+'T00:00:00');return CV_THU[t.getDay()];};
   const muc=(z,nd)=>'<div class="bcn-muc"><div class="ten">'+cvTenKhHtml(z.o)+'<span class="ma">'+cvE(z.o.ma)+'</span></div><div>'+nd+'</div></div>';
@@ -5420,7 +5449,12 @@ function bcnThe(sale,S,tu,den){
       +COT.map(([ten,dem,ve,co])=>'<div class="bcn-o'+ch+(co(x)?'':' trong')+'"'+(co(x)?' data-l="'+ten+' · '+dem(x)+'"':'')+'>'+(co(x)?ve(x):'<span class="bcn-rong">—</span>')+'</div>').join('');});
   return '<div class="bcn">'
     +'<div class="bcn-dau"><div class="bcn-ten">'+cvE(sale)+'</div><div class="bcn-ngay">'+(mot?thu(tu)+' · '+dmy(tu):dmy(tu).slice(0,5)+' – '+dmy(den)+' · '+S.ngay.length+' ngày')+'</div></div>'
-    +'<div class="bcn-so">'+[['Data mới',n(T.moi)],['Chưa xử lý',n(S.chua.length),S.chua.length?'cam':''],['Chăm lại',n(T.cu)],['Phản hồi KH',T.zl==null?'—':n(T.zl)+(T.miss?' <span class="bcn-cam" style="font-size:12px;font-weight:700">· '+n(T.miss)+' miss</span>':'')],['Chốt đơn',n(T.chot)],['Tiền chốt',T.tien?vnd(T.tien):'0']]
+    +'<div class="bcn-so">'+[['Data mới',n(T.moi)],['Chưa xử lý',n(S.chua.length),S.chua.length?'cam':''],['Chăm lại',n(T.cu)],['Phản hồi KH',T.zl==null?'—':n(T.zl)+(T.miss?' <span class="bcn-cam" style="font-size:12px;font-weight:700">· '+n(T.miss)+' miss</span>':'')],['Chốt đơn',n(T.chot)],['Doanh thu chốt',T.tien?vnd(T.tien):'0'],
+      (()=>{const k=bcnKtXm(sale,tu,den);
+        if(!k)return ['Doanh thu chốt sau hoàn','<span style="color:var(--muted)">…</span>'];
+        const goi='Doanh thu xét mốc của app Kế toán ('+k.nhan+', cả tháng): phiếu đặt đã cọc + hoá đơn − trả hàng; Kế toán cập nhật 21:30 mỗi ngày'+(k.gop.length?' · gộp tài khoản: '+k.gop.join(', '):'');
+        if(k.choNguoi&&!k.n)return ['<span title="'+cvE(goi)+'">Doanh thu chốt sau hoàn · '+k.nhan+'</span>','<span style="font-size:12px;color:var(--muted);font-weight:700">Kế toán tính cho '+cvE(k.choNguoi)+'</span>'];
+        return ['<span title="'+cvE(goi)+'">Doanh thu chốt sau hoàn · '+k.nhan+'</span>',k.n?vnd(k.tien):'0'];})()]
       .map(([l,v,c])=>'<div><div class="l">'+l+'</div><div class="n'+(c?' '+c:'')+'">'+v+'</div></div>').join('')+'</div>'
     +(S.chua.length?'<div class="bcn-nhom"><h4>Data mới chưa xử lý</h4>'
       +S.chua.map(z=>'<div class="bcn-dong"><div class="bcn-kh">'+cvTenKhHtml(z.o)+'<div class="ma">'+cvE(z.o.ma)+'</div></div><div class="bcn-nd"><span class="bcn-cam">Nhận '+dmy(z.d).slice(0,5)+' · '+(z.pc?(z.pc.l==='thieu'?'nhắn chưa hết':'nhắn sót'):'chưa chăm')+', chưa đơn</span></div></div>').join('')+'</div>':'')
@@ -5648,7 +5682,7 @@ function cvCuoiNgayThe(sale,so_,d){
     +'<div class="cv-so">'+so(num(so_.moi.length),'Data mới nhận')
       +so(num(daCham)+'<span style="font-size:12px;color:var(--muted)">/'+so_.moi.length+'</span>','Data mới đã chăm',so_.moi.length&&daCham<so_.moi.length?'#d97706':'')
       +so(num(so_.cu.length),'Khách cũ chăm lại')+so(num(so_.chot.length),'Khách chốt đơn',so_.chot.length?'#16a34a':'')
-      +so(vnd(so_.tien),'Tiền chốt',so_.tien?'#16a34a':'')+'</div>'
+      +so(vnd(so_.tien),'Doanh thu chốt',so_.tien?'#16a34a':'')+'</div>'
     +'<div style="overflow-x:auto"><table class="cv-bang"><thead><tr><th>Khách</th><th>Nội dung chăm sóc / đơn trong ngày</th></tr></thead><tbody>'
       +phan('01','Data mới nhận',so_.moi,so_.moi.length?' · '+daCham+' đã chăm':'')+phan('02','Khách cũ chăm lại',so_.cu)
       +phan('03','Khách chốt đơn trong ngày',so_.chot,so_.chot.length?' · '+vnd(so_.tien):'')
@@ -8024,10 +8058,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='27/11 14:49';
+const APP_VERSION='27/11 14:54';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=615;
+const APP_BAN=616;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
