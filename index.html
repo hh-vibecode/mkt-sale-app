@@ -4514,6 +4514,23 @@ function cvKhach(){
   finally{window._rptSlType=cu;window._kiotOrdByCode=cuK;}
   return _cvKh={khoa,ds,theoId};
 }
+// DOANH THU CHỐT THEO NGƯỜI BÁN (anh Hải 27/11/2026: "cái này là cái hay để m check chéo đổi lại sale ghi nhận doanh thu cho chuẩn, cứ chạy theo
+// kế toán phần này"; chọn "doanh thu theo người bán, giữ chủ khách"): mỗi đơn Kiot (đơn đặt / hoá đơn bán thẳng, có dấu vết tiền như trước) tính
+// cho NGƯỜI BÁN trên phiếu (sold_by_name, quy tên qua rptSlSaleName) -- như Kế toán, KHÔNG theo Sale đứng tên khách. Lấy MỌI khách (bỏ phạm vi
+// xem, cả khách vãng lai) để Sale bán cho khách của người khác vẫn được tính. Phiếu không ghi người bán -> Sale đứng tên khách.
+// Chủ khách (phạm vi xem, Daily Task, data mới / chăm lại) KHÔNG đổi. Áp: ô Doanh thu chốt ở Báo cáo công việc, Cuối ngày, Quản trị.
+window._cvDonNb=window._cvDonNb||{khoa:null,ds:[]};
+function cvDonNguoiBan(){
+  const C=window._cvDonNb,khoa=[window._rptSlVer||0,dhOrders.length,dhManual.length,kiotOrders.length,Object.keys(rptSlManual).length].join('|');
+  if(C.khoa===khoa)return C.ds;
+  const ds=[],co=new Set();
+  ['Lẻ','Sỉ'].forEach(t=>rptSlMasterLoaiKia(true,t).forEach(r=>{
+    [...(r.kords||[]),...(r.repeatOrds||[])].forEach(o=>{
+      if(!o||co.has(o.code)||o.khongTinh||o.status===4||!(Number(o.total||0)>0))return;co.add(o.code);
+      const nb=String(o.sold_by_name||'').trim();
+      ds.push({o,r,loai:t,ngay:String(o.purchase_date||'').slice(0,10),tien:Number(o.total||0),sale:nb?rptSlSaleName(nb):String(r.staff||'').trim()});});}));
+  C.khoa=khoa;C.ds=ds;return ds;
+}
 function cvNgayTao(r){return String((typeof rptSlNgayTao==='function'?rptSlNgayTao(r):r.created)||'').slice(0,10);}
 function cvNguonDs(k,q){
   const K=cvKhach(),L=cvLoai(),sa=dashSales(),cua=x=>!sa.length||sa.includes(String(x.r.staff||'').trim());
@@ -5118,10 +5135,9 @@ function cvQuanTriHtml(){
   const dang=saleNhanSuDS().filter(x=>x.dang_lam!==false&&x.ten&&x.ten!==RPT_SL_BOT_SI&&(x.doi==='Cả 2'||(x.doi==='Sỉ'?'Sỉ':'Lẻ')===L)).map(x=>x.ten);
   const accs=(window._rptSlAccs||[]).filter(a=>!['admin','supreme'].includes(a.position_title)&&(!(a.data_types||[]).length||a.data_types.includes(L)));
   const tien={},lech={},luot={},luotLech={},chuaGan='(chưa gán Sale)';
-  K.ds.forEach(x=>{if(x.loai!==L)return;const s=String(x.r.staff||'').trim(),chuan=dang.includes(s),co=new Set();
-    [...(x.r.kords||[]),...(x.r.repeatOrds||[])].forEach(o=>{
-      if(co.has(o.code)||o.khongTinh||o.status===4||Number(o.total||0)<=0||!trong(o.purchase_date))return;co.add(o.code);
-      const b=chuan?tien:lech,t=chuan?s:(s||chuaGan);(b[t]=b[t]||{don:0,tien:0});b[t].don++;b[t].tien+=Number(o.total||0);});});
+  // doanh thu chốt theo NGƯỜI BÁN trên phiếu Kiot (27/11/2026, như Kế toán) -- xem cvDonNguoiBan
+  cvDonNguoiBan().forEach(z=>{if(z.loai!==L||!trong(z.ngay))return;const s=z.sale,chuan=dang.includes(s);
+    const b=chuan?tien:lech,t=chuan?s:(s||chuaGan);(b[t]=b[t]||{don:0,tien:0});b[t].don++;b[t].tien+=z.tien;});
   siCrmRows.forEach(c=>{if(!trong(c.ngay_cham)||(c.loai||'Sỉ')!==L||rptSlLaGiaoViec(c))return;
     const s=rptSlSaleName(c.sales||'');if(dang.includes(s))luot[s]=(luot[s]||0)+1;else{const t=s||chuaGan;luotLech[t]=(luotLech[t]||0)+1;}});
   // số kế hoạch: cộng từng ngày trong khoảng, mỗi ngày tính y như Báo cáo ngày (cvDongCua đọc cvNgay / cvMuc / st.ngay -> tạm đổi rồi trả lại)
@@ -5631,7 +5647,7 @@ function cvBaoCaoMotNgay(trongKhoang){
 // khách chốt đơn trong ngày"). KHÔNG cần lên kế hoạch / nộp: app tự tổng hợp, Sale chụp màn hình gửi. Gộp cả Lẻ + Sỉ (Sale làm cả 2 đội).
 //  1. Data mới nhận = khách đứng tên Sale, ngày tạo = ngày xem (kèm lượt chăm trong ngày, chưa chăm thì báo)
 //  2. Khách cũ chăm lại = khách khác có lượt chăm sóc CỦA SALE NÀY trong ngày (cột sales; trống thì người ghi = tài khoản)
-//  3. Khách chốt đơn = đơn Kiot tạo trong ngày, có dấu vết tiền, của khách đứng tên Sale (= Tiền chốt ở Quản trị)
+//  3. Khách chốt đơn = đơn Kiot tạo trong ngày, có dấu vết tiền, NGƯỜI BÁN trên phiếu là Sale này (27/11/2026, như Kế toán; = Doanh thu chốt ở Quản trị)
 function cvCuoiNgaySoLieu(sale,acc,d,loaiChi){
   // loaiChi = 'Lẻ' / 'Sỉ': chỉ khách loại đó (menu Sale Lẻ / Sale Sỉ, 13/11/2026); bỏ trống = cả 2
   const K=cvKhach(),loais=cvLoaiDuoc().filter(l=>!loaiChi||l===loaiChi),coLog=new Set(),le=new Map();
@@ -5665,11 +5681,12 @@ function cvCuoiNgaySoLieu(sale,acc,d,loaiChi){
         if(sau)kq.don=[{ma:sau.code,tien:Number(sau.total||0),tam:!!(sau.khongTinh||rptSlPhieuTreo(sau)),sau:String(sau.purchase_date).slice(0,10)}];
         if(!cvDaXuLy(kq))kq.pc=bcnPcKq(x.r,d);}   // chưa ghi tay / chưa đơn -> xem hội thoại Pancake (25/11/2026)
       moi.push({o:oX(x),kq,x});}else if(coLog.has(x))cu.push({o:oX(x),kq:cvKetQua(x,d)});
-    if(!minh)return;const co=new Set(),don=[];
-    [...(x.r.kords||[]),...(x.r.repeatOrds||[])].forEach(o=>{
-      if(co.has(o.code)||o.khongTinh||o.status===4||Number(o.total||0)<=0||String(o.purchase_date||'').slice(0,10)!==d)return;co.add(o.code);
-      don.push({ma:o.code,tien:Number(o.total||0)});});
-    if(don.length)chot.push({o:oX(x),kq:{cs:[],don},tien:don.reduce((a,o)=>a+o.tien,0)});});
+  });
+  // khách chốt đơn: đơn Kiot trong ngày do Sale này BÁN (người bán trên phiếu), khách của ai cũng được (27/11/2026)
+  {const theoKh=new Map();
+   cvDonNguoiBan().forEach(z=>{if(z.ngay!==d||z.sale!==sale||!loais.includes(z.loai))return;
+     const k=z.loai+'|'+z.r.leadId;if(!theoKh.has(k))theoKh.set(k,{x:{r:z.r,loai:z.loai},don:[]});theoKh.get(k).don.push({ma:z.o.code,tien:z.tien});});
+   theoKh.forEach(v=>chot.push({o:oX(v.x),kq:{cs:[],don:v.don},tien:v.don.reduce((a,o)=>a+o.tien,0)}));}
   const tenS=(a,b)=>String(a.o.ten||'').localeCompare(String(b.o.ten||''),'vi');
   moi.sort((a,b)=>(cvDaXuLy(a.kq)?1:0)-(cvDaXuLy(b.kq)?1:0)||tenS(a,b));   // chưa chăm lên trước (có đơn trong ngày = đã chăm, 17/11/2026)
   cu.push(...le.values());cu.sort(tenS);chot.sort((a,b)=>b.tien-a.tien);
@@ -8117,10 +8134,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='27/11 16:17';
+const APP_VERSION='27/11 16:58';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=619;
+const APP_BAN=620;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
