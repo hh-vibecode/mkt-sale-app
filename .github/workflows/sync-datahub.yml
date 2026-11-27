@@ -29,10 +29,19 @@ jobs:
       # Chặn lỗi đọc thiếu dữ liệu: PostgREST trả tối đa 1000 dòng/lần, quên phân trang là âm thầm sai số.
       - name: Kiểm tra phân trang khi đọc Supabase
         run: node scripts/check-pagination.js
+      # KHOÁ PANCAKE HỎNG THÌ CHỈ BÁO 1 LẦN (anh Hải 27/11/2026: "toàn báo lỗi sync về mail t"): lần đầu bước này đỏ (1 mail), các lượt sau
+      # bỏ qua mọi bước Pancake và xanh cho tới khi thay khoá mới (dấu ở job_moc 'pancake-token-hong').
+      - name: Kiểm khoá Pancake (hỏng thì chỉ báo 1 lần)
+        id: token
+        env:
+          PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/kiem-token-pancake.js
       # Khách để lại SĐT trong hội thoại FB (Sỉ + Lẻ) từ 28/9/2026: khách mới -> tự tạo đơn trắng + gắn thẻ,
       # khách cũ -> chỉ gắn thẻ bù (anh Hải bật 28/9). Chạy TRƯỚC bước sync để đơn vừa tạo về app ngay lượt này.
       # Lỗi ở đây không chặn bước sync.
       - name: Tự tạo đơn + gắn thẻ cho khách để SĐT trong hội thoại
+        if: steps.token.outputs.ok == 'true'
         continue-on-error: true
         env:
           PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
@@ -42,6 +51,7 @@ jobs:
       # sau đó Sale tự đổi. Chỉ làm việc khi view QC có lần chấm mới (dấu ở job_moc), không đổi thì thoát ngay. Lỗi không chặn sync.
       # 23/11/2026 anh duyệt lô đầu 85 đơn ("tạo cả 85 đơn") -> bật tự TẠO ĐƠN trắng cho hội thoại QC chưa có đơn (TAO_DON=1).
       - name: Tạo đơn + gắn thẻ Pancake theo đánh giá QC (khi QC có lần chấm mới)
+        if: steps.token.outputs.ok == 'true'
         continue-on-error: true
         env:
           TAO_DON: '1'
@@ -51,12 +61,14 @@ jobs:
       # Tự chuyển khách tiềm năng -> "Không tiềm năng" + thẻ khách LEAD ĐẠT sau 7 ngày Sale nhắn mà khách im / chưa SĐT (anh Hải 23/11/2026),
       # khách nhắn lại thì tự trả. Tối đa 1 lượt / 6 giờ, 7h–22h VN (nạp app nặng). Lỗi không chặn sync.
       - name: Tự chuyển Không tiềm năng sau 7 ngày
+        if: steps.token.outputs.ok == 'true'
         continue-on-error: true
         env:
           PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/tu-khong-tiem-nang.js
       - name: Sync đơn hàng Pancake -> Supabase
+        if: steps.token.outputs.ok == 'true'
         env:
           PANCAKE_SESSION_TOKEN: ${{ secrets.PANCAKE_SESSION_TOKEN }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
