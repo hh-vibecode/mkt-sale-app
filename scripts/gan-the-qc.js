@@ -311,7 +311,10 @@ async function dongBoSale(view) {
     if (!d) {
       const shop = PAGE_SHOP[pg];
       if (q.ly_do_nhom === 'Khách từ chối hẳn') { dem.bo_qua++; nk.push({ ...dong, nhom, the_truoc: null, tag_ten: null, ket: 'bo_qua', ghi_chu: 'từ chối hẳn — không tạo đơn' }); continue; }
-      if (!shop) { dem.bo_qua++; nk.push({ ...dong, nhom, the_truoc: null, tag_ten: null, ket: 'bo_qua', ghi_chu: 'page không có shop POS (TikTok / chưa nối)' }); continue; }
+      // TIKTOK KHÔNG GẮN THẺ (anh Hải 27/11/2026: "tiktok k cần gán thẻ, note lại trên app là đc"): trạng thái tiềm năng / đạt theo dõi ở Daily Task
+      // (app đọc nhom của view QC), ghi nhật ký ket 'tiktok' -- không phải lỗi / bỏ sót.
+      if (!shop && /^ttm_/.test(String(pg))) { dem.bo_qua++; nk.push({ ...dong, nhom, the_truoc: null, tag_ten: null, ket: 'tiktok', ghi_chu: 'TikTok: không gắn thẻ Pancake (anh 27/11) — trạng thái theo dõi trên app' }); continue; }
+      if (!shop) { dem.bo_qua++; nk.push({ ...dong, nhom, the_truoc: null, tag_ten: null, ket: 'bo_qua', ghi_chu: 'page không có shop POS (chưa nối)' }); continue; }
       if (jobSdt.has(conv)) { dem.cho++; continue; }   // job SĐT vừa tạo đơn, hub chưa kịp về -> lượt sau
       // KHOÁ TẠO ĐƠN tới khi anh Hải duyệt số lô đầu (luật "tạo đơn Pancake hàng loạt: chạy thử, báo số trước"; QC nhắc 23/11).
       // Bật: env TAO_DON=1 (workflow) sau khi anh đồng ý. Chưa bật -> hội thoại chưa có đơn để "chờ", không ghi nhật ký.

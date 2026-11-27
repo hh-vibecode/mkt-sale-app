@@ -8110,10 +8110,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='27/11 15:00';
+const APP_VERSION='27/11 15:55';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=617;
+const APP_BAN=618;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -12144,7 +12144,9 @@ function qcTnHtml(ds){
       return '<tr'+(r?' style="cursor:pointer" onclick="rptSlShowCustomer('+q+k+q+')"':'')+'>'
         +'<td style="white-space:nowrap">'+(dmy(String(Q.ngay||'').slice(0,10))||'—')+'</td>'
         +'<td style="white-space:nowrap">'+(x.sale?e(x.sale):'<span style="color:var(--muted)">chưa rõ</span>')+'</td>'
-        +'<td class="name">'+(r?rptSlTenKhach(r)+rptSlMaDuoiTen(r):e(Q.ten_khach||'(không tên)')+'<div style="font-size:10.5px;color:var(--muted);font-weight:600">chưa có trong app'+(Q.sdt?' · '+e(Q.sdt):'')+'</div>')+'</td>'
+        +'<td class="name">'+(r?rptSlTenKhach(r)+rptSlMaDuoiTen(r):e(Q.ten_khach||'(không tên)')+'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'
+          // TikTok (anh Hải 27/11/2026: "tiktok k cần gán thẻ, note lại trên app là đc"): không có shop POS -> không gắn thẻ Pancake, trạng thái theo dõi tại đây
+          +(/tiktok/i.test(Q.nen_tang||'')||/^ttm_/.test(String(Q.page_id||''))?'TikTok · không gắn thẻ Pancake, theo dõi trên app':'chưa có trong app')+(Q.sdt?' · '+e(Q.sdt):'')+'</div>')+'</td>'
         +'<td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(Q.kenh)+'">'+e(Q.kenh||'—')+'</td>'
         +'<td style="white-space:normal;min-width:240px;max-width:420px;font-size:12px;line-height:1.45">'
           +(x.ckt?'<div style="color:var(--red);font-weight:700">Chưa khai thác hết: '+e(Q.ly_do_chua_khai_thac||'')+'</div>':'')
