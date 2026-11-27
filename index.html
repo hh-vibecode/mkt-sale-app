@@ -5395,23 +5395,29 @@ window._ktXm=window._ktXm||{rows:null,quyTac:null,luc:0,dang:false};
 async function ktXmLoad(){
   const C=window._ktXm;if(C.dang||(C.rows&&Date.now()-C.luc<30*60e3))return;
   C.dang=true;
-  try{const [r,q]=await Promise.all([sbFetchAll('so_dt_2app','select=thang,ma,tien,nhan_su&ben=eq.kt&order=thang,ma'),
-      sbFetchAll('so_dt_2app_quy_tac','select=khoa,noi_dung&ben=eq.kt&khoa=like.kt:nguoi:*&order=khoa')]);
-    C.rows=r;C.quyTac=q;C.luc=Date.now();}
-  catch(e){console.warn('ktXmLoad',e);if(!C.rows){C.rows=[];C.quyTac=[];}C.luc=Date.now()-25*60e3;}   // lỗi: ô hiện "—", thử lại sau ~5 phút
+  // ĐỌC QUA HÀM CSDL (sửa 27/11/2026): so_dt_2app / so_dt_2app_quy_tac chỉ service_role đọc được (RLS, có hoa hồng) -> đọc thẳng ra 0 dòng,
+  // ô hiện "0" cho mọi Sale. Hàm so_dt_2app_xet_moc / so_dt_2app_nguoi_kt (security definer, chỉ authenticated) trả TỔNG theo tháng × người bán
+  // + quy tắc gộp tài khoản, không hoa hồng / từng đơn (supabase-schema-kt-xet-moc.sql).
+  const rpc=async(ten,body)=>{const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/'+ten,{method:'POST',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+    if(!r.ok)throw new Error(ten+' HTTP '+r.status);return r.json();};
+  try{const [r,q]=await Promise.all([rpc('so_dt_2app_xet_moc',{p_tu:'2026-01',p_den:'2099-12'}),rpc('so_dt_2app_nguoi_kt')]);
+    C.rows=r;C.quyTac=q;C.luc=Date.now();C.loi=false;}
+  catch(e){console.warn('ktXmLoad',e);if(!C.rows){C.rows=[];C.quyTac=[];}C.loi=true;C.luc=Date.now()-25*60e3;}   // lỗi: ô hiện "—", thử lại sau ~5 phút
   finally{C.dang=false;}
   const el=document.getElementById('page-congviec');if(el&&el.classList.contains('active'))renderCongViec();
 }
 function bcnKtXm(sale,tu,den){
   const C=window._ktXm;if(!C.rows||Date.now()-C.luc>30*60e3)ktXmLoad();
   if(!C.rows)return null;
+  if(C.loi&&!C.rows.length)return {loi:true,tien:0,n:0,nhan:'',gop:[],choNguoi:null};
   const ten=x=>rptSlSaleName(String(x||'').trim()),toi=ten(sale),chu={};
   (C.quyTac||[]).forEach(q=>{const m=String(q.noi_dung||'').match(/^([^:]+):.*tài khoản Kiot tính cho người này:\s*([^·]+)/);if(!m)return;
     const ng=ten(m[1]);m[2].split(',').map(ten).filter(Boolean).forEach(a=>{chu[a]=ng;});});
   const thangs=[];let t=String(tu).slice(0,7);
   while(t&&t<=String(den).slice(0,7)&&thangs.length<24){thangs.push(t);const [y,mo]=t.split('-').map(Number);t=mo===12?(y+1)+'-01':y+'-'+String(mo+1).padStart(2,'0');}
   let tien=0,n=0;
-  C.rows.forEach(x=>{if(!thangs.includes(x.thang))return;const a=ten(x.nhan_su);if((chu[a]||a)!==toi)return;tien+=Number(x.tien||0);n++;});
+  C.rows.forEach(x=>{if(!thangs.includes(x.thang))return;const a=ten(x.nhan_su);if((chu[a]||a)!==toi)return;tien+=Number(x.tien||0);n+=Number(x.so_dong||1);});
   const nhan=thangs.map(x=>'T'+Number(x.slice(5))).filter((v,i,a)=>i===0||i===a.length-1).join('–');
   return {tien,n,nhan,gop:Object.keys(chu).filter(a=>chu[a]===toi&&a!==toi),choNguoi:chu[toi]&&chu[toi]!==toi?chu[toi]:null};
 }
@@ -5452,6 +5458,7 @@ function bcnThe(sale,S,tu,den){
     +'<div class="bcn-so">'+[['Data mới',n(T.moi)],['Chưa xử lý',n(S.chua.length),S.chua.length?'cam':''],['Chăm lại',n(T.cu)],['Phản hồi KH',T.zl==null?'—':n(T.zl)+(T.miss?' <span class="bcn-cam" style="font-size:12px;font-weight:700">· '+n(T.miss)+' miss</span>':'')],['Chốt đơn',n(T.chot)],['Doanh thu chốt',T.tien?vnd(T.tien):'0'],
       (()=>{const k=bcnKtXm(sale,tu,den);
         if(!k)return ['Doanh thu chốt sau hoàn','<span style="color:var(--muted)">…</span>'];
+        if(k.loi)return ['Doanh thu chốt sau hoàn','<span style="color:var(--muted)" title="Không đọc được số Kế toán — thử lại sau ít phút">—</span>'];
         const goi='Doanh thu xét mốc của app Kế toán ('+k.nhan+', cả tháng): phiếu đặt đã cọc + hoá đơn − trả hàng; Kế toán cập nhật 21:30 mỗi ngày'+(k.gop.length?' · gộp tài khoản: '+k.gop.join(', '):'');
         if(k.choNguoi&&!k.n)return ['<span title="'+cvE(goi)+'">Doanh thu chốt sau hoàn · '+k.nhan+'</span>','<span style="font-size:12px;color:var(--muted);font-weight:700">Kế toán tính cho '+cvE(k.choNguoi)+'</span>'];
         return ['<span title="'+cvE(goi)+'">Doanh thu chốt sau hoàn · '+k.nhan+'</span>',k.n?vnd(k.tien):'0'];})()]
@@ -8110,10 +8117,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='27/11 15:55';
+const APP_VERSION='27/11 16:17';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=618;
+const APP_BAN=619;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
