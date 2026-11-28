@@ -4390,7 +4390,7 @@ function rptThTongHtml(){
 //  - KHÁCH + DOANH THU: đúng ô "Khách Online tổng hợp" của Báo cáo MKT (khách nguồn Online, mọi đơn trong kỳ kể cả mua lại,
 //    rptSlTienOnlNguon + cờ _rptSlCaMuaLai) -> tổng tab = tổng Online các báo cáo khác.
 //  - BRAND THEO PAGE NGUỒN (rptOnlPage), KHÔNG theo chi nhánh Kiot: kênh khách -> kênh trên MỌI phiếu Kiot của khách -> đơn Pancake cùng SĐT.
-//    Phiếu Kiot chỉ ghi "Facebook" không ghi page và không khớp SĐT Pancake -> "Facebook - chưa rõ page" (KHÔNG đoán).
+//    Phiếu Kiot chỉ ghi "Facebook" không ghi page và không khớp SĐT Pancake -> tính cho CỬA HÀNG của nhân sự bán (chi nhánh Kiot, 28/11).
 //  - CHI TIÊU: mkt_spend (brand theo tên chiến dịch, bỏ tuyển dụng); theo TỈNH / TUỔI - GIỚI TÍNH: mkt_spend_vung (job sync-mkt-vung.js).
 //  - Bộ lọc brand trên đầu trang (rptBrand('tonghop')) ở tab này lọc theo PAGE nguồn + chi tiêu brand đó.
 const RPT_ONL_PAGE=[['Shidai','Shidai','Shidai'],['Tự Tại Viên','Tự Tại Viên','TTV'],['Chánh Tâm','Chánh Tâm','CT'],['Hiền Thủy','Hiền Thuỷ','HT'],['Hoàng Dương','Hoàng Dương','HD']];
@@ -4410,7 +4410,15 @@ function rptOnlPage(r){
   for(const o of don){const x=rptOnlPageTuKenh(o.sale_channel);if(x)return Object.assign(x,{cach:'kênh phiếu Kiot '+(o.code||'')});}
   const sp=rptOnlSdtPage();
   for(const p of (r.phones&&r.phones.length?r.phones:[r.phone]).map(rptSlLast9)){if(p.length===9&&sp[p]){const x=rptOnlPageTuKenh(sp[p]);if(x)return Object.assign(x,{cach:'đơn Pancake cùng SĐT'});}}
-  return {b:'?',kenh:(nen&&!/chưa/.test(nen)?nen:'Online')+' - chưa rõ page',cach:'phiếu Kiot chỉ ghi "'+(r.kenh||'trống')+'"'};
+  // Không ra page -> tính cho CỬA HÀNG của nhân sự bán (chi nhánh Kiot trên phiếu, anh Hải 28/11/2026: "chưa rõ page thì nhân sự hay
+  // shop bên nào thì tính cho bên đó"). Nhiều cửa hàng -> cửa hàng có nhiều tiền nhất. Không có phiếu nào -> mới để "Chưa rõ page".
+  const nhan=(nen&&!/chưa/.test(nen)?nen:'Online'),m={};
+  don.forEach(o=>{const b=rptSlBrandPhanBo(o,r);if(!b||!RPT_ONL_BRAND.some(x=>x[0]===b))return;const x=m[b]=m[b]||{b,tien:0,nv:{},cn:o.branch_name||''};
+    x.tien+=Number(o.total||0);const nv=o.sold_by_name||'';if(nv)x.nv[nv]=(x.nv[nv]||0)+1;});
+  const best=Object.values(m).sort((a,b)=>b.tien-a.tien)[0];
+  if(best){const nv=Object.keys(best.nv).sort((a,b)=>best.nv[b]-best.nv[a]);
+    return {b:best.b,kenh:nhan+' - theo cửa hàng',theoCH:1,cach:'phiếu Kiot chỉ ghi "'+(r.kenh||'trống')+'" -> tính theo cửa hàng bán: '+(best.cn||best.b)+(nv.length?' (nhân sự '+nv.slice(0,2).join(', ')+')':'')};}
+  return {b:'?',kenh:nhan+' - chưa rõ page',cach:'phiếu Kiot chỉ ghi "'+(r.kenh||'trống')+'", không có phiếu Kiot để lấy cửa hàng'};
 }
 // Xưng hô Sale ghi đầu tên khách Kiot ("KL Chị Hương", "KL CÔ HUỆ", "KL A Phát") -> giới tính / lứa tuổi ƯỚC LƯỢNG (khách Lẻ).
 function rptOnlXungHo(r){
@@ -4519,11 +4527,11 @@ function rptOnlHtml(){
     const c=(t,g,f)=>sum(tg.filter(x=>x.khoa.split('|')[0]===t&&(!g||x.khoa.split('|')[1]===g)),x=>Number(x[f]||0)),tc=sum(tg,x=>Number(x.spend||0));
     bMeta=the('Người nhắn từ quảng cáo Meta theo tuổi / giới tính',vnd(tc),['Tuổi','Chi tiêu','% chi tiêu','Mess nữ','Mess nam','Mess không rõ','Chi phí / mess'],
       tuoi.map(t=>{const sp=c(t,'','spend'),ms=c(t,'','messages');return '<tr><td class="name">'+e(t)+'</td>'+o(vnd(sp),1)+o(tl(sp,tc))+o(num(c(t,'female','messages')))+o(num(c(t,'male','messages')))+o(num(c(t,'unknown','messages')))+o(ms?vnd(sp/ms):'—')+'</tr>';}),'Meta');}
-  const thieuPage=ds.filter(x=>x.pg.b==='?');
+  const thieuPage=ds.filter(x=>x.pg.b==='?'||x.pg.theoCH);
   return `<div style="${g3}">
       ${mkKpi(ic('cash'),'Doanh thu khách Online',vnd(T),num(nKh)+' khách · Lẻ '+num(nLe.length)+' · Sỉ '+num(nSi.length),'g-green')}
       ${mkKpi(ic('chart'),'Chi phí ads (Meta)',vnd(chiTong),'ADS / DS '+adsDs(chiTong,T),'g-orange')}
-      <div ${dang('onlThieu','Khách Online chưa rõ page (phiếu Kiot chỉ ghi kênh, không ghi page)',thieuPage)}>${mkKpi(ic('users'),'Chưa rõ page',vnd(sum(thieuPage,x=>x.tien)),num(thieuPage.length)+' khách · '+tl(sum(thieuPage,x=>x.tien),T)+' doanh thu','g-purple')}</div>
+      <div ${dang('onlThieu','Khách Online không rõ page -> tính theo cửa hàng của nhân sự bán',thieuPage)}>${mkKpi(ic('users'),'Không rõ page · theo cửa hàng',vnd(sum(thieuPage,x=>x.tien)),num(thieuPage.length)+' khách · '+tl(sum(thieuPage,x=>x.tien),T)+' doanh thu','g-purple')}</div>
     </div>
     ${bBrand}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bTinh}<div>${bKenh}${bNen}</div></div>
@@ -8299,10 +8307,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/11 11:15';
+const APP_VERSION='28/11 16:46';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=623;
+const APP_BAN=624;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
