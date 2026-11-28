@@ -4383,7 +4383,7 @@ function rptThTongHtml(){
     ${bMapLoc}<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bMap}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bTH}${bTinh}</div>`;
 }
-// ════════ TAB KHÁCH ONLINE (anh Hải 28/11/2026) ════════
+// ════════ TAB NHÂN KHẨU HỌC ONLINE (anh Hải 28/11/2026; tên tab anh đặt) ════════
 // "tab nhân khẩu học online, thông tin chính xác, chia chuẩn doanh thu thực tế, data đến từ page nào sẽ về đúng brand ấy, chứ không
 // theo kiểu page Shidai nhưng chia cho Chánh Tâm nữa. Chỉ lấy nguồn Online, biết chính xác ngân sách chi tiêu theo tỉ lệ các tỉnh,
 // doanh thu từ các nguồn chính xác, nhân khẩu học khách Online". Monsieur Claude.
@@ -4534,7 +4534,7 @@ const RPT_TH_TABS=[
   ['sale-le','Sale Lẻ',()=>{window._rptSlType='Lẻ';return rptSlOverviewHtml();}],
   ['sale-si','Sale Sỉ',()=>{window._rptSlType='Sỉ';return rptSlOverviewHtml();}],
   ['so-sanh','So sánh tháng',()=>rptSsHtml()],
-  ['khach-onl','Khách Online',()=>rptOnlHtml()],
+  ['khach-onl','Nhân khẩu học Online',()=>rptOnlHtml()],
 ];
 function rptThTab(){const t=localStorage.getItem('rptThTab')||RPT_TH_TABS[0][0];return RPT_TH_TABS.some(x=>x[0]===t)?t:RPT_TH_TABS[0][0];}
 function rptThSetTab(t){localStorage.setItem('rptThTab',t);renderReportTongHop();}
@@ -8299,10 +8299,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/11 10:33';
+const APP_VERSION='28/11 11:15';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=622;
+const APP_BAN=623;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
