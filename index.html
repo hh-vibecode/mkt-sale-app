@@ -4123,11 +4123,15 @@ function rptMienCua(tinh){const t=String(tinh||'').trim();for(const m in RPT_MIE
 // Bản đồ VN tô 3 miền + % khách từng miền -- cùng kiểu, cùng file vietnam-map.svg với dashboard cũ (Dashboard-Meta).
 // Trả về khung trước, hình vẽ nạp ngay sau khi trang dựng xong (rptVnMapVe).
 const RPT_MIEN_MAU={'Miền Bắc':'#0abf7a','Miền Trung':'#7c3aed','Miền Nam':'#0091ae'};
+// Bấm % từng miền -> danh sách khách miền đó (kèm tỉnh + nguồn tỉnh) -- anh Hải 28/11/2026 (ảnh: "click vào chi tiết từng miền xem được").
+// Danh sách đăng ký sẵn ở window._rptSlLists['mien'+ma+số thứ tự trong RPT_MIEN_THU].
+const RPT_MIEN_THU=['Miền Bắc','Miền Trung','Miền Nam','Chưa rõ'];
 function rptVnMapHtml(mien,tieuDe,ma){
   ma=ma||'x';
   const tong=Object.values(mien).reduce((x,m)=>x+m.n,0),co=tong-mien['Chưa rõ'].n;
+  const bam=ten=>'onclick="rptSlShow(\'mien'+ma+RPT_MIEN_THU.indexOf(ten)+'\')" title="Bấm để xem danh sách khách"';
   const nhan=(ten,vt)=>{const m=mien[ten],p=co?m.n/co*100:0;
-    return '<div style="position:absolute;'+vt+';text-align:left;pointer-events:none"><div style="font-size:20px;font-weight:800;color:'+RPT_MIEN_MAU[ten]+'">'+p.toFixed(1)+'% <span style="font-size:13px;color:var(--muted);font-weight:700">('+num(m.n)+')</span></div>'
+    return '<div '+bam(ten)+' style="position:absolute;'+vt+';text-align:left;cursor:pointer;z-index:2"><div style="font-size:20px;font-weight:800;color:'+RPT_MIEN_MAU[ten]+'">'+p.toFixed(1)+'% <span style="font-size:13px;color:var(--muted);font-weight:700">('+num(m.n)+')</span></div>'
       +'<div style="font-size:10.5px;color:var(--muted);font-weight:600">'+ten+' · '+(m.dt?vnd(m.dt):'—')+'</div></div>';};
   const dao=(ten,vt,c)=>'<div style="position:absolute;'+vt+';text-align:center;pointer-events:none"><div style="display:flex;gap:4px;justify-content:center;align-items:center;margin-bottom:3px">'
     +c.map(([w,m])=>'<span style="width:'+w+'px;height:'+w+'px;border-radius:50%;background:'+m+';display:inline-block"></span>').join('')+'</div><div style="font-size:10px;color:var(--muted);font-weight:600">'+ten+'</div></div>';
@@ -4136,7 +4140,7 @@ function rptVnMapHtml(mien,tieuDe,ma){
   return '<div class="tbl-card" style="padding:18px;margin-top:0;margin-bottom:16px">'
     +'<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">'+(tieuDe||'Khách đã chốt theo miền')+'</span>'
     +'<span style="font-size:28px;font-weight:800;color:var(--accent)">'+num(tong)+'</span>'
-    +(mien['Chưa rõ'].n?'<span style="font-size:11px;color:var(--muted);font-weight:700">'+num(mien['Chưa rõ'].n)+' chưa rõ tỉnh</span>':'')+'</div>'
+    +(mien['Chưa rõ'].n?'<span '+bam('Chưa rõ')+' style="font-size:11px;color:var(--muted);font-weight:700;cursor:pointer;text-decoration:underline dotted">'+num(mien['Chưa rõ'].n)+' chưa rõ tỉnh / nước ngoài</span>':'')+'</div>'
     +'<div style="position:relative;display:flex;align-items:center;justify-content:center;min-height:430px;margin-top:4px">'
     +'<div id="vnMapBox'+ma+'" style="height:430px;display:flex;align-items:center;justify-content:center;width:100%"><div style="color:var(--muted);font-size:12px">Đang vẽ bản đồ…</div></div>'
     +'<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">'
@@ -4165,8 +4169,10 @@ async function rptVnMapVe(ma){
     const b2=document.getElementById(id);if(!b2)return;
     b2.innerHTML='<svg viewBox="'+(x0-px)+' '+(y0-py)+' '+(w+2*px)+' '+(h+2*py)+'" preserveAspectRatio="xMidYMid meet" style="height:420px;width:auto;max-width:100%" xmlns="http://www.w3.org/2000/svg">'
       +'<defs><linearGradient id="vnRegGrad'+ma+'" x1="0" y1="0" x2="0" y2="1">'
-      +'<stop offset="0%" stop-color="'+c[0]+'"/><stop offset="30%" stop-color="'+c[0]+'"/><stop offset="37%" stop-color="'+c[1]+'"/>'
-      +'<stop offset="70%" stop-color="'+c[1]+'"/><stop offset="77%" stop-color="'+c[2]+'"/><stop offset="100%" stop-color="'+c[2]+'"/></linearGradient></defs>'
+      // ranh màu theo vĩ độ (28/11/2026, bản cũ 30% / 70% tô Thanh Hoá màu Bắc, Khánh Hoà - Lâm Đồng màu Nam trong khi số tính Miền Trung):
+      // Bắc | Trung ở ranh Ninh Bình - Thanh Hoá ~20,2°N = 21% chiều cao; Trung | Nam ở ranh Lâm Đồng - Đồng Nai / TP.HCM ~11,3°N = 82%
+      +'<stop offset="0%" stop-color="'+c[0]+'"/><stop offset="20%" stop-color="'+c[0]+'"/><stop offset="23%" stop-color="'+c[1]+'"/>'
+      +'<stop offset="80.5%" stop-color="'+c[1]+'"/><stop offset="83.5%" stop-color="'+c[2]+'"/><stop offset="100%" stop-color="'+c[2]+'"/></linearGradient></defs>'
       +'<path d="'+dd+'" fill="url(#vnRegGrad'+ma+')" stroke="var(--surface)" stroke-width="4" stroke-linejoin="round"/></svg>';
   }catch(e){const b3=document.getElementById(id);if(b3)b3.innerHTML='<div style="color:var(--muted);font-size:12px;padding:30px;text-align:center">Không tải được bản đồ (vietnam-map.svg)</div>';}
 }
@@ -4315,9 +4321,20 @@ function rptThTongHtml(){
     tlst.map(([k,x])=>'<tr><td class="name">'+e(k)+'</td>'+o(num(x.le))+o(num(x.si))+o(x.dt?vnd(x.dt):'—',1)+'</tr>'));
   // 2) BẢN ĐỒ 3 MIỀN (giống dashboard cũ, anh Hải 30/9/2026): khách đã chốt cả 2 đội, theo Tỉnh / TP mới (34 đơn vị)
   // TÁCH 2 bản đồ Lẻ / Sỉ (anh Hải 30/9/2026 -- mẫu dashboard cũ là của Sỉ)
-  const mienCua=a=>{const m={'Miền Bắc':{n:0,dt:0},'Miền Trung':{n:0,dt:0},'Miền Nam':{n:0,dt:0},'Chưa rõ':{n:0,dt:0}};
-    a.filter(r=>r.isChot).forEach(r=>{const k=rptMienCua(r.tinh&&r.tinh.moi);m[k].n++;m[k].dt+=tien(r);});return m;};
-  const bMap=rptVnMapHtml(mienCua(d['Lẻ']),'Khách Lẻ đã chốt theo miền','Le')+rptVnMapHtml(mienCua(d['Sỉ']),'Khách Sỉ đã chốt theo miền','Si');
+  // Lọc nguồn khách (28/11/2026): khách Offline phần lớn mua tại cửa hàng Hải Phòng -> kéo Miền Bắc lên; MKT chia ngân sách thì xem Online.
+  let mienNg='';try{mienNg=localStorage.getItem('rptMienNguon')||'';}catch(x){}
+  const hopNg=r=>!mienNg||(mienNg==='Offline'?laOff(r):!laOff(r));
+  const mienCua=(a,doi,ma)=>{const m={};RPT_MIEN_THU.forEach(k=>m[k]={n:0,dt:0,ds:[]});
+    a.filter(r=>r.isChot&&hopNg(r)).forEach(r=>{const k=rptMienCua(r.tinh&&r.tinh.moi);m[k].n++;m[k].dt+=tien(r);m[k].ds.push(r);});
+    RPT_MIEN_THU.forEach((k,i)=>{const ds=m[k].ds.slice().sort((x,y)=>tien(y)-tien(x));
+      window._rptSlLists['mien'+ma+i]={title:'Khách '+doi+' đã chốt · '+(k==='Chưa rõ'?'chưa rõ tỉnh / nước ngoài':k)+(mienNg?' · '+mienNg:'')+' · '+vnd(m[k].dt),
+        cols,rows:dong(ds,doi).map((row,j)=>{row=row.slice();row[7]=rptSlTinhHtml(ds[j])||'—';return row;}),keys:ds.map(r=>r.key),loais:ds.map(()=>doi)};});
+    return m;};
+  const chipNg=(v,nhan)=>{const on=mienNg===v;return '<button onclick="rptSsDat(\'rptMienNguon\',\''+v+'\')" style="height:30px;padding:0 13px;border-radius:8px;cursor:pointer;font-family:var(--font);font-size:11.5px;font-weight:800;border:1.5px solid '
+    +(on?'var(--accent)':'var(--border)')+';background:'+(on?'var(--accent-l)':'var(--surface)')+';color:'+(on?'var(--accent)':'var(--text2)')+'">'+(on?'✓ ':'')+nhan+'</button>';};
+  const bMapLoc='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px"><span style="font-size:11px;font-weight:700;color:var(--muted)">Bản đồ miền · nguồn khách</span>'
+    +chipNg('','Tất cả')+chipNg('Online','Online')+chipNg('Offline','Offline')+'</div>';
+  const bMap=rptVnMapHtml(mienCua(d['Lẻ'],'Lẻ','Le'),'Khách Lẻ đã chốt theo miền','Le')+rptVnMapHtml(mienCua(d['Sỉ'],'Sỉ','Si'),'Khách Sỉ đã chốt theo miền','Si');
   // 3) DOANH THU THEO THƯƠNG HIỆU (anh Hải 14/10/2026: "báo cáo tổng hợp thêm doanh thu / thương hiệu, chia đôi với khách đã chốt
   // theo tỉnh") -- cả 2 đội. Lẻ: rptSlTienTheoBrand (vãng lai chia từng phiếu). Sỉ: r.brand, trống = Shidai -- ĐÚNG luật bộ lọc
   // thương hiệu rptHopBrand, để chọn lọc 1 thương hiệu thì phần Sỉ khớp thanh đó.
@@ -4363,7 +4380,7 @@ function rptThTongHtml(){
       ${mkKpi(ic('check'),'Tỉ lệ chốt chung',tl(T_.chot,T_.khach),'Lẻ '+tl(L_.chot,L_.khach)+' · Sỉ '+tl(S_.chot,S_.khach),'g-orange')}
     </div>
     <div id="thNhomHang">${rptThNhomCho()}</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bMap}</div>
+    ${bMapLoc}<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bMap}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bTH}${bTinh}</div>`;
 }
 const RPT_TH_TABS=[
@@ -8134,10 +8151,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='27/11 16:58';
+const APP_VERSION='28/11 10:20';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=620;
+const APP_BAN=621;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -9146,7 +9163,9 @@ const RPT_TINH = {
 const RPT_TINH_QUAN = {
   'Hà Nội': ['ba dinh', 'hoan kiem', 'tay ho', 'long bien', 'cau giay', 'dong da', 'hai ba trung', 'hoang mai', 'thanh xuan', 'nam tu liem', 'bac tu liem', 'tu liem', 'ha dong', 'son tay', 'ba vi', 'chuong my', 'dan phuong', 'dong anh', 'gia lam', 'hoai duc', 'me linh', 'my duc', 'phu xuyen', 'phuc tho', 'quoc oai', 'soc son', 'thach that', 'thanh oai', 'thanh tri', 'thuong tin', 'ung hoa'],
   'TP.HCM': ['thu duc', 'binh thanh', 'go vap', 'phu nhuan', 'tan binh', 'tan phu', 'binh tan', 'cu chi', 'hoc mon', 'binh chanh', 'nha be', 'can gio'],
-  'Hải Phòng': ['hong bang', 'ngo quyen', 'le chan', 'hai an', 'kien an', 'do son', 'duong kinh', 'thuy nguyen', 'an duong', 'an lao', 'kien thuy', 'tien lang', 'vinh bao', 'cat hai'],
+  'Hải Phòng': ['hong bang', 'ngo quyen', 'le chan', 'hai an', 'kien an', 'do son', 'duong kinh', 'thuy nguyen', 'an duong', 'an lao', 'kien thuy', 'tien lang', 'vinh bao', 'cat hai',
+    // phường / khu đặc trưng Hải Phòng hay gặp trong địa chỉ khách Kiot không ghi tỉnh (rà 28/11/2026)
+    'dong khe', 'hang kenh', 'lach tray', 'cat bi', 'so dau', 'dang hai', 'dang lam', 'vinh niem', 'du hang', 'lam ha', 'quan toan', 'thuong ly', 'may to', 'trai chuoi', 'lan be', 'cau dat'],
   'Đà Nẵng': ['hai chau', 'thanh khe', 'son tra', 'ngu hanh son', 'lien chieu', 'cam le', 'hoa vang'],
 };
 // 34 đơn vị mới (1/7/2025): tỉnh cũ -> tỉnh mới
@@ -9157,37 +9176,91 @@ const RPT_TINH_MOI = { 'Hà Giang': 'Tuyên Quang', 'Yên Bái': 'Lào Cai', 'B�
   'Bạc Liêu': 'Cà Mau', 'Kiên Giang': 'An Giang' };
 const RPT_TINH_DS = []; Object.entries(RPT_TINH).forEach(([t, a]) => a.forEach(x => RPT_TINH_DS.push([t, ' ' + x + ' ', x.length])));
 RPT_TINH_DS.sort((a, b) => b[2] - a[2]);
-// trả tỉnh cũ, ưu tiên tên xuất hiện CUỐI chuỗi (địa chỉ viết từ nhỏ tới lớn)
+// trả tỉnh cũ, ưu tiên tên xuất hiện CUỐI chuỗi (địa chỉ viết từ nhỏ tới lớn).
+// BỎ chỗ tên tỉnh thực ra là TÊN ĐƯỜNG / ĐỀN CHÙA (rà 28/11/2026, anh Hải: "miền sai lắm"): Hải Phòng có phố Đà Nẵng, Hà Nội…
+// ("229 Đà Nẵng", "16/212 Đường Đà Nẵng", "ngõ 279, Đà Nẵng"), cả nước có phố Điện Biên Phủ, "đền Tam Kỳ" không phải Quảng Nam.
+// Tên tỉnh đứng ngay sau đường / phố / số nhà / ngõ, hoặc sau đền / chùa -> không tính. Số đứng sau phường / khu phố / tổ… thì vẫn tính.
+// Bản chuẩn hoá GIỮ dấu ngắt (, ; . - ( xuống dòng) thành " , " để phân biệt "229 Đà Nẵng" (phố) với "Số 5, Hà Nội" (thành phố).
+const rptTinhBoNgat = s => ' ' + String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase()
+  .replace(/[,;.\-–()\n|]+/g, ' , ').replace(/[^a-z0-9,]+/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+const rptTinhLaDuong = (s, i, k) => {
+  const truoc = s.slice(0, i + 1), sau = s.slice(i + k.length - 1);
+  if (k === ' dien bien ' && /^ phu /.test(sau)) return true;                           // phố Điện Biên Phủ
+  if (/ (duong|dg|den|chua|mieu) $/.test(truoc)) return true;                           // đường Đà Nẵng, đền Tam Kỳ
+  if (/ pho $/.test(truoc) && !/ (thanh|khu) pho $/.test(truoc)) return true;          // phố Huế (không phải thành phố / khu phố)
+  const so = / ([0-9][0-9a-z]*(?: [0-9][0-9a-z]*)*) $/.exec(truoc);
+  if (so) return !/ (phuong|p|quan|q|khu pho|kp|to|khu|thon|xom|ap|khom|doi|cum|tdp|khoi|lo|duong so|km|ql|quoc lo|tinh lo) $/.test(truoc.slice(0, so.index + 1));   // "229 Đà Nẵng"
+  return / (ngo|ngach|hem|kiet) [0-9][0-9a-z]*(?: [0-9][0-9a-z]*)* , $/.test(truoc);  // "ngõ 279, Đà Nẵng"
+};
+// Tỉnh bị bỏ vì là tên đường trong chuỗi -- để đuôi tên khách "- Đà Nẵng" của khách ở phố Đà Nẵng (Hải Phòng) cũng không bị tính.
+function rptTinhTenDuong(chu) {
+  const s = rptTinhBoNgat(chu), ra = new Set();
+  for (const [t, k] of RPT_TINH_DS) { let i = s.indexOf(k); while (i >= 0) { if (rptTinhLaDuong(s, i, k)) ra.add(t); i = s.indexOf(k, i + 1); } }
+  return ra;
+}
+// Khách ở nước ngoài (vd "KL Chị Anh Nguyen - Úc"): không thuộc miền nào. Tên ngắn (Úc, Mỹ, Đức…) chỉ nhận khi đứng MỘT MÌNH.
+const RPT_NUOC_NGOAI = / (australia|malaysia|singapore|nhat ban|japan|han quoc|korea|dai loan|taiwan|canada|hoa ky|campuchia|cambodia|thai lan|thailand) /;
+const rptLaNuocNgoai = chu => { const s = rptTinhBo(chu); return RPT_NUOC_NGOAI.test(s) || /^ (uc|my|usa|duc|phap|nhat|han|anh quoc|nga|sec|ba lan) $/.test(s); };
 function rptTimTinh(chu, choQuan = true) {
   const s = rptTinhBo(chu); if (s.trim().length < 2) return '';
+  const s2 = rptTinhBoNgat(chu);
   let best = null;
-  for (const [t, k] of RPT_TINH_DS) { const i = s.lastIndexOf(k); if (i >= 0 && (!best || i > best.i || (i === best.i && k.length > best.l))) best = { t, i, l: k.length }; }
+  for (const [t, k] of RPT_TINH_DS) {
+    let i = s2.lastIndexOf(k);
+    while (i >= 0 && rptTinhLaDuong(s2, i, k)) i = i ? s2.lastIndexOf(k, i - 1) : -1;
+    if (i >= 0 && (!best || i > best.i || (i === best.i && k.length > best.l))) best = { t, i, l: k.length };
+  }
   if (best) return best.t;
   if (!choQuan) return '';
   for (const [t, ds] of Object.entries(RPT_TINH_QUAN)) for (const q of ds) if (s.includes(' ' + q + ' ')) return t;
   if (/ (quan|q) (1[0-2]|[1-9]) /.test(s)) return 'TP.HCM';
   return '';
 }
+// Đuôi tên khách Kiot theo thói quen Sale "KL Chị Kiều Trang - QN" / "KB ANH THẮNG-HẢI DƯƠNG": CHỈ đọc phần SAU dấu gạch,
+// không đọc cả tên -- tên người trùng tên tỉnh rất nhiều ("KL Chị Huệ" từng bị tính Huế, 17 khách Offline Hải Phòng).
+function rptTinhDuoiTen(ten) {
+  const m = /[-–]\s*([^-–]+?)\s*$/.exec(String(ten || '').trim()); if (!m) return '';
+  const duoi = m[1].trim(), ma = duoi.toUpperCase();
+  if (typeof RPT_SL_TINH !== 'undefined' && RPT_SL_TINH[ma]) {
+    const t = RPT_SL_TINH[ma].replace('Thanh Hoá', 'Thanh Hóa').replace('Khánh Hoà', 'Khánh Hòa');
+    return RPT_TINH[t] ? t : rptTimTinh(t, false);
+  }
+  return rptTimTinh(duoi, false);   // không đọc quận / huyện ở đuôi tên: "- Hai Bà Trưng", "- Tô Hiệu" là phố ở Hải Phòng
+}
 const rptTinhMoi = t => t ? (RPT_TINH_MOI[t] || t) : '';
 
 // 3 chi nhánh Kiot đều ở Hải Phòng (API branches 29/9/2026) -> khách mua tại cửa hàng mà không để địa chỉ = Hải Phòng
 const RPT_TINH_34=['Hà Nội','TP.HCM','Hải Phòng','Đà Nẵng','Cần Thơ','Huế','An Giang','Bắc Ninh','Cà Mau','Cao Bằng','Đắk Lắk','Điện Biên','Đồng Nai','Đồng Tháp','Gia Lai','Hà Tĩnh','Hưng Yên','Khánh Hòa','Lai Châu','Lâm Đồng','Lạng Sơn','Lào Cai','Nghệ An','Ninh Bình','Phú Thọ','Quảng Ngãi','Quảng Ninh','Quảng Trị','Sơn La','Tây Ninh','Thái Nguyên','Thanh Hóa','Tuyên Quang','Vĩnh Long'];   // 34 đơn vị từ 1/7/2025
 const RPT_CN_TINH=[[/chánh tâm|chanh tam|hiền thủy|hien thuy|shidai|tổng kho|tong kho/i,'Hải Phòng']];
-// Thứ tự tin: Sale ghi tay > địa chỉ giao hàng đơn Kiot (mới nhất) > khu vực / địa chỉ khách Kiot > hồ sơ app > tên khách > cửa hàng đã mua.
+// THỨ TỰ TIN -- THEO THÔNG TIN KHÁCH TRÊN KIOT TRƯỚC (anh Hải 28/11/2026: "tỉnh thành follow theo thông tin khách hàng trong kiot
+// mới chuẩn"; bản 29/9 để Sale ghi / sheet cũ / địa chỉ giao hàng lên trước và gán Hải Phòng cho mọi khách không đọc ra tỉnh):
+// khu vực khách Kiot > địa chỉ khách Kiot > đuôi tên khách Kiot ("- HN") > địa chỉ giao hàng đơn Kiot > Sale ghi > sheet Sỉ cũ > hồ sơ app
+// > (chỉ khách OFFLINE) cửa hàng đã mua = Hải Phòng. Khách Online không đọc ra tỉnh -> Chưa rõ (không đoán Hải Phòng).
 function rptSlTinhCua(r,mn){
   mn=mn||{};const sh=mn.si_sheet||r.sh||{};
   const byCode=kiotCustByCode(),codes=[...new Set([r.kh].concat((r.kiotCusts||[]).map(c=>c&&c.code)).filter(Boolean))];
+  const kc=codes.map(c=>byCode[c]).filter(Boolean);
   const don=[].concat(r.kords||[],r.repeatOrds||[],r.staleOrds||[]).slice().sort((a,b)=>String(b.purchase_date).localeCompare(String(a.purchase_date)));
-  const thu=(nguon,ds,choQuan)=>{for(const x of ds){const t=rptTimTinh(x,choQuan!==false);if(t)return {cu:t,nguon,ly:String(x).trim().slice(0,120)};}return null;};
-  const kq=thu('Sale ghi',[mn.si_tinh])||thu('sheet Sỉ cũ',[sh.tinh])
-    ||thu('địa chỉ giao hàng đơn Kiot',don.map(o=>[o.giao_khu_vuc,o.giao_dia_chi].filter(Boolean).join(' · ')))
-    ||thu('khu vực khách Kiot',codes.map(c=>(byCode[c]||{}).location_name))||thu('địa chỉ khách Kiot',codes.map(c=>(byCode[c]||{}).address))
-    ||thu('địa chỉ trong hồ sơ',[mn.si_dia_chi,sh.dia_chi,[sh.quan,sh.tinh].filter(Boolean).join(' '),r.diaChi])
-    ||thu('tên khách',[r.name].concat(codes.map(c=>(byCode[c]||{}).name)),false);
+  const thu=(nguon,ds,choQuan)=>{for(const x of ds){if(!x)continue;const t=rptTimTinh(x,choQuan!==false);if(t)return {cu:t,nguon,ly:String(x).trim().slice(0,120)};}return null;};
+  const nn=(nguon,ds)=>{const x=ds.find(v=>v&&rptLaNuocNgoai(v));return x?{cu:'',moi:'Nước ngoài',nguon,ly:String(x).trim().slice(0,120)}:null;};
+  const duong=new Set();kc.forEach(c=>rptTinhTenDuong(c.address).forEach(t=>duong.add(t)));
+  const duoi=()=>{for(const c of kc){const t=rptTinhDuoiTen(c.name);if(t&&!duong.has(t))return {cu:t,nguon:'tên khách Kiot',ly:String(c.name).trim().slice(0,120)};}return null;};
+  const nnKiot=nn('địa chỉ khách Kiot',kc.map(c=>c.address))||nn('tên khách Kiot',kc.map(c=>{const m=/[-–]\s*([^-–]+?)\s*$/.exec(String(c.name||''));return m&&m[1];}));
+  if(nnKiot)return nnKiot;
+  const kq=thu('khu vực khách Kiot',kc.map(c=>c.location_name))   // KHÔNG ghép tên phường: "Tỉnh Đắk Lắk · Phường Tân An" từng ra Long An
+    ||thu('địa chỉ khách Kiot',kc.map(c=>c.address))
+    ||duoi()
+    ||thu('địa chỉ giao hàng đơn Kiot',don.map(o=>[o.giao_dia_chi,o.giao_khu_vuc].filter(Boolean).join(' · ')))
+    ||thu('Sale ghi',[mn.si_tinh])||thu('sheet Sỉ cũ',[sh.tinh])
+    ||thu('địa chỉ trong hồ sơ',[mn.si_dia_chi,sh.dia_chi,[sh.quan,sh.tinh].filter(Boolean).join(' '),r.diaChi]);
   if(kq)return Object.assign(kq,{moi:rptTinhMoi(kq.cu)});
   if(/shopee/i.test(r.name||''))return {cu:'',moi:'Nhiều nơi',nguon:'mã gom đơn Shopee',ly:'mã khách gom nhiều đơn Shopee'};
+  // Cửa hàng Kiot đều ở Hải Phòng: khách Offline, hoặc khách có địa chỉ Kiot chỉ ghi số nhà / tên phố (nhân viên cửa hàng gõ địa chỉ
+  // khách quanh đó, không ghi tỉnh) -> Hải Phòng. Khách Online không có địa chỉ nào -> Chưa rõ.
   const cn=don.map(o=>o.branch_name).find(b=>RPT_CN_TINH.some(([re])=>re.test(b||'')));
-  if(cn){const t=RPT_CN_TINH.find(([re])=>re.test(cn))[1];return {cu:t,moi:t,nguon:'theo cửa hàng đã mua',ly:'không có địa chỉ, mua tại '+cn};}
+  if(cn){const t=RPT_CN_TINH.find(([re])=>re.test(cn))[1],dc=kc.map(c=>String(c.address||'').trim()).find(Boolean);
+    if(/offline/i.test(r.nguon||''))return {cu:t,moi:t,nguon:'theo cửa hàng đã mua',ly:'khách Offline, '+(dc?'địa chỉ Kiot không ghi tỉnh ('+dc.slice(0,60)+')':'không có địa chỉ')+', mua tại '+cn};
+    if(dc)return {cu:t,moi:t,nguon:'địa chỉ Kiot không ghi tỉnh',ly:dc.slice(0,100)+' -- mua tại '+cn};}
   return null;
 }
 function rptSlTinhHtml(r){
