@@ -4420,6 +4420,16 @@ function rptOnlPage(r){
     return {b:best.b,kenh:nhan+' - theo cửa hàng',theoCH:1,cach:'phiếu Kiot chỉ ghi "'+(r.kenh||'trống')+'" -> tính theo cửa hàng bán: '+(best.cn||best.b)+(nv.length?' (nhân sự '+nv.slice(0,2).join(', ')+')':'')};}
   return {b:'?',kenh:nhan+' - chưa rõ page',cach:'phiếu Kiot chỉ ghi "'+(r.kenh||'trống')+'", không có phiếu Kiot để lấy cửa hàng'};
 }
+// Khách không rõ page (theo cửa hàng): chia tiền THEO TỪNG ĐƠN (anh Hải 28/11/2026 "chia tiền chuẩn theo từng đơn") -- đúng các đơn
+// đang cộng vào doanh thu Online (rptSlDonOnl, bỏ khongTinh), mỗi đơn về cửa hàng bán ra đơn đó (rptSlBrandPhanBo). Tổng phần = tiền khách.
+function rptOnlChiaDon(r,pg,tien){
+  const s=rptSlDonOnl(r),m={};
+  (r.kords||[]).concat(r.repeatOrds||[]).filter(o=>s.has(o.code)&&!o.khongTinh).forEach(o=>{let b=rptSlBrandPhanBo(o,r);if(!RPT_ONL_BRAND.some(x=>x[0]===b))b=pg.b;
+    const x=m[b]=m[b]||{b,tien:0,don:[]};x.tien+=Number(o.total||0);x.don.push((o.code||'')+(o.branch_name?' '+o.branch_name:'')+(o.sold_by_name?' · '+o.sold_by_name:''));});
+  const ra=Object.values(m).sort((a,b)=>b.tien-a.tien);
+  if(ra.length>1)pg.cach+=' | chia theo từng đơn: '+ra.map(x=>x.b+' '+vnd(x.tien)+' ('+x.don.join('; ')+')').join(' + ');
+  return ra.length?ra:[{b:pg.b,tien}];
+}
 // Xưng hô Sale ghi đầu tên khách Kiot ("KL Chị Hương", "KL CÔ HUỆ", "KL A Phát") -> giới tính / lứa tuổi ƯỚC LƯỢNG (khách Lẻ).
 function rptOnlXungHo(r){
   const by=kiotCustByCode(),ten=[r.kh].concat((r.kiotCusts||[]).map(c=>c&&c.code)).map(c=>c&&by[c]&&by[c].name).find(Boolean)||r.name||'';
@@ -4446,11 +4456,14 @@ function rptOnlHtml(){
   const cu=window._rptSlType,cuK=window._kiotOrdByCode,bLoc=rptBrand('tonghop');let ds=[];
   window._rptSlCaMuaLai=true;
   try{['Lẻ','Sỉ'].forEach(t=>{window._rptSlType=t;window._kiotOrdByCode=null;rptSlXoaCache();
-    rptSlPeriod().forEach(r=>{if(/offline/i.test(r.nguon||''))return;const tien=rptSlTienOnlNguon(r);if(tien>0)ds.push({r,doi:t,tien,pg:rptOnlPage(r)});});});}
+    rptSlPeriod().forEach(r=>{if(/offline/i.test(r.nguon||''))return;const tien=rptSlTienOnlNguon(r);if(!(tien>0))return;const pg=rptOnlPage(r);
+      ds.push({r,doi:t,tien,pg,parts:pg.theoCH?rptOnlChiaDon(r,pg,tien):[{b:pg.b,tien}]});});});}
   finally{window._rptSlCaMuaLai=false;window._rptSlType=cu;window._kiotOrdByCode=cuK;rptSlXoaCache();}
   // cách cũ (chi nhánh Kiot) để so: chia tiền khách theo tỉ lệ rptSlTienTheoBrand
   ds.forEach(x=>{const p=rptSlTienTheoBrand(x.r),t=p.reduce((s,y)=>s+y.tien,0);x.cn=p.map(y=>({b:y.b||'?',tien:t?x.tien*y.tien/t:0}));});
-  const dsTat=ds;if(bLoc)ds=ds.filter(x=>x.pg.b===bLoc);
+  // Phần của 1 brand: khách không rõ page mua nhiều cửa hàng chỉ lấy đúng tiền các đơn của cửa hàng đó (chia theo từng đơn, 28/11).
+  const phan=(a,k)=>a.filter(x=>x.parts.some(p=>p.b===k)).map(x=>x.parts.length===1?x:Object.assign({},x,{tien:x.parts.find(p=>p.b===k).tien,pg:Object.assign({},x.pg,{b:k})}));
+  const dsTat=ds;if(bLoc)ds=phan(ds,bLoc);
   const e=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0),T=sum(ds,x=>x.tien);
   // chi tiêu Meta trong kỳ theo brand chiến dịch
@@ -4475,7 +4488,7 @@ function rptOnlHtml(){
   const nKh=ds.length,nLe=ds.filter(x=>x.doi==='Lẻ'),nSi=ds.filter(x=>x.doi==='Sỉ');
   // 1) DOANH THU THEO BRAND (PAGE NGUỒN) vs chi tiêu brand vs cách cũ chi nhánh
   const cnBrand={};dsTat.forEach(x=>x.cn.forEach(y=>{cnBrand[y.b]=(cnBrand[y.b]||0)+y.tien;}));
-  const hangBr=RPT_ONL_BRAND.filter(b=>!bLoc||b[0]===bLoc).map(([k,ten,mau])=>{const a=ds.filter(x=>x.pg.b===k),dt=sum(a,x=>x.tien),chi=chiBrand[k]||0;
+  const hangBr=RPT_ONL_BRAND.filter(b=>!bLoc||b[0]===bLoc).map(([k,ten,mau])=>{const a=phan(ds,k),dt=sum(a,x=>x.tien),chi=chiBrand[k]||0;
     if(!a.length&&!chi)return '';
     return '<tr '+dang('onlBr'+k,'Khách Online · page '+ten,a)+'><td class="name"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+mau+';margin-right:7px"></span>'+e(ten)+'</td>'
       +o(num(a.length))+o(vnd(dt),1)+o(tl(dt,T))+o(chi?vnd(chi):'—')+o(adsDs(chi,dt))+o(messBrand[k]?num(messBrand[k]):'—')+o(cnBrand[k]?vnd(cnBrand[k]):'—')+'</tr>';});
@@ -8307,10 +8320,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/11 16:46';
+const APP_VERSION='28/11 16:49';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=624;
+const APP_BAN=625;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
