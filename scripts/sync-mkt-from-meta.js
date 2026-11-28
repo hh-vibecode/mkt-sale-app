@@ -33,14 +33,7 @@ const ngayVN = (lui) => {
 };
 const TARGET_DATES = process.env.SYNC_DATE ? [process.env.SYNC_DATE] : [ngayVN(1), ngayVN(0)];
 
-function detectBrand(name) {
-  const n = (name || '').trim();
-  if (/tự tại viên|tu tai vien|nến bơ|nen bo/i.test(n)) return 'TTV';
-  if (/^HT[\s\-–]|^HT$|hiền thu[ỷy]|hiến thu[ỷy]|hien thuy/i.test(n)) return 'HT';
-  if (/shidai/i.test(n)) return 'Shidai';
-  if (/chánh tâm|chanh tam|^CT[\s\-–]/i.test(n)) return 'CT';
-  return 'CT';
-}
+const { detectBrand } = require('./lib/meta-brand.js');   // dùng chung với sync-mkt-vung.js (28/11/2026)
 function detectProduct(name) {
   const n = (name || '').toLowerCase();
   if (/thần tài|ban thần tài|tài địa|di lặc|quan lộc/.test(n)) return 'Thần Tài';

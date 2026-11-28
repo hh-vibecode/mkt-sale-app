@@ -6,7 +6,16 @@ name: Sync MKT report from Meta Ads
 # Xem lịch hiện hành: bảng cron.job trên Supabase, hoặc mục "Lịch chạy tự động" trong app.
 # Ở đây chỉ giữ workflow_dispatch để Supabase và người dùng bấm chạy được.
 on:
-  workflow_dispatch: {} # cho phép bấm chạy tay từ tab Actions trên GitHub, tiện để test/chạy bù
+  workflow_dispatch: # cho phép bấm chạy tay từ tab Actions trên GitHub, tiện để test/chạy bù
+    inputs:
+      vung_tu:
+        description: 'Chạy bù chi tiêu theo tỉnh / tuổi-giới tính TỪ ngày (YYYY-MM-DD), bỏ trống = hôm qua + hôm nay'
+        required: false
+        default: ''
+      vung_den:
+        description: 'ĐẾN ngày (YYYY-MM-DD)'
+        required: false
+        default: ''
 
 jobs:
   sync:
@@ -22,3 +31,13 @@ jobs:
           META_AD_ACCOUNT_ID: ${{ secrets.META_AD_ACCOUNT_ID }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/sync-mkt-from-meta.js
+      # CHI TIÊU META THEO TỈNH + TUỔI / GIỚI TÍNH -> mkt_spend_vung (28/11/2026, tab Khách Online). Lỗi bước này KHÔNG làm đỏ job chi phí chính.
+      - name: Chi tiêu theo tỉnh / tuổi - giới tính
+        continue-on-error: true
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          META_AD_ACCOUNT_ID: ${{ secrets.META_AD_ACCOUNT_ID }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TU: ${{ github.event.inputs.vung_tu }}
+          DEN: ${{ github.event.inputs.vung_den }}
+        run: node scripts/sync-mkt-vung.js

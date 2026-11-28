@@ -4383,11 +4383,158 @@ function rptThTongHtml(){
     ${bMapLoc}<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bMap}</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bTH}${bTinh}</div>`;
 }
+// ════════ TAB KHÁCH ONLINE (anh Hải 28/11/2026) ════════
+// "tab nhân khẩu học online, thông tin chính xác, chia chuẩn doanh thu thực tế, data đến từ page nào sẽ về đúng brand ấy, chứ không
+// theo kiểu page Shidai nhưng chia cho Chánh Tâm nữa. Chỉ lấy nguồn Online, biết chính xác ngân sách chi tiêu theo tỉ lệ các tỉnh,
+// doanh thu từ các nguồn chính xác, nhân khẩu học khách Online". Monsieur Claude.
+//  - KHÁCH + DOANH THU: đúng ô "Khách Online tổng hợp" của Báo cáo MKT (khách nguồn Online, mọi đơn trong kỳ kể cả mua lại,
+//    rptSlTienOnlNguon + cờ _rptSlCaMuaLai) -> tổng tab = tổng Online các báo cáo khác.
+//  - BRAND THEO PAGE NGUỒN (rptOnlPage), KHÔNG theo chi nhánh Kiot: kênh khách -> kênh trên MỌI phiếu Kiot của khách -> đơn Pancake cùng SĐT.
+//    Phiếu Kiot chỉ ghi "Facebook" không ghi page và không khớp SĐT Pancake -> "Facebook - chưa rõ page" (KHÔNG đoán).
+//  - CHI TIÊU: mkt_spend (brand theo tên chiến dịch, bỏ tuyển dụng); theo TỈNH / TUỔI - GIỚI TÍNH: mkt_spend_vung (job sync-mkt-vung.js).
+//  - Bộ lọc brand trên đầu trang (rptBrand('tonghop')) ở tab này lọc theo PAGE nguồn + chi tiêu brand đó.
+const RPT_ONL_PAGE=[['Shidai','Shidai','Shidai'],['Tự Tại Viên','Tự Tại Viên','TTV'],['Chánh Tâm','Chánh Tâm','CT'],['Hiền Thủy','Hiền Thuỷ','HT'],['Hoàng Dương','Hoàng Dương','HD']];
+const RPT_ONL_BRAND=[['CT','Chánh Tâm','#3b82f6'],['HT','Hiền Thuỷ','#f59e0b'],['Shidai','Shidai','#8b5cf6'],['TTV','Tự Tại Viên','#0abf7a'],['HD','Hoàng Dương','#ec4899'],
+  ['Shopee','Shopee (không theo page)','#f97316'],['?','Chưa rõ page','#94a3b8']];
+function rptOnlPageTuKenh(k){const c=rptKenhChuan(k,'Online');const p=RPT_ONL_PAGE.find(x=>c.includes(x[0]));return p?{b:p[2],kenh:c}:null;}
+function rptOnlSdtPage(){   // SĐT -> page của đơn Pancake mới nhất (dhOrders đã nạp sẵn, không tải thêm)
+  if(window._onlSdtPage&&window._onlSdtPage.n===dhOrders.length)return window._onlSdtPage.m;
+  const m={};dhOrders.slice().sort((a,b)=>String(a.order_date||'').localeCompare(String(b.order_date||''))).forEach(o=>{const p=rptSlLast9(o.phone);if(p.length===9)m[p]=rptSlKenh(o);});
+  window._onlSdtPage={n:dhOrders.length,m};return m;
+}
+function rptOnlPage(r){
+  const c=rptKenhChuan(r.kenh,r.nguon),nen=c.split(' ')[0];
+  if(/^Shopee/.test(c))return {b:'Shopee',kenh:'Shopee',cach:'kênh khách'};
+  const a=rptOnlPageTuKenh(r.kenh);if(a)return Object.assign(a,{cach:'kênh khách'});
+  const don=[].concat(r.kords||[],r.repeatOrds||[],r.staleOrds||[]);
+  for(const o of don){const x=rptOnlPageTuKenh(o.sale_channel);if(x)return Object.assign(x,{cach:'kênh phiếu Kiot '+(o.code||'')});}
+  const sp=rptOnlSdtPage();
+  for(const p of (r.phones&&r.phones.length?r.phones:[r.phone]).map(rptSlLast9)){if(p.length===9&&sp[p]){const x=rptOnlPageTuKenh(sp[p]);if(x)return Object.assign(x,{cach:'đơn Pancake cùng SĐT'});}}
+  return {b:'?',kenh:(nen&&!/chưa/.test(nen)?nen:'Online')+' - chưa rõ page',cach:'phiếu Kiot chỉ ghi "'+(r.kenh||'trống')+'"'};
+}
+// Xưng hô Sale ghi đầu tên khách Kiot ("KL Chị Hương", "KL CÔ HUỆ", "KL A Phát") -> giới tính / lứa tuổi ƯỚC LƯỢNG (khách Lẻ).
+function rptOnlXungHo(r){
+  const by=kiotCustByCode(),ten=[r.kh].concat((r.kiotCusts||[]).map(c=>c&&c.code)).map(c=>c&&by[c]&&by[c].name).find(Boolean)||r.name||'';
+  const m=/^\s*(?:kl|kb|ctv|npp|dl)?\s*(chi|c|co|ba|di|mo|anh|a|chu|ong|thay|su|cau|bac|em|e)\b/.exec(rptTinhBo(ten).trim());
+  const w=m&&m[1];
+  if(!w)return {gioi:'Không rõ',tuoi:'Không rõ'};
+  const gioi=/^(chi|c|co|ba|di|mo)$/.test(w)?'Nữ':/^(anh|a|chu|ong|thay|su|cau)$/.test(w)?'Nam':'Không rõ';
+  const tuoi=/^(em|e)$/.test(w)?'Trẻ (em)':/^(anh|a|chi|c)$/.test(w)?'Trung niên (anh / chị)':/^(co|chu|bac|di|cau|mo)$/.test(w)?'Lớn tuổi (cô / chú / bác)'
+    :/^(ong|ba)$/.test(w)?'Cao tuổi (ông / bà)':'Nhà chùa (thầy / sư)';
+  return {gioi,tuoi};
+}
+// Chi tiêu Meta theo tỉnh / tuổi - giới tính trong kỳ (chỉ tải đúng khoảng ngày đang lọc). Bảng chưa có / lỗi -> null, tab vẫn chạy.
+async function mktLoadVung(){
+  const R=modRanges.tonghop||{},k=(R.from||'')+'|'+(R.to||'');
+  if(window._mktVung&&window._mktVung.k===k&&Date.now()-window._mktVung.luc<10*60e3)return;
+  let q='select=ngay,brand,loai,khoa,spend,impressions,messages&order=ngay,brand,loai,khoa';
+  if(R.from)q+='&ngay=gte.'+R.from;if(R.to)q+='&ngay=lte.'+R.to;
+  try{window._mktVung={k,luc:Date.now(),rows:await sbFetchAll('mkt_spend_vung',q)};}
+  catch(e){console.warn('mktLoadVung',e);window._mktVung={k,luc:Date.now(),rows:null};}
+}
+// Tên vùng Meta ("Hanoi", "Ho Chi Minh City", "Thua Thien–Hue") -> 34 tỉnh mới
+function rptOnlTinhMeta(v){const t=rptTimTinh(String(v||'').replace(/\b(province|city)\b/ig,' '),false);return t?rptTinhMoi(t):'';}
+function rptOnlHtml(){
+  const cu=window._rptSlType,cuK=window._kiotOrdByCode,bLoc=rptBrand('tonghop');let ds=[];
+  window._rptSlCaMuaLai=true;
+  try{['Lẻ','Sỉ'].forEach(t=>{window._rptSlType=t;window._kiotOrdByCode=null;rptSlXoaCache();
+    rptSlPeriod().forEach(r=>{if(/offline/i.test(r.nguon||''))return;const tien=rptSlTienOnlNguon(r);if(tien>0)ds.push({r,doi:t,tien,pg:rptOnlPage(r)});});});}
+  finally{window._rptSlCaMuaLai=false;window._rptSlType=cu;window._kiotOrdByCode=cuK;rptSlXoaCache();}
+  // cách cũ (chi nhánh Kiot) để so: chia tiền khách theo tỉ lệ rptSlTienTheoBrand
+  ds.forEach(x=>{const p=rptSlTienTheoBrand(x.r),t=p.reduce((s,y)=>s+y.tien,0);x.cn=p.map(y=>({b:y.b||'?',tien:t?x.tien*y.tien/t:0}));});
+  const dsTat=ds;if(bLoc)ds=ds.filter(x=>x.pg.b===bLoc);
+  const e=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const sum=(a,f)=>a.reduce((s,x)=>s+f(x),0),T=sum(ds,x=>x.tien);
+  // chi tiêu Meta trong kỳ theo brand chiến dịch
+  const ads=(allRows||[]).filter(r=>!rptMktBoQua(r[COL.CAMPAIGN])&&(()=>{const d=parseDate(r[COL.DATE]);return d&&modInRange('tonghop',isoNgay(d));})());
+  const chiBrand={};ads.forEach(r=>{const b=detectBrand(r[COL.CAMPAIGN]);chiBrand[b]=(chiBrand[b]||0)+toNum(r[COL.SPEND]);});
+  const messBrand={};ads.forEach(r=>{const b=detectBrand(r[COL.CAMPAIGN]);messBrand[b]=(messBrand[b]||0)+toNum(r[COL.MESSAGES]);});
+  const chiTong=bLoc?(chiBrand[bLoc]||0):sum(Object.values(chiBrand),x=>x);
+  const vung=(window._mktVung&&window._mktVung.rows)||null,vungLoc=vung?vung.filter(x=>!bLoc||x.brand===bLoc):[];
+  const coVung=!!(vung&&vungLoc.length);
+  const tl=(a,b)=>b?(a/b*100).toFixed(1)+'%':'—',adsDs=(c,d)=>d?pct(c/d*100):(c?'∞':'—');
+  window._rptSlLists=window._rptSlLists||{};
+  const cols=['Đội','Mã','Họ tên','Kênh / page','Brand theo page','Tỉnh / TP','Sales','Doanh thu'];
+  const dk=a=>a.slice().sort((x,y)=>y.tien-x.tien);
+  const dang=(key,title,a,st)=>{a=dk(a);window._rptSlLists[key]={title:title+' · '+num(a.length)+' khách · '+vnd(sum(a,x=>x.tien)),cols,
+    rows:a.map(x=>[x.doi,e(x.r.kh||x.r.leadId),e(x.r.name)+rptSlSaoVip(x.r),'<span title="'+e(x.pg.cach)+'">'+e(x.pg.kenh)+'</span>',e((RPT_ONL_BRAND.find(b=>b[0]===x.pg.b)||[0,'?'])[1]),
+      rptSlTinhHtml(x.r)||'—',rptSlSaleHien(x.r.staff),vnd(x.tien)]),keys:a.map(x=>x.r.key),loais:a.map(x=>x.doi)};
+    return 'onclick="rptSlShow(\''+key+'\')" style="cursor:pointer;'+(st||'')+'" title="Bấm để xem danh sách khách"';};
+  const o=(v,b)=>'<td class="num"'+(b?' style="font-weight:800"':'')+'>'+v+'</td>';
+  const the=(tieu,dem,dau,hang,chu)=>`<div class="tbl-card" style="margin-top:0;margin-bottom:16px"><div class="tbl-head"><div class="tbl-title">${tieu}</div>${dem?'<div class="tbl-count">'+dem+'</div>':''}${chu?'<span class="badge" style="margin-left:8px;background:var(--bg2);color:var(--text2)">'+chu+'</span>':''}</div>
+    <div class="tbl-scroll"><table><thead><tr>${dau.map((h,i)=>'<th'+(i?' class="num"':'')+'>'+h+'</th>').join('')}</tr></thead><tbody>${hang.join('')}</tbody></table></div></div>`;
+  const g3='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px';
+  const nKh=ds.length,nLe=ds.filter(x=>x.doi==='Lẻ'),nSi=ds.filter(x=>x.doi==='Sỉ');
+  // 1) DOANH THU THEO BRAND (PAGE NGUỒN) vs chi tiêu brand vs cách cũ chi nhánh
+  const cnBrand={};dsTat.forEach(x=>x.cn.forEach(y=>{cnBrand[y.b]=(cnBrand[y.b]||0)+y.tien;}));
+  const hangBr=RPT_ONL_BRAND.filter(b=>!bLoc||b[0]===bLoc).map(([k,ten,mau])=>{const a=ds.filter(x=>x.pg.b===k),dt=sum(a,x=>x.tien),chi=chiBrand[k]||0;
+    if(!a.length&&!chi)return '';
+    return '<tr '+dang('onlBr'+k,'Khách Online · page '+ten,a)+'><td class="name"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+mau+';margin-right:7px"></span>'+e(ten)+'</td>'
+      +o(num(a.length))+o(vnd(dt),1)+o(tl(dt,T))+o(chi?vnd(chi):'—')+o(adsDs(chi,dt))+o(messBrand[k]?num(messBrand[k]):'—')+o(cnBrand[k]?vnd(cnBrand[k]):'—')+'</tr>';});
+  const bBrand=the('Doanh thu Online theo page nguồn',vnd(T),['Brand (page)','Khách','Doanh thu','% DT','Chi phí ads','ADS / DS','Mess','Cách cũ: chi nhánh Kiot'],hangBr,'brand theo page');
+  // 2) THEO KÊNH / PAGE cụ thể
+  const kenh={};ds.forEach(x=>{(kenh[x.pg.kenh]=kenh[x.pg.kenh]||[]).push(x);});
+  const bKenh=the('Theo kênh / page',num(Object.keys(kenh).length),['Kênh / page','Khách','Lẻ','Sỉ','Doanh thu','% DT'],
+    Object.entries(kenh).sort((a,b)=>sum(b[1],x=>x.tien)-sum(a[1],x=>x.tien)).map(([k,a],i)=>'<tr '+dang('onlKenh'+i,'Khách Online · '+k,a)+'><td class="name">'+e(k)+'</td>'
+      +o(num(a.length))+o(num(a.filter(x=>x.doi==='Lẻ').length))+o(num(a.filter(x=>x.doi==='Sỉ').length))+o(vnd(sum(a,x=>x.tien)),1)+o(tl(sum(a,x=>x.tien),T))+'</tr>'));
+  // 3) MIỀN / TỈNH: doanh thu vs chi tiêu Meta thực tế + ngân sách theo tỉ lệ doanh thu
+  const chiTinh={},messTinh={};let chiVung=0;
+  vungLoc.filter(x=>x.loai==='tinh').forEach(x=>{const t=rptOnlTinhMeta(x.khoa)||'Chưa rõ';chiTinh[t]=(chiTinh[t]||0)+Number(x.spend||0);messTinh[t]=(messTinh[t]||0)+Number(x.messages||0);chiVung+=Number(x.spend||0);});
+  const theoT={};ds.forEach(x=>{const t=(x.r.tinh&&x.r.tinh.moi)||'Chưa rõ';(theoT[t]=theoT[t]||[]).push(x);});
+  const tinhDs=[...new Set(Object.keys(theoT).concat(Object.keys(chiTinh)))];
+  const dtKnown=sum(ds.filter(x=>rptMienCua(x.r.tinh&&x.r.tinh.moi)!=='Chưa rõ'),x=>x.tien);
+  const hangT=[];let iT=0;
+  RPT_MIEN_THU.forEach(mien=>{
+    const ts=tinhDs.filter(t=>rptMienCua(t)===mien).sort((a,b)=>sum(theoT[b]||[],x=>x.tien)-sum(theoT[a]||[],x=>x.tien)||(chiTinh[b]||0)-(chiTinh[a]||0));
+    if(!ts.length)return;
+    const aM=ts.flatMap(t=>theoT[t]||[]),dtM=sum(aM,x=>x.tien),chiM=sum(ts,t=>chiTinh[t]||0);
+    const mau=RPT_MIEN_MAU[mien]||'var(--muted)';
+    hangT.push('<tr '+dang('onlMien'+iT++,'Khách Online · '+(mien==='Chưa rõ'?'chưa rõ tỉnh / nước ngoài':mien),aM,'background:var(--bg2)')+'><td class="name" style="font-weight:800;color:'+mau+'">'+(mien==='Chưa rõ'?'Chưa rõ tỉnh / nước ngoài':mien)+'</td>'
+      +o(num(aM.length),1)+o(vnd(dtM),1)+o(mien==='Chưa rõ'?'—':tl(dtM,dtKnown),1)+o(coVung?vnd(chiM):'—',1)+o(coVung?tl(chiM,chiVung):'—',1)+o(coVung?adsDs(chiM,dtM):'—',1)
+      +o(mien==='Chưa rõ'||!dtKnown?'—':vnd(chiTong*dtM/dtKnown),1)+'</tr>');
+    ts.forEach(t=>{const a=theoT[t]||[],dt=sum(a,x=>x.tien),chi=chiTinh[t]||0;
+      hangT.push('<tr '+(a.length?dang('onlTinh'+iT++,'Khách Online · '+t,a):'')+'><td class="name" style="padding-left:22px">'+e(t)+'</td>'+o(a.length?num(a.length):'—')+o(dt?vnd(dt):'—')
+        +o(mien==='Chưa rõ'?'—':tl(dt,dtKnown))+o(coVung?(chi?vnd(chi):'—'):'—')+o(coVung?tl(chi,chiVung):'—')+o(coVung&&(chi||dt)?adsDs(chi,dt):'—')
+        +o(mien==='Chưa rõ'||!dtKnown||!dt?'—':vnd(chiTong*dt/dtKnown))+'</tr>');});
+  });
+  const bTinh=the('Doanh thu & chi tiêu theo miền / tỉnh',vnd(chiTong)+' chi phí ads',['Miền / Tỉnh','Khách','Doanh thu','% DT','Chi tiêu Meta','% chi tiêu','ADS / DS','Ngân sách theo % DT'],hangT,
+    coVung?'chi tiêu Meta theo tỉnh':'chưa có chi tiêu Meta theo tỉnh');
+  // 4) NHÂN KHẨU HỌC
+  const nhom=(tieu,key,a,f,thu)=>{const g={};a.forEach(x=>{const k=f(x);(g[k]=g[k]||[]).push(x);});
+    const ks=Object.keys(g).sort((p,q)=>thu?thu.indexOf(p)-thu.indexOf(q):sum(g[q],x=>x.tien)-sum(g[p],x=>x.tien)),tt=sum(a,x=>x.tien);
+    return the(tieu,num(a.length)+' khách',['Nhóm','Khách','% khách','Doanh thu','% DT','DT / khách'],ks.map((k,i)=>'<tr '+dang(key+i,'Khách Online · '+tieu+' · '+k,g[k])+'><td class="name">'+e(k)+'</td>'
+      +o(num(g[k].length))+o(tl(g[k].length,a.length))+o(vnd(sum(g[k],x=>x.tien)),1)+o(tl(sum(g[k],x=>x.tien),tt))+o(vnd(sum(g[k],x=>x.tien)/g[k].length))+'</tr>'));};
+  nLe.forEach(x=>{x.xh=rptOnlXungHo(x.r);});
+  const TUOI=['Trẻ (em)','Trung niên (anh / chị)','Lớn tuổi (cô / chú / bác)','Cao tuổi (ông / bà)','Nhà chùa (thầy / sư)','Không rõ'];
+  const MUC=['Dưới 2 triệu','2 – 10 triệu','10 – 50 triệu','50 – 200 triệu','Trên 200 triệu'];
+  const muc=t=>t<2e6?MUC[0]:t<1e7?MUC[1]:t<5e7?MUC[2]:t<2e8?MUC[3]:MUC[4];
+  const bGioi=nhom('Giới tính khách Lẻ','onlGioi',nLe,x=>x.xh.gioi,['Nữ','Nam','Không rõ']);
+  const bTuoi=nhom('Lứa tuổi khách Lẻ','onlTuoi',nLe,x=>x.xh.tuoi,TUOI);
+  const bMoi=nhom('Khách mới / mua lại','onlMoi',ds,x=>modInRange('tonghop',String(x.r.closeDate||'').slice(0,10))?'Khách mới chốt trong kỳ':'Khách cũ quay lại mua',null);
+  const bMuc=nhom('Mức chi tiêu / khách trong kỳ','onlMuc',ds,x=>muc(x.tien),MUC);
+  const bNen=nhom('Nền tảng','onlNen',ds,x=>x.pg.kenh.split(' ')[0],null);
+  // Meta: tuổi / giới tính của người xem quảng cáo (chi tiêu + mess)
+  let bMeta='';
+  if(coVung){const tg=vungLoc.filter(x=>x.loai==='tuoi_gioi'),G={female:'Nữ',male:'Nam',unknown:'Không rõ'},tuoi=[...new Set(tg.map(x=>x.khoa.split('|')[0]))].sort();
+    const c=(t,g,f)=>sum(tg.filter(x=>x.khoa.split('|')[0]===t&&(!g||x.khoa.split('|')[1]===g)),x=>Number(x[f]||0)),tc=sum(tg,x=>Number(x.spend||0));
+    bMeta=the('Người nhắn từ quảng cáo Meta theo tuổi / giới tính',vnd(tc),['Tuổi','Chi tiêu','% chi tiêu','Mess nữ','Mess nam','Mess không rõ','Chi phí / mess'],
+      tuoi.map(t=>{const sp=c(t,'','spend'),ms=c(t,'','messages');return '<tr><td class="name">'+e(t)+'</td>'+o(vnd(sp),1)+o(tl(sp,tc))+o(num(c(t,'female','messages')))+o(num(c(t,'male','messages')))+o(num(c(t,'unknown','messages')))+o(ms?vnd(sp/ms):'—')+'</tr>';}),'Meta');}
+  const thieuPage=ds.filter(x=>x.pg.b==='?');
+  return `<div style="${g3}">
+      ${mkKpi(ic('cash'),'Doanh thu khách Online',vnd(T),num(nKh)+' khách · Lẻ '+num(nLe.length)+' · Sỉ '+num(nSi.length),'g-green')}
+      ${mkKpi(ic('chart'),'Chi phí ads (Meta)',vnd(chiTong),'ADS / DS '+adsDs(chiTong,T),'g-orange')}
+      <div ${dang('onlThieu','Khách Online chưa rõ page (phiếu Kiot chỉ ghi kênh, không ghi page)',thieuPage)}>${mkKpi(ic('users'),'Chưa rõ page',vnd(sum(thieuPage,x=>x.tien)),num(thieuPage.length)+' khách · '+tl(sum(thieuPage,x=>x.tien),T)+' doanh thu','g-purple')}</div>
+    </div>
+    ${bBrand}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bTinh}<div>${bKenh}${bNen}</div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr));gap:16px;align-items:start">${bGioi}${bTuoi}${bMoi}${bMuc}${bMeta}</div>`;
+}
 const RPT_TH_TABS=[
   ['tong-hop','Tổng hợp',()=>rptThTongHtml()],
   ['sale-le','Sale Lẻ',()=>{window._rptSlType='Lẻ';return rptSlOverviewHtml();}],
   ['sale-si','Sale Sỉ',()=>{window._rptSlType='Sỉ';return rptSlOverviewHtml();}],
   ['so-sanh','So sánh tháng',()=>rptSsHtml()],
+  ['khach-onl','Khách Online',()=>rptOnlHtml()],
 ];
 function rptThTab(){const t=localStorage.getItem('rptThTab')||RPT_TH_TABS[0][0];return RPT_TH_TABS.some(x=>x[0]===t)?t:RPT_TH_TABS[0][0];}
 function rptThSetTab(t){localStorage.setItem('rptThTab',t);renderReportTongHop();}
@@ -4408,7 +4555,8 @@ async function renderReportTongHop(){
   if(!el.innerHTML.trim())el.innerHTML=rptDangTai('Báo cáo tổng hợp');
   try{
     await Promise.all([dhLoadOrders(),kiotLoadInvoices(),dhLoadManual(),rptSlLoadManual(),siCrmLoad(),
-      saleNhanSuLoad().catch(()=>null),rptThTab()==='so-sanh'?mktLoadSpend():Promise.resolve()]);
+      saleNhanSuLoad().catch(()=>null),rptThTab()==='so-sanh'||rptThTab()==='khach-onl'?mktLoadSpend():Promise.resolve(),
+      rptThTab()==='khach-onl'?mktLoadVung():Promise.resolve()]);
     await rptSlLockChot();
   }catch(e){el.innerHTML=rptTaiLoi('Báo cáo tổng hợp',e,'renderReportTongHop');return;}
   const cur=rptThTab();
@@ -8151,10 +8299,10 @@ function renderReportSaleSi(){return rptSlRenderPage('Sỉ');}
 // Mọi lỗi JS chạy ngầm -> hiện 1 thanh đỏ ở góc màn hình kèm chỗ gây lỗi, bấm copy được.
 // Trước đây lỗi chỉ nằm trong console nên người dùng chỉ thấy "trắng tinh" mà không có manh mối nào.
 // Đổi mỗi lần đẩy bản mới (script capnhat-version.js tự ghi lại).
-const APP_VERSION='28/11 10:20';
+const APP_VERSION='28/11 10:33';
 // SỐ BẢN = số lần cập nhật app (anh Hải 07/10/2026) = số commit đã sửa index.html, tính CẢ commit này.
 // Đóng dấu: APP_BAN = (git rev-list --count HEAD -- index.html) + 1, cùng lúc với APP_VERSION.
-const APP_BAN=621;
+const APP_BAN=622;
 document.addEventListener('DOMContentLoaded',()=>{const el=document.getElementById('appVer');
   if(el)el.textContent='v'+APP_BAN+' · '+APP_VERSION;});
 window._loiCuoi=null;
@@ -9145,7 +9293,7 @@ const rptTinhBo = s => ' ' + String(s || '').normalize('NFD').replace(/[̀-ͯ]/g
 // tên cũ -> [bí danh không dấu]
 const RPT_TINH = {
   'Hà Nội': ['ha noi', 'hn', 'tp hn', 'hanoi'], 'TP.HCM': ['ho chi minh', 'hcm', 'tp hcm', 'sai gon', 'saigon', 'sg', 'tphcm', 'hochiminh'],
-  'Hải Phòng': ['hai phong', 'hp'], 'Đà Nẵng': ['da nang'], 'Cần Thơ': ['can tho'], 'Huế': ['thua thien hue', 'hue'],
+  'Hải Phòng': ['hai phong', 'hp', 'haiphong'], 'Đà Nẵng': ['da nang', 'danang'], 'Cần Thơ': ['can tho', 'cantho'], 'Huế': ['thua thien hue', 'hue'],
   'An Giang': ['an giang'], 'Bà Rịa - Vũng Tàu': ['ba ria vung tau', 'vung tau', 'ba ria', 'brvt'], 'Bắc Giang': ['bac giang'], 'Bắc Kạn': ['bac kan', 'bac can'],
   'Bạc Liêu': ['bac lieu'], 'Bắc Ninh': ['bac ninh'], 'Bến Tre': ['ben tre'], 'Bình Định': ['binh dinh', 'quy nhon'], 'Bình Dương': ['binh duong', 'thu dau mot'],
   'Bình Phước': ['binh phuoc'], 'Bình Thuận': ['binh thuan', 'phan thiet'], 'Cà Mau': ['ca mau'], 'Cao Bằng': ['cao bang'], 'Đắk Lắk': ['dak lak', 'daklak', 'dac lac', 'buon ma thuot', 'bmt'],
